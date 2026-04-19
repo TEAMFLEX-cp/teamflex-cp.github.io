@@ -995,7 +995,7 @@ loadAdminCfgFromSB().then(function(){
     var autoOk=tryAutoLogin();
     if(autoOk)console.log('[자동로그인] 성공');
   }
-}).catch(function(e){console.warn('동기화 실패',e);});
+}).catch(function(e){console.warn('동기화 실패',e);if(!CU)tryAutoLogin();});
 
 // ── SUPABASE REALTIME: 변경사항 자동 수신 ─────────────────────────────
 (function setupRealtime(){
@@ -1199,6 +1199,7 @@ async function submitReq(){
   } else {
     // ❌ 번호 불일치 → 관리자 검토 대기
     _pendingName=name; // 대기 기사 이름 저장
+    localStorage.setItem('tf_pending',JSON.stringify({name:name,pw:pw1})); // 새로고침 후 복구용
     db[name].status='pending';db[name].phone=ph;db[name].newpw=pw1;saveDB(db);
     var reqs=getReqs();
     reqs.push({name:name,id:db[name].id,phone:ph,newpw:pw1,at:new Date().toLocaleString('ko-KR'),status:'pending'});
@@ -1332,6 +1333,7 @@ function startPendingCheck(name,pw){
         var checkEl=document.getElementById('ps-checking');
         if(checkEl)checkEl.innerHTML='✅ 승인됐습니다! 로그인 중...';
         setTimeout(function(){
+          localStorage.removeItem('tf_pending'); // pending 상태 제거
           document.getElementById('ps').style.display='none';
           var loginPw=res.data.password||pw||'1234';
           CU={id:db[name]?db[name].id:name, name:name, role:db[name]?db[name].role||'driver':'driver'};
@@ -1455,7 +1457,21 @@ function dismissInstall(){
 // ── 자동 로그인 ────────────────────────────────────────────────────────
 function tryAutoLogin(){
   var saved=localStorage.getItem('tf_autologin');
-  if(!saved)return false;
+  if(!saved){
+    // 승인대기 상태 복구 (새로고침 대비)
+    var pSaved=localStorage.getItem('tf_pending');
+    if(pSaved){
+      try{
+        var ps=JSON.parse(pSaved);
+        _pendingName=ps.name;
+        document.getElementById('ls').style.display='none';
+        document.getElementById('ps').style.display='flex';
+        startPendingCheck(ps.name,ps.pw);
+        return true;
+      }catch(e){}
+    }
+    return false;
+  }
   try{
     var s=JSON.parse(saved);
     var db=getDB();
@@ -2385,8 +2401,18 @@ function pgApproval(){
 }
 async function okDriver(name){
   var db=getDB();
-  // newpw 우선순위: localStorage.newpw → Supabase sync된 password → '1234'
-  var newpw=(db[name]&&db[name].newpw)?db[name].newpw:(db[name]&&db[name].password?db[name].password:'1234');
+  // Supabase에서 최신 비번 직접 조회 (기사가 등록한 희망 비번)
+  var newpw='1234';
+  if(sbClient){
+    try{
+      var pr=await sbClient.from('drivers').select('password').eq('name',name).single();
+      if(pr.data&&pr.data.password)newpw=pr.data.password;
+    }catch(e){console.warn('okDriver pw fetch err',e);}
+  }
+  // 그래도 '1234'면 localStorage fallback
+  if(newpw==='1234'){
+    newpw=(db[name]&&db[name].newpw)?db[name].newpw:(db[name]&&db[name].password?db[name].password:'1234');
+  }
   if(db[name]){db[name].status='approved';db[name].password=newpw;saveDB(db);}
   var reqs=getReqs();reqs.forEach(function(r){if(r.name===name)r.status='approved';});saveReqs(reqs);
   // Supabase에도 승인 반영
