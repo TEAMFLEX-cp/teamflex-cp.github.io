@@ -991,12 +991,19 @@ function markAnnRead(annId){
   if(_unreadAnnIds.length===0)clearInterval(_reminderTimer);
 }
 
+function _reRenderCurTab(){
+  if(!CU)return;
+  var cur=document.querySelector('.ni.on');
+  if(cur){var t=cur.getAttribute('onclick');if(t){var m=t.match(/go\('(\w+)'\)/);if(m)go(m[1]);}}
+}
+
 // ── SUPABASE 초기 동기화 ──────────────────────────────────────────────
 // 어드민 설정 먼저 불러온 후 전체 동기화
 loadAdminCfgFromSB().then(function(){
   return syncFromSupabase();
 }).then(function(){
   console.log('Supabase 동기화 완료');
+  _reRenderCurTab();
   // 동기화 완료 후 자동로그인 시도
   if(!CU){
     var autoOk=tryAutoLogin();
@@ -1054,6 +1061,16 @@ loadAdminCfgFromSB().then(function(){
 
   console.log('[Realtime] 구독 등록 완료');
 })();
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&sbClient){
+    syncFromSupabase().then(function(){_reRenderCurTab();}).catch(function(){});
+  }
+});
+setInterval(function(){
+  if(sbClient&&!document.hidden){
+    syncFromSupabase().then(function(){_reRenderCurTab();}).catch(function(){});
+  }
+},5000);
 
 // ── EVENTS ──────────────────────────────────────────────────────────
 document.getElementById('uid').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('upw').focus();});
