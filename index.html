@@ -643,6 +643,8 @@ async function syncFromSupabase(){
         });
         // groups
         var lg={};var lkOrder=[];
+        // DW 해당 주차 초기화 (누적 방지)
+        Object.keys(DW).forEach(function(dn){if(DW[dn])delete DW[dn][ws];});
         raw.data.forEach(function(e){
           var lk=e.grpLeaders.join('|');
           if(!lg[lk]){lg[lk]={l:e.grpLeaders,routes:{},order:[]};lkOrder.push(lk);}
@@ -653,10 +655,8 @@ async function syncFromSupabase(){
           var dn=e.driverName;
           if(!DW[dn])DW[dn]={};
           if(!DW[dn][ws])DW[dn][ws]={};
-          if(!DW[dn][ws][e.date])DW[dn][ws][e.date]='';
-          if(DW[dn][ws][e.date]&&DW[dn][ws][e.date].indexOf(rr)<0)
-            DW[dn][ws][e.date]+=','+rr;
-          else if(!DW[dn][ws][e.date])DW[dn][ws][e.date]=rr;
+          if(!DW[dn][ws][e.date])DW[dn][ws][e.date]=rr;
+          else if(DW[dn][ws][e.date].indexOf(rr)<0)DW[dn][ws][e.date]+=','+rr;
         });
         var groups=lkOrder.map(function(lk){
           var g=lg[lk];
