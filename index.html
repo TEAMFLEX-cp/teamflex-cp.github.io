@@ -621,7 +621,7 @@ async function syncFromSupabase(){
     var cutStr=thisSunday.toISOString().slice(0,10); // 이번 주 일요일부터
     var futStr=future.toISOString().slice(0,10);     // +60일 후까지
     // Supabase 기본 limit=1000 우회 → 1000행씩 페이지네이션
-    var allRows=[]; var _off=0; var _batch=1000;
+    var allRows=[]; var _off=0; var _batch=10000;
     while(true){
       var _r=await sbClient.from('weekly_schedules')
         .select('*').gte('week_start',cutStr).lte('week_start',futStr)
@@ -2133,6 +2133,12 @@ function moveSchedWeek(delta){
   document.getElementById('mc').innerHTML=pgFullSched();
 }
 function toggleEdit(){
+  if(!EDIT_MODE && CU && CU.role!=='admin'){
+    var wkDate=new Date(SCHED_WK);
+    var todayD=new Date();todayD.setHours(0,0,0,0);
+    var diffDays=(wkDate-todayD)/(1000*60*60*24);
+    if(diffDays>90){alert('90일 수정 제한입니다.');return;}
+  }
   EDIT_MODE=!EDIT_MODE;
   document.getElementById('mc').innerHTML=pgFullSched();
 }
