@@ -617,7 +617,7 @@ async function syncFromSupabase(){
     var today=new Date();
     // 이번 주 일요일(week_start) 계산 (일=0, 월=1, ..., 토=6)
     var thisSunday=new Date(today);thisSunday.setDate(today.getDate()-today.getDay());
-    var future=new Date(thisSunday);future.setDate(thisSunday.getDate()+60); // 이번 주 일요일 기준 +60일
+    var future=new Date(thisSunday);future.setDate(thisSunday.getDate()+365); // 이번 주 일요일 기준 +60일
     var cutStr=thisSunday.toISOString().slice(0,10); // 이번 주 일요일부터
     var futStr=future.toISOString().slice(0,10);     // +60일 후까지
     // Supabase 기본 limit=1000 우회 → 1000행씩 페이지네이션
@@ -2134,10 +2134,13 @@ function moveSchedWeek(delta){
 }
 function toggleEdit(){
   if(!EDIT_MODE && CU && CU.role!=='admin'){
+    // 팀장/조장: 90일째가 포함된 주차부터 수정 불가 (그 전주차까지만 허용)
     var wkDate=new Date(SCHED_WK);
     var todayD=new Date();todayD.setHours(0,0,0,0);
-    var diffDays=(wkDate-todayD)/(1000*60*60*24);
-    if(diffDays>90){alert('90일 수정 제한입니다.');return;}
+    // 오늘+90일이 속한 주의 일요일(week_start) 계산
+    var limitDate=new Date(todayD);limitDate.setDate(todayD.getDate()+90);
+    var limitSunday=new Date(limitDate);limitSunday.setDate(limitDate.getDate()-limitDate.getDay());
+    if(wkDate>=limitSunday){alert('90일이상의 업무 수정은 제한되어있습니다.');return;}
   }
   EDIT_MODE=!EDIT_MODE;
   document.getElementById('mc').innerHTML=pgFullSched();
