@@ -2832,7 +2832,7 @@ function pgSettings(){
 
   return '<div class="stit">&#x2699; 시스템 설정</div>'+
     '<div class="card" style="border:2px solid #1565c0"><div class="ctit" style="color:#1565c0">&#x1F4F6; Supabase 연동 상태</div>'+
-    '<div id="sb-diag-box" style="font-size:13px;color:#555;padding:8px 0">탭하여 확인</div>'+
+    '<div id="sb-diag-box" style="font-size:13px;color:#555;padding:8px 0;overflow-y:auto;max-height:300px">'+(window._sbDiagResult||'탭하여 확인')+'</div>'+
     '<button class="btn-ok" style="background:#1565c0" onclick="runSbDiag()">&#x1F504; 지금 동기화 테스트</button>'+
     '</div>'+
     '<div class="card"><div class="ctit">&#x1F510; 관리자 계정 관리</div>'+
@@ -2858,29 +2858,31 @@ async function runSbDiag(){
   var box=document.getElementById('sb-diag-box');
   if(!box)return;
   box.style.color='#888';
-  box.textContent='🔄 Supabase 연결 중...';
+  box.innerHTML='🔄 Supabase 조회 중...';
   try{
-    if(!sbClient){box.style.color='#e53935';box.textContent='❌ sbClient 없음 - Supabase 초기화 실패';return;}
-    box.textContent='🔄 weekly_schedules 조회 중...';
+    if(!sbClient){box.style.color='#e53935';box.innerHTML='❌ sbClient 없음';window._sbDiagResult=box.innerHTML;return;}
+    var cntRes=await sbClient.from('weekly_schedules').select('week_start',{count:'exact',head:true});
+    var totalCount=cntRes.count||0;
     var today=new Date();
-    var cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-14);
-    var future=new Date(today);future.setDate(future.getDate()+90);
+    var cutoff=new Date(today);cutoff.setDate(cutoff.getDate()-60);
+    var future=new Date(today);future.setDate(future.getDate()+365);
     var res=await sbClient.from('weekly_schedules')
-      .select('week_start,driver_name,work_date,route')
+      .select('week_start,driver_name')
       .gte('week_start',cutoff.toISOString().slice(0,10))
       .lte('week_start',future.toISOString().slice(0,10))
       .order('week_start',{ascending:true}).limit(20000);
-    if(res.error){box.style.color='#e53935';box.innerHTML='❌ 오류: '+res.error.message;return;}
+    if(res.error){box.style.color='#e53935';box.innerHTML='❌ 오류: '+res.error.message;window._sbDiagResult=box.innerHTML;return;}
     var rows=res.data||[];
-    var weeks=[...new Set(rows.map(function(r){return r.week_start;}))].sort();
-    var myRows=rows.filter(function(r){return CU&&r.driver_name===CU.name;});
+    var weekMap={};
+    rows.forEach(function(r){weekMap[r.week_start]=(weekMap[r.week_start]||0)+1;});
+    var weeks=Object.keys(weekMap).sort();
+    var html='✅ 연결 성공!<br>'+'📊 DB 전체 행 수: <b>'+totalCount+'건</b><br>'+'📅 조회된 주차: <b>'+weeks.length+'개</b><br>'+weeks.map(function(w){return '  '+w+': '+weekMap[w]+'건';}).join('<br>')+'<br><span style="font-size:11px;color:#888">'+new Date().toLocaleTimeString()+'</span>';
     box.style.color='#2e7d32';
-    box.innerHTML='✅ 연결 성공!<br>'+'📊 전체 행: <b>'+rows.length+'건</b><br>'+'📅 주차: <b>'+weeks.length+'개</b><br>'+weeks.map(function(w){return '  '+w+' ('+rows.filter(function(r){return r.week_start===w;}).length+'건)';}).join('<br>')+'<br>'+'👤 내 스케줄: <b>'+myRows.length+'건</b><br>'+'<span style="font-size:11px;color:#888">'+new Date().toLocaleTimeString()+'</span>';
-    await syncFromSupabase();
-    _reRenderCurTab();
-    box.innerHTML+='<br>🔁 동기화 완료 → 화면 갱신됨';
-  }catch(e){box.style.color='#e53935';box.textContent='❌ 예외: '+String(e);}
+    box.innerHTML=html;
+    window._sbDiagResult=html;
+  }catch(e){box.style.color='#e53935';box.innerHTML='❌ 예외: '+String(e);window._sbDiagResult=box.innerHTML;}
 }
+
 function togglePerm(type,role,checked){
   var cfg=getCfg();
   var key=type==='sched'?'schedPerm':'annPerm';
