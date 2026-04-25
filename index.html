@@ -620,8 +620,19 @@ async function syncFromSupabase(){
     var future=new Date(thisSunday);future.setDate(thisSunday.getDate()+60); // 이번 주 일요일 기준 +60일
     var cutStr=thisSunday.toISOString().slice(0,10); // 이번 주 일요일부터
     var futStr=future.toISOString().slice(0,10);     // +60일 후까지
-    var wRes=await sbClient.from('weekly_schedules')
-      .select('*').gte('week_start',cutStr).lte('week_start',futStr).order('week_start',{ascending:true}).order('id',{ascending:true}).limit(10000);
+    // Supabase 기본 limit=1000 우회 → 1000행씩 페이지네이션
+    var allRows=[]; var _off=0; var _batch=1000;
+    while(true){
+      var _r=await sbClient.from('weekly_schedules')
+        .select('*').gte('week_start',cutStr).lte('week_start',futStr)
+        .order('week_start',{ascending:true}).order('id',{ascending:true})
+        .range(_off,_off+_batch-1);
+      if(_r.error||!_r.data||_r.data.length===0)break;
+      allRows=allRows.concat(_r.data);
+      if(_r.data.length<_batch)break;
+      _off+=_batch;
+    }
+    var wRes={data:allRows};
     if(wRes.data&&wRes.data.length>0){
       // week_start별 그룹핑 → AW/DW 재구성
       var weekMap={};
