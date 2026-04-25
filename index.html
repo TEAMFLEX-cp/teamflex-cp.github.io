@@ -479,6 +479,7 @@ textarea.ann-input:focus{border-color:#1565c0}
   </div>
 </div>
 <div id="app">
+  <div id="ptr-bar" style="display:none;position:fixed;top:0;left:0;right:0;height:36px;background:#1a7a3c;color:#fff;font-size:13px;font-family:맑은 고딕,sans-serif;align-items:center;justify-content:center;z-index:9999;"></div>
   <div class="ah">
     <div class="au">
       <div class="av" id="hav">?</div>
@@ -1012,80 +1013,56 @@ function _reRenderCurTab(){
   });
 }
 
-// ── SUPABASE 초기 동기화 ──────────────────────────────────────────────
-// 어드민 설정 먼저 불러온 후 전체 동기화
+// ── SUPABASE 초기 동기화 ──────────────────────────────────────────────────────────
+// 1) 즉시 자동로그인 (동기화 전에 먼저 복구 → 로그인 화면 안 보임)
+tryAutoLogin();
+// 2) 어드민 설정 + 전체 동기화 (백그라운드)
 loadAdminCfgFromSB().then(function(){
   return syncFromSupabase();
 }).then(function(){
   console.log('Supabase 동기화 완료');
   _reRenderCurTab();
-  // 동기화 완료 후 자동로그인 시도
-  if(!CU){
-    var autoOk=tryAutoLogin();
-    if(autoOk)console.log('[자동로그인] 성공');
-  }
-}).catch(function(e){console.warn('동기화 실패',e);if(!CU)tryAutoLogin();});
+}).catch(function(e){console.warn('동기화 실패',e);_reRenderCurTab();});
 
-// ── SUPABASE REALTIME: 변경사항 자동 수신 ─────────────────────────────
-(function setupRealtime(){
-  if(!sbClient)return;
-  var _rtTimer=null;
-  function _reSync(src){
-    // 연속 변경 시 300ms 디바운스
-    clearTimeout(_rtTimer);
-    _rtTimer=setTimeout(function(){
-      syncFromSupabase().then(function(){
-        console.log('[Realtime] '+src+' 변경 감지 → 화면 갱신');
-        // 현재 탭 다시 렌더링
-        if(CU){
-          var cur=document.querySelector('.ni.on');
-          if(cur){var t=cur.getAttribute('onclick');if(t){var m=t.match(/go\('(\w+)'\)/);if(m)go(m[1]);}}
-        }
-        // 새 스케줄/공지 알림 표시 (로그인 중일 때만)
-        if(CU&&src==='schedule'){
-          var dot=document.getElementById('rt-dot');
-          if(!dot){dot=document.createElement('span');dot.id='rt-dot';
-            dot.style.cssText='position:fixed;top:60px;right:12px;background:#e53935;color:#fff;font-size:12px;padding:6px 12px;border-radius:20px;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer';
-            dot.textContent='스케줄 업데이트됨 ✓';
-            dot.onclick=function(){dot.remove();};
-            document.body.appendChild(dot);
-            setTimeout(function(){if(dot.parentNode)dot.remove();},4000);
-          }
-        }
-      }).catch(function(e){console.warn('[Realtime] 동기화 실패',e);});
-    },300);
-  }
-
-  // 스케줄 변경 구독
-  sbClient.channel('rt-schedule')
-    .on('postgres_changes',{event:'*',schema:'public',table:'weekly_schedules'},
-        function(payload){_reSync('schedule');})
-    .subscribe(function(status){console.log('[Realtime] schedule:',status);});
-
-  // 공지사항 변경 구독
-  sbClient.channel('rt-ann')
-    .on('postgres_changes',{event:'*',schema:'public',table:'announcements'},
-        function(payload){_reSync('ann');})
-    .subscribe(function(status){console.log('[Realtime] ann:',status);});
-
-  // 월별 정산 변경 구독
-  sbClient.channel('rt-monthly')
-    .on('postgres_changes',{event:'*',schema:'public',table:'monthly_stats'},
-        function(payload){_reSync('monthly');})
-    .subscribe(function(status){console.log('[Realtime] monthly:',status);});
-
-  console.log('[Realtime] 구독 등록 완료');
-})();
+// ── 앱 복귀 시 즉시 동기화 (화면 전환 → 앱으로 돌아올 때) ───────────
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden&&sbClient){
     syncFromSupabase().then(function(){_reRenderCurTab();}).catch(function(){});
   }
 });
-setInterval(function(){
-  if(sbClient&&!document.hidden){
-    syncFromSupabase().then(function(){_reRenderCurTab();}).catch(function(){});
+
+// ── Pull-to-Refresh (네이티브 페이지 새로고침 없이 데이터만 갱신) ──────
+(function(){
+  var _startY=0,_pulling=false;
+  function _showPTR(msg,done){
+    var el=document.getElementById('ptr-bar');
+    if(!el)return;
+    el.textContent=msg;el.style.display='flex';
+    if(done)setTimeout(function(){el.style.display='none';},1200);
   }
-},5000);
+  document.addEventListener('touchstart',function(e){
+    var mc=document.getElementById('mc');
+    _startY=(mc&&mc.scrollTop===0)?e.touches[0].clientY:0;
+    _pulling=false;
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(!_startY)return;
+    if(e.touches[0].clientY-_startY>55)_pulling=true;
+  },{passive:true});
+  document.addEventListener('touchend',function(){
+    if(_pulling){
+      _pulling=false;_startY=0;
+      _showPTR('🔄 동기화 중...',false);
+      if(sbClient){
+        syncFromSupabase().then(function(){
+          _reRenderCurTab();
+          _showPTR('✅ 업데이트 완료',true);
+        }).catch(function(){_showPTR('❌ 동기화 실패',true);});
+      } else {_showPTR('',true);}
+    }
+    _startY=0;_pulling=false;
+  },{passive:true});
+})();
 
 // ── EVENTS ──────────────────────────────────────────────────────────
 document.getElementById('uid').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('upw').focus();});
