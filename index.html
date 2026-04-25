@@ -1062,6 +1062,14 @@ document.addEventListener('visibilitychange',function(){
       if(after!==before){
         console.log('[Auto] 변경 감지 → 화면 갱신');
         _reRenderCurTab();
+        // PC에서 업데이트 내용이 있을때 토스트 알림
+        (function(){
+          var t=document.createElement('div');
+          t.textContent='💻 PC에서 수정된 업데이트 내용이 있습니다.';
+          t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1a3a6b;color:#fff;padding:11px 20px;border-radius:20px;font-size:13px;z-index:99999;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.25);';
+          document.body.appendChild(t);
+          setTimeout(function(){t.remove();},4000);
+        })();
       }
     }).catch(function(){});
   },60000);
