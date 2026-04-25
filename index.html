@@ -994,7 +994,22 @@ function markAnnRead(annId){
 function _reRenderCurTab(){
   if(!CU)return;
   var cur=document.querySelector('.ni.on');
-  if(cur){var t=cur.getAttribute('onclick');if(t){var m=t.match(/go\('(\w+)'\)/);if(m)go(m[1]);}}
+  if(!cur)return;
+  var t=cur.getAttribute('onclick');
+  if(!t)return;
+  var m=t.match(/go\('(\w+)'\)/);
+  if(!m)return;
+  var mc=document.getElementById('mc');
+  var mcST=mc?mc.scrollTop:0;
+  var ftwSL=Array.from(document.querySelectorAll('.ftw')).map(function(el){return el.scrollLeft;});
+  go(m[1]);
+  requestAnimationFrame(function(){
+    var mc2=document.getElementById('mc');
+    if(mc2)mc2.scrollTop=mcST;
+    document.querySelectorAll('.ftw').forEach(function(el,i){
+      if(ftwSL[i])el.scrollLeft=ftwSL[i];
+    });
+  });
 }
 
 // ── SUPABASE 초기 동기화 ──────────────────────────────────────────────
