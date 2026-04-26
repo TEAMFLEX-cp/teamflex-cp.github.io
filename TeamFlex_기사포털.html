@@ -1157,25 +1157,15 @@ function startRealtime(){
         function(){go(CU.role==='admin'?'ab':'nc');}
       );
     })
-    // ② 스케줄 변경
+    // ② 스케줄 변경 (UPDATE / INSERT)
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'weekly_schedules'},function(payload){
       if(Date.now()-_rtStartTs<2000)return;
-      var e=payload.new||{};
-      // 나와 관련된 변경인지 확인
-      var isMyChange=e.driver_name===CU.name||(payload.old&&payload.old.driver_name===CU.name);
-      syncFromSupabase().then(function(){_reRenderCurTab();});
-      if(isMyChange||CU.role==='admin'||CU.role==='leader'){
-        playTpalm();
-        showAlertPopup(
-          '📅','스케줄 변경',
-          (e.work_date||'')+'<br>'+(e.driver_name||'')+'님 스케줄이 변경됐습니다.',
-          function(){go(CU.role==='admin'?'as':'fs');}
-        );
-      }
+      _onSchedChange(payload.new||{},payload.old||{});
     })
     // ③ 스케줄 새 등록 (INSERT)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'weekly_schedules'},function(payload){
-      syncFromSupabase().then(function(){_reRenderCurTab();});
+      if(Date.now()-_rtStartTs<2000)return;
+      _onSchedChange(payload.new||{},{});
     })
     // ④ 정산내역 등록
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'monthly_stats'},function(payload){
@@ -1197,6 +1187,53 @@ function startRealtime(){
       console.log('[Realtime] 구독 상태:',status);
     });
 }
+// 스케줄 변경 알림 처리 — 관리자/팀장/조장/해당기사만 팝업
+function _onSchedChange(e, old){
+  // 항상 화면 갱신
+  syncFromSupabase().then(function(){_reRenderCurTab();});
+
+  if(!CU)return;
+  var driverName=e.driver_name||old.driver_name||'';
+  var workDate=e.work_date||old.work_date||'';
+
+  // 날짜 포맷: "2026-04-26" → "4월 26일"
+  function fmtDate(d){
+    var p=d?d.split('-'):[];
+    if(p.length>=3)return parseInt(p[1])+'월 '+parseInt(p[2])+'일';
+    return d||'';
+  }
+
+  // 조장(sub)인 경우: grp_leaders 에 내 이름이 있어야 알림
+  var grpLeaders=[];
+  try{
+    var gl=e.grp_leaders||old.grp_leaders||'[]';
+    grpLeaders=typeof gl==='string'?JSON.parse(gl):gl;
+  }catch(err){}
+  var isMyGroupSub=(CU.role==='sub')&&grpLeaders.indexOf(CU.name)>=0;
+
+  // 알림 대상: 관리자, 팀장, 조장(내 그룹), 해당 기사
+  var shouldNotify=
+    CU.role==='admin' ||
+    CU.role==='leader' ||
+    isMyGroupSub ||
+    CU.name===driverName;
+
+  if(!shouldNotify)return;
+
+  var dateStr=fmtDate(workDate);
+  var msg=driverName?
+    '<b>'+driverName+'</b> 기사님 스케줄<br><span style="color:#5BC4FF;font-size:13px">'+dateStr+'</span>':
+    '<span style="color:#5BC4FF">'+dateStr+'</span>';
+
+  playTpalm();
+  showAlertPopup(
+    '📅',
+    '업무 수정 '+dateStr,
+    msg,
+    function(){go(CU.role==='admin'?'as':'fs');}
+  );
+}
+
 function stopRealtime(){
   if(_realtimeChannel&&sbClient){sbClient.removeChannel(_realtimeChannel);_realtimeChannel=null;}
 }
