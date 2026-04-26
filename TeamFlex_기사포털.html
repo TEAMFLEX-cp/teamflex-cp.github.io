@@ -534,16 +534,17 @@ function _saveSchedLog(arr){
 }
 
 // 변경 1건 저장 (중복 방지: workDate+route+oldDriver+newDriver 같으면 1분 내 무시)
-function _addSchedChange(workDate,route,oldDriver,newDriver){
+function _addSchedChange(workDate,route,oldDriver,newDriver,changedBy){
   if(!CU)return;
   var log=_getSchedLog();
   var now=new Date().toISOString();
-  var dupKey=workDate+'|'+route+'|'+oldDriver+'|'+newDriver;
+  var dupKey=workDate+'|'+route+'|'+(oldDriver||'')+'|'+(newDriver||'');
   var cutoff=new Date(Date.now()-60000).toISOString(); // 1분 이내 중복 무시
   var isDup=log.some(function(e){return e._key===dupKey&&e.at>cutoff;});
   if(isDup)return;
   log.unshift({id:Date.now().toString(36),at:now,workDate:workDate,route:route,
-    oldDriver:oldDriver,newDriver:newDriver,read:false,_key:dupKey});
+    oldDriver:oldDriver||'',newDriver:newDriver||'',
+    changedBy:changedBy||'',read:false,_key:dupKey});
   if(log.length>_SCHED_LOG_MAX)log=log.slice(0,_SCHED_LOG_MAX);
   _saveSchedLog(log);
   updateNavDots();
@@ -1171,6 +1172,9 @@ function sendNotif(title,body){
 
 // ── Supabase Realtime 구독 (앱 변경 즉시 알림) ───────────────────────
 var _realtimeChannel=null;
+// PC 프로그램이 DELETE→INSERT 방식으로 저장할 때 DELETE된 행을 임시 보관
+// (INSERT 이벤트와 대조해 실제로 변경된 것만 알림)
+var _realtimeDeleteBuffer={}; // key: work_date|route → {driver, ts}
 function startRealtime(){
   if(!sbClient||!CU)return;
   // 기존 구독 해제
@@ -1193,15 +1197,36 @@ function startRealtime(){
         function(){go(CU.role==='admin'?'ab':'nc');}
       );
     })
-    // ② 스케줄 변경 (UPDATE / INSERT)
+    // ② 스케줄 변경 (UPDATE) — 앱 내 직접 수정 시
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'weekly_schedules'},function(payload){
       if(Date.now()-_rtStartTs<2000)return;
-      _onSchedChange(payload.new||{},payload.old||{});
+      _onSchedChange(payload.new||{},payload.old||{},CU?CU.name:'');
     })
-    // ③ 스케줄 새 등록 (INSERT)
+    // ③ PC 프로그램 DELETE (행 삭제) → 버퍼에 보관
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'weekly_schedules'},function(payload){
+      if(Date.now()-_rtStartTs<2000)return;
+      var old=payload.old||{};
+      var key=(old.work_date||'')+'|'+(old.route||'');
+      if(key!=='|') _realtimeDeleteBuffer[key]={driver:old.driver_name||'',ts:Date.now()};
+    })
+    // ④ 스케줄 신규 등록(INSERT) — PC DELETE+INSERT 또는 순수 신규
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'weekly_schedules'},function(payload){
       if(Date.now()-_rtStartTs<2000)return;
-      _onSchedChange(payload.new||{},{});
+      var nw=payload.new||{};
+      var key=(nw.work_date||'')+'|'+(nw.route||'');
+      var del=_realtimeDeleteBuffer[key];
+      if(del&&Date.now()-del.ts<15000){
+        // PC DELETE+INSERT 패턴: 실제로 변경된 것만 통보
+        delete _realtimeDeleteBuffer[key];
+        if(del.driver!==(nw.driver_name||'')){
+          // 기사가 바뀐 경우만 → oldDriver가 있는 상태로 처리
+          _onSchedChange(nw,{driver_name:del.driver,work_date:nw.work_date,route:nw.route,grp_leaders:nw.grp_leaders},'PC');
+        }
+        // 동일 기사 → 변경 없음, 무시
+      } else {
+        // 순수 신규 배정
+        _onSchedChange(nw,{},'PC');
+      }
     })
     // ④ 정산내역 등록
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'monthly_stats'},function(payload){
@@ -1230,7 +1255,7 @@ function _fmtSchedDate(d){
 }
 
 // 스케줄 변경 알림 처리 — 관리자/팀장/조장/해당기사(이탈·신규 모두)
-function _onSchedChange(e, old){
+function _onSchedChange(e, old, changedBy){
   // 항상 화면 갱신
   syncFromSupabase().then(function(){_reRenderCurTab();});
   if(!CU)return;
@@ -1239,6 +1264,9 @@ function _onSchedChange(e, old){
   var oldDriver=old.driver_name||'';
   var workDate=e.work_date||old.work_date||'';
   var route=e.route||old.route||'';
+
+  // oldDriver === newDriver 이면 실제 변경 없음 → 무시
+  if(oldDriver===newDriver&&oldDriver!=='')return;
 
   // 조장(sub): grp_leaders에 내 이름 있어야 알림
   var grpLeaders=[];
@@ -1257,24 +1285,16 @@ function _onSchedChange(e, old){
   if(!shouldNotify)return;
 
   var dateStr=_fmtSchedDate(workDate);
-  var routeHtml=route?'<span style="color:#FFD700;font-weight:700">'+route+'</span> ':'';
-  var changeHtml;
-  if(oldDriver&&newDriver&&oldDriver!==newDriver){
-    changeHtml=routeHtml+'<b>'+oldDriver+'</b> → <b>'+newDriver+'</b>';
-  } else if(newDriver){
-    changeHtml=routeHtml+'<b>'+newDriver+'</b> 신규 배정';
-  } else if(oldDriver){
-    changeHtml=routeHtml+'<b>'+oldDriver+'</b> 배정 취소';
-  } else {
-    changeHtml=routeHtml+'스케줄 변경';
-  }
+
+  // changedBy 결정: 인자로 넘어온 값 > CU.name
+  var who=changedBy||(CU?CU.name:'');
 
   // 이력 저장 + 진동 + 토스트 알림 (팝업 대신)
-  _addSchedChange(workDate,route,oldDriver,newDriver);
+  _addSchedChange(workDate,route,oldDriver,newDriver,who);
   playTpalm();
   showToast('📅 업무 수정 '+dateStr+' — 변경이력 탭 확인',true);
 
-  // 관리자: 해당 기사/팀장/조장 폰으로 Push 발송 (3초 디바운스)
+  // admin/leader/sub: 해당 기사/팀장/조장 폰으로 Push 발송 (3초 디바운스)
   _queueSchedPush(workDate,route,oldDriver,newDriver);
 }
 
@@ -2168,7 +2188,7 @@ async function checkPendingSchedChanges(){
     changes.sort(function(a,b){return a.workDate>b.workDate?1:a.workDate<b.workDate?-1:0;});
 
     changes.forEach(function(c){
-      _addSchedChange(c.workDate,c.route,c.oldDriver,c.newDriver);
+      _addSchedChange(c.workDate,c.route,c.oldDriver,c.newDriver,'PC');
     });
     playTpalm();
 
@@ -2680,12 +2700,16 @@ function moveMyWeek(delta){
 // ── 업무 변경이력 페이지 ───────────────────────────────────────────────
 function pgSchedLog(){
   if(!CU)return'';
+  var isAdmin=CU.role==='admin';
   var log=_getSchedLog();
+  // 최신순 정렬
+  log.sort(function(a,b){return (b.at||'')>(a.at||'')?1:(b.at||'')<(a.at||'')?-1:0;});
   // 열람 처리: 모두 read=true 로 표시
   var updated=false;
   log.forEach(function(e){if(!e.read){e.read=true;updated=true;}});
   if(updated){_saveSchedLog(log);updateNavDots();}
 
+  // 시각 포맷 헬퍼
   function fmtAt(iso){
     try{
       var d=new Date(iso);
@@ -2695,43 +2719,83 @@ function pgSchedLog(){
     }catch(e){return iso||'';}
   }
 
-  var cards=log.length===0
-    ?'<div style="text-align:center;padding:60px 20px;color:#6080a0;font-size:14px">변경이력이 없습니다.<br><span style="font-size:12px;opacity:.7">스케줄이 수정되면 여기에 표시됩니다.</span></div>'
-    :log.map(function(e){
+  // 같은 날짜·같은 기사 변경에서 라우트 번호 앞부분이 같으면 합침 (209A+209B→209AB)
+  // 연속된 항목끼리만 합침 (순서 유지)
+  function mergeRoutes(arr){
+    var out=[];
+    arr.forEach(function(e){
+      // 라우트에서 숫자 접두사와 알파벳 접미사 분리 (예: "209A" → base:"209" suffix:"A")
+      var m=(e.route||'').match(/^(.*?)([A-Za-z]*)$/);
+      var base=m?m[1]:'';
+      var suf=m?m[2]:'';
+      // 직전 항목과 통합 가능한지 확인
+      if(out.length>0){
+        var prev=out[out.length-1];
+        if(prev.workDate===e.workDate
+          && prev._base===base
+          && prev.oldDriver===e.oldDriver
+          && prev.newDriver===e.newDriver
+          && base!==''){
+          prev.route=base+prev._suffixes+suf; // 예: 209AB
+          prev._suffixes+=suf;
+          return;
+        }
+      }
+      var merged=Object.assign({},e,{_base:base,_suffixes:suf});
+      out.push(merged);
+    });
+    return out;
+  }
+
+  var displayLog=mergeRoutes(log);
+
+  var cards=displayLog.length===0
+    ?'<div style="text-align:center;padding:60px 20px;color:#8AAABF;font-size:14px">변경이력이 없습니다.<br><span style="font-size:12px;opacity:.7">스케줄이 수정되면 여기에 표시됩니다.</span></div>'
+    :displayLog.map(function(e){
       var ds=_fmtSchedDate(e.workDate);
       var routeHtml=e.route
-        ?'<span style="background:#1B3A60;color:#FFD700;font-weight:700;font-size:13px;padding:2px 10px;border-radius:20px;margin-left:6px">'+e.route+'</span>'
+        ?'<span style="background:#1E4D7A;color:#FFD700;font-weight:800;font-size:13px;padding:3px 11px;border-radius:20px;margin-left:6px;letter-spacing:1px">'+e.route+'</span>'
         :'';
+      // 변경 내용 텍스트
       var changeHtml;
       if(e.oldDriver&&e.newDriver&&e.oldDriver!==e.newDriver){
-        changeHtml='<span style="color:#aaa">'+e.oldDriver+'</span>'
-          +' <span style="color:#5BC4FF;font-size:18px;font-weight:700">→</span> '
-          +'<span style="color:#fff;font-weight:700">'+e.newDriver+'</span>';
+        changeHtml='<span style="color:#FFCC66;font-weight:700">'+e.oldDriver+'</span>'
+          +' <span style="color:#5BC4FF;font-size:17px;font-weight:900">→</span> '
+          +'<span style="color:#A3E4FF;font-weight:700">'+e.newDriver+'</span>';
       } else if(e.newDriver&&!e.oldDriver){
-        changeHtml='<span style="color:#4CAF50;font-weight:700">'+e.newDriver+'</span>'
-          +' <span style="color:#4CAF50;font-size:11px">신규 배정</span>';
+        changeHtml='<span style="color:#69F0AE;font-weight:700">'+e.newDriver+'</span>'
+          +' <span style="background:#1B5E20;color:#69F0AE;font-size:10px;padding:1px 7px;border-radius:10px;vertical-align:middle">신규 배정</span>';
       } else if(e.oldDriver&&!e.newDriver){
-        changeHtml='<span style="color:#aaa;text-decoration:line-through">'+e.oldDriver+'</span>'
-          +' <span style="color:#FF6B6B;font-size:11px">배정 취소</span>';
+        changeHtml='<span style="color:#FF9999;font-weight:700">'+e.oldDriver+'</span>'
+          +' <span style="background:#5C1010;color:#FF9999;font-size:10px;padding:1px 7px;border-radius:10px;vertical-align:middle">배정 취소</span>';
       } else {
-        changeHtml='<span style="color:#5BC4FF">변경됨</span>';
+        changeHtml='<span style="color:#90CAF9">변경됨</span>';
       }
-      var newBadge=!e.read?'<span style="background:#E53935;color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px">NEW</span>':'';
-      return '<div style="background:#0D2440;border:1px solid #1B3A60;border-radius:14px;padding:14px 16px;margin-bottom:10px">'
-        +'<div style="display:flex;align-items:center;margin-bottom:8px">'
-        +'<span style="color:#5BC4FF;font-weight:800;font-size:15px">'+ds+'</span>'+routeHtml+newBadge
-        +'<span style="margin-left:auto;color:#5a7a9a;font-size:11px">'+fmtAt(e.at)+'</span>'
+      var newBadge=!e.read?'<span style="background:#E53935;color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle">NEW</span>':'';
+      // 관리자: 변경자 정보 표시
+      var adminFooter='';
+      if(isAdmin&&e.changedBy){
+        var whoLabel=e.changedBy==='PC'?'PC 스케줄 프로그램':e.changedBy;
+        adminFooter='<div style="margin-top:8px;padding-top:7px;border-top:1px solid #1E3A5A;font-size:11px;color:#7AAAC8">'
+          +'<span style="margin-right:8px">🖊 변경자: <b style="color:#90CAF9">'+whoLabel+'</b></span>'
+          +'</div>';
+      }
+      return '<div style="background:linear-gradient(135deg,#1A3A5C 0%,#152E4A 100%);border:1px solid #2A5A8A;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.25)">'
+        +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:9px">'
+        +'<span style="color:#64B5F6;font-weight:800;font-size:15px">'+ds+'</span>'+routeHtml+newBadge
+        +'<span style="margin-left:auto;color:#6A90B0;font-size:11px">'+fmtAt(e.at)+'</span>'
         +'</div>'
-        +'<div style="font-size:15px;line-height:1.5">'+changeHtml+'</div>'
+        +'<div style="font-size:15px;line-height:1.7">'+changeHtml+'</div>'
+        +adminFooter
         +'</div>';
     }).join('');
 
   var clearBtn=log.length>0
-    ?'<button onclick="clearSchedLog()" style="background:transparent;border:1px solid #3a5a7a;color:#5a7a9a;font-size:12px;padding:6px 16px;border-radius:20px;cursor:pointer;float:right">전체 삭제</button>'
+    ?'<button onclick="clearSchedLog()" style="background:transparent;border:1px solid #2A4A6A;color:#6A90B0;font-size:12px;padding:6px 16px;border-radius:20px;cursor:pointer;float:right">전체 삭제</button>'
     :'';
 
   return '<div class="stit">업무 변경이력'
-    +'<span style="font-size:12px;color:#5a7a9a;font-weight:400;margin-left:8px">최근 '+log.length+'건</span>'
+    +'<span style="font-size:12px;color:#6A90B0;font-weight:400;margin-left:8px">최근 '+displayLog.length+'건</span>'
     +clearBtn+'</div>'
     +'<div style="clear:both;margin-bottom:12px"></div>'
     +cards;
