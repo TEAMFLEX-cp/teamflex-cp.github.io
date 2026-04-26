@@ -1144,12 +1144,12 @@ function startRealtime(){
   _realtimeChannel=sbClient.channel('teamflex-realtime')
     // ① 공지사항 새 글
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'announcements'},function(payload){
-      // 구독 전 이벤트 무시 (2초 유예)
       if(Date.now()-_rtStartTs<2000)return;
       var ann=payload.new||{};
+      // 내가 방금 올린 공지는 팝업 생략 (어드민 UI 꼬임 방지)
+      if(CU&&ann.author===CU.name)return;
       var isImportant=ann.pinned||ann.important;
       playTpalm();
-      sendNotif('📢 새 공지사항',ann.title||'새 공지가 등록됐습니다.');
       showAlertPopup(
         isImportant?'🚨':'📢',
         '새 공지사항',
@@ -1166,7 +1166,6 @@ function startRealtime(){
       syncFromSupabase().then(function(){_reRenderCurTab();});
       if(isMyChange||CU.role==='admin'||CU.role==='leader'){
         playTpalm();
-        sendNotif('📅 스케줄 변경','스케줄이 업데이트됐습니다. 확인하세요.');
         showAlertPopup(
           '📅','스케줄 변경',
           (e.work_date||'')+'<br>'+(e.driver_name||'')+'님 스케줄이 변경됐습니다.',
@@ -1187,7 +1186,6 @@ function startRealtime(){
       if(s.driver_id&&(s.driver_id===myId||CU.role==='admin')){
         playTpalm();
         var month=(s.year||'')+'년 '+(s.month||'')+'월';
-        sendNotif('💰 정산내역 등록',month+' 정산내역이 등록됐습니다.');
         showAlertPopup(
           '💰','정산내역 등록',
           month+' 정산내역이 등록됐습니다.<br>정산 탭에서 확인하세요.',
@@ -1234,7 +1232,6 @@ function startReminderTimer(annTitle, annBody){
   clearInterval(_reminderTimer);
   _reminderTimer=setInterval(function(){
     if(_unreadAnnIds.length>0){
-      sendNotif('[TeamFlex] 미확인 공지 알림', annTitle+'- 아직 확인하지 않은 공지가 있습니다.');
     }else{
       clearInterval(_reminderTimer);
     }
@@ -1328,7 +1325,6 @@ document.addEventListener('visibilitychange',function(){
           setTimeout(function(){t.remove();},4000);
         })();
         // 시스템 알림도 함께
-        sendNotif('📅 TeamFlex 스케줄 변경','PC에서 스케줄이 업데이트됐습니다. 확인하세요.');
       }
     }).catch(function(){});
   },60000); // 60초마다
@@ -2364,8 +2360,7 @@ function submitAnn(){
   // 로컬 알림 + 전체 Push 발송
   var notifTitle='📢 팀플 - '+(imp?'[중요] ':'')+title;
   var notifBody=body.slice(0,80);
-  playTpalm(); // 공지 발송 시 "팀플" 알림 소리
-  sendNotif(notifTitle,notifBody);
+  playTpalm();
   sendPushToAll(notifTitle,notifBody,a.id);
   // 미확인 공지 등록 + 10분 재알림
   _unreadAnnIds.push(a.id);
@@ -2836,7 +2831,6 @@ async function okDriver(name){
     }catch(e){console.error('okDriver err',e);alert('⚠️ 오류 발생: '+e.message);}
   }
   console.log('[okDriver]',name,'승인, newpw:',newpw,'sbOk:',sbOk);
-  sendNotif('[TeamFlex] 승인 완료',name+' 기사 로그인이 승인되었습니다.');
   alert(name+' 기사 승인 완료!'+(sbOk?'':'\n(Supabase 반영 실패 - 관리자에게 문의)'));
   go('aa');
 }
