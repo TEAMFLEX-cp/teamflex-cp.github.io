@@ -2107,7 +2107,35 @@ async function checkPendingSchedChanges(){
       _addSchedChange(c.workDate,c.route,c.oldDriver,c.newDriver);
     });
     playTpalm();
-    showToast('📅 업무 수정 '+changes.length+'건 — 변경이력 탭 확인',true);
+
+    // 팝업으로 변경 내용 알림
+    var popupLines=changes.map(function(c){
+      var dateStr=_fmtSchedDate(c.workDate);
+      var routeStr=c.route?'<span style="color:#FFD700;font-weight:700">'+c.route+'</span> ':'';
+      var changeStr;
+      if(c.oldDriver&&c.newDriver&&c.oldDriver!==c.newDriver){
+        changeStr='<b>'+c.oldDriver+'</b> → <b>'+c.newDriver+'</b>';
+      }else if(c.newDriver){
+        changeStr='<b>'+c.newDriver+'</b> 신규 배정';
+      }else if(c.oldDriver){
+        changeStr='<b>'+c.oldDriver+'</b> 배정 취소';
+      }else{
+        changeStr='변경';
+      }
+      return '<div style="background:rgba(255,255,255,.07);border-radius:10px;padding:10px 12px;margin-bottom:8px;text-align:left">'
+        +'<div style="font-size:11px;color:#88AACC;margin-bottom:4px">'+dateStr+'</div>'
+        +'<div style="font-size:13px;color:#E8F4FF">'+routeStr+changeStr+'</div>'
+        +'</div>';
+    }).join('');
+
+    var popupMsg='<div style="font-size:12px;color:#88AACC;margin-bottom:10px">오프라인 중 아래 업무가 변경됐습니다</div>'
+      +'<div style="max-height:240px;overflow-y:auto">'+popupLines+'</div>';
+
+    showAlertPopup('📅',
+      '업무 변경 알림 '+changes.length+'건',
+      popupMsg,
+      function(){ go('sl'); } // 확인 버튼 → 변경이력 탭
+    );
   }catch(e){console.warn('[SchedCheck]',e);}
 }
 
