@@ -1081,11 +1081,23 @@ function _nextPopup(){
     +'<button id="popup-ok-btn" style="background:linear-gradient(135deg,#1B6FD8,#0D4B9E);color:#fff;border:none;border-radius:12px;padding:13px 40px;font-size:16px;font-weight:900;cursor:pointer;width:100%">확인</button>'
     +'</div>';
   document.body.appendChild(ov);
-  ov.querySelector('#popup-ok-btn').onclick=function(){
+  function closePopup(runConfirm){
+    if(!ov.parentNode)return;
     ov.remove();_popupShowing=false;
-    if(p.onConfirm)p.onConfirm();
+    history.back();
+    if(runConfirm&&p.onConfirm)p.onConfirm();
     setTimeout(_nextPopup,200);
-  };
+  }
+  // 배경 터치로 닫기
+  ov.addEventListener('click',function(e){if(e.target===ov)closePopup(false);});
+  // 확인 버튼
+  ov.querySelector('#popup-ok-btn').onclick=function(){closePopup(true);};
+  // 뒤로가기 버튼으로 닫기 (Android)
+  history.pushState({popup:true},'');
+  window.addEventListener('popstate',function onPop(){
+    window.removeEventListener('popstate',onPop);
+    if(ov.parentNode){ov.remove();_popupShowing=false;setTimeout(_nextPopup,200);}
+  },{once:true});
 }
 
 function sendNotif(title,body){
@@ -1101,9 +1113,13 @@ function startRealtime(){
   if(!sbClient||!CU)return;
   // 기존 구독 해제
   if(_realtimeChannel){sbClient.removeChannel(_realtimeChannel);_realtimeChannel=null;}
+  // 구독 시작 시각 기록 — 이전 이벤트 무시
+  var _rtStartTs=Date.now();
   _realtimeChannel=sbClient.channel('teamflex-realtime')
     // ① 공지사항 새 글
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'announcements'},function(payload){
+      // 구독 전 이벤트 무시 (2초 유예)
+      if(Date.now()-_rtStartTs<2000)return;
       var ann=payload.new||{};
       var isImportant=ann.pinned||ann.important;
       playTpalm();
@@ -1117,6 +1133,7 @@ function startRealtime(){
     })
     // ② 스케줄 변경
     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'weekly_schedules'},function(payload){
+      if(Date.now()-_rtStartTs<2000)return;
       var e=payload.new||{};
       // 나와 관련된 변경인지 확인
       var isMyChange=e.driver_name===CU.name||(payload.old&&payload.old.driver_name===CU.name);
@@ -1137,6 +1154,7 @@ function startRealtime(){
     })
     // ④ 정산내역 등록
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'monthly_stats'},function(payload){
+      if(Date.now()-_rtStartTs<2000)return;
       var s=payload.new||{};
       // 내 정산인 경우만 알림
       var db=getDB();var myId=CU?CU.id:'';
@@ -1480,7 +1498,7 @@ function doLogin(){
   document.getElementById('lerr').textContent='';
   if(!name||!pw){document.getElementById('lerr').textContent='이름과 비밀번호를 입력해주세요.';return;}
   if(checkAdminLogin(name,pw)){
-    CU={id:name,name:'관리자',role:'admin'};launchApp();adminRequestNotif();return;
+    CU={id:name,name:'관리자',role:'admin'};launchApp();setTimeout(showNotifSetupBanner,800);return;
   }
   var db=getDB();var drv=db[name];
   if(!drv){document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';return;}
@@ -1581,32 +1599,43 @@ async function submitReq(){
   }
 }
 
-// 로그인 후 알림+PWA 설치 안내 배너
+// 로그인 후 알림 권한 요청 — 전체화면 모달
 function showNotifSetupBanner(){
-  var already=(Notification.permission==='granted')&&_isStandalone();
-  if(already){requestNotifAndSW();return;} // 이미 설정됨 → 조용히 등록
-  var banner=document.createElement('div');
-  banner.id='notif-banner';
-  var isIos=_isIOS();
-  banner.style.cssText='position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#1565c0;color:#fff;border-radius:16px;padding:14px 18px;max-width:92vw;width:360px;z-index:9998;box-shadow:0 8px 24px rgba(0,0,0,.35);font-size:13px';
-  banner.innerHTML=
-    '<div style="font-weight:800;font-size:15px;margin-bottom:8px">&#x1F514; 알림 설정 (필수)</div>'+
-    '<div style="margin-bottom:10px;opacity:.9">공지를 받으려면 아래 2가지를 해주세요</div>'+
-    '<div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px;margin-bottom:8px">'+
-      '<b>① 알림 허용</b><br><span id="nb-notif-status" style="font-size:12px;opacity:.85">'+
-      (Notification.permission==='granted'?'&#x2705; 이미 허용됨':'아직 미허용')+'</span>'+
-      (Notification.permission!=='granted'?'<button onclick="nbRequestNotif()" style="float:right;background:#fff;color:#1565c0;border:none;border-radius:8px;font-weight:700;padding:4px 10px;font-size:12px;cursor:pointer;margin-top:2px">허용하기</button>':'')+
+  // 이미 허용됨 → 조용히 등록 후 종료
+  if(Notification.permission==='granted'){requestNotifAndSW();return;}
+  // 차단됨 → 안내만
+  if(Notification.permission==='denied'){
+    showToast('🔕 알림이 차단됐어요. 브라우저 설정에서 허용해주세요.',false);
+    return;
+  }
+  // default → 전체화면 모달로 요청
+  var mo=document.createElement('div');
+  mo.id='notif-modal';
+  mo.style.cssText='position:fixed;inset:0;background:rgba(10,22,40,.97);z-index:99998;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center';
+  mo.innerHTML=
+    '<div style="font-size:72px;margin-bottom:16px">🔔</div>'+
+    '<div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:10px">알림 허용이 필요해요</div>'+
+    '<div style="font-size:14px;color:#88AACC;line-height:1.8;margin-bottom:32px;max-width:300px">'+
+      '공지사항, 스케줄 변경, 정산 등록 시<br>'+
+      '<b style="color:#5BC4FF">📢 팀플</b> 알림이 바로 뜹니다.<br><br>'+
+      '"허용" 버튼을 눌러주세요!'+
     '</div>'+
-    '<div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px;margin-bottom:12px">'+
-      '<b>② 홈화면에 앱 추가</b><br>'+
-      (isIos?'<span style="font-size:12px;opacity:.85">사파리 → 공유버튼(&#x25A1;&#x2191;) → 홈 화면에 추가</span>':
-              '<span style="font-size:12px;opacity:.85">크롬 메뉴(&#x22EE;) → 홈 화면에 추가</span>'+
-              (_deferredInstall?'<button onclick="nbInstall()" style="float:right;background:#fff;color:#1565c0;border:none;border-radius:8px;font-weight:700;padding:4px 10px;font-size:12px;cursor:pointer;margin-top:2px">설치하기</button>':'')+
-      (_isStandalone()?'<span style="font-size:12px;color:#a5d6a7"> &#x2705; 설치됨</span>':''))+
-    '</div>'+
-    '<button onclick="nbClose()" style="width:100%;padding:10px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">나중에 설정할게요</button>';
-  document.body.appendChild(banner);
-  requestNotifAndSW();
+    '<button id="notif-allow-btn" style="width:100%;max-width:280px;padding:18px;background:linear-gradient(135deg,#1B6FD8,#0A3A8A);color:#fff;border:none;border-radius:16px;font-size:18px;font-weight:900;cursor:pointer;margin-bottom:12px">'+
+      '🔔 알림 허용하기'+
+    '</button>'+
+    '<button id="notif-skip-btn" style="background:none;border:none;color:#607D8B;font-size:13px;cursor:pointer;padding:10px">나중에 할게요</button>';
+  document.body.appendChild(mo);
+  document.getElementById('notif-allow-btn').onclick=async function(){
+    mo.remove();
+    var perm=await Notification.requestPermission();
+    if(perm==='granted'){
+      await registerSW();await subscribePush();
+      showToast('✅ 알림이 설정됐어요!',true);
+    } else {
+      showToast('🔕 알림이 거부됐어요. 설정에서 변경 가능합니다.',false);
+    }
+  };
+  document.getElementById('notif-skip-btn').onclick=function(){mo.remove();};
 }
 
 async function nbRequestNotif(){
