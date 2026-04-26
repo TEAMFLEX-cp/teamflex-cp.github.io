@@ -1,11 +1,11 @@
 {
   "name": "TeamFlex 기사 포털",
   "short_name": "TeamFlex",
-  "description": "TeamFlex Logistics 기사 전용 포털",
-  "start_url": "/",
+  "description": "근무 스케줄, 정산 내역, 업무 변경 요청, 공지사항",
+  "start_url": "/TeamFlex_기사포털.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#F0A500",
+  "background_color": "#0D1B2A",
+  "theme_color": "#1B6FD8",
   "orientation": "portrait",
   "lang": "ko",
   "icons": [
@@ -24,8 +24,7 @@
     {
       "src": "/icons/icon-180.png",
       "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     }
   ]
 }

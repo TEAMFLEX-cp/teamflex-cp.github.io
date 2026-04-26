@@ -1,30 +1,44 @@
-// TeamFlex Service Worker v5
-const CACHE_NAME = 'teamflex-v5';
+// TeamFlex Service Worker v3 — Network-First (캐시 없음)
+// HTML/JS/CSS는 항상 네트워크에서 최신 버전을 받아옵니다.
+
+const CACHE_NAME = 'teamflex-v3';
 
 self.addEventListener('install', function(e) {
-  self.skipWaiting();
-});
-
-// ★ fetch 핸들러 필수 - Chrome이 PWA 설치 가능으로 인식하려면 있어야 함
-self.addEventListener('fetch', function(e) {
-  // 네트워크 우선, 실패 시 캐시
-  e.respondWith(
-    fetch(e.request).catch(function() {
-      return caches.match(e.request);
-    })
-  );
+  self.skipWaiting();  // 새 SW 즉시 활성화
 });
 
 self.addEventListener('activate', function(e) {
+  // 이전 캐시 전체 삭제
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.filter(function(k){return k!==CACHE_NAME;}).map(function(k){return caches.delete(k);}));
+      return Promise.all(keys.map(function(k) {
+        console.log('[SW] 캐시 삭제:', k);
+        return caches.delete(k);
+      }));
     })
   );
   self.clients.claim();
 });
 
-// 푸시 알림 수신
+// ── Fetch: 항상 네트워크 우선, 캐시 저장 안 함 ──────────────────
+self.addEventListener('fetch', function(e) {
+  // POST 요청은 그냥 통과
+  if (e.request.method !== 'GET') return;
+
+  // Supabase API 요청은 그냥 통과
+  var url = e.request.url;
+  if (url.indexOf('supabase') >= 0 || url.indexOf('googleapis') >= 0) return;
+
+  e.respondWith(
+    fetch(e.request, {cache: 'no-store'})
+      .catch(function() {
+        // 네트워크 없을 때만 캐시 fallback (아이콘 등)
+        return caches.match(e.request);
+      })
+  );
+});
+
+// ── 푸시 알림 ────────────────────────────────────────────────────
 self.addEventListener('push', function(e) {
   var d = e.data ? e.data.json() : {};
   var title = d.title || 'TeamFlex 공지';
@@ -40,25 +54,15 @@ self.addEventListener('push', function(e) {
   e.waitUntil(self.registration.showNotification(title, opts));
 });
 
-// 알림 클릭 시 앱 열기 + 해당 공지 팝업 표시
+// ── 알림 클릭 시 앱 열기 ──────────────────────────────────────────
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
-  var notifData = e.notification.data || {};
-  var annId = notifData.ann_id || '';
-  var targetUrl = annId ? ('/?ann=' + annId) : '/';
-
   e.waitUntil(
-    clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs) {
-      // 이미 열려있는 앱 창이 있으면 포커스 후 메시지 전송
-      for(var c of cs){
-        if(c.url && 'focus' in c){
-          c.focus();
-          if(annId) c.postMessage({type:'SHOW_ANN', ann_id: annId});
-          return;
-        }
+    clients.matchAll({type:'window', includeUncontrolled:true}).then(function(cs) {
+      for (var c of cs) {
+        if (c.url && 'focus' in c) return c.focus();
       }
-      // 새 창으로 열기
-      if(clients.openWindow) return clients.openWindow(targetUrl);
+      if (clients.openWindow) return clients.openWindow('/');
     })
   );
 });
