@@ -1,0 +1,104 @@
+name: TeamFlex APK 빌드
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'TeamFlex_기사포털.html'
+      - 'manifest.json'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Java 설정
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Android SDK 설정
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+
+      - name: Bubblewrap 설치
+        run: npm install -g @bubblewrap/cli
+
+      - name: 빌드 폴더 생성
+        run: mkdir -p apk_build
+
+      - name: twa-manifest.json 생성
+        run: |
+          cat > apk_build/twa-manifest.json << 'EOF'
+          {
+            "packageId": "com.teamflex.driver",
+            "host": "teamflex-cp.github.io",
+            "name": "TeamFlex",
+            "launcherName": "TeamFlex",
+            "display": "standalone",
+            "themeColor": "#1B6FD8",
+            "navigationColor": "#0D1B2A",
+            "backgroundColor": "#0D1B2A",
+            "startUrl": "/TeamFlex_기사포털.html",
+            "iconUrl": "https://teamflex-cp.github.io/icons/icon-512.png",
+            "maskableIconUrl": "https://teamflex-cp.github.io/icons/icon-512.png",
+            "appVersion": "1",
+            "appVersionCode": 1,
+            "orientation": "portrait",
+            "enableNotifications": false,
+            "webManifestUrl": "https://teamflex-cp.github.io/manifest.json",
+            "fallbackType": "customtabs",
+            "features": {},
+            "alphaDependencies": {"enabled": false},
+            "enableSiteSettingsShortcut": true,
+            "isChromeOSOnly": false,
+            "minSdkVersion": 21,
+            "shortcuts": [],
+            "fingerprints": [],
+            "signing": {
+              "keystore": "android.keystore",
+              "keyAlias": "android",
+              "keyFullName": "CN=TeamFlex,O=TeamFlex,C=KR"
+            }
+          }
+          EOF
+
+      - name: APK 빌드
+        working-directory: apk_build
+        run: bubblewrap build --skipPwaValidation
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+
+      - name: APK 찾기
+        id: find_apk
+        run: |
+          APK=$(find apk_build -name "*.apk" | head -1)
+          echo "apk_path=$APK" >> $GITHUB_OUTPUT
+          ls -lh "$APK"
+
+      - name: APK → TeamFlex.apk 복사
+        run: cp "${{ steps.find_apk.outputs.apk_path }}" TeamFlex.apk
+
+      - name: GitHub Release 업로드
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: "TeamFlex 최신 APK"
+          files: TeamFlex.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
