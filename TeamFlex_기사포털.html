@@ -1291,9 +1291,19 @@ function playTpalm(){
   try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
 }
 
-// ── 스케줄 변경 Push (관리자만 발송, 3초 디바운스로 묶음 처리) ──────────
+// ── 스케줄 변경 Push (admin/leader/sub 발송, 3초 디바운스 + 중복방지) ──────────
 function _queueSchedPush(workDate, route, oldDriver, newDriver){
-  if(!CU||CU.role!=='admin')return;
+  // 기사 역할은 발송 주체에서 제외 (받는 쪽만)
+  if(!CU||CU.role==='driver')return;
+
+  // 같은 변경을 이미 이 기기에서 push 했으면 skip (5분 내 중복 방지)
+  var dedupKey='tf_spush_'+workDate+'_'+(route||'')+'_'+(newDriver||'')+'_'+(oldDriver||'');
+  try{
+    var ts=parseInt(sessionStorage.getItem(dedupKey)||'0');
+    if(Date.now()-ts<5*60*1000)return; // 5분 내 중복
+    sessionStorage.setItem(dedupKey,String(Date.now()));
+  }catch(e){}
+
   _schedPushChanges.push({workDate:workDate,route:route,oldDriver:oldDriver,newDriver:newDriver});
   clearTimeout(_schedPushTimer);
   _schedPushTimer=setTimeout(function(){
