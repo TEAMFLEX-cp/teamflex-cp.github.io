@@ -160,7 +160,7 @@ table.dt td.r0{color:#888;white-space:nowrap}
 .mamt{font-size:13px;font-weight:700;color:#1565c0;min-width:110px;text-align:right}
 .mamt.none{color:#ccc;font-weight:400}
 /* ANNOUNCE */
-.ann-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:16px;margin-bottom:10px;cursor:pointer;border-left:4px solid #e0e0e0}
+.ann-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:16px;margin-bottom:10px;cursor:pointer;border-left:4px solid #e0e0e0;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .ann-card.imp{border-left-color:#e53935}
 .ann-hdr{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .ann-title{font-size:15px;font-weight:700;color:#1a1a1a;flex:1}
@@ -606,13 +606,24 @@ async function syncFromSupabase(){
     var aRes=await sbClient.from('announcements').select('*').order('created_at',{ascending:false}).limit(30);
     if(!aRes.error){
       if(aRes.data&&aRes.data.length>0){
+        var existingAnns=getAnns(); // 기존 readBy 보존용
         var anns=aRes.data.map(function(a){
-          return {id:a.id,title:a.title,content:a.body||a.content||'',
-                  author:a.author||'관리자',important:a.pinned||false,at:a.created_at};
+          // 기존 로컬 공지에서 readBy 보존 (Supabase 덮어쓰기 방지)
+          var ex=existingAnns.find(function(e){return String(e.id)===String(a.id)||String(e.sb_id)===String(a.id);});
+          return {
+            id:a.id,
+            sb_id:a.id,
+            title:a.title,
+            body:a.body||a.content||'',    // ← 본문 body 필드 유지
+            content:a.body||a.content||'',
+            author:a.author||'관리자',
+            important:a.pinned||false,
+            at:a.created_at,
+            readBy:ex?(ex.readBy||[]):[]   // ← 확인 상태(readBy) 보존!
+          };
         });
         localStorage.setItem('tfann',JSON.stringify(anns));
       } else {
-        // Supabase 공지가 비어있으면 로컬 캐시도 비우기
         localStorage.setItem('tfann',JSON.stringify([]));
       }
     }
@@ -774,9 +785,23 @@ function sbSaveAnn(ann){
           var idx=anns.findIndex(function(a){return a.id===ann.id;});
           if(idx>=0){anns[idx].sb_id=sid;localStorage.setItem('tfann',JSON.stringify(anns));}
           console.log('[sbSaveAnn] 저장완료 sb_id=',sid);
+          // ★ 백그라운드 Push 알림 발송 (앱 꺼져있어도 울림)
+          sendPushToAll(ann.title||'새 공지사항', ann.content||ann.body||'새 공지가 등록됐습니다.', sid);
         }
       }).catch(function(e){console.warn('sbSaveAnn insert',e);});
   }
+}
+
+// ── 전체 기사에게 Web Push 발송 (백그라운드 알림) ─────────────────────
+function sendPushToAll(title, body, annId){
+  if(!PUSH_EDGE_URL)return;
+  fetch(PUSH_EDGE_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({title:title, body:body, ann_id:annId})
+  }).then(function(r){return r.json();})
+    .then(function(d){console.log('[Push] 발송 결과:',d);})
+    .catch(function(e){console.warn('[Push] 발송 실패:',e);});
 }
 
 // ── Supabase에 스케줄 변경 저장 (웹앱 → Supabase → PC 자동 반영) ────
