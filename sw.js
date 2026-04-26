@@ -1,32 +1,25 @@
-// TeamFlex Service Worker v4 — Network-First (캐시 완전 무효화)
-// v4: 구버전 캐시 강제 삭제, 항상 최신 파일 제공
-
-const CACHE_NAME = 'teamflex-v4';
+// TeamFlex Service Worker v5 — Push 알림 최적화
+const CACHE_NAME = 'teamflex-v5';
 
 self.addEventListener('install', function(e) {
-  self.skipWaiting();  // 즉시 활성화
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', function(e) {
-  // 이전 버전 캐시 전체 삭제 (v1, v2, v3 포함)
   e.waitUntil(
     caches.keys().then(function(keys) {
-      return Promise.all(keys.map(function(k) {
-        console.log('[SW v4] 캐시 삭제:', k);
-        return caches.delete(k);
-      }));
+      return Promise.all(keys.map(function(k) { return caches.delete(k); }));
     }).then(function() {
-      return self.clients.claim();  // 즉시 모든 탭 제어
+      return self.clients.claim();
     })
   );
 });
 
-// 항상 네트워크 우선 — 캐시 저장 안 함
+// 네트워크 우선
 self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET') return;
   var url = e.request.url;
   if (url.indexOf('supabase') >= 0 || url.indexOf('googleapis') >= 0) return;
-
   e.respondWith(
     fetch(e.request, {cache: 'no-store'}).catch(function() {
       return caches.match(e.request);
@@ -34,24 +27,27 @@ self.addEventListener('fetch', function(e) {
   );
 });
 
-// 푸시 알림
+// ── 푸시 알림 ── 태그를 타임스탬프로 매번 달리 해서 Android가 항상 소리를 냄
 self.addEventListener('push', function(e) {
-  var d = e.data ? e.data.json() : {};
+  var d = {};
+  try { d = e.data ? e.data.json() : {}; } catch(err) {}
+
   var title = d.title || 'TeamFlex 공지';
   var opts = {
-    body: d.body || '새 공지사항이 있습니다.',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
-    tag: d.tag || 'teamflex',
-    renotify: true,
+    body:            d.body || '새 공지사항이 있습니다.',
+    icon:            '/icons/icon-192.png',
+    badge:           '/icons/icon-192.png',
+    tag:             'tf-' + Date.now(),   // 매번 새 태그 → 항상 소리/진동
+    renotify:        true,
     requireInteraction: true,
-    vibrate: [200, 100, 200],
-    data: d.data || {}
+    silent:          false,                // 소리 명시적 허용
+    vibrate:         [300, 150, 300, 150, 300],
+    data:            d.data || {}
   };
   e.waitUntil(self.registration.showNotification(title, opts));
 });
 
-// 알림 클릭 시 앱 열기
+// 알림 클릭 → 앱 열기
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
   e.waitUntil(
