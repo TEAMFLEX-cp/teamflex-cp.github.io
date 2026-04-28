@@ -740,58 +740,49 @@ async function syncFromSupabase(){
       }
     }
 
-    // 4. 월별 정산 동기화 (Supabase monthly_stats → SM 업데이트)
-    // ※ SM[driver][monthIdx] 구조: monthIdx = month-1 (1월=0, 2월=1, 3월=2 …)
+    // 4. 월별 정산 동기화 (Supabase monthly_stats → SETTLE 덮어쓰기)
     var mRes=await sbClient.from('monthly_stats').select('driver_id,year,month,gross,net').limit(500);
     if(mRes.data&&mRes.data.length>0){
-      // driver_id → 이름 매핑 (drivers 테이블 + 내장 id2name 모두 활용)
+      // driver_id → 이름 매핑 (drivers 테이블 기준)
       var idToName={};
-      // 내장 id → name 매핑 (gen4.py에서 주입)
-      var _ID2NAME={"romeo815two":"강승오","ktf2517":"권오승","kwjj7462":"김근형","ehdtjs2345":"김동선","mikim49":"김민기","injolee1":"김병진","ny7917":"김성국","mydaedu":"김승태","model8031":"김연이","janadic":"김재현","ktd6969":"김태동","hozzangm":"김현정","hjra23":"나형준","ryujun":"류준선","mailhwan012":"박문도","jini8090":"박성진","performershs":"박종헌","minji1724":"서민지","sdyoung306":"송덕영","wosong1":"송우석","asdabc02":"윤진아","kccguy80":"이경용","lyg1223":"이성국","tjd369":"이성준","s2lee527":"이승석","oujin":"이진희","wkd0405":"장준범","jsw6745":"정승원","goskan789":"정원준","end7751":"조계환","myttang1004":"조명근","kumajo84":"조준형","nana1212":"진취영","casio81":"한선준","ghd1212":"홍순자","barflair":"황윤근","threeh40":"황형희"};
-      Object.keys(_ID2NAME).forEach(function(id){
-        var nm=_ID2NAME[id];
-        idToName[id]=nm;
-        idToName[id+'@df']=nm;
-      });
-      // drivers 테이블에서도 추가 매핑
       if(res.data){res.data.forEach(function(d){
-        if(d.driver_id&&d.name){
-          idToName[d.driver_id]=d.name;
-          idToName[d.driver_id.replace('@df','')]=d.name;
-        }
-        if(d.login_id&&d.name)idToName[d.login_id]=d.name;
+        if(d.driver_id)idToName[d.driver_id]=d.name;
+        if(d.login_id)idToName[d.login_id]=d.name;
+        // @df 없는 버전도 매핑
+        if(d.driver_id)idToName[d.driver_id.replace('@df','')]=d.name;
       });}
-
       mRes.data.forEach(function(r){
-        var did=(r.driver_id||'');
-        var nm=idToName[did]||idToName[did.replace('@df','')]||null;
-        if(!nm)return; // 매핑 실패 시 건너뜀
-        var monthNum=parseInt(r.month)||0;
-        var mIdx=String(monthNum-1); // 1월→'0', 2월→'1', 3월→'2' …
-        if(mIdx==='-1'||mIdx==='NaN')return;
-        var label=(r.year||2026)+'년 '+monthNum+'월 정산';
+        var nm=idToName[r.driver_id]||idToName[r.driver_id.replace('@df','')]||null;
+        if(!nm)return;
+        var label=r.year+'년 '+r.month+'월 정산';
         var entry={
           header:label,
-          total_rev:r.gross||0,
-          net_pay:r.net||0,
+          total_rev:r.gross||0,    // 화면이 읽는 필드명 맞춤
+          net_pay:r.net||0,        // 화면이 읽는 필드명 맞춤
           total_deduction:(r.gross||0)-(r.net||0),
           revenue_rows:[],deduction_rows:[],
           total_rev_qty:0,daily:[],
           _from_supabase:true
         };
-        // SM[nm]에 직접 월 인덱스로 업데이트 (화면이 SM을 읽으므로)
-        if(!SM[nm])SM[nm]={};
-        if(SM[nm][mIdx]){
-          // 기존 상세 데이터(revenue_rows, deduction_rows, daily 등) 유지
-          // Supabase 금액만 덮어씀
-          SM[nm][mIdx].total_rev=entry.total_rev;
-          SM[nm][mIdx].net_pay=entry.net_pay;
-          SM[nm][mIdx].total_deduction=entry.total_deduction;
-          SM[nm][mIdx].header=entry.header;
-          SM[nm][mIdx]._from_supabase=true;
-        }else{
-          // 해당 월 데이터 없음 → 새 엔트리 생성 (1월, 2월 등)
-          SM[nm][mIdx]=entry;
+        // SETTLE[nm]이 배열이면 해당 월 업데이트/추가, 단일 객체면 배열로 전환
+        if(!SETTLE[nm]){
+          SETTLE[nm]=[entry];
+        } else if(!Array.isArray(SETTLE[nm])){
+          var existing=SETTLE[nm];
+          // 기존 단일 객체와 같은 월이면 교체, 아니면 배열로
+          if(existing.header&&existing.header.indexOf(r.month+'월')>=0){
+            SETTLE[nm]=entry; // 같은 월: 업데이트
+          } else {
+            SETTLE[nm]=[existing,entry]; // 다른 월: 배열로
+          }
+        } else {
+          var found=false;
+          for(var i=0;i<SETTLE[nm].length;i++){
+            if(SETTLE[nm][i].header&&SETTLE[nm][i].header.indexOf(r.month+'월')>=0){
+              SETTLE[nm][i]=entry;found=true;break;
+            }
+          }
+          if(!found)SETTLE[nm].push(entry);
         }
       });
     }
