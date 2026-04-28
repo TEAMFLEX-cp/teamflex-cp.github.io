@@ -781,7 +781,18 @@ async function syncFromSupabase(){
         };
         // SM[nm]에 직접 월 인덱스로 업데이트 (화면이 SM을 읽으므로)
         if(!SM[nm])SM[nm]={};
-        SM[nm][mIdx]=entry;
+        if(SM[nm][mIdx]){
+          // 기존 상세 데이터(revenue_rows, deduction_rows, daily 등) 유지
+          // Supabase 금액만 덮어씀
+          SM[nm][mIdx].total_rev=entry.total_rev;
+          SM[nm][mIdx].net_pay=entry.net_pay;
+          SM[nm][mIdx].total_deduction=entry.total_deduction;
+          SM[nm][mIdx].header=entry.header;
+          SM[nm][mIdx]._from_supabase=true;
+        }else{
+          // 해당 월 데이터 없음 → 새 엔트리 생성 (1월, 2월 등)
+          SM[nm][mIdx]=entry;
+        }
       });
     }
   }catch(e){console.warn('Supabase sync failed',e);}
