@@ -17,7 +17,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f2f5;color:#1a1a1a;min-height:100vh;overscroll-behavior:none;}
+html,body{overscroll-behavior:none;overscroll-behavior-y:none;}
+body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f2f5;color:#1a1a1a;min-height:100vh;overscroll-behavior:none;touch-action:pan-y;}
 #ls{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:linear-gradient(160deg,#0d1b6b 0%,#1a3a8f 50%,#1565c0 100%)}
 .llogo{width:72px;height:72px;background:rgba(255,255,255,.15);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:12px}
 .ltit{color:#fff;font-size:36px;font-weight:900;margin-bottom:6px;letter-spacing:2px}
@@ -54,7 +55,7 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
 .an{font-size:15px;font-weight:700}
 .ar{font-size:11px;opacity:.7}
 .btn-lo{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap}
-.mc{flex:1;padding:16px;padding-bottom:84px}
+.mc{flex:1;padding:16px;padding-bottom:84px;overscroll-behavior:none;overscroll-behavior-y:none;}
 .bn{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;box-shadow:0 -2px 12px rgba(0,0,0,.12);z-index:100}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 8px;cursor:pointer;color:#9e9e9e;font-size:10px;font-weight:600;gap:3px;position:relative;transition:color .15s}
 .ni.on{color:#1565c0}
@@ -485,15 +486,14 @@ textarea.ann-input:focus{border-color:#1565c0}
 <div id="app">
   <div class="ah">
     <div class="au">
-      <div class="av" id="hav">?</div>
       <div>
         <div class="an" id="han"></div>
         <div class="ar" id="har"></div>
       </div>
     </div>
-    <div style="display:flex;gap:6px;align-items:center">
-      <button id="btnRefresh" onclick="doManualRefresh()" style="background:#1a5c96;border:none;color:#fff;font-size:12px;font-weight:700;padding:6px 12px;border-radius:20px;cursor:pointer;display:flex;align-items:center;gap:4px">&#x1F504; 새로고침</button>
-      <button class="btn-lo" onclick="openPwModal()" style="margin-right:4px">&#x1F512;</button>
+    <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+      <button id="btnRefresh" onclick="doManualRefresh()" style="background:rgba(255,255,255,.18);border:none;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:16px;cursor:pointer;white-space:nowrap">&#x1F504; 동기화</button>
+      <button class="btn-lo" onclick="openPwModal()">&#x1F512;</button>
       <button class="btn-lo" id="btnLogout">로그아웃</button>
     </div>
   </div>
@@ -2018,7 +2018,7 @@ function _startupPopupStep2(){
 function launchApp(){
   document.getElementById('ls').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('hav').textContent=CU.name.slice(0,1);
+  // avatar removed
   var roleLabel={'admin':'관리자','leader':'팀장','sub':'조장','driver':'기사'}[CU.role]||'기사';
   document.getElementById('han').textContent=CU.name+(CU.role==='admin'?' 님':' '+roleLabel+'님');
   document.getElementById('har').textContent='TeamFlex | '+roleLabel;
@@ -2579,13 +2579,36 @@ function pgHome(){
       annItems+'</div>';
   }
   var greet={'admin':'관리자님','leader':'팀장님','sub':'조장님','driver':'기사님'}[CU.role]||'기사님';
-  return '<div class="hero"><div class="hg">안녕하세요,</div><div class="hn">'+CU.name+' '+greet+' &#x1F44B;</div>'+
+
+  // 최근 변경이력 (최대 3건)
+  var recentChanges=_getSchedLog().slice(0,3);
+  var changeSection='';
+  if(recentChanges.length>0){
+    var chItems=recentChanges.map(function(e){
+      var ds=_fmtSchedDate(e.workDate);
+      var rStr=e.route?'<span style="background:#1B3A60;color:#FFD700;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;margin:0 4px">'+e.route+'</span>':'';
+      var chStr;
+      if(e.oldDriver&&e.newDriver&&e.oldDriver!==e.newDriver)
+        chStr='<b>'+e.oldDriver+'</b> → <b>'+e.newDriver+'</b>';
+      else if(e.newDriver) chStr='<b>'+e.newDriver+'</b> 신규 배정';
+      else if(e.oldDriver) chStr='<b>'+e.oldDriver+'</b> 배정 취소';
+      else chStr='변경';
+      var newDot=!e.read?'<span style="display:inline-block;width:6px;height:6px;background:#e53935;border-radius:50%;margin-right:4px;vertical-align:middle"></span>':'';
+      return '<div style="padding:8px 0;border-bottom:1px solid #f5f5f5;cursor:pointer;font-size:13px" onclick="go(\'sl\')">'+
+        newDot+'<span style="color:#5a7a9a;font-size:11px;margin-right:4px">'+ds+'</span>'+rStr+chStr+'</div>';
+    }).join('');
+    changeSection='<div class="card"><div class="ctit" style="display:flex;align-items:center;justify-content:space-between">'+
+      '<span>&#x1F4CB; 최근 변경사항</span>'+
+      '<span style="font-size:11px;color:#aaa;font-weight:400;cursor:pointer" onclick="go(\'sl\')">전체보기 &#x276F;</span></div>'+
+      chItems+'</div>';
+  }
+
+  return '<div class="hero">'+
+    '<div class="hn" style="font-size:16px;margin-bottom:4px">안녕하세요, '+CU.name+' '+greet+' &#x1F44B;</div>'+
     '<div class="rg"><div class="rb"><div class="rd">오늘 라우트</div><div class="rv">'+rhtml(tr)+'</div></div>'+
     '<div class="rb"><div class="rd">내일 라우트</div><div class="rv">'+rhtml(tmr)+'</div></div></div></div>'+
-    '<div class="sg"><div class="sb"><div class="sl">03월 실지급액</div><div class="sv" style="font-size:15px">'+(netpay?fmt(netpay)+'원':'--')+'</div><div class="ss">2026년 03월</div></div>'+
-    '<div class="sb"><div class="sl">03월 배송건수</div><div class="sv">'+(totdel||'--')+'<span style="font-size:12px;color:#888;font-weight:400"> 건</span></div><div class="ss">2026년 03월</div></div></div>'+
     annSection+
-    '<div class="card"><div class="ctit">&#x1F4C5; 이번 주 내 스케줄 ('+weekLabel(curWk)+')</div>'+weekRows+'</div>';
+    changeSection;
 }
 
 // ── ANNOUNCEMENTS ─────────────────────────────────────────────────────
@@ -2856,11 +2879,10 @@ function pgFullSched(){
     editBtn='<button class="btn-edit '+(EDIT_MODE?'on':'off')+'" onclick="toggleEdit()">'+
       (EDIT_MODE?'&#x2714; 완료':'&#x270F; 수정')+'</button>';
   }
-  var refreshBtn='<button id="sched-refresh-btn" onclick="schedRefresh()" style="background:#1565c0;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer;margin-right:6px;line-height:1;">&#x1F504; 새로고침</button>';
   var h='<div class="sched-sticky-nav">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
       '<div style="font-size:15px;font-weight:800;color:#1a237e">&#x1F4C5; 전체 스케줄</div>'+
-      '<div style="display:flex;align-items:center;">'+refreshBtn+editBtn+'</div>'+
+      '<div style="display:flex;align-items:center;">'+editBtn+'</div>'+
     '</div>'+
     nav+
     '</div>';
