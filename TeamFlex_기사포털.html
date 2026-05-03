@@ -5375,7 +5375,7 @@ function erImportExcel(input){
       var lines=text.split(/\r?\n/);
       if(lines.length<2){alert('데이터가 없습니다.');return;}
       var headers=lines[0].split(',').map(function(h){return h.trim().replace(/^"|"$/g,'').replace(/^\uFEFF/,'');});
-      var db=getDB();var updated=0;
+      var db=getDB();var updated=0;var sbUpdates=[];
       for(var i=1;i<lines.length;i++){
         var cols=lines[i].split(',').map(function(c){return c.trim().replace(/^"|"$/g,'');});
         if(!cols[0])continue;
@@ -5391,20 +5391,39 @@ function erImportExcel(input){
         if(!nm)continue;
         for(var k in db){
           if(db[k].name===nm){
-            if(phoneIdx>=0&&cols[phoneIdx])db[k].phone=cols[phoneIdx];
-            if(carIdx>=0&&cols[carIdx])db[k].car_no=cols[carIdx];
-            if(coupIdx>=0&&cols[coupIdx])db[k].coupang_id=cols[coupIdx];
-            if(birthIdx>=0&&cols[birthIdx])db[k].birth_date=cols[birthIdx];
-            if(carTypeIdx>=0&&cols[carTypeIdx])db[k].car_type=cols[carTypeIdx];
-            if(fuelIdx>=0&&cols[fuelIdx])db[k].fuel_type=cols[fuelIdx];
-            if(kakaoIdx>=0&&cols[kakaoIdx])db[k].kakao_id=cols[kakaoIdx];
+            var upd={synced_at:new Date().toISOString()};
+            if(phoneIdx>=0&&cols[phoneIdx]){db[k].phone=cols[phoneIdx];upd.phone=cols[phoneIdx];}
+            if(carIdx>=0&&cols[carIdx]){db[k].car_no=cols[carIdx];upd.car_no=cols[carIdx];}
+            if(coupIdx>=0&&cols[coupIdx]){db[k].coupang_id=cols[coupIdx];upd.coupang_id=cols[coupIdx];}
+            if(birthIdx>=0&&cols[birthIdx]){db[k].birth_date=cols[birthIdx];upd.birth_date=cols[birthIdx];}
+            if(carTypeIdx>=0&&cols[carTypeIdx]){db[k].car_type=cols[carTypeIdx];upd.car_type=cols[carTypeIdx];}
+            if(fuelIdx>=0&&cols[fuelIdx]){db[k].fuel_type=cols[fuelIdx];upd.fuel_type=cols[fuelIdx];}
+            if(kakaoIdx>=0&&cols[kakaoIdx]){db[k].kakao_id=cols[kakaoIdx];upd.kakao_id=cols[kakaoIdx];}
+            sbUpdates.push({name:nm,upd:upd});
             updated++;
           }
         }
       }
       saveDB(db);
-      alert('✅ '+updated+'명 업데이트 완료!\n(열: 기사명, 전화번호, 차량번호, 쿠팡ID, 생년월일, 차량정보, 연료, 카톡ID)');
       mc.innerHTML=pgEmergencyContact();
+      // Supabase 일괄 업데이트 (백그라운드)
+      if(sbClient&&sbUpdates.length){
+        var done=0;var fail=0;
+        var _push=function(idx){
+          if(idx>=sbUpdates.length){
+            showToast('☁ Supabase 동기화 완료 ('+done+'명)', done>0);
+            return;
+          }
+          var it=sbUpdates[idx];
+          sbClient.from('drivers').update(it.upd).eq('name',it.name)
+            .then(function(r){if(r&&r.error){fail++;}else{done++;}  _push(idx+1);})
+            .catch(function(){fail++;_push(idx+1);});
+        };
+        _push(0);
+        alert('✅ '+updated+'명 로컬 업데이트 완료! Supabase 동기화 중...');
+      } else {
+        alert('✅ '+updated+'명 업데이트 완료!');
+      }
     }catch(ex){alert('파일 오류: '+ex.message);}
   };
   reader.readAsText(file,'UTF-8');
