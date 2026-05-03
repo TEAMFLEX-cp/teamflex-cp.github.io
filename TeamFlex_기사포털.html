@@ -1973,7 +1973,36 @@ function doLogin(){
     launchApp();setTimeout(showNotifSetupBanner,800);return;
   }
   var db=getDB();var drv=db[name];
-  if(!drv){document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';return;}
+  if(!drv){
+    // 새 기기 — 로컬에 없으면 Supabase에서 직접 조회 후 재시도
+    if(sbClient){
+      document.getElementById('lerr').textContent='⏳ 서버에서 확인 중...';
+      document.getElementById('btnLogin').disabled=true;
+      (async function(){
+        try{
+          var sr=await sbClient.from('drivers').select('*').eq('name',name).single();
+          if(sr.data){
+            var _db=getDB();
+            _db[sr.data.name]=_db[sr.data.name]||{};
+            Object.assign(_db[sr.data.name],sr.data);
+            saveDB(_db);
+            document.getElementById('lerr').textContent='';
+            document.getElementById('btnLogin').disabled=false;
+            doLogin();
+          } else {
+            document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';
+            document.getElementById('btnLogin').disabled=false;
+          }
+        }catch(e){
+          document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';
+          document.getElementById('btnLogin').disabled=false;
+        }
+      })();
+    } else {
+      document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';
+    }
+    return;
+  }
   if(drv.status==='blocked'||drv.status==='kicked'){document.getElementById('lerr').textContent='강퇴된 계정입니다. 관리자에게 문의하세요.';return;}
   if(drv.status==='inactive'){
     // Supabase 실제 상태 확인 (로컬 stale 방지)
@@ -6705,20 +6734,4 @@ async function saveAdminCreds(){
   if(sbClient){
     var btn=document.querySelector('[onclick="saveAdminCreds()"]');
     if(btn){btn.disabled=true;btn.textContent='저장 중...';}
-    var {error:sbErr}=await sbClient.from('misdelivery_settings')
-      .update({admin_id:aid,admin_pw:apw1,updated_by:'관리자',updated_at:new Date().toISOString()})
-      .eq('id',1);
-    if(btn){btn.disabled=false;btn.textContent='💾 저장';}
-    if(sbErr){
-      console.warn('[AdminCfg] Supabase 저장 실패:',sbErr.message);
-      errEl.style.color='#e65100';
-      errEl.textContent='⚠️ Supabase 저장 실패: SQL 마이그레이션 필요 (아래 안내 참고)';
-      // localStorage는 저장됐으므로 현재 기기에선 적용됨
-      setTimeout(function(){
-        alert('관리자 계정이 저장됐어요.\n현재 기기에서는 적용됩니다.\n\n📌 다른 기기에서도 적용하려면\nSupabase SQL 에디터에서 아래 쿼리를 실행해주세요:\n\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_id TEXT;\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS admin_pw TEXT;\n\n새 아이디: '+aid+'\n다시 로그인해주세요.');
-        doLogout();
-      },300);
-      return;
-    }
-  }
-  alert('✅ 관리자 계정이 변경됐어요!\n\n아이디: '+aid+'\n\n
+    var {error:s
