@@ -5367,8 +5367,8 @@ function erEditDriver(name){
       '<div style="display:flex"><input id="er-edit-coupang" type="text" value="'+coupangDisplay+'" placeholder="아이디" style="flex:1;padding:10px;border:1.5px solid #e0e0e0;border-right:none;border-radius:8px 0 0 8px;font-size:14px;outline:none">'+
       '<div style="padding:10px 12px;background:#f5f5f5;border:1.5px solid #e0e0e0;border-left:none;border-radius:0 8px 8px 0;font-size:13px;font-weight:700;color:#888">@df</div></div></div>'+
     '<div style="display:flex;gap:8px">'+
-      '<button onclick="document.getElementById('er-edit-modal-wrap').remove()" style="flex:1;padding:12px;background:#f5f5f5;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;color:#555">취소</button>'+
-      '<button onclick="erSaveDriver(''+name+'')" style="flex:2;padding:12px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">💾 저장</button>'+
+      '<button onclick="document.getElementById(\'er-edit-modal-wrap\').remove()" style="flex:1;padding:12px;background:#f5f5f5;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;color:#555">취소</button>'+
+      '<button onclick="erSaveDriver(\''+name+'\')" style="flex:2;padding:12px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">💾 저장</button>'+
     '</div>'+
   '</div>';
   document.body.appendChild(modal);
@@ -5746,7 +5746,7 @@ function pgPhoneBook(){
         '<div id="add-drv-err" style="color:#c62828;font-size:12px;min-height:16px;margin-bottom:8px"></div>'+
         '<div style="display:flex;gap:8px">'+
           '<button class="btn-ok" onclick="saveAddDriver()" style="flex:2">✅ 추가</button>'+
-          '<button onclick="document.getElementById('ph-add-modal').style.display='none'" style="flex:1;padding:10px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;cursor:pointer">취소</button>'+
+          '<button onclick="document.getElementById(\'ph-add-modal\').style.display=\'none\'" style="flex:1;padding:10px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;cursor:pointer">취소</button>'+
         '</div>'+
       '</div>'+
     '</div>'+
