@@ -3348,12 +3348,12 @@ function pgHome(){
   if(!tr){
     todayRoutes='<div style="font-size:20px;font-weight:900;color:#FFD54F;text-shadow:0 2px 8px rgba(0,0,0,.3)">&#x1F38A; 휴무야~ 즐겨~ &#x1F3B6;</div>';
   } else {
-    todayRoutes=tr.split(',').map(function(r){
-      var rlen=r.trim().length;
-      var fs=rlen<=5?'28px':rlen<=8?'22px':'18px';
-      var lsp=rlen<=5?'2px':'1px';
-      var px=rlen<=5?'18px':'12px';
-      return '<span style="display:inline-block;background:linear-gradient(135deg,#FFD600,#FFAB00);border-radius:12px;padding:8px '+px+';margin:3px;font-size:'+fs+';font-weight:900;color:#1a237e;letter-spacing:'+lsp+';text-shadow:0 1px 3px rgba(0,0,0,.2);box-shadow:0 3px 10px rgba(255,193,7,.4);word-break:break-word;max-width:100%;text-align:center;white-space:normal">'+r.trim()+'</span>';
+    var _trArr=tr.split(',').map(function(r){return r.trim();});
+    var _trCnt=_trArr.length;
+    var _trTotal=_trArr.reduce(function(s,r){return s+r.length;},0);
+    var _trFs=_trTotal<=4&&_trCnt<=1?'28px':_trTotal<=8&&_trCnt<=2?'22px':_trTotal<=12&&_trCnt<=3?'18px':_trTotal<=16?'14px':'12px';
+    todayRoutes=_trArr.map(function(r){
+      return '<span style="display:inline-block;background:linear-gradient(135deg,#FFD600,#FFAB00);border-radius:10px;padding:5px 12px;margin:2px;font-size:'+_trFs+';font-weight:900;color:#1a237e;text-shadow:0 1px 3px rgba(0,0,0,.2);box-shadow:0 3px 10px rgba(255,193,7,.4);white-space:nowrap;text-align:center">'+r+'</span>';
     }).join('');
   }
 
@@ -3366,10 +3366,12 @@ function pgHome(){
       tomLabel='<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.5)">휴무</div>';
     }
   } else {
-    tomLabel=tmr.split(',').map(function(r){
-      var rlen=r.trim().length;
-      var fs=rlen<=5?'16px':rlen<=8?'13px':'11px';
-      return '<span style="display:inline-block;background:rgba(100,181,246,.35);border:1px solid rgba(144,202,249,.5);border-radius:8px;padding:4px 10px;margin:2px;font-size:'+fs+';font-weight:800;color:#E3F2FD;word-break:break-word;max-width:100%;text-align:center;white-space:normal">'+r.trim()+'</span>';
+    var _tmrArr=tmr.split(',').map(function(r){return r.trim();});
+    var _tmrCnt=_tmrArr.length;
+    var _tmrTotal=_tmrArr.reduce(function(s,r){return s+r.length;},0);
+    var _tmrFs=_tmrTotal<=4&&_tmrCnt<=1?'16px':_tmrTotal<=8&&_tmrCnt<=2?'13px':_tmrTotal<=14?'11px':'9px';
+    tomLabel=_tmrArr.map(function(r){
+      return '<span style="display:inline-block;background:rgba(100,181,246,.35);border:1px solid rgba(144,202,249,.5);border-radius:8px;padding:3px 8px;margin:2px;font-size:'+_tmrFs+';font-weight:800;color:#E3F2FD;white-space:nowrap;text-align:center">'+r+'</span>';
     }).join('');
   }
 
@@ -3419,11 +3421,11 @@ function pgHome(){
     '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:stretch">'+
       '<div style="flex:1.7;background:linear-gradient(135deg,#0d47a1,#1565c0);border-radius:16px;padding:20px 16px;box-shadow:0 4px 18px rgba(0,0,0,.3);min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">'+
         '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.6);letter-spacing:1.5px;margin-bottom:10px">&#x1F4E6; 오늘 라우트</div>'+
-        '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:3px;min-height:52px;width:100%">'+todayRoutes+'</div>'+
+        '<div style="display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:3px;min-height:52px;width:100%;overflow:hidden">'+todayRoutes+'</div>'+
       '</div>'+
       '<div style="flex:1;background:rgba(100,181,246,.15);border-radius:14px;padding:14px 10px 12px;border:1px solid rgba(144,202,249,.3);min-width:0;display:flex;flex-direction:column;justify-content:center">'+
         '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.6);letter-spacing:1px;margin-bottom:8px">내일 라우트</div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center">'+tomLabel+'</div>'+
+        '<div style="display:flex;flex-wrap:nowrap;gap:3px;align-items:center;overflow:hidden">'+tomLabel+'</div>'+
       '</div>'+
     '</div>'+
     '</div>'+
@@ -3495,23 +3497,31 @@ function _renderHourlyBody(dayIdx,data){
   var el=document.getElementById('hourly-'+dayIdx+'-body');
   if(!el||!data.hourly)return;
   var startH=dayIdx*24;
-  var items='';
+  var nowH=new Date().getHours();
+  var items='';var hasRain=false;
   for(var h=0;h<24;h++){
+    if(dayIdx===0&&h<nowH)continue; // 오늘은 현재 시각 이전 생략
     var idx=startH+h;
     var pr=data.hourly.precipitation?Math.round(data.hourly.precipitation[idx]*10)/10:0;
     var sn=data.hourly.snowfall?Math.round(data.hourly.snowfall[idx]*10)/10:0;
-    if(pr===0&&sn===0)continue;
-    var sub='';
-    if(pr>0)sub+='<span style="font-size:10px;color:#90caf9;font-weight:700">💧'+pr+'mm</span>';
-    if(sn>0)sub+='<span style="font-size:10px;color:#e3f2fd;font-weight:700;margin-left:3px">❄️'+sn+'cm</span>';
-    items+='<div style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;'+
-      'background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:10px;'+
-      'padding:6px 10px;margin-right:6px;min-width:56px;white-space:nowrap">'+
-      '<div style="font-size:11px;color:rgba(255,255,255,.7);font-weight:700;margin-bottom:4px">'+h+'시</div>'+
-      sub+
-    '</div>';
+    if(pr>0||sn>0){
+      hasRain=true;
+      var sub='';
+      if(pr>0)sub+='<span style="font-size:10px;color:#90caf9;font-weight:800">💧'+pr+'mm</span>';
+      if(sn>0)sub+='<span style="font-size:10px;color:#e3f2fd;font-weight:800;margin-left:2px">❄️'+sn+'cm</span>';
+      items+='<div style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;'+
+        'background:rgba(100,181,246,.3);border:1px solid rgba(144,202,249,.6);border-radius:10px;'+
+        'padding:6px 10px;margin-right:5px;min-width:54px;white-space:nowrap">'+
+        '<div style="font-size:11px;color:#fff;font-weight:800;margin-bottom:4px">'+h+'시</div>'+sub+'</div>';
+    } else {
+      items+='<div style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;'+
+        'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;'+
+        'padding:6px 8px;margin-right:5px;min-width:40px;white-space:nowrap">'+
+        '<div style="font-size:10px;color:rgba(255,255,255,.3);font-weight:600;margin-bottom:2px">'+h+'시</div>'+
+        '<span style="font-size:9px;color:rgba(255,255,255,.2)">-</span></div>';
+    }
   }
-  if(!items)items='<span style="font-size:11px;color:rgba(255,255,255,.5)">강수·적설 없음</span>';
+  if(!hasRain)items+='<span style="font-size:11px;color:rgba(255,255,255,.45);margin-left:4px">이후 강수·적설 없음</span>';
   el.innerHTML='<div style="display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px">'+items+'</div>';
 }
 function _renderWeather(data){
@@ -5364,15 +5374,19 @@ function erImportExcel(input){
       var text=e.target.result;
       var lines=text.split(/\r?\n/);
       if(lines.length<2){alert('데이터가 없습니다.');return;}
-      var headers=lines[0].split(',').map(function(h){return h.trim().replace(/^"|"$/g,'');});
+      var headers=lines[0].split(',').map(function(h){return h.trim().replace(/^"|"$/g,'').replace(/^\uFEFF/,'');});
       var db=getDB();var updated=0;
       for(var i=1;i<lines.length;i++){
         var cols=lines[i].split(',').map(function(c){return c.trim().replace(/^"|"$/g,'');});
         if(!cols[0])continue;
-        var nameIdx=headers.indexOf('이름');
+        var nameIdx=headers.indexOf('기사명')>=0?headers.indexOf('기사명'):headers.indexOf('이름');
         var phoneIdx=headers.indexOf('전화번호');
         var carIdx=headers.indexOf('차량번호');
         var coupIdx=headers.indexOf('쿠팡ID');
+        var birthIdx=headers.indexOf('생년월일');
+        var carTypeIdx=headers.indexOf('차량정보');
+        var fuelIdx=headers.indexOf('연료');
+        var kakaoIdx=headers.indexOf('카톡ID');
         var nm=nameIdx>=0?cols[nameIdx]:'';
         if(!nm)continue;
         for(var k in db){
@@ -5380,12 +5394,16 @@ function erImportExcel(input){
             if(phoneIdx>=0&&cols[phoneIdx])db[k].phone=cols[phoneIdx];
             if(carIdx>=0&&cols[carIdx])db[k].car_no=cols[carIdx];
             if(coupIdx>=0&&cols[coupIdx])db[k].coupang_id=cols[coupIdx];
+            if(birthIdx>=0&&cols[birthIdx])db[k].birth_date=cols[birthIdx];
+            if(carTypeIdx>=0&&cols[carTypeIdx])db[k].car_type=cols[carTypeIdx];
+            if(fuelIdx>=0&&cols[fuelIdx])db[k].fuel_type=cols[fuelIdx];
+            if(kakaoIdx>=0&&cols[kakaoIdx])db[k].kakao_id=cols[kakaoIdx];
             updated++;
           }
         }
       }
       saveDB(db);
-      alert('✅ '+updated+'명 업데이트 완료!\n(열: 이름, 전화번호, 차량번호, 쿠팡ID)');
+      alert('✅ '+updated+'명 업데이트 완료!\n(열: 기사명, 전화번호, 차량번호, 쿠팡ID, 생년월일, 차량정보, 연료, 카톡ID)');
       mc.innerHTML=pgEmergencyContact();
     }catch(ex){alert('파일 오류: '+ex.message);}
   };
