@@ -5341,25 +5341,39 @@ function erEditDriver(name){
   var carNo=d.car_no||d.carNo||'';
   var coupangId=d.coupang_id||d.coupangId||'';
   var coupangDisplay=coupangId.replace(/@df$/,'');
+  var carType=d.car_type||'';
+  var fuelType=d.fuel_type||'';
+  var kakaoId=d.kakao_id||'';
+  var birthDate=d.birth_date||'';
   var modal=document.createElement('div');
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  modal.innerHTML='<div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:360px;box-shadow:0 20px 50px rgba(0,0,0,.3)">'+
+  modal.id='er-edit-modal-wrap';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
+  var fuelOpts=['','EV','LPG','가솔린','디젤'].map(function(v){return '<option value="'+v+'"'+(fuelType===v?' selected':'')+'>'+( v||'선택')+'</option>';}).join('');
+  modal.innerHTML='<div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:360px;box-shadow:0 20px 50px rgba(0,0,0,.3);max-height:88vh;overflow-y:auto">'+
     '<div style="font-size:17px;font-weight:900;color:#1a237e;margin-bottom:16px">✏️ '+name+' 정보 수정</div>'+
     '<div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">📞 전화번호</label>'+
       '<input id="er-edit-phone" type="tel" value="'+phone+'" placeholder="010-0000-0000" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
     '<div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">🚗 차량번호</label>'+
       '<input id="er-edit-car" type="text" value="'+carNo+'" placeholder="예: 경기96자5689" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">🚐 차량종류</label>'+
+      '<input id="er-edit-cartype" type="text" value="'+carType+'" placeholder="예: 1톤트럭, 다마스" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">⛽ 연료</label>'+
+      '<select id="er-edit-fuel" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;background:#fff">'+fuelOpts+'</select></div>'+
+    '<div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">🟡 카톡 아이디</label>'+
+      '<input id="er-edit-kakao" type="text" value="'+kakaoId+'" placeholder="카카오톡 아이디" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:10px"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">🎂 생년월일</label>'+
+      '<input id="er-edit-birth" type="text" value="'+birthDate+'" placeholder="예: 850315 (YYMMDD)" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
     '<div style="margin-bottom:16px"><label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">🛒 쿠팡 ID</label>'+
       '<div style="display:flex"><input id="er-edit-coupang" type="text" value="'+coupangDisplay+'" placeholder="아이디" style="flex:1;padding:10px;border:1.5px solid #e0e0e0;border-right:none;border-radius:8px 0 0 8px;font-size:14px;outline:none">'+
       '<div style="padding:10px 12px;background:#f5f5f5;border:1.5px solid #e0e0e0;border-left:none;border-radius:0 8px 8px 0;font-size:13px;font-weight:700;color:#888">@df</div></div></div>'+
     '<div style="display:flex;gap:8px">'+
-      '<button onclick="this.closest(\'div[style*=fixed]\').remove()" style="flex:1;padding:12px;background:#f5f5f5;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;color:#555">취소</button>'+
-      '<button onclick="erSaveDriver(\''+name+'\')" style="flex:2;padding:12px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">💾 저장</button>'+
+      '<button onclick="document.getElementById('er-edit-modal-wrap').remove()" style="flex:1;padding:12px;background:#f5f5f5;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;color:#555">취소</button>'+
+      '<button onclick="erSaveDriver(''+name+'')" style="flex:2;padding:12px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">💾 저장</button>'+
     '</div>'+
   '</div>';
   document.body.appendChild(modal);
 }
-function erSaveDriver(name){
+async function erSaveDriver(name){
   var ph=(document.getElementById('er-edit-phone').value||'').trim();
   var digits=ph.replace(/\D/g,'');
   var fmt=digits.length===11?digits.slice(0,3)+'-'+digits.slice(3,7)+'-'+digits.slice(7):
@@ -5367,20 +5381,37 @@ function erSaveDriver(name){
   var carNo=(document.getElementById('er-edit-car').value||'').trim();
   var coupangRaw=(document.getElementById('er-edit-coupang').value||'').trim();
   var coupangFull=coupangRaw?coupangRaw+'@df':'';
+  var carType=(document.getElementById('er-edit-cartype').value||'').trim();
+  var fuelType=(document.getElementById('er-edit-fuel').value||'').trim();
+  var kakaoId=(document.getElementById('er-edit-kakao').value||'').trim();
+  var birthDate=(document.getElementById('er-edit-birth').value||'').trim();
   var db=getDB();
   if(!db[name])db[name]={};
   db[name].phone=fmt;
   db[name].car_no=carNo;
   db[name].coupang_id=coupangFull;
+  db[name].car_type=carType;
+  db[name].fuel_type=fuelType;
+  db[name].kakao_id=kakaoId;
+  db[name].birth_date=birthDate;
   saveDB(db);
   // Supabase 동기화
   if(sbClient){
+    // drivers 테이블: 기본 필드
     sbClient.from('drivers').update({phone:fmt,car_no:carNo,coupang_id:coupangFull,synced_at:new Date().toISOString()}).eq('name',name).then(function(){}).catch(function(){});
+    // misdelivery_settings: 프로필 JSON 업데이트
+    try{
+      var sr=await sbClient.from('misdelivery_settings').select('driver_profiles').eq('id',1).single();
+      var profiles={};
+      if(sr.data&&sr.data.driver_profiles){try{profiles=JSON.parse(sr.data.driver_profiles)||{};}catch(e2){}}
+      profiles[name]={car_no:carNo,coupang_id:coupangFull,car_type:carType,fuel_type:fuelType,kakao_id:kakaoId,birth_date:birthDate};
+      await sbClient.from('misdelivery_settings').update({driver_profiles:JSON.stringify(profiles)}).eq('id',1);
+    }catch(e){console.warn('driver_profiles 업데이트 실패',e);}
   }
   // 모달 닫기
-  var modal=document.querySelector('div[style*="position:fixed"]');
-  if(modal)modal.remove();
-  // 비상연락망 새로고침
+  var wrap=document.getElementById('er-edit-modal-wrap');
+  if(wrap)wrap.remove();
+  // 연락망 새로고침
   document.getElementById('mc').innerHTML=pgEmergencyContact();
   alert('✅ '+name+' 정보가 저장되었습니다.');
 }
@@ -5701,19 +5732,25 @@ function pgPhoneBook(){
     '</div>'+
     '<div class="card" style="padding:6px 16px"><div id="er-list">'+phBuildList(all)+'</div></div>'+
     // 기사 추가 모달
-    '<div id="ph-add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center">'+
-      '<div style="background:#fff;border-radius:20px;padding:24px;max-width:380px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2)">'+
+    '<div id="ph-add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;overflow-y:auto;padding:16px">'+
+      '<div style="background:#fff;border-radius:20px;padding:24px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.2);max-height:88vh;overflow-y:auto">'+
         '<div style="font-size:15px;font-weight:800;color:#1a237e;margin-bottom:16px">➕ 신규 기사 추가</div>'+
-        '<input type="text" id="add-drv-name" placeholder="기사명 (필수)" style="width:100%;padding:11px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:8px">'+
-        '<input type="text" id="add-drv-id" placeholder="쿠팡 기사 아이디 (필수)" style="width:100%;padding:11px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:8px">'+
-        '<input type="tel" id="add-drv-phone" placeholder="전화번호 (선택)" style="width:100%;padding:11px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:8px">'+
+        '<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px">기사명 (필수)</label><input type="text" id="add-drv-name" placeholder="기사명" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
+        '<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px">🛒 쿠팡 기사 아이디 (필수)</label><input type="text" id="add-drv-id" placeholder="쿠팡 기사 아이디" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
+        '<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px">📞 전화번호 (선택)</label><input type="tel" id="add-drv-phone" placeholder="010-0000-0000" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
+        '<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px">🚗 차량번호 (선택)</label><input type="text" id="add-drv-car" placeholder="예: 경기96자5689" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
+        '<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px">🚐 차량종류 (선택)</label><input type="text" id="add-drv-cartype" placeholder="예: 1톤트럭, 다마스" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
+        '<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px">⛽ 연료 (선택)</label><select id="add-drv-fuel" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box;background:#fff"><option value="">선택</option><option value="EV">EV</option><option value="LPG">LPG</option><option value="가솔린">가솔린</option><option value="디젤">디젤</option></select></div>'+
+        '<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px">🟡 카톡 아이디 (선택)</label><input type="text" id="add-drv-kakao" placeholder="카카오톡 아이디" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
+        '<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:700;color:#555;display:block;margin-bottom:3px">🎂 생년월일 (선택)</label><input type="text" id="add-drv-birth" placeholder="예: 850315 (YYMMDD)" style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;box-sizing:border-box"></div>'+
         '<div id="add-drv-err" style="color:#c62828;font-size:12px;min-height:16px;margin-bottom:8px"></div>'+
         '<div style="display:flex;gap:8px">'+
           '<button class="btn-ok" onclick="saveAddDriver()" style="flex:2">✅ 추가</button>'+
-          '<button onclick="document.getElementById(\'ph-add-modal\').style.display=\'none\'" style="flex:1;padding:10px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;cursor:pointer">취소</button>'+
+          '<button onclick="document.getElementById('ph-add-modal').style.display='none'" style="flex:1;padding:10px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;cursor:pointer">취소</button>'+
         '</div>'+
       '</div>'+
     '</div>'+
+  '</div>';
   '</div>';
 }
 function phSearch(q){
@@ -5854,6 +5891,11 @@ function openAddDriverModal(){
   document.getElementById('add-drv-name').value='';
   document.getElementById('add-drv-id').value='';
   document.getElementById('add-drv-phone').value='';
+  document.getElementById('add-drv-car').value='';
+  document.getElementById('add-drv-cartype').value='';
+  document.getElementById('add-drv-fuel').value='';
+  document.getElementById('add-drv-kakao').value='';
+  document.getElementById('add-drv-birth').value='';
   document.getElementById('add-drv-err').textContent='';
   document.getElementById('ph-add-modal').style.display='flex';
   setTimeout(function(){document.getElementById('add-drv-name').focus();},100);
@@ -5862,6 +5904,11 @@ async function saveAddDriver(){
   var name=document.getElementById('add-drv-name').value.trim();
   var id=document.getElementById('add-drv-id').value.trim();
   var ph=document.getElementById('add-drv-phone').value.trim();
+  var carNo=(document.getElementById('add-drv-car').value||'').trim();
+  var carType=(document.getElementById('add-drv-cartype').value||'').trim();
+  var fuelType=(document.getElementById('add-drv-fuel').value||'').trim();
+  var kakaoId=(document.getElementById('add-drv-kakao').value||'').trim();
+  var birthDate=(document.getElementById('add-drv-birth').value||'').trim();
   var errEl=document.getElementById('add-drv-err');
   if(!name){errEl.textContent='기사명을 입력해주세요.';return;}
   if(!id){errEl.textContent='로그인 아이디를 입력해주세요.';return;}
@@ -5869,19 +5916,26 @@ async function saveAddDriver(){
   if(db[name]){errEl.textContent='이미 등록된 기사명입니다.';return;}
   var digits=ph?ph.replace(/\D/g,''):'';
   var fmt=digits&&digits.length>=9?digits.replace(/^(\d{3})(\d{3,4})(\d{4})$/,'$1-$2-$3'):ph;
-  var entry={id:id,name:name,role:'driver',status:'inactive',password:'1234',phone:fmt||''};
+  var entry={id:id,name:name,role:'driver',status:'inactive',password:'1234',phone:fmt||'',car_no:carNo,car_type:carType,fuel_type:fuelType,kakao_id:kakaoId,birth_date:birthDate};
   db[name]=entry;saveDB(db);
   if(sbClient){
     try{
-      var r=await sbClient.from('drivers').upsert({login_id:id,name:name,role:'driver',status:'inactive',password:'1234',phone:fmt||'',synced_at:new Date().toISOString()},{onConflict:'name'});
+      var r=await sbClient.from('drivers').upsert({login_id:id,name:name,role:'driver',status:'inactive',password:'1234',phone:fmt||'',car_no:carNo,synced_at:new Date().toISOString()},{onConflict:'name'});
       if(r.error)throw r.error;
+      // 프로필 정보 misdelivery_settings에 저장
+      if(carNo||carType||fuelType||kakaoId||birthDate){
+        var sr=await sbClient.from('misdelivery_settings').select('driver_profiles').eq('id',1).single();
+        var profiles={};
+        if(sr.data&&sr.data.driver_profiles){try{profiles=JSON.parse(sr.data.driver_profiles)||{};}catch(e2){}}
+        profiles[name]={car_no:carNo,coupang_id:id+'@df',car_type:carType,fuel_type:fuelType,kakao_id:kakaoId,birth_date:birthDate};
+        await sbClient.from('misdelivery_settings').update({driver_profiles:JSON.stringify(profiles)}).eq('id',1);
+      }
     }catch(e){errEl.textContent='⚠️ Supabase 저장 실패: '+e.message;return;}
   }
   document.getElementById('ph-add-modal').style.display='none';
   alert(name+' 기사가 추가되었습니다!'+(fmt?'\n전화번호: '+fmt:''));
   document.getElementById('mc').innerHTML=pgPhoneBook();
 }
-// ── 엑셀 다운로드 (CSV) ───────────────────────────────────────────────
 function downloadPhoneExcel(){
   var db=getDB();
   var sbn=function(a,b){return a.name.localeCompare(b.name,'ko');};
