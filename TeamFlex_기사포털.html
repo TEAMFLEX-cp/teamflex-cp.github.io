@@ -1245,7 +1245,7 @@ async function loadAdminCfgFromSB(){
   try{
     // misdelivery_settings에서 admin 설정 + 스케줄 잠금 설정 로드 (전 디바이스 공유)
     var r=await sbClient.from('misdelivery_settings')
-      .select('admin_id,admin_pw,sched_lock_days,sched_perm,ann_perm,blind_list')
+      .select('admin_id,admin_pw,sched_lock_days,sched_perm,ann_perm,blind_list,driver_profiles')
       .eq('id',1).single();
     if(r.data){
       var cfg=getCfg();
@@ -1272,6 +1272,25 @@ async function loadAdminCfgFromSB(){
           saveDB(bdb);
           console.log('[Blind] 동기화 완료:',blArr);
         }catch(e2){console.warn('[Blind] 파싱 실패',e2);}
+      }
+      // 기사 프로필 (차량번호/쿠팡ID/생년월일/차량정보/연료/카톡ID) 동기화
+      if(r.data.driver_profiles){
+        try{
+          var profiles=JSON.parse(r.data.driver_profiles)||{};
+          var pdb=getDB();
+          Object.keys(profiles).forEach(function(nm){
+            if(!pdb[nm])return;
+            var p=profiles[nm];
+            if(p.car_no)pdb[nm].car_no=p.car_no;
+            if(p.coupang_id)pdb[nm].coupang_id=p.coupang_id;
+            if(p.birth_date)pdb[nm].birth_date=p.birth_date;
+            if(p.car_type)pdb[nm].car_type=p.car_type;
+            if(p.fuel_type)pdb[nm].fuel_type=p.fuel_type;
+            if(p.kakao_id)pdb[nm].kakao_id=p.kakao_id;
+          });
+          saveDB(pdb);
+          console.log('[Profiles] 동기화 완료:',Object.keys(profiles).length,'명');
+        }catch(e3){console.warn('[Profiles] 파싱 실패',e3);}
       }
     }
   }catch(e){
@@ -5406,21 +5425,17 @@ function erImportExcel(input){
       }
       saveDB(db);
       mc.innerHTML=pgEmergencyContact();
-      // Supabase 일괄 업데이트 (백그라운드)
+      // misdelivery_settings.driver_profiles에 JSON으로 저장 (RLS 우회)
       if(sbClient&&sbUpdates.length){
-        var done=0;var fail=0;
-        var _push=function(idx){
-          if(idx>=sbUpdates.length){
-            showToast('☁ Supabase 동기화 완료 ('+done+'명)', done>0);
-            return;
-          }
-          var it=sbUpdates[idx];
-          sbClient.from('drivers').update(it.upd).eq('name',it.name)
-            .then(function(r){if(r&&r.error){fail++;}else{done++;}  _push(idx+1);})
-            .catch(function(){fail++;_push(idx+1);});
-        };
-        _push(0);
-        alert('✅ '+updated+'명 로컬 업데이트 완료! Supabase 동기화 중...');
+        var profiles={};
+        sbUpdates.forEach(function(it){profiles[it.name]=it.upd;});
+        sbClient.from('misdelivery_settings')
+          .update({driver_profiles:JSON.stringify(profiles)}).eq('id',1)
+          .then(function(r){
+            if(r&&r.error){showToast('⚠ Supabase 저장 실패: '+r.error.message,false);}
+            else{showToast('☁ Supabase 동기화 완료 ('+sbUpdates.length+'명)',true);}
+          }).catch(function(e){showToast('⚠ Supabase 저장 실패',false);});
+        alert('✅ '+updated+'명 업데이트 완료! 다른 기기에 동기화 중...');
       } else {
         alert('✅ '+updated+'명 업데이트 완료!');
       }
