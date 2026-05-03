@@ -790,13 +790,7 @@ async function syncFromSupabase(){
         else if(_localStatus==='approved'&&sbClient){
           (function(n,s){sbClient.from('drivers').update({status:s,synced_at:new Date().toISOString()}).eq('name',n).then(function(){}).catch(function(e){console.warn('[Sync fix]',e);});})(d.name,_localStatus);
         }
-        // 비밀번호 동기화: approved 상태이고 로컬에 이미 1234가 아닌 비밀번호가 있으면 덮어쓰지 않음
-        var _localPw=db[d.name].password;
-        var _sbPw=d.password||'1234';
-        if(!_localPw||_localPw==='1234'||_sbStatus!=='approved'){
-          db[d.name].password=_sbPw;
-        }
-        // (approved + 로컬에 실제 비밀번호 있으면 유지 — 기사가 설정한 비밀번호 보호)
+        db[d.name].password=d.password||'1234';
         db[d.name].phone=d.phone||'';
         db[d.name].notif_ok=d.notif_ok||false;
         db[d.name].home_ok=d.home_ok||false;
@@ -6734,4 +6728,14 @@ function setSchedMinLockDays(days){
       .then(function(r){
         if(r&&r.error){
           // 컬럼 없으면 SQL 안내
-          console.warn('[setSchedLock] Supabase 저장 실패. 아래 SQL을 실행해주세요:\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS sched_lock_days TEXT DEFAULT \'0
+          console.warn('[setSchedLock] Supabase 저장 실패. 아래 SQL을 실행해주세요:\nALTER TABLE misdelivery_settings ADD COLUMN IF NOT EXISTS sched_lock_days TEXT DEFAULT \'0\';');
+          showToast('⚠ 잠금 설정 저장 실패 — SQL 실행 필요',false);
+        }else{
+          showToast('🔒 잠금 설정이 모든 기기에 적용됩니다',true);
+        }
+      }).catch(function(e){console.warn('[setSchedLock]',e);});
+  }
+  document.getElementById('mc').innerHTML=pgSettings();
+}
+async function saveContactsPw(){
+  var pw=document.getElementById('cf
