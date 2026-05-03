@@ -5412,7 +5412,7 @@ async function erSaveDriver(name){
   var wrap=document.getElementById('er-edit-modal-wrap');
   if(wrap)wrap.remove();
   // 연락망 새로고침
-  document.getElementById('mc').innerHTML=pgEmergencyContact();
+  document.getElementById('mc').innerHTML=pgPhoneBook();
   alert('✅ '+name+' 정보가 저장되었습니다.');
 }
 // 비상연락망 엑셀 업로드
