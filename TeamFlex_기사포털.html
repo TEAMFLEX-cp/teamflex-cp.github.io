@@ -5995,7 +5995,10 @@ async function _applyPhoneData(data, type){
       var upd={name:r.name,synced_at:new Date().toISOString()};
       if(r.phone)upd.phone=r.phone;
       if(r.car_no)upd.car_no=r.car_no;
-      // birth_date/car_type/fuel_type/kakao_id는 Supabase 컬럼 미존재 → 로컬만 저장
+      if(r.birth_date)upd.birth_date=r.birth_date;
+      if(r.car_type)upd.car_type=r.car_type;
+      if(r.fuel_type)upd.fuel_type=r.fuel_type;
+      if(r.kakao_id)upd.kakao_id=r.kakao_id;
       if(cqVal){upd.coupang_id=cqVal.indexOf('@')<0?cqVal+'@df':cqVal;}
       if(r.id)upd.login_id=r.id;
       sbUpdates.push(upd);
