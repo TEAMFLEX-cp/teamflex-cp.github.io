@@ -6040,16 +6040,16 @@ async function _applyPhoneData(data, type){
     }else{skipped.push(r.name);}
   });
   saveDB(db);
-  // Supabase 일괄 업데이트
+  // misdelivery_settings.driver_profiles에 JSON으로 저장 (RLS 우회)
   var sbOk=0;var sbFail=0;
   if(sbClient&&sbUpdates.length){
-    for(var i=0;i<sbUpdates.length;i++){
-      try{
-        var upd2=sbUpdates[i];var nm2=upd2.name;delete upd2.name;
-        var r2=await sbClient.from('drivers').update(upd2).eq('name',nm2);
-        if(!r2.error)sbOk++;else sbFail++;
-      }catch(e){sbFail++;}
-    }
+    var profiles={};
+    sbUpdates.forEach(function(u){var nm=u.name;var uc=JSON.parse(JSON.stringify(u));delete uc.name;profiles[nm]=uc;});
+    try{
+      var pr=await sbClient.from('misdelivery_settings').update({driver_profiles:JSON.stringify(profiles)}).eq('id',1);
+      if(pr&&pr.error){sbFail=sbUpdates.length;console.warn('[profiles]',pr.error);}
+      else{sbOk=sbUpdates.length;}
+    }catch(e){sbFail=sbUpdates.length;console.warn('[profiles]',e);}
   }
   var updFields=[];
   rows.some(function(r){return r.phone;})&&updFields.push('전화번호');
