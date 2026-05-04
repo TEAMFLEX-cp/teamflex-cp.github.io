@@ -791,7 +791,7 @@ async function syncFromSupabase(){
           (function(n,s){sbClient.from('drivers').update({status:s,synced_at:new Date().toISOString()}).eq('name',n).then(function(){}).catch(function(e){console.warn('[Sync fix]',e);});})(d.name,_localStatus);
         }
         db[d.name].password=d.password||'1234';
-        db[d.name].phone=d.phone||'';
+        if(d.phone!=null&&d.phone!=='')db[d.name].phone=d.phone; // 빈값으로 덮어쓰기 방지
         db[d.name].notif_ok=d.notif_ok||false;
         db[d.name].home_ok=d.home_ok||false;
         // 차량번호, 쿠팡ID, 카톡ID, 블라인드 동기화 (값 있을 때만 덮어씀 — 빈 문자열도 무시)
