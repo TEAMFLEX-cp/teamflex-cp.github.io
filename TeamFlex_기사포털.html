@@ -3265,22 +3265,28 @@ function pgHome(){
         '<span style="font-size:13px;font-weight:600;color:#1a237e">'+a.title+'</span>'+
         '<div style="font-size:11px;color:#aaa;margin-top:3px">'+a.author+' &middot; '+a.at.slice(0,10)+'</div></div>';
     }).join('');
-    var adminSummary='<div style="display:flex;gap:8px;margin-bottom:12px">'+
-      '<div onclick="go(\'aa\')" style="flex:1;background:'+(pendingCnt?'#fff3e0':'#e8f5e9')+';border:1px solid '+(pendingCnt?'#ffb74d':'#a5d6a7')+';border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer">'+
-        '<div style="font-size:28px;font-weight:900;color:'+(pendingCnt?'#e65100':'#2e7d32')+'">'+pendingCnt+'</div>'+
-        '<div style="font-size:11px;color:#666;margin-top:4px">승인 대기</div>'+
-        (pendingCnt?'<div style="font-size:10px;color:#e65100;font-weight:700;margin-top:3px">탭하여 확인</div>':'')+
-      '</div>'+
+    var _curMon=new Date().getMonth();
+    var _smTotalRev=0; var _smTotalPay=0;
+    Object.values(SM).forEach(function(sm){
+      var md=sm[String(_curMon)];
+      if(md){_smTotalRev+=(md.total_rev||0); _smTotalPay+=(md.net_pay||0);}
+    });
+    var _fmtW=function(v){if(!v||v===0)return '-';if(v>=100000000)return (v/100000000).toFixed(1)+'억';if(v>=10000)return Math.round(v/10000)+'만';return v.toLocaleString();};
+    var adminSummary='<div style="display:flex;gap:8px;margin-bottom:8px">'+
       '<div onclick="go(\'ph\')" style="flex:1;background:#f3f4ff;border:1px solid #c5cae9;border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer">'+
         '<div style="font-size:28px;font-weight:900;color:#3949ab">'+approvedCnt+'</div>'+
-        '<div style="font-size:11px;color:#666;margin-top:4px">활성 기사</div>'+
+        '<div style="font-size:11px;color:#666;margin-top:4px">기사 수</div>'+
+        (pendingCnt?'<div style="font-size:10px;color:#e65100;font-weight:700;margin-top:3px">승인대기 '+pendingCnt+'명</div>':'')+
       '</div>'+
-      '<div onclick="go(\'as\')" style="flex:1;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:14px;padding:14px 10px;text-align:center;cursor:pointer">'+
-        '<div style="font-size:28px;font-weight:900;color:#2e7d32">&#x1F4C5;</div>'+
-        '<div style="font-size:11px;color:#666;margin-top:4px">스케줄</div>'+
+      '<div onclick="go(\'sa\')" style="flex:1;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer">'+
+        '<div style="font-size:18px;font-weight:900;color:#2e7d32">'+_fmtW(_smTotalRev)+'</div>'+
+        '<div style="font-size:10px;color:#666;margin-top:4px">매입 세금계산서</div>'+
+      '</div>'+
+      '<div onclick="go(\'sa\')" style="flex:1;background:#fff3e0;border:1px solid #ffb74d;border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer">'+
+        '<div style="font-size:18px;font-weight:900;color:#e65100">'+_fmtW(_smTotalPay)+'</div>'+
+        '<div style="font-size:10px;color:#666;margin-top:4px">기사 지급금액</div>'+
       '</div>'+
     '</div>';
-    var annSection2=recentAnns.length?'<div class="card" style="padding:14px 16px"><div class="ctit" style="margin-bottom:8px">&#x1F4E2; 최근 공지사항</div>'+annItems+'</div>':'';
     setTimeout(loadWeather,200);
     return '<div class="hero">'+
       '<div class="hn" style="margin-bottom:12px">'+
