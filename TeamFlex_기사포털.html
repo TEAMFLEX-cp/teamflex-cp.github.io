@@ -7335,66 +7335,166 @@ async function loadFreshStatus(){
     if(showAll){
       var allWorkers=Object.keys(workerGroups);
       var missWorkers=allWorkers.filter(function(w){return workerGroups[w].some(_isPddMiss);});
-      var okWorkers=allWorkers.filter(function(w){return !workerGroups[w].some(_isPddMiss);});
+
+      // ── 헬퍼: 잔여수량, 라우트 prefix ──────────────────────────────
+      function _wUnd(w){return workerGroups[w].reduce(function(s,rt){return s+(rt.undelivered||0);},0);}
+      function _wCsg(w){return workerGroups[w].reduce(function(s,rt){return s+(rt.consignment||0);},0);}
+      function _wScn(w){return workerGroups[w].reduce(function(s,rt){return s+(rt.scan||0);},0);}
+      function _wPdd(w){return workerGroups[w].reduce(function(s,rt){return s+(rt.pdd_miss||0);},0);}
+      function _wRouteLabel(w){
+        var pfx=[],ps={};
+        workerGroups[w].forEach(function(rt){
+          (rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!ps[pf]){ps[pf]=1;pfx.push(pf);}});
+        });
+        return pfx.join(', ')||'-';
+      }
+
+      // ── 잔여 수량 많은 순 정렬 (완료는 뒤로) ──────────────────────
+      allWorkers.sort(function(a,b){
+        var ua=_wUnd(a),ub=_wUnd(b);
+        if(ua===ub)return 0;
+        if(ua===0)return 1;
+        if(ub===0)return -1;
+        return ub-ua;
+      });
 
       // ── 미스 발생시 강력 알림 팝업 ────────────────────────────────
       if(missWorkers.length>0){
-        var missAlert='<div id="fr-miss-alert" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(198,40,40,0.92);z-index:20000;display:flex;align-items:center;justify-content:center" onclick="document.getElementById(\'fr-miss-alert\').style.display=\'none\'">'+
+        html+='<div id="fr-miss-alert" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(198,40,40,0.92);z-index:20000;display:flex;align-items:center;justify-content:center" onclick="this.style.display=\'none\'">'+
           '<div style="background:#fff;border-radius:20px;padding:28px 24px;width:90%;max-width:380px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.5)">'+
           '<div style="font-size:36px;margin-bottom:8px">&#x1F6A8;</div>'+
           '<div style="font-size:18px;font-weight:900;color:#c62828;margin-bottom:10px">PDD MISS 발생!</div>'+
           missWorkers.map(function(w){
-            var pdd=workerGroups[w].reduce(function(s,rt){return s+(rt.pdd_miss||0);},0);
-            return '<div style="font-size:14px;font-weight:700;color:#333;margin:4px 0">'+w+' — PDD MISS '+pdd+'건</div>';
+            var pdd=_wPdd(w);
+            return '<div style="font-size:14px;font-weight:700;color:#333;margin:4px 0">'+w+' &#x2014; PDD MISS '+pdd+'&#xAC74;</div>';
           }).join('')+
           '<div style="margin-top:16px;font-size:11px;color:#888">화면을 탭하면 닫힙니다</div>'+
           '</div></div>';
-        html+=missAlert;
       }
 
-      // 요약 목록
-      html+='<div style="margin-bottom:12px">';
-      // MISS 기사 먼저
-      missWorkers.forEach(function(w){
+      // ── 컴팩트 행 빌더 (메인 + 팝업 공통) ────────────────────────
+      // suffix: ID 충돌 방지용 ('mn'=메인, 'pp'=팝업)
+      // showAlert: 개별 알림 버튼 노출 여부
+      function _buildRow(w, suffix, showAlert){
         var wR=workerGroups[w];
-        var pdd=wR.reduce(function(s,rt){return s+(rt.pdd_miss||0);},0);
-        var pfxM=[],psM={};wR.forEach(function(rt){(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!psM[pf]){psM[pf]=1;pfxM.push(pf);}});});
-        html+='<div style="display:flex;align-items:center;padding:10px 14px;background:#ffebee;border-radius:10px;margin-bottom:6px;border:1.5px solid #ef9a9a">'+
-          '<span style="font-weight:800;color:#1a237e;min-width:70px;font-size:13px">'+w+'</span>'+
-          '<span style="font-size:11px;color:#555;flex:1">'+pfxM.join(', ')+'</span>'+
-          '<span style="font-size:11px;color:#777;margin-right:8px">'+checkHour+'시 체크</span>'+
-          '<span style="background:#c62828;color:#fff;border-radius:6px;font-size:11px;padding:3px 8px;font-weight:700;white-space:nowrap">PDD MISS '+pdd+'건</span>'+
+        var und=_wUnd(w), csg=_wCsg(w), scn=_wScn(w), pdd=_wPdd(w);
+        var cmp=wR.reduce(function(s,rt){return s+(rt.completed||0);},0);
+        var hasMiss=wR.some(_isPddMiss);
+        var isComplete=(und===0&&scn>0);
+        var routeLabel=_wRouteLabel(w);
+        var detId='frdet_'+suffix+'_'+w.replace(/[\s\W]/g,'_');
+
+        // 상태 배지
+        var statusBadge=isComplete
+          ?'<span style="color:#2e7d32;font-size:11px;font-weight:700;white-space:nowrap">&#x2705; 신선완료</span>'
+          :hasMiss
+            ?'<span style="background:#c62828;color:#fff;border-radius:5px;font-size:10px;padding:2px 7px;font-weight:700;white-space:nowrap">&#x26A0; PDD MISS '+pdd+'&#xAC74;</span>'
+            :'<span style="color:#f57c00;font-size:11px;font-weight:700;white-space:nowrap">&#x23F3; 진행중</span>';
+
+        // 잔여수량 배지 (완료 시 미표시)
+        var undBadge=(!isComplete&&und>0)
+          ?'<span style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;padding:2px 8px;font-weight:700;white-space:nowrap;margin-right:6px">&#xB0A8;&#xC740; '+und+'&#xAC74;</span>'
+          :'';
+
+        var borderColor=hasMiss?'#ef9a9a':isComplete?'#c8e6c9':'#ffe082';
+        var bgColor=hasMiss?'#ffebee':isComplete?'#ffffff':'#fffde7';
+
+        // 상세 테이블
+        var dtbl='<table style="width:100%;border-collapse:collapse;font-size:11px">'+
+          '<thead><tr style="background:#f5f5f5;color:#666;font-size:10px">'+
+            '<th style="padding:5px 6px;text-align:left">라우트</th>'+
+            '<th style="padding:5px 4px;text-align:center">수량</th>'+
+            '<th style="padding:5px 4px;text-align:center">완료</th>'+
+            '<th style="padding:5px 4px;text-align:center">남은</th>'+
+            '<th style="padding:5px 4px;text-align:center">PDD</th>'+
+            '<th style="padding:5px 4px;text-align:center">완료율</th>'+
+          '</tr></thead><tbody>';
+        wR.forEach(function(rt){
+          var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0;
+          var r=c>0?Math.round(cp/c*1000)/10:0;
+          var miss=_isPddMiss(rt);
+          var pfx2=[],ps2={};
+          (rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
+          dtbl+='<tr style="border-bottom:1px solid #f0f0f0'+(miss?';background:#fff3e0':'')+'">'  +
+            '<td style="padding:5px 6px;font-weight:700;color:#1a237e;font-size:10px">'+pfx2.join(', ')+'</td>'+
+            '<td style="text-align:center">'+c+'</td>'+
+            '<td style="text-align:center;color:#2e7d32;font-weight:700">'+cp+'</td>'+
+            '<td style="text-align:center;color:'+(u>0?'#c62828':'#aaa')+'">'+u+'</td>'+
+            '<td style="text-align:center;color:'+(miss?'#c62828':'#aaa')+'">'+(p>0?'&#x26A0;'+p:'-')+'</td>'+
+            '<td style="text-align:center;font-weight:700;color:'+(r>=100?'#2e7d32':r>=95?'#f57c00':'#c62828')+'">'+r+'%</td>'+
+          '</tr>';
+        });
+        dtbl+='</tbody></table>';
+
+        var alertBtn=(showAlert&&!isComplete)
+          ?'<button onclick="sendFreshAlert(\''+w.replace(/'/g,"\\'")+'\')" style="margin-top:10px;width:100%;padding:10px;background:#e65100;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">&#x1F4E2; 신선 우선 배송하여, 마감해주세요.</button>'
+          :'';
+
+        return '<div style="background:'+bgColor+';border-radius:10px;margin-bottom:6px;border:1.5px solid '+borderColor+';overflow:hidden">'+
+          '<div onclick="(function(){var d=document.getElementById(\''+detId+'\');d.style.display=d.style.display===\'none\'?\'block\':\'none\';})()" '+
+          'style="display:flex;align-items:center;padding:10px 14px;cursor:pointer;gap:0">'+
+            '<span style="font-weight:800;color:#1a237e;min-width:72px;font-size:13px;flex-shrink:0">'+w+'</span>'+
+            '<span style="font-size:11px;color:#555;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+routeLabel+'</span>'+
+            undBadge+
+            '<span style="font-size:11px;color:#888;margin-right:8px;white-space:nowrap;flex-shrink:0">'+checkHour+'&#xC2DC; &#xCCB4;&#xD06C;</span>'+
+            statusBadge+
+            '<span style="font-size:10px;color:#ccc;margin-left:5px;flex-shrink:0">&#x25BC;</span>'+
+          '</div>'+
+          '<div id="'+detId+'" style="display:none;padding:0 12px 12px 12px">'+
+            dtbl+alertBtn+
+          '</div>'+
         '</div>';
-      });
-      // 완료 기사
-      okWorkers.forEach(function(w){
-        var wR=workerGroups[w];
-        var pfxO=[],psO={};wR.forEach(function(rt){(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!psO[pf]){psO[pf]=1;pfxO.push(pf);}});});
-        html+='<div style="display:flex;align-items:center;padding:10px 14px;background:#fff;border-radius:10px;margin-bottom:6px;border:1px solid #e0e0e0">'+
-          '<span style="font-weight:800;color:#1a237e;min-width:70px;font-size:13px">'+w+'</span>'+
-          '<span style="font-size:11px;color:#555;flex:1">'+pfxO.join(', ')+'</span>'+
-          '<span style="font-size:11px;color:#777;margin-right:8px">'+checkHour+'시 체크</span>'+
-          '<span style="color:#2e7d32;font-size:11px;font-weight:700">&#x2705; 신선완료</span>'+
-        '</div>';
-      });
+      }
+
+      // ── 메인 뷰: 잔여수량 순 목록 ─────────────────────────────────
+      html+='<div style="margin-bottom:10px">';
+      allWorkers.forEach(function(w){html+=_buildRow(w,'mn',false);});
       html+='</div>';
 
-      // 전체 상세 팝업 버튼
+      // ── 잔여 있는 기사 전체 알림 버튼 ────────────────────────────
+      var incompleteW=allWorkers.filter(function(w){return _wUnd(w)>0;});
+      if(incompleteW.length>0){
+        html+='<button onclick="sendFreshAlert(\'all\')" style="width:100%;padding:11px;background:#e65100;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">'+
+          '&#x1F4E2; 전체 알림 &#x2014; 신선 우선 배송하여, 마감해주세요. ('+incompleteW.length+'&#xBA85;)</button>';
+      }
+
+      // ── PDD MISS 전체 공유 알림 토글 (관리자만) ──────────────────
+      if(isAdmin){
+        var fnRes=await sbClient.from('app_settings').select('value').eq('key','fresh_notify_all').limit(1);
+        var notifyAll=false;
+        if(fnRes.data&&fnRes.data.length>0){
+          var nv=fnRes.data[0].value;
+          notifyAll=(typeof nv==='string')?(nv==='true'||nv==='"true"'):!!nv;
+        }
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:'+(notifyAll?'#e8f5e9':'#fff8e1')+';border-radius:10px;margin-bottom:8px;border:1.5px solid '+(notifyAll?'#a5d6a7':'#ffe082')+'">'+
+          '<div>'+
+            '<div style="font-size:12px;font-weight:800;color:#333">&#x1F514; PDD MISS 전체 공유 알림</div>'+
+            '<div style="font-size:10px;color:#888;margin-top:2px">켜면 PDD MISS 발생 시 전체 기사에게 알림</div>'+
+          '</div>'+
+          '<button onclick="toggleFreshNotifyAll('+(!notifyAll)+')" style="background:'+(notifyAll?'#c62828':'#2e7d32')+';color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">'+(notifyAll?'&#x1F514; ON (해제)':'&#x1F515; OFF (켜기)')+'</button>'+
+        '</div>';
+      }
+
+      // ── 전체 현황 보기 버튼 ───────────────────────────────────────
       html+='<button onclick="document.getElementById(\'fr-full-popup\').style.display=\'flex\'" '+
         'style="width:100%;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">'+
-        '&#x1F4CB; 전체 상세 보기 ('+allWorkers.length+'명)</button>';
+        '&#x1F4CB; 전체 현황 보기 ('+allWorkers.length+'&#xBA85;)</button>';
 
-      // 팝업 오버레이
-      var popupCards='';
-      allWorkers.forEach(function(w,i){popupCards+=_buildCard(w,workerGroups[w],i,'p'+i);});
-      html+='<div id="fr-full-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10500;align-items:flex-start;justify-content:center;overflow-y:auto">'+
+      // ── 전체 현황 팝업 (잔여수량 순 + 개별 알림 + 전체 알림) ──────
+      var popRows='';
+      allWorkers.forEach(function(w){popRows+=_buildRow(w,'pp',true);});
+      html+='<div id="fr-full-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:10500;align-items:flex-start;justify-content:center;overflow-y:auto">'+
         '<div style="background:#f5f5f5;width:100%;max-width:480px;min-height:100%;padding:16px">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;position:sticky;top:0;background:#f5f5f5;padding:8px 0;z-index:1">'+
-          '<span style="font-size:15px;font-weight:800;color:#1b5e20">&#x1F33F; 신선 전체 상세 ('+allWorkers.length+'명)</span>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;position:sticky;top:0;background:#f5f5f5;padding:8px 0;z-index:1;border-bottom:1px solid #e0e0e0">'+
+          '<span style="font-size:15px;font-weight:800;color:#1b5e20">&#x1F33F; 신선 전체 현황 ('+allWorkers.length+'&#xBA85;)</span>'+
           '<button onclick="document.getElementById(\'fr-full-popup\').style.display=\'none\'" '+
-          'style="background:#c62828;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer">&#x2715; 닫기</button>'+
+          'style="background:#757575;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer">&#x2715; 닫기</button>'+
         '</div>'+
-        popupCards+
+        (incompleteW.length>0
+          ?'<button onclick="sendFreshAlert(\'all\')" style="width:100%;padding:11px;background:#e65100;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px">&#x1F4E2; 전체 알림 &#x2014; 신선 우선 배송하여, 마감해주세요. ('+incompleteW.length+'&#xBA85;)</button>'
+          :'')+
+        '<div style="font-size:11px;color:#888;margin-bottom:8px">&#x2193; 잔여수량 많은 순 · 탭하면 상세 보기</div>'+
+        popRows+
         '</div></div>';
 
     } else {
@@ -7415,6 +7515,33 @@ async function loadFreshStatus(){
         '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
         '<div class="empty"><div class="ei">&#x274C;</div><p>불러오기 실패<br><span style="font-size:11px;color:#999">'+ex.message+'</span></p></div>';
     }
+  }
+}
+
+// ── 신선 우선 배송 알림 요청 ────────────────────────────────────────
+async function sendFreshAlert(target){
+  var msg='신선 우선 배송하여, 마감해주세요.';
+  var label=(target==='all')?'전체 기사':target;
+  if(!confirm('['+label+']에게 알림을 보내시겠습니까?\n\n"'+msg+'"')){return;}
+  try{
+    var payload=JSON.stringify({target:target,message:msg,requested_at:new Date().toISOString()});
+    var res=await sbClient.from('app_settings').upsert({key:'fresh_alert_request',value:payload},{onConflict:'key'});
+    if(res.error)throw new Error(res.error.message);
+    alert('['+label+'] 알림 요청 완료\nTeams 메시지가 발송됩니다.');
+  }catch(e){
+    alert('알림 요청 실패: '+e.message);
+  }
+}
+
+// ── 전체 공유 알림 토글 ─────────────────────────────────────────────
+async function toggleFreshNotifyAll(val){
+  try{
+    var v=val?'true':'false';
+    var res=await sbClient.from('app_settings').upsert({key:'fresh_notify_all',value:v},{onConflict:'key'});
+    if(res.error)throw new Error(res.error.message);
+    loadFreshStatus();
+  }catch(e){
+    alert('설정 저장 실패: '+e.message+'\n\n(Supabase RLS 권한 확인 필요)');
   }
 }
 
