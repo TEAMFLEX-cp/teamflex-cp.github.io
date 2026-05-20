@@ -7224,15 +7224,17 @@ async function loadFreshStatus(){
     var fsRes=await sbClient.from('app_settings')
       .select('value').eq('key','fresh_snapshot').limit(1);
 
+    var _todayStr=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
     var html=frKwPopupHtml+frTimePopupHtml+'__ADMIN_BAR__'+
       '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
-      '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'+
+      '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">'+
+        '<button onclick="showFreshPddLog()" style="background:#6a1b9a;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x26A0; PDD 기록</button>'+
         '<button onclick="loadFreshStatus()" style="background:#388e3c;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 새로고침</button>'+
       '</div>'+r2Banner;
 
     if(fsRes.error||!fsRes.data||fsRes.data.length===0){
       html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>신선 배송 현황 데이터 없음<br><span style="font-size:11px;color:#999">수량 체크 실행 후 자동으로 업데이트됩니다</span></p></div>';
-      mc.innerHTML=html;
+      mc.innerHTML=html.replace('__ADMIN_BAR__','');
       return;
     }
 
@@ -7242,9 +7244,16 @@ async function loadFreshStatus(){
     var snapAt=(snap.snapshot_at||'').slice(11,16);
     var snapDate=(snap.snapshot_at||'').slice(0,10);
 
+    // ── 00시 기준 초기화: 어제 데이터면 비워서 표시 ───────────────────
+    if(snapDate&&snapDate!==_todayStr){
+      html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>오늘 신선 현황 없음<br><span style="font-size:11px;color:#999">수량 체크 실행 후 자동으로 업데이트됩니다<br>(매일 00시 기준으로 초기화됩니다)</span></p></div>';
+      mc.innerHTML=html.replace('__ADMIN_BAR__','');
+      return;
+    }
+
     if(routes.length===0){
       html+='<div class="card" style="text-align:center;color:#888;padding:24px">배송 현황 없음</div>';
-      mc.innerHTML=html;
+      mc.innerHTML=html.replace('__ADMIN_BAR__','');
       return;
     }
 
@@ -7482,14 +7491,20 @@ async function loadFreshStatus(){
         '</div>';
         html=html.replace('__ADMIN_BAR__',adminBar);
       })();
+      // ── PDD MISS 자동 기록 (관리자 로드 시 오늘자 신규 미스 저장) ──
+      if(missWorkers.length>0) autoLogFreshPddMiss(missWorkers,_todayStr,workerGroups,_wPdd,_wRouteLabel);
       // ── 버튼 상단 배치 (신선현황 아래, 목록 위) ──────────────────────
       if(incompleteW.length>0){
         html+='<button onclick="sendFreshAlert(\'all\')" style="width:100%;padding:11px;background:#e65100;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4E2; 전체 알림 &#x2014; 신선 우선 배송하여, 마감해주세요. ('+incompleteW.length+'&#xBA85;)</button>';
       }
-      html+='<button onclick="document.getElementById(\'fr-full-popup\').style.display=\'flex\'" style="width:100%;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4CB; 전체 현황 보기 ('+allWorkers.length+'&#xBA85;)</button>';
-      // ── 전체 목록 (버튼 아래) ──────────────────────────────────────
+      html+='<button onclick="document.getElementById(\'fr-full-popup\').style.display=\'flex\'" style="width:100%;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4CB; 전체 현황 보기 ('+allWorkers.length+'&#xBA85; 중 완료 '+(allWorkers.length-incompleteW.length)+'&#xBA85;)</button>';
+      // ── 진행 중 목록만 표시 (신선완료 제외, 미배송 내림차순) ────────
       html+='<div style="margin-bottom:10px">';
-      allWorkers.forEach(function(w){html+=_buildRow(w,'mn',false);});
+      if(incompleteW.length>0){
+        incompleteW.forEach(function(w){html+=_buildRow(w,'mn',false);});
+      } else {
+        html+='<div style="padding:16px;background:#e8f5e9;border-radius:10px;text-align:center;color:#2e7d32;font-weight:700;font-size:14px">&#x1F389; 전체 신선완료!</div>';
+      }
       html+='</div>';
       html+=_buildFullPopupHtml();
 
@@ -7523,7 +7538,7 @@ async function loadFreshStatus(){
       var myRoutes=workerGroups[myName];
       if(!myRoutes||myRoutes.length===0){
         html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>내 신선 배송 데이터 없음<br><span style="font-size:11px;color:#999">수량 체크 실행 후 자동 업데이트됩니다</span></p></div>';
-        mc.innerHTML=html;return;
+        mc.innerHTML=html.replace('__ADMIN_BAR__','');return;
       }
       html+=_buildCard(myName,myRoutes,0,'me');
     }
@@ -7554,6 +7569,123 @@ async function sendFreshAlert(target){
   }catch(e){
     alert('알림 요청 실패: '+e.message);
   }
+}
+
+// ── PDD MISS 로그 (app_settings key: fresh_pdd_miss_log) ────────────
+// 로그 포맷: [{id,date,worker,route,miss_count,logged_at}, ...]
+// 자동 저장: 관리자가 신선 현황 로드 시 오늘자 미스 기사 기록
+// 자동 삭제: 60일 이상 경과 항목 자동 제거
+var _pddLogSaved={}; // 세션 내 중복 저장 방지 {date_worker: true}
+
+async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRouteLabel){
+  try{
+    // 기존 로그 로드
+    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+    var log=[];
+    if(res.data&&res.data.length>0){
+      var rv=res.data[0].value;
+      log=(typeof rv==='string')?JSON.parse(rv):rv;
+      if(!Array.isArray(log))log=[];
+    }
+    // 60일 자동 삭제
+    var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
+    var cutStr=cutoff.toISOString().slice(0,10);
+    log=log.filter(function(e){return e.date>=cutStr;});
+    // 새 항목 추가 (오늘+기사 중복 제외)
+    var added=false;
+    missWorkers.forEach(function(w){
+      var key=todayStr+'_'+w;
+      if(_pddLogSaved[key])return;
+      var exists=log.some(function(e){return e.date===todayStr&&e.worker===w;});
+      if(!exists){
+        log.push({id:Date.now()+'_'+w,date:todayStr,worker:w,route:wRouteLabel(w),miss_count:wPdd(w),logged_at:new Date().toISOString()});
+        added=true;
+      }
+      _pddLogSaved[key]=true;
+    });
+    if(added){
+      await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
+    }
+  }catch(e){console.warn('PDD 로그 저장 오류:',e.message);}
+}
+
+async function showFreshPddLog(){
+  try{
+    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+    var log=[];
+    if(res.data&&res.data.length>0){
+      var rv=res.data[0].value;
+      log=(typeof rv==='string')?JSON.parse(rv):rv;
+      if(!Array.isArray(log))log=[];
+    }
+    // 날짜 내림차순 정렬
+    log.sort(function(a,b){return b.date.localeCompare(a.date)||b.logged_at.localeCompare(a.logged_at);});
+    _renderPddLogPopup(log);
+  }catch(e){alert('PDD 기록 불러오기 실패: '+e.message);}
+}
+
+function _renderPddLogPopup(log){
+  var rows='';
+  log.forEach(function(e,i){
+    rows+='<tr style="border-bottom:1px solid #f0f0f0">'+
+      '<td style="padding:6px 8px;text-align:center"><input type="checkbox" data-id="'+e.id+'"></td>'+
+      '<td style="padding:6px 8px;font-size:12px;white-space:nowrap">'+e.date+'</td>'+
+      '<td style="padding:6px 8px;font-size:12px;font-weight:700;color:#1a237e">'+e.worker+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;color:#555">'+e.route+'</td>'+
+      '<td style="padding:6px 8px;text-align:center;font-weight:700;color:#c62828">'+e.miss_count+'&#xAC74;</td>'+
+    '</tr>';
+  });
+  var popup='<div id="fr-pdd-log-popup" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:10600;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto">'+
+    '<div style="background:#f5f5f5;width:100%;max-width:480px;min-height:100%;padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;position:sticky;top:0;background:#f5f5f5;padding:8px 0;z-index:1;border-bottom:1px solid #e0e0e0">'+
+      '<span style="font-size:15px;font-weight:800;color:#4a148c">&#x26A0; PDD MISS 기록 ('+log.length+'건)</span>'+
+      '<button onclick="document.getElementById(\'fr-pdd-log-popup\').style.display=\'none\'" style="background:#757575;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer">&#x2715; 닫기</button>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:12px">'+
+      '<button onclick="deletePddLogSelected()" style="flex:1;padding:9px;background:#e53935;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">&#x2718; 선택 삭제</button>'+
+      '<button onclick="deletePddLogAll()" style="flex:1;padding:9px;background:#b71c1c;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">&#x1F5D1; 전체 삭제</button>'+
+    '</div>'+
+    (log.length===0
+      ?'<div style="text-align:center;padding:32px;color:#888;font-size:13px">PDD MISS 기록 없음</div>'
+      :'<div style="font-size:10px;color:#999;margin-bottom:6px">* 60일 이상 경과 기록은 자동 삭제됩니다</div>'+
+       '<div style="background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)">'+
+       '<table style="width:100%;border-collapse:collapse">'+
+       '<thead><tr style="background:#7b1fa2;color:#fff;font-size:11px">'+
+         '<th style="padding:7px 8px;width:32px"></th>'+
+         '<th style="padding:7px 8px">날짜</th>'+
+         '<th style="padding:7px 8px">기사</th>'+
+         '<th style="padding:7px 8px">라우트</th>'+
+         '<th style="padding:7px 8px">미스</th>'+
+       '</tr></thead><tbody>'+rows+'</tbody></table></div>')+
+    '</div></div>';
+  // 기존 팝업 제거 후 추가
+  var old=document.getElementById('fr-pdd-log-popup');
+  if(old)old.remove();
+  document.body.insertAdjacentHTML('beforeend',popup);
+}
+
+async function deletePddLogSelected(){
+  var cbs=document.querySelectorAll('#fr-pdd-log-popup input[type=checkbox]:checked');
+  if(cbs.length===0){alert('삭제할 항목을 선택하세요.');return;}
+  if(!confirm(cbs.length+'건을 삭제하시겠습니까?'))return;
+  var ids=Array.from(cbs).map(function(c){return c.getAttribute('data-id');});
+  try{
+    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+    var log=[];
+    if(res.data&&res.data.length>0){var rv=res.data[0].value;log=(typeof rv==='string')?JSON.parse(rv):rv;}
+    log=log.filter(function(e){return ids.indexOf(String(e.id))===-1;});
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
+    log.sort(function(a,b){return b.date.localeCompare(a.date)||b.logged_at.localeCompare(a.logged_at);});
+    _renderPddLogPopup(log);
+  }catch(e){alert('삭제 실패: '+e.message);}
+}
+
+async function deletePddLogAll(){
+  if(!confirm('PDD MISS 기록을 전체 삭제하시겠습니까?'))return;
+  try{
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:'[]'},{onConflict:'key'});
+    _renderPddLogPopup([]);
+  }catch(e){alert('삭제 실패: '+e.message);}
 }
 
 // ── 전체 공유 알림 토글 ─────────────────────────────────────────────
