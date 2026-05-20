@@ -7252,7 +7252,7 @@ async function loadFreshStatus(){
 
     var checkHour=snapAt?parseInt(snapAt.slice(0,2)):0;
     var myName=CU?(CU.name||''):'';
-    var isTeamLead=(CU.role==='manager'||CU.role==='team_lead'||CU.role==='팀장'||CU.role==='조장');
+    var isTeamLead=(CU.role==='leader'||CU.role==='sub');  // 실제 role값: leader=팀장, sub=조장
 
     // ── PDD 미스 판정 (조건: scan>0 AND undelivered<pdd_miss) ─────
     function _isPddMiss(rt){
