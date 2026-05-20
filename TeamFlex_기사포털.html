@@ -7224,7 +7224,7 @@ async function loadFreshStatus(){
     var fsRes=await sbClient.from('app_settings')
       .select('value').eq('key','fresh_snapshot').limit(1);
 
-    var html=frKwPopupHtml+frTimePopupHtml+(isAdmin?_featureBar('fresh'):'')+
+    var html=frKwPopupHtml+frTimePopupHtml+
       '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
       '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'+
         '<button onclick="loadFreshStatus()" style="background:#388e3c;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 새로고침</button>'+
@@ -7465,15 +7465,26 @@ async function loadFreshStatus(){
           '<div style="margin-top:16px;font-size:11px;color:#888">화면을 탭하면 닫힙니다</div>'+
           '</div></div>';
       }
-      // ── 버튼 상단 배치 (2회전 물량 아래, 목록 위) ──────────────────
+      // ── 관리자 제어 박스 (활성화 + 알림꺼짐 + PDD알림 토글 한 줄) ──
+      (function(){
+        var active=getFeatureCtrl('fresh','active');
+        var notify_fc=getFeatureCtrl('fresh','notify');
+        html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#fff;border-radius:10px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);border:1px solid #f0f0f0">'+
+          '<span style="font-size:11px;color:#888;font-weight:700">&#x2699;&#xFE0F; 관리자 제어</span>'+
+          '<div style="display:flex;gap:6px">'+
+            '<button id="fc-fresh-active" onclick="saveFeatureCtrl(\'fresh\',\'active\',!getFeatureCtrl(\'fresh\',\'active\'))" style="padding:4px 12px;border-radius:14px;border:none;background:'+(active?'#2e7d32':'#bdbdbd')+';color:#fff;font-size:11px;font-weight:700;cursor:pointer">'+
+              (active?'&#x2705; 활성화':'&#x26D4; 비활성화')+'</button>'+
+            '<button id="fc-fresh-notify" onclick="saveFeatureCtrl(\'fresh\',\'notify\',!getFeatureCtrl(\'fresh\',\'notify\'))" style="padding:4px 12px;border-radius:14px;border:none;background:'+(notify_fc?'#1565c0':'#bdbdbd')+';color:#fff;font-size:11px;font-weight:700;cursor:pointer">'+
+              (notify_fc?'&#x1F514; 알림켜짐':'&#x1F515; 알림꺼짐')+'</button>'+
+            '<button onclick="toggleFreshNotifyAll('+(!notifyAll)+')" style="padding:4px 12px;border-radius:14px;border:none;background:'+(notifyAll?'#c62828':'#ff8f00')+';color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">'+
+              (notifyAll?'&#x2714; PDD알림 ON':'&#x1F515; PDD알림 OFF')+'</button>'+
+          '</div>'+
+        '</div>';
+      })();
+      // ── 버튼 상단 배치 (관리자 제어 박스 아래, 목록 위) ──────────────
       if(incompleteW.length>0){
         html+='<button onclick="sendFreshAlert(\'all\')" style="width:100%;padding:11px;background:#e65100;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4E2; 전체 알림 &#x2014; 신선 우선 배송하여, 마감해주세요. ('+incompleteW.length+'&#xBA85;)</button>';
       }
-      // PDD MISS 전체 공유 알림 토글 (관리자 전용 — 컴팩트 버튼)
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:#f5f5f5;border-radius:8px;margin-bottom:8px;border:1px solid #e0e0e0">'+
-        '<span style="font-size:12px;color:#555;font-weight:600">&#x1F514; PDD MISS 전체 공유 알림</span>'+
-        '<button onclick="toggleFreshNotifyAll('+(!notifyAll)+')" style="background:'+(notifyAll?'#c62828':'#2e7d32')+';color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">'+(notifyAll?'&#x2714; ON (해제)':'&#x1F515; OFF (켜기)')+'</button>'+
-      '</div>';
       html+='<button onclick="document.getElementById(\'fr-full-popup\').style.display=\'flex\'" style="width:100%;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4CB; 전체 현황 보기 ('+allWorkers.length+'&#xBA85;)</button>';
       // ── 전체 목록 (버튼 아래) ──────────────────────────────────────
       html+='<div style="margin-bottom:10px">';
@@ -7520,7 +7531,7 @@ async function loadFreshStatus(){
 
   }catch(ex){
     if(mc&&CUR_TAB==='fr'){
-      mc.innerHTML=frKwPopupHtml+frTimePopupHtml+(isAdmin?_featureBar('fresh'):'')+
+      mc.innerHTML=frKwPopupHtml+frTimePopupHtml+
         '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
         '<div class="empty"><div class="ei">&#x274C;</div><p>불러오기 실패<br><span style="font-size:11px;color:#999">'+ex.message+'</span></p></div>';
     }
