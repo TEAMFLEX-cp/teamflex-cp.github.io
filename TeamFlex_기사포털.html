@@ -7227,4 +7227,10 @@ async function loadFreshStatus(){
     if(mc&&CUR_TAB==='fr'){
       mc.innerHTML=frKwPopupHtml+(isAdmin?_featureBar('fresh'):'')+
         '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
-        '<div class="empty"><div class="ei">&#x274C;</div><p>불러오기 실패<br><span style="font-size:11px;color:#999">
+        '<div class="empty"><div class="ei">&#x274C;</div><p>불러오기 실패<br><span style="font-size:11px;color:#999">'+ex.message+'</span></p></div>';
+    }
+  }
+}
+
+</script>
+</body></html>
