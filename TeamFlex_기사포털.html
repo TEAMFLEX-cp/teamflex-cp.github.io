@@ -7220,9 +7220,9 @@ async function loadFreshStatus(){
         '&#x1F33F; 오늘('+today+') 2회전 예상 데이터 없음 — Teams 채널에서 "2회전 예상" 키워드 입력 시 자동 조회됩니다.</div>';
     }
 
-    // ── 신선 배송 현황 (fresh_snapshots) ────────────────────────────
-    var fsRes=await sbClient.from('fresh_snapshots')
-      .select('*').order('created_at',{ascending:false}).limit(1);
+    // ── 신선 배송 현황 (app_settings.fresh_snapshot) ────────────────
+    var fsRes=await sbClient.from('app_settings')
+      .select('value').eq('key','fresh_snapshot').limit(1);
 
     var html=frKwPopupHtml+frTimePopupHtml+(isAdmin?_featureBar('fresh'):'')+
       '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
@@ -7231,15 +7231,16 @@ async function loadFreshStatus(){
       '</div>'+r2Banner;
 
     if(fsRes.error||!fsRes.data||fsRes.data.length===0){
-      html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>신선 배송 현황 데이터 없음<br><span style="font-size:11px;color:#999">Teams 폴러가 실행 중이면 자동으로 업데이트됩니다</span></p></div>';
+      html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>신선 배송 현황 데이터 없음<br><span style="font-size:11px;color:#999">수량 체크 실행 후 자동으로 업데이트됩니다</span></p></div>';
       mc.innerHTML=html;
       return;
     }
 
-    var snap=fsRes.data[0];
+    var _rawVal=fsRes.data[0].value||{};
+    var snap=(typeof _rawVal==='string')?JSON.parse(_rawVal):_rawVal;
     var routes=snap.routes||[];
-    var snapAt=(snap.snapshot_at||snap.created_at||'').slice(11,16);
-    var snapDate=(snap.snapshot_at||snap.created_at||'').slice(0,10);
+    var snapAt=(snap.snapshot_at||'').slice(11,16);
+    var snapDate=(snap.snapshot_at||'').slice(0,10);
 
     if(routes.length===0){
       html+='<div class="card" style="text-align:center;color:#888;padding:24px">배송 현황 없음</div>';
