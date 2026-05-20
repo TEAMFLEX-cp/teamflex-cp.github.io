@@ -7248,49 +7248,119 @@ async function loadFreshStatus(){
       return;
     }
 
-    var db=getDB();
-    var idMap={};
-    Object.values(db).forEach(function(d){if(d.coupang_id)idMap[String(d.coupang_id)]=d.name;});
+    html+='<div style="font-size:11px;color:#888;margin-bottom:10px">&#x1F4CA; 마지막 업데이트: '+snapDate+' '+snapAt+'</div>';
 
-    html+='<div style="font-size:11px;color:#888;margin-bottom:6px">&#x1F4CA; 현황 기준: '+snapDate+' '+snapAt+'</div>'+
-      '<div class="card" style="padding:0;overflow:hidden">'+
-      '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
-      '<thead><tr style="background:#e8f5e9;font-weight:800;font-size:11px">'+
-        '<th style="padding:8px;text-align:left">라우트</th>'+
-        '<th style="padding:8px 4px;text-align:left">기사</th>'+
-        '<th style="padding:8px 4px;text-align:center">위탁</th>'+
-        '<th style="padding:8px 4px;text-align:center">스캔</th>'+
-        '<th style="padding:8px 4px;text-align:center">완료</th>'+
-        '<th style="padding:8px 4px;text-align:center">미배</th>'+
-        '<th style="padding:8px 4px;text-align:center">PDD</th>'+
-      '</tr></thead><tbody>';
+    // ── 전체 합계 (모든 라우트) ───────────────────────────────────
+    var grandCsg=0,grandCmp=0,grandUnd=0,grandPdd=0;
+    routes.forEach(function(rt){grandCsg+=rt.consignment||0;grandCmp+=rt.completed||0;grandUnd+=rt.undelivered||0;grandPdd+=rt.pdd_miss||0;});
+    var grandRate=grandCsg>0?Math.round(grandCmp/grandCsg*1000)/10:0;
+    var checkHour=snapAt?parseInt(snapAt.slice(0,2)):0;
 
-    routes.forEach(function(rt){
-      var abbr=rt.route||'';
-      var m=abbr.match(/([A-Z]\d+[A-Z]?\d*)$/);if(m)abbr=m[1];
-      var worker=String(rt.worker||'');
-      var wName=idMap[worker]||worker||'미배정';
-      var csg=rt.consignment||0,scn=rt.scan||0,cmp=rt.completed||0,und=rt.undelivered||0,pdd=rt.pdd_miss||0;
-      var rowBg='';
-      var statusCells;
-      if(scn===0&&csg>0){
-        statusCells='<td colspan="3" style="text-align:center;color:#2e7d32;font-weight:700;font-size:11px">&#x2705; 완료</td><td>-</td>';
-      }else{
-        if(pdd>0&&und!==pdd)rowBg='background:#fff3e0';
-        var pddTd=pdd>0
-          ?(und===pdd?'<td style="color:#f57c00;font-size:10px">&#x23F3;'+pdd+'</td>':'<td style="color:#c62828;font-weight:700">&#x26A0;'+pdd+'</td>')
-          :'<td style="color:#ccc">-</td>';
-        statusCells='<td style="text-align:center">'+cmp+'</td><td style="text-align:center;color:#c62828">'+und+'</td>'+pddTd;
+    // ── 기사별 그룹핑 ──────────────────────────────────────────────
+    var myName=CU?(CU.name||''):'';
+
+    var workerGroups={};
+    routes.forEach(function(rt){var w=rt.worker||'미배정';if(!workerGroups[w])workerGroups[w]=[];workerGroups[w].push(rt);});
+
+    // 표시 대상: 관리자=전체, 기사=본인만
+    var displayWorkers=isAdmin?Object.keys(workerGroups):[myName].filter(function(n){return workerGroups[n];});
+
+    if(displayWorkers.length===0){
+      html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>내 신선 배송 데이터 없음<br><span style="font-size:11px;color:#999">수량 체크 실행 후 자동 업데이트됩니다</span></p></div>';
+      mc.innerHTML=html;return;
+    }
+
+    // ── 기사 카드 렌더링 헬퍼 ─────────────────────────────────────
+    function _fStat(v,label,color){
+      return '<div style="flex:1;text-align:center"><div style="font-size:15px;font-weight:900;color:'+color+'">'+v+'</div><div style="font-size:10px;color:#999">'+label+'</div></div>';
+    }
+
+    displayWorkers.forEach(function(wName,wi){
+      var wRoutes=workerGroups[wName]||[];
+      var myCsg=0,myScn=0,myCmp=0,myUnd=0,myPdd=0;
+      wRoutes.forEach(function(rt){myCsg+=rt.consignment||0;myScn+=rt.scan||0;myCmp+=rt.completed||0;myUnd+=rt.undelivered||0;myPdd+=rt.pdd_miss||0;});
+      var myRate=myCsg>0?Math.round(myCmp/myCsg*1000)/10:0;
+
+      // 라우트 prefix 목록
+      var allPfx=[],pfxSeen={};
+      wRoutes.forEach(function(rt){(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!pfxSeen[pf]){pfxSeen[pf]=1;allPfx.push(pf);}});});
+      var routeLabel=allPfx.join(', ')||'라우트 없음';
+
+      var pddBadge=myPdd>0?'<span style="background:#c62828;color:#fff;border-radius:5px;font-size:10px;padding:2px 6px;margin-left:5px;font-weight:700">PDD미스 '+myPdd+'건</span>':'';
+      var did='frd_'+wi+'_'+Date.now();
+
+      html+='<div style="background:#fff;border-radius:14px;border:1.5px solid '+(myPdd>0?'#ef9a9a':'#a5d6a7')+';margin-bottom:12px;overflow:hidden">';
+
+      // 헤더 행
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 0 14px">'+
+        '<span style="font-size:13px;font-weight:800;color:#1b5e20">'+
+          (isAdmin?'<span style="color:#1a237e;margin-right:4px">'+wName+'</span>':'')+checkHour+'시 체크'+pddBadge+
+        '</span>'+
+        '<span style="display:flex;align-items:center;gap:6px">'+
+          '<span style="font-size:10px;color:#888">'+snapAt+'</span>'+
+          '<button onclick="(function(){var d=document.getElementById(\''+did+'\');d.style.display=d.style.display===\'none\'?\'block\':\'none\';})()" '+
+          'style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer">전체 상세</button>'+
+        '</span>'+
+      '</div>';
+
+      // 라우트 요약 (항상 표시)
+      html+='<div style="padding:4px 14px 8px 14px;font-size:11px;color:#555">'+
+        '<span style="background:#e8f5e9;border-radius:4px;padding:2px 7px;font-weight:600;color:#2e7d32">'+routeLabel+'</span>'+
+      '</div>';
+
+      // PDD 미스 배너
+      var pddRts=wRoutes.filter(function(rt){return (rt.pdd_miss||0)>0;});
+      if(pddRts.length>0){
+        var banner=pddRts.map(function(rt){return(rt.route||'').split(/[,\s]+/).filter(Boolean).join(', ');}).join(' / ');
+        html+='<div style="margin:0 14px 8px 14px;background:#ffebee;border-radius:8px;padding:7px 12px;font-size:11px;color:#c62828;font-weight:600">'+
+          '&#x2B06; 미배송: '+banner+'</div>';
       }
-      html+='<tr style="border-bottom:1px solid #f0f0f0;'+rowBg+'">'+
-        '<td style="padding:8px;font-weight:700;color:#1a237e">'+abbr+'</td>'+
-        '<td style="padding:8px 4px;font-size:11px;color:#444">'+wName+'</td>'+
-        '<td style="text-align:center;color:#5c6bc0">'+csg+'</td>'+
-        '<td style="text-align:center;color:#1565c0">'+scn+'</td>'+
-        statusCells+'</tr>';
+
+      // 상태 메시지
+      html+='<div style="padding:0 14px 8px 14px;font-size:12px;font-weight:700;color:'+(myUnd===0&&myPdd===0?'#2e7d32':'#f57c00')+'">'+(myUnd===0&&myPdd===0?'&#x2705; 신선 모두 완료되었습니다.':'&#x26A0;&#xFE0F; 미배송 '+myUnd+'건 / PDD미스 '+myPdd+'건')+'</div>';
+
+      // 상세 테이블 (토글)
+      html+='<div id="'+did+'" style="display:none;margin:0 14px 8px 14px">'+
+        '<table style="width:100%;border-collapse:collapse;font-size:11px">'+
+        '<thead><tr style="background:#f1f8e9;font-size:10px;color:#666">'+
+          '<th style="padding:5px 6px;text-align:left">라우트</th>'+
+          '<th style="padding:5px 4px;text-align:center">수량</th>'+
+          '<th style="padding:5px 4px;text-align:center">완료</th>'+
+          '<th style="padding:5px 4px;text-align:center">남은</th>'+
+          '<th style="padding:5px 4px;text-align:center">PDD</th>'+
+          '<th style="padding:5px 4px;text-align:center">완료율</th>'+
+        '</tr></thead><tbody>';
+      wRoutes.forEach(function(rt){
+        var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0;
+        var r=c>0?Math.round(cp/c*1000)/10:0;
+        var pfx2=[],ps2={};(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
+        html+='<tr style="border-bottom:1px solid #f0f0f0'+(p>0?';background:#fff3e0':'')+'">'  +
+          '<td style="padding:5px 6px;font-weight:700;color:#1a237e;font-size:10px">'+pfx2.join(', ')+'</td>'+
+          '<td style="text-align:center">'+c+'</td>'+
+          '<td style="text-align:center;color:#2e7d32;font-weight:700">'+cp+'</td>'+
+          '<td style="text-align:center;color:'+(u>0?'#c62828':'#aaa')+'">'+u+'</td>'+
+          '<td style="text-align:center;color:'+(p>0?'#c62828':'#aaa')+'">'+(p>0?'&#x26A0;'+p:'-')+'</td>'+
+          '<td style="text-align:center;font-weight:700;color:'+(r>=100?'#2e7d32':r>=95?'#f57c00':'#c62828')+'">'+r+'%</td>'+
+        '</tr>';
+      });
+      html+='</tbody></table></div>';
+
+      // 하단 통계바
+      html+='<div style="display:flex;border-top:1.5px solid #e8f5e9;padding:10px 0 12px 0">'+
+        _fStat(myCsg,'수량','#1b5e20')+
+        _fStat(myScn,'스캔','#333')+
+        _fStat(myCmp,'완료','#2e7d32')+
+        _fStat(myUnd,'남은수량',myUnd>0?'#c62828':'#888')+
+        _fStat(myPdd,'PDD미스',myPdd>0?'#c62828':'#888')+
+        '<div style="flex:1.2;text-align:center">'+
+          '<div style="font-size:15px;font-weight:900;color:'+(grandRate>=100?'#2e7d32':grandRate>=95?'#f57c00':'#c62828')+'">'+grandRate+'%</div>'+
+          '<div style="font-size:10px;color:#999">완료율(전체)</div>'+
+        '</div>'+
+      '</div>';
+
+      html+='</div>'; // end card
     });
 
-    html+='</tbody></table></div>';
     mc.innerHTML=html;
 
   }catch(ex){
