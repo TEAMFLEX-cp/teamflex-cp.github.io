@@ -6335,7 +6335,7 @@ async function mdSendReply(caseId){
   var ta=document.getElementById('md-ta-'+caseId);
   if(!ta)return;
   var txt=(ta.value||'').trim();
-  if(!txt){ta.focus();ta.placeholder='내용을 입력해주세요!';return;}
+  if(!txt){alert('⚠️ 답변 내용을 입력해주세요!\n답변 없이는 전송할 수 없습니다.');ta.focus();return;}
   var {data:cfg}=await sbClient.from('misdelivery_settings').select('reply_mode').eq('id',1).single();
   var mode=(cfg&&cfg.reply_mode)||'approval';
   var btn=ta.nextElementSibling;
@@ -6546,15 +6546,30 @@ async function mdUploadReplyPhotos(caseId){
   var files=(_mdReplyPhotos[caseId]||[]);
   if(!files.length)return[];
   var urls=[];
+  var failCount=0;
   for(var i=0;i<files.length;i++){
     var file=files[i];
-    var ext=(file.name||'jpg').split('.').pop()||'jpg';
+    // 확장자 추출 (MIME 타입 우선, 없으면 파일명, 없으면 jpg)
+    var ext='jpg';
+    if(file.type){ext=file.type.split('/').pop().replace('jpeg','jpg');}
+    else if(file.name&&file.name.includes('.')){ext=file.name.split('.').pop()||'jpg';}
     var path='reply-photos/'+caseId+'/'+Date.now()+'-'+i+'.'+ext;
     try{
-      var {data,error}=await sbClient.storage.from('photos').upload(path,file,{contentType:file.type,upsert:true});
-      if(!error){var {data:ud}=sbClient.storage.from('photos').getPublicUrl(path);if(ud&&ud.publicUrl)urls.push(ud.publicUrl);}
-      else{console.warn('[uploadReplyPhoto]',error);}
-    }catch(ue){console.warn('[uploadReplyPhoto]',ue);}
+      var {data,error}=await sbClient.storage.from('photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:true});
+      if(!error){
+        var {data:ud}=sbClient.storage.from('photos').getPublicUrl(path);
+        if(ud&&ud.publicUrl)urls.push(ud.publicUrl);
+      } else {
+        failCount++;
+        console.error('[uploadReplyPhoto] 업로드 실패:',error);
+      }
+    }catch(ue){
+      failCount++;
+      console.error('[uploadReplyPhoto] 업로드 예외:',ue);
+    }
+  }
+  if(failCount>0){
+    alert('⚠️ 사진 '+failCount+'장 업로드에 실패했습니다.\n관리자에게 문의하거나 Supabase Storage "photos" 버킷 설정을 확인하세요.');
   }
   return urls;
 }
@@ -6708,7 +6723,7 @@ function mdOpenDetail(caseId){
     var apprLabel=hasReply?'✅ 승인 (팀즈답글 게시)':'✅ 승인 (팀즈답글) — 기사 답변 후 활성화';
     adminBtns='<div style="margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+
       '<button '+(hasReply?'onclick="mdApproveLatestReply('+c.id+')"':'')+' style="'+apprStyle+'" '+(hasReply?'':'disabled')+'>'+apprLabel+'</button>'+
-      (isAdmin?
+      ((isAdmin||isLeader)?
         '<div style="display:flex;gap:8px">'+
           '<button onclick="mdMarkNotSent('+c.id+')" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📤 미전송완료</button>'+
           '<button onclick="mdDeleteCase('+c.id+')" style="flex:1;padding:10px;background:#ffebee;color:#c62828;border:1.5px solid #c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑️ 삭제</button>'+
@@ -6878,9 +6893,10 @@ async function mdMarkNotSent(caseId){
   if(!sbClient||!CU)return;
   if(!confirm('이 건을 "미전송완료"로 처리하시겠습니까?\n(Teams 게시 없이 완료 처리됩니다)'))return;
   try{
-    await sbClient.from('misdelivery_cases').update({
-      status:'approved',not_sent:true,resolved_by:CU.name,resolved_at:new Date().toISOString()
+    var res=await sbClient.from('misdelivery_cases').update({
+      status:'approved',resolved_by:CU.name,resolved_at:new Date().toISOString()
     }).eq('id',caseId);
+    if(res.error)throw res.error;
     document.getElementById('md-detail-modal').style.display='none';
     await mdLoadCases();
   }catch(e){console.error('[mdMarkNotSent]',e);alert('처리 실패: '+e.message);}
@@ -7524,13 +7540,13 @@ async function loadFreshStatus(){
       if(incompleteW.length>0){
         html+='<button onclick="sendFreshAlert(\'all\')" style="width:100%;padding:11px;background:#e65100;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4E2; 전체 알림 &#x2014; 신선 우선 배송하여, 마감해주세요. ('+incompleteW.length+'&#xBA85;)</button>';
       }
-      html+='<button onclick="document.getElementById(\'fr-full-popup\').style.display=\'flex\'" style="width:100%;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4CB; 전체 현황 보기 ('+allWorkers.length+'&#xBA85;)</button>';
+      if(CU.role==='leader'){html+='<button onclick="document.getElementById(\'fr-full-popup\').style.display=\'flex\'" style="width:100%;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4CB; 전체 현황 보기 ('+allWorkers.length+'&#xBA85;)</button>';}
       // ── 팀장 본인 카드 (버튼 아래) ──────────────────────────────────
       var tlRoutes=workerGroups[myName];
       if(tlRoutes&&tlRoutes.length>0){
         html+=_buildCard(myName,tlRoutes,0,'tl');
       } else {
-        html+='<div style="padding:12px 14px;background:#f5f5f5;border-radius:10px;margin-bottom:10px;font-size:12px;color:#888">&#x1F33F; 오늘 내 신선 배송 데이터 없음</div>';
+        html+='<div style="padding:16px;background:#f1f8e9;border-radius:12px;margin-bottom:10px;text-align:center;border:1.5px solid #aed581"><div style="font-size:13px;font-weight:700;color:#33691e">🌿 신선 정보가 없습니다</div><div style="font-size:11px;color:#558b2f;margin-top:4px">새로운 정보가 발견될 때까지 대기 상태입니다</div></div>';
       }
       html+=_buildFullPopupHtml();
 
@@ -7538,7 +7554,7 @@ async function loadFreshStatus(){
       // ── 기사 본인 카드만 ───────────────────────────────────────────
       var myRoutes=workerGroups[myName];
       if(!myRoutes||myRoutes.length===0){
-        html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>내 신선 배송 데이터 없음<br><span style="font-size:11px;color:#999">수량 체크 실행 후 자동 업데이트됩니다</span></p></div>';
+        html+='<div style="padding:24px 16px;background:#f1f8e9;border-radius:14px;text-align:center;margin:16px 0;border:1.5px solid #aed581"><div style="font-size:32px;margin-bottom:10px">🌿</div><div style="font-size:15px;font-weight:700;color:#33691e;margin-bottom:6px">신선 정보가 없습니다</div><div style="font-size:12px;color:#558b2f;line-height:1.7">새로운 정보가 발견될 때까지<br>대기 상태입니다</div></div>';
         mc.innerHTML=html;return;
       }
       html+=_buildCard(myName,myRoutes,0,'me');
