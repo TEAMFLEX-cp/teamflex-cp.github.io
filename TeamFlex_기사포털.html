@@ -6168,7 +6168,7 @@ function mdRenderList(cases){
     var todayStr=new Date().toISOString().slice(0,10);
     cases=(cases||[]).filter(function(c){
       return (c.created_at||'').slice(0,10)===todayStr
-          || c.status==='pending' || c.status==='rejected';
+          || c.status==='pending' || c.status==='rejected' || c.status==='replied';
     });
   }
   var cntEl=document.getElementById('md-flt-count');
