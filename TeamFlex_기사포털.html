@@ -6166,7 +6166,10 @@ function mdRenderList(cases){
   var allCount=(cases||[]).length;
   if(_mdDateFilter==='today'){
     var todayStr=new Date().toISOString().slice(0,10);
-    cases=(cases||[]).filter(function(c){return (c.created_at||'').slice(0,10)===todayStr;});
+    cases=(cases||[]).filter(function(c){
+      return (c.created_at||'').slice(0,10)===todayStr
+          || c.status==='pending' || c.status==='rejected';
+    });
   }
   var cntEl=document.getElementById('md-flt-count');
   if(cntEl)cntEl.textContent=_mdDateFilter==='today'?cases.length+'건 (오늘)':allCount+'건 (전체)';
@@ -7224,10 +7227,4 @@ async function loadFreshStatus(){
     if(mc&&CUR_TAB==='fr'){
       mc.innerHTML=frKwPopupHtml+(isAdmin?_featureBar('fresh'):'')+
         '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
-        '<div class="empty"><div class="ei">&#x274C;</div><p>불러오기 실패<br><span style="font-size:11px;color:#999">'+ex.message+'</span></p></div>';
-    }
-  }
-}
-
-</script>
-</body></html>
+        '<div class="empty"><div class="ei">&#x274C;</div><p>불러오기 실패<br><span style="font-size:11px;color:#999">
