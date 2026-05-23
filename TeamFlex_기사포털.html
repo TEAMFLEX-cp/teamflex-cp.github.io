@@ -6404,7 +6404,9 @@ function mdRenderList(cases){
     else active.push(c);
   });
 
-  if(active.length===0&&completed.length===0){
+  // 각종요청 + 오배송 모두 없을 때만 empty
+  var hasRqItems = (isAdmin||isLeader) && _rqCases && _rqCases.length > 0;
+  if(active.length===0&&completed.length===0&&!hasRqItems){
     el.innerHTML='<div class="md-empty"><div class="md-empty-icon">✅</div><div>오배송 없음</div></div>';
     return;
   }
@@ -6412,7 +6414,7 @@ function mdRenderList(cases){
   var html='';
   
   // ── 각종 요청 건 (항상 같이 표시) ────────────────────────────
-  if(isLeader && _rqCases && _rqCases.length > 0){
+  if((isAdmin||isLeader) && _rqCases && _rqCases.length > 0){
     var todayStr2=new Date().toISOString().slice(0,10);
     var todayReqs = _mdDateFilter==='today' 
       ? _rqCases.filter(function(r){return (r.created_at||'').slice(0,10)===todayStr2 || r.status==='pending';})
@@ -8080,7 +8082,7 @@ function rqSimpleForm(type, title, pfx, previewFn){
   var rawKey = pfx+'-raw';
   var raw = window[rawKey]||'';
   var wb = window[pfx+'-wb-str']||'', od = window[pfx+'-od-str']||'';
-  var ok = wb && od;
+  var ok = !!wb; // 주문번호는 선택사항
   var btnClass = ok ? (_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req') : '';
   var btnTxt = _rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
   window[pfx+'-prevFn'] = previewFn;
@@ -8103,17 +8105,26 @@ function rqSimpleForm(type, title, pfx, previewFn){
 function rqParseSimple(pfx){
   var raw = (document.getElementById(pfx+'-paste')||{}).value||'';
   window[pfx+'-raw'] = raw;
-  var wbM = raw.match(/\b(\d{13,14})\b/);
-  var odM = raw.match(/\b(\d{11})\b/);
-  window[pfx+'-wb-str'] = wbM ? wbM[1] : '';
-  window[pfx+'-od-str'] = odM ? odM[1] : '';
+  // ── 스마트 파싱: 레이블 기반 ─────────────────────────────────────
+  var wb = '', od = '';
+  var lines = raw.split(/\r?\n/);
+  for(var _i=0;_i<lines.length;_i++){
+    var _ln=lines[_i].trim(), _nx=(lines[_i+1]||'').trim();
+    if(/운송장/.test(_ln)&&!wb){var _m=(_ln+' '+_nx).match(/(\d{10,14})/);if(_m)wb=_m[1];}
+    if(/주문/.test(_ln)&&!od){var _m2=(_ln+' '+_nx).match(/(\d{10,14})/);if(_m2)od=_m2[1];}
+  }
+  // 레이블 없으면 숫자 순서로
+  if(!wb){var _wm=raw.match(/\b(\d{13,14})\b/);if(_wm)wb=_wm[1];}
+  if(!od){var _all=(raw.match(/\b\d{10,14}\b/g)||[]);for(var _j=0;_j<_all.length;_j++){if(_all[_j]!==wb){od=_all[_j];break;}}}
+  window[pfx+'-wb-str'] = wb;
+  window[pfx+'-od-str'] = od;
   var wbEl = document.getElementById(pfx+'-wb-val');
   var odEl = document.getElementById(pfx+'-od-val');
   if(wbEl){ wbEl.textContent = window[pfx+'-wb-str']||'인식 안됨'; wbEl.style.color = window[pfx+'-wb-str']?'#222':'#e53935'; }
-  if(odEl){ odEl.textContent = window[pfx+'-od-str']||'자동 추출 안됨'; odEl.style.color = window[pfx+'-od-str']?'#222':'#999'; }
-  var ok = !!(window[pfx+'-wb-str'] && window[pfx+'-od-str']);
+  if(odEl){ odEl.textContent = window[pfx+'-od-str']||'자동 추출 안됨 (선택)'; odEl.style.color = window[pfx+'-od-str']?'#222':'#999'; }
+  var ok = !!(window[pfx+'-wb-str']); // 주문번호 선택사항
   var hint = document.getElementById(pfx+'-hint');
-  if(hint){ hint.textContent=ok?'✅ 운송장·주문번호 인식 완료':'운송장번호 13-14자리, 주문번호 11자리가 인식됩니다'; hint.style.background=ok?'#e8f5e9':'#fff8e1'; hint.style.color=ok?'#2e7d32':'#c62828'; }
+  if(hint){ hint.textContent=ok?'✅ 운송장번호 인식됨 (주문번호는 선택)':'운송장번호 10-14자리가 인식됩니다'; hint.style.background=ok?'#e8f5e9':'#fff8e1'; hint.style.color=ok?'#2e7d32':'#c62828'; }
   var fn = window[pfx+'-prevFn'];
   var prev = document.getElementById(pfx+'-preview');
   if(prev&&fn) prev.textContent = fn(window[pfx+'-wb-str']||'(미입력)', window[pfx+'-od-str']||'(미입력)');
@@ -8130,7 +8141,6 @@ async function rqSendSimple(type, pfx){
   var wb = window[pfx+'-wb-str']||'';
   var od = window[pfx+'-od-str']||'';
   if(!wb){alert('운송장번호를 입력해주세요.');return;}
-  if(!od){alert('주문번호를 입력해주세요.');return;}
   var fn = window[pfx+'-prevFn'];
   var text = fn(wb,od);
   await rqSubmit({type:type, text:text, photos:[], okId:pfx+'-ok'});
