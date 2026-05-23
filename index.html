@@ -2187,6 +2187,32 @@ function doLogin(){
     }
     return;
   }
+  // ── approved인데 로컬 비밀번호 불일치 → Supabase 실제 비밀번호 확인 (시크릿/첫 접속 대응)
+  if(drv.status==='approved'&&sbClient){
+    document.getElementById('lerr').textContent='⏳ 서버 확인 중...';
+    document.getElementById('btnLogin').disabled=true;
+    (async function(){
+      try{
+        var sr=await sbClient.from('drivers').select('password,role,phone').eq('name',name).single();
+        if(sr.data&&sr.data.password&&sr.data.password===pw){
+          // Supabase 비밀번호 일치 → 로컬 갱신 후 로그인
+          var _db=getDB();
+          if(_db[name]){
+            _db[name].password=sr.data.password;
+            if(sr.data.role)_db[name].role=sr.data.role;
+            if(sr.data.phone)_db[name].phone=sr.data.phone;
+            saveDB(_db);
+          }
+          document.getElementById('lerr').textContent='';
+          document.getElementById('btnLogin').disabled=false;
+          doLogin();return;
+        }
+      }catch(e){console.warn('[doLogin SB pw check]',e);}
+      document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
+      document.getElementById('btnLogin').disabled=false;
+    })();
+    return;
+  }
   document.getElementById('lerr').textContent='비밀번호가 올바르지 않습니다.';
 }
 
@@ -8070,7 +8096,7 @@ function rqSimpleForm(type, title, pfx, previewFn){
     '<div class="rq-hint" id="'+pfx+'-hint">'+(ok?'✅ 운송장·주문번호 인식 완료':'운송장번호·주문번호를 붙여넣기로 자동 추출합니다')+'</div>'+
     '<label class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</label>'+
     '<div class="rq-preview-box" id="'+pfx+'-preview">'+rqEsc(previewFn(wb||'(미입력)',od||'(미입력)'))+'</div>'+
-    '<button class="rq-btn '+btnClass+'" id="'+pfx+'-btn" onclick="rqSendSimple(''+type+'',''+pfx+'')" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
+    '<button class="rq-btn '+btnClass+'" id="'+pfx+'-btn" onclick="rqSendSimple('\''+type+'\'','\''+pfx+'\'')" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
   '</div>';
 }
 
@@ -8269,7 +8295,7 @@ function rqBuildCard(r){
   } else if(r.status==='approved'){
     btns = '<div style="margin-top:6px">'+sent+'</div>';
   }
-  return '<div onclick="rqToggleDetail(''+detailId+'')" style="border:0.5px solid #e0e0e0;border-left:3px solid #7c4dff;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;cursor:pointer;user-select:none">'+
+  return '<div onclick="rqToggleDetail('\''+detailId+'\'')" style="border:0.5px solid #e0e0e0;border-left:3px solid #7c4dff;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;cursor:pointer;user-select:none">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
       '<span style="font-size:12px;font-weight:700;color:#4527a0">'+typeLbl+camp+'</span>'+sts+
     '</div>'+
