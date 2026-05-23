@@ -8088,7 +8088,7 @@ function rqSimpleForm(type, title, pfx, previewFn){
     '<div id="'+pfx+'-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
     '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
-    '<textarea class="rq-paste" id="'+pfx+'-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호 자동 추출됩니다" oninput="rqParseSimple(''+pfx+'')">'+rqEsc(raw)+'</textarea>'+
+    '<textarea class="rq-paste" id="'+pfx+'-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호 자동 추출됩니다" oninput="rqParseSimple(\''+ pfx +'\')">'+rqEsc(raw)+'</textarea>'+
     '<div class="rq-checks" id="'+pfx+'-checks">'+
       '<div class="rq-ck-row"><span class="'+(wb?'rq-ok':'rq-no')+'">■</span> <span>운송장번호: </span><span id="'+pfx+'-wb-val" style="font-weight:700;color:'+(wb?'#222':'#e53935')+'">'+rqEsc(wb||'인식 안됨')+'</span></div>'+
       '<div class="rq-ck-row"><span class="'+(od?'rq-ok':'rq-no')+'">■</span> <span>주문번호: </span><span id="'+pfx+'-od-val" style="font-weight:700;color:'+(od?'#222':'#999')+'">'+rqEsc(od||'자동 추출 안됨')+'</span></div>'+
