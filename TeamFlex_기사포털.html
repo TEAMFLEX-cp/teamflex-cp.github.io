@@ -1499,9 +1499,19 @@ function _nextPopup(){
   },{once:true});
 }
 
+function isQuietHour(){
+  var cfg=getCfg();
+  var qs=cfg.quietStart!==undefined?Number(cfg.quietStart):22;
+  var qe=cfg.quietEnd!==undefined?Number(cfg.quietEnd):7;
+  var h=new Date().getHours();
+  if(qs>qe){return h>=qs||h<qe;}
+  return h>=qs&&h<qe;
+}
 function sendNotif(title,body){
+  var cfg=getCfg();
+  if(cfg.notifSound===false)return;
+  if(isQuietHour())return;
   if('Notification' in window && Notification.permission==='granted'){
-    // silent:true — 소리는 Push 알림이 담당, 여기선 무음 배너만 표시
     new Notification(title,{body:body,tag:'tf-'+Date.now(),icon:'/icons/icon-192.png',
       vibrate:[200,100,200],silent:true});
   }
@@ -1666,7 +1676,9 @@ function _unlockAudio(){}  // 호환성 유지
 document.addEventListener('touchstart',_unlockAudio,{passive:true,once:false});
 
 function playTpalm(){
-  // 진동만 (소리는 Notification API / Push가 OS 기본 알림음으로 처리)
+  var cfg=getCfg();
+  if(cfg.notifSound===false)return;
+  if(isQuietHour())return;
   try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
 }
 
@@ -4957,25 +4969,32 @@ async function approveDriverPerm(name){
 function pgAdminSettle(){
   var monthNames=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   // Find all available months across all drivers in SM
-  var avail={};
-  Object.values(SM).forEach(function(sm){Object.keys(sm).forEach(function(k){avail[parseInt(k)]=1;});});
-  var availMonths=Object.keys(avail).map(Number).sort();
-  // Default to latest month if not set
-  if(SETTLE_ADMIN_MONTH<0)SETTLE_ADMIN_MONTH=availMonths[availMonths.length-1]||2;
-  // Sticky month tabs
-  var tabs=availMonths.map(function(m){
-    var isOn=(m===SETTLE_ADMIN_MONTH);
-    return '<button onclick="setAdminMonth('+m+')" style="padding:7px 16px;border:none;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;background:'+(isOn?'#1565c0':'#e8eaf6')+';color:'+(isOn?'#fff':'#3949ab')+';">'+monthNames[m]+'</button>';
+  var monthToKeys={};
+  Object.values(SM).forEach(function(sm){
+    Object.keys(sm).forEach(function(k){
+      var e=sm[k]; var di=parseInt(k);
+      if(e&&e.header){var mm=e.header.match(/(\d{1,2})월 정산/);if(mm)di=parseInt(mm[1])-1;}
+      if(!monthToKeys[di])monthToKeys[di]=[];
+      if(monthToKeys[di].indexOf(k)<0)monthToKeys[di].push(k);
+    });
+  });
+  var availDisplayMonths=Object.keys(monthToKeys).map(Number).sort(function(a,b){return a-b;});
+  if(SETTLE_ADMIN_MONTH<0){
+    SETTLE_ADMIN_MONTH=availDisplayMonths.length>0?availDisplayMonths[availDisplayMonths.length-1]:3;
+  }
+  var tabs=availDisplayMonths.map(function(di){
+    var isOn=(di===SETTLE_ADMIN_MONTH); var label=monthNames[di]||'?월';
+    return '<button onclick="setAdminMonth('+di+')" style="padding:7px 16px;border:none;border-radius:20px;font-size:13px;font-weight:700;cursor:pointer;background:'+(isOn?'#1565c0':'#e8eaf6')+';color:'+(isOn?'#fff':'#3949ab')+';">'+label+'</button>';
   }).join('');
   var stickyTabs='<div class="sched-sticky-nav" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
     '<span style="font-size:13px;font-weight:700;color:#666;margin-right:4px">&#x1F4C5; 월 선택:</span>'+tabs+'</div>';
-  // Get drivers for selected month
+  var _smKeys=(monthToKeys[SETTLE_ADMIN_MONTH]||[]).map(String);
   var all=[];
   Object.entries(SM).forEach(function(kv){
     var name=kv[0];var smData=kv[1];
-    if(smData[String(SETTLE_ADMIN_MONTH)]){
-      all.push(Object.assign({name:name},smData[String(SETTLE_ADMIN_MONTH)]));
-    }
+    var md=null;
+    for(var _ki=0;_ki<_smKeys.length;_ki++){if(smData[_smKeys[_ki]]){md=smData[_smKeys[_ki]];break;}}
+    if(md){all.push(Object.assign({name:name},md));}
   });
   all=all.filter(function(d){return d&&d.name;});
   all.sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');});
@@ -5734,11 +5753,8 @@ function pgSettings(){
   var curAdminId=cfg.adminId||ROOT_ADMIN.id;
   var curAdminPw=cfg.adminPw||ROOT_ADMIN.pw;
   return '<div class="stit">&#x2699; 시스템 설정</div>'+
-    // ── Supabase 진단 (테스트 전용) ──
-    '<div class="card" style="border:2px solid #1565c0"><div class="ctit" style="color:#1565c0">&#x1F4F6; Supabase 연동 상태 (테스트)</div>'+
-    '<div id="sb-diag-box" style="font-size:13px;color:#555;padding:8px 0;overflow-y:auto;max-height:300px">'+(window._sbDiagResult||'탭하여 확인')+'</div>'+
-    '<button class="btn-ok" style="background:#1565c0" onclick="runSbDiag()">&#x1F504; 지금 동기화 테스트</button>'+
-    '</div>'+
+    // ── Supabase 진단 (테스트 전용 — 삭제됨) ──
+
     // ── 관리자 계정 ──
     '<div class="card"><div class="ctit">&#x1F510; 관리자 계정</div>'+
     '<div style="background:#f0f4ff;border-radius:10px;padding:14px;margin-bottom:14px">'+
@@ -5796,14 +5812,7 @@ function pgSettings(){
     '<div class="card"><div class="ctit">&#x1F4E2; 공지 작성 권한</div>'+
     '<div class="cfg-row"><div class="cfg-label">공지 작성 가능한 역할 (다중 선택)</div>'+
     '<div class="perm-checks">'+annChecks+'</div></div></div>'+
-    // ── Teams 오배송 연동 ──
-    '<div class="card" id="md-settings-card"><div class="ctit">&#x1F4AC; Teams 오배송 연동</div>'+
-    '<div class="cfg-row">'+
-    '<div class="cfg-label">Power Automate 웹훅 URL (Teams 답글 게시용)</div>'+
-    '<div class="fg" style="margin-bottom:8px"><input type="text" id="cfg-pa-url" placeholder="https://prod-xx.westus.logic.azure.com/..." style="width:100%;padding:10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;outline:none" oninput="mdLoadPaUrl()"></div>'+
-    '<button class="btn-ok" onclick="mdSavePaUrl()">URL 저장</button>'+
-    '<div class="errmsg" id="cfg-pa-err" style="margin-top:6px"></div>'+
-    '</div></div>'+
+    // ── Teams 오배송 연동 (PA URL 미사용 — 삭제됨) ──
     // ── 공지 알림 설정 ──
     '<div class="card"><div class="ctit">&#x1F514; 공지 알림 설정</div>'+
     '<div style="background:#f8f9ff;border-radius:10px;padding:12px 14px">'+
@@ -5818,6 +5827,20 @@ function pgSettings(){
         '<div style="font-size:11px;color:#888;margin-top:2px">앱 꺼진 상태에서도 OS 알림으로 전송</div></div>'+
         '<button id="notif-push-btn" onclick="toggleNotifSetting(\'notifPush\')" style="padding:6px 18px;border-radius:20px;border:none;background:'+(on?'#1565c0':'#e0e0e0')+';color:'+(on?'#fff':'#666')+';font-size:13px;font-weight:700;cursor:pointer">'+
           (on?'켜짐':'꺼짐')+'</button></div>';})()+
+    '</div></div>'+
+    // ── 야간 알림 금지 시간 설정 ──
+    '<div class="card"><div class="ctit">&#x1F319; 야간 알림 금지 시간</div>'+
+    '<div style="background:#f3f3f3;border-radius:10px;padding:12px 14px">'+
+      '<div style="font-size:12px;color:#555;margin-bottom:10px">설정한 시간대에는 모든 알림음·진동이 차단됩니다.</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div style="font-size:14px;font-weight:700;color:#333">시작</div>'+
+        '<select id="quiet-start-sel" onchange="saveQuietHours()" style="padding:6px 10px;border:1.5px solid #ccc;border-radius:8px;font-size:14px">'+
+        (function(){var qs=getCfg().quietStart!==undefined?Number(getCfg().quietStart):22;var o='';for(var i=0;i<24;i++){o+='<option value="'+i+'"'+(i===qs?' selected':'')+'>'+String(i).padStart(2,'0')+':00</option>';}return o;})()+'</select>'+
+        '<div style="font-size:14px;font-weight:700;color:#333">종료</div>'+
+        '<select id="quiet-end-sel" onchange="saveQuietHours()" style="padding:6px 10px;border:1.5px solid #ccc;border-radius:8px;font-size:14px">'+
+        (function(){var qe=getCfg().quietEnd!==undefined?Number(getCfg().quietEnd):7;var o='';for(var i=0;i<24;i++){o+='<option value="'+i+'"'+(i===qe?' selected':'')+'>'+String(i).padStart(2,'0')+':00</option>';}return o;})()+'</select>'+
+      '</div>'+
+      '<div id="quiet-status" style="font-size:11px;color:#888;margin-top:8px">'+(isQuietHour()?'🔕 현재 알림 금지 시간 중':'🔔 현재 알림 허용 시간')+'</div>'+
     '</div></div>';
 }
 function toggleAdminPwView(){
@@ -5879,6 +5902,14 @@ function toggleNotifSetting(key){
   var btn=document.getElementById(btnId);
   if(btn){btn.textContent=on?'켜짐':'꺼짐';btn.style.background=on?'#1565c0':'#e0e0e0';btn.style.color=on?'#fff':'#666';}
   showToast((on?'✅':'🔕')+' '+(key==='notifSound'?'알림음':'Push 알림')+' '+(on?'활성화':'비활성화'),true);
+}
+function saveQuietHours(){
+  var qs=parseInt(document.getElementById('quiet-start-sel').value);
+  var qe=parseInt(document.getElementById('quiet-end-sel').value);
+  var cfg=getCfg();cfg.quietStart=qs;cfg.quietEnd=qe;saveCfg(cfg);
+  var st=document.getElementById('quiet-status');
+  if(st)st.textContent=isQuietHour()?'🔕 현재 알림 금지 시간 중':'🔔 현재 알림 허용 시간';
+  showToast('✅ 알림 금지 시간 저장: '+String(qs).padStart(2,'0')+':00 ~ '+String(qe).padStart(2,'0')+':00',true);
 }
 async function mdLoadPaUrl(){
   var el=document.getElementById('cfg-pa-url');if(!el||el.dataset.loaded)return;
@@ -6894,7 +6925,7 @@ async function mdMarkNotSent(caseId){
   if(!confirm('이 건을 "미전송완료"로 처리하시겠습니까?\n(Teams 게시 없이 완료 처리됩니다)'))return;
   try{
     var res=await sbClient.from('misdelivery_cases').update({
-      status:'approved',resolved_by:CU.name,resolved_at:new Date().toISOString()
+      status:'approved'
     }).eq('id',caseId);
     if(res.error)throw res.error;
     document.getElementById('md-detail-modal').style.display='none';
@@ -7115,6 +7146,70 @@ async function addFrTime(){
   showToast('✅ '+t+' 추가됨 — 스케줄러 다음 실행 시 반영',true);
 }
 
+// ── 신선 알림 시간 설정 (Teams 알림 발송 시간) ─────────────────────
+var _frNotifyTimes=[];
+
+async function _loadFrNotifyTimes(){
+  try{
+    if(!sbClient)return;
+    var {data}=await sbClient.from('app_settings').select('value').eq('key','fresh_notify_times').single();
+    if(data&&data.value){var p=JSON.parse(data.value);if(Array.isArray(p))_frNotifyTimes=p;}
+  }catch(e){}
+}
+
+async function _saveFrNotifyTimes(){
+  if(!sbClient)return;
+  await sbClient.from('app_settings').upsert({key:'fresh_notify_times',value:JSON.stringify(_frNotifyTimes)},{onConflict:'key'});
+}
+
+function _renderFrNotifyTimes(){
+  var el=document.getElementById('fr-notify-time-list');if(!el)return;
+  if(!_frNotifyTimes.length){el.innerHTML='<span style="font-size:12px;color:#bbb">설정된 알림 시간 없음</span>';return;}
+  el.innerHTML=_frNotifyTimes.map(function(t,i){
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:#fff3e0;border:1px solid #ffcc02;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700;color:#e65100;margin:2px">'+
+      '&#x1F514; '+t+'<button onclick="deleteFrNotifyTime('+i+')" style="background:none;border:none;color:#e65100;font-size:13px;cursor:pointer;padding:0 2px;line-height:1">&#x2715;</button></span>';
+  }).join('');
+}
+
+async function openFrNotifyPopup(){
+  var el=document.getElementById('fr-notify-popup');
+  if(!el){
+    // 팝업이 mc 교체로 사라진 경우 body에 동적 생성
+    el=document.createElement('div');
+    el.id='fr-notify-popup';
+    el.style.cssText='display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center';
+    el.innerHTML='<div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)<br>앱을 설치한 기사에게만 전달됩니다.</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div>';
+    document.body.appendChild(el);
+  }
+  el.style.display='flex';
+  await _loadFrNotifyTimes();
+  _renderFrNotifyTimes();
+}
+
+function closeFrNotifyPopup(){
+  var el=document.getElementById('fr-notify-popup');if(el)el.style.display='none';
+}
+
+async function addFrNotifyTime(){
+  var inp=document.getElementById('fr-notify-input');if(!inp)return;
+  var t=inp.value.trim();
+  if(!/^\d{1,2}:\d{2}$/.test(t)){showToast('HH:MM 형식으로 입력 (예: 20:00)',false);return;}
+  var parts=t.split(':');
+  t=parts[0].padStart(2,'0')+':'+parts[1];
+  if(_frNotifyTimes.includes(t)){showToast('이미 있는 시간입니다',false);return;}
+  _frNotifyTimes.push(t);_frNotifyTimes.sort();
+  inp.value='';_renderFrNotifyTimes();
+  await _saveFrNotifyTimes();
+  showToast('✅ '+t+' 알림 시간 추가됨',true);
+}
+
+async function deleteFrNotifyTime(idx){
+  var t=_frNotifyTimes[idx];_frNotifyTimes.splice(idx,1);
+  _renderFrNotifyTimes();
+  await _saveFrNotifyTimes();
+  showToast('🗑 '+t+' 알림 시간 삭제됨',true);
+}
+
 async function deleteFrTime(idx){
   var t=_frTimes[idx];_frTimes.splice(idx,1);
   _renderFrTimes();
@@ -7161,7 +7256,7 @@ function pgFresh(){
         '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div>'+
       '</div>';
   }
-  var frKwBtn=isAdmin?'<button onclick="openFrTimePopup()" style="float:right;padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x23F0; 시간 설정</button><button onclick="openFrKwPopup()" style="float:right;padding:6px 14px;background:#388e3c;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px">&#x1F33F; 키워드 설정</button>':'';
+  var frKwBtn=isAdmin?'<button onclick="openFrNotifyPopup()" style="float:right;padding:6px 14px;background:#e65100;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x1F514; 알림 설정</button><button onclick="openFrTimePopup()" style="float:right;padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x23F0; 시간 설정</button><button onclick="openFrKwPopup()" style="float:right;padding:6px 14px;background:#388e3c;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px">&#x1F33F; 키워드 설정</button>':'';
   var frKwPopupHtml=isAdmin?
     '<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center">'+
     '<div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">'+
@@ -7177,8 +7272,9 @@ function pgFresh(){
     '</div>'+
     '</div>'+
     '</div>':'';
-  var frTimePopupHtml=isAdmin?'<div id="fr-time-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#1565c0">&#x23F0; 신선 체크 시간 설정</span><button onclick="closeFrTimePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">qty_check_scheduler.py 가 이 시간에 자동으로 신선 체크를 실행합니다.</div><div id="fr-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-time-input" type="text" placeholder="예: 19:55" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrTime()"><button onclick="addFrTime()" style="padding:8px 14px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
-  return (isAdmin?_featureBar('fresh'):'')+frKwPopupHtml+frTimePopupHtml+
+  var frTimePopupHtml=isAdmin?'<div id="fr-time-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#1565c0">&#x23F0; 신선 체크 시간 설정</span><button onclick="closeFrTimePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 앱 데이터를 새로 갱신합니다. 기사 폰 알림 없이 화면만 업데이트됩니다.</div><div id="fr-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-time-input" type="text" placeholder="예: 19:55" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrTime()"><button onclick="addFrTime()" style="padding:8px 14px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
+  var frNotifyPopupHtml=isAdmin?'<div id="fr-notify-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)<br>앱을 설치한 기사에게만 전달됩니다.</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
+  return (isAdmin?_featureBar('fresh'):'')+frKwPopupHtml+frTimePopupHtml+frNotifyPopupHtml+
     '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
     '<div style="text-align:center;padding:40px;color:#888">&#x23F3; 불러오는 중...</div>';
 }
@@ -7190,12 +7286,13 @@ async function loadFreshStatus(){
   if(!CU)return;
   var isAdmin=(CU.role==='admin');
   if(!getFeatureCtrl('fresh','active')&&!isAdmin)return;
-  var frKwBtn=isAdmin?'<button onclick="openFrTimePopup()" style="float:right;padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x23F0; 시간 설정</button><button onclick="openFrKwPopup()" style="float:right;padding:6px 14px;background:#388e3c;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px">&#x1F33F; 키워드 설정</button>':'';
-  var frTimePopupHtml=isAdmin?'<div id="fr-time-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#1565c0">&#x23F0; 신선 체크 시간 설정</span><button onclick="closeFrTimePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">qty_check_scheduler.py 가 이 시간에 자동으로 신선 체크를 실행합니다.</div><div id="fr-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-time-input" type="text" placeholder="예: 19:55" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrTime()"><button onclick="addFrTime()" style="padding:8px 14px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
+  var frKwBtn=isAdmin?'<button onclick="openFrNotifyPopup()" style="float:right;padding:6px 14px;background:#e65100;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x1F514; 알림 설정</button><button onclick="openFrTimePopup()" style="float:right;padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x23F0; 시간 설정</button><button onclick="openFrKwPopup()" style="float:right;padding:6px 14px;background:#388e3c;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px">&#x1F33F; 키워드 설정</button>':'';
+  var frTimePopupHtml=isAdmin?'<div id="fr-time-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#1565c0">&#x23F0; 신선 체크 시간 설정</span><button onclick="closeFrTimePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 앱 데이터를 새로 갱신합니다. 기사 폰 알림 없이 화면만 업데이트됩니다.</div><div id="fr-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-time-input" type="text" placeholder="예: 19:55" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrTime()"><button onclick="addFrTime()" style="padding:8px 14px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
   var frKwPopupHtml=isAdmin?'<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#2e7d32">&#x1F33F; 2회전 트리거 키워드</span><button onclick="closeFrKwPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">Teams에서 이 키워드 감지 시 2회전 수량을 자동 파싱합니다.</div><div id="kw-fresh-list" style="margin-bottom:10px;min-height:32px"></div><div style="display:flex;gap:8px"><input id="kw-fresh-input" type="text" placeholder="예: 2회전 예상" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')saveFrKeyword()"><button onclick="saveFrKeyword()" style="padding:8px 14px;background:#2e7d32;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
 
   if(!sbClient){
-    mc.innerHTML=frKwPopupHtml+frTimePopupHtml+(isAdmin?_featureBar('fresh'):'')+
+    var frNotifyPopupHtml2=isAdmin?'<div id="fr-notify-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)<br>앱을 설치한 기사에게만 전달됩니다.</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
+    mc.innerHTML=frKwPopupHtml+frTimePopupHtml+frNotifyPopupHtml2+(isAdmin?_featureBar('fresh'):'')+
       '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
       '<div class="empty"><div class="ei">&#x26A0;&#xFE0F;</div><p>서버 연결 없음</p></div>';
     return;
@@ -7210,185 +7307,52 @@ async function loadFreshStatus(){
       .eq('shared_date',today)
       .order('route',{ascending:true});
     var r2Rows=(!r2Res.error&&r2Res.data)?r2Res.data:[];
-
-    // 기사별 그룹핑 (driver_id 기준)
     var r2ByDriver={};
-    r2Rows.forEach(function(r){
-      var did=r.driver_id||r.driver_name||'?';
-      if(!r2ByDriver[did])r2ByDriver[did]={driver_name:r.driver_name||did,rows:[]};
-      r2ByDriver[did].rows.push(r);
-    });
+    r2Rows.forEach(function(r){var did=r.driver_id||r.driver_name||'?';if(!r2ByDriver[did])r2ByDriver[did]={driver_name:r.driver_name||did,rows:[]};r2ByDriver[did].rows.push(r);});
     var r2DriverIds=Object.keys(r2ByDriver);
-
-    // 최신 shared_at — 오전/오후 HH:MM 형식
     var r2At='';
-    if(r2Rows.length>0){
-      var _rSorted=r2Rows.slice().sort(function(a,b){return (b.shared_at||'').localeCompare(a.shared_at||'');});
-      var _rD=new Date(_rSorted[0].shared_at||'');
-      if(!isNaN(_rD)){var _rH=_rD.getHours(),_rM=_rD.getMinutes();r2At=(_rH<12?'오전 ':'오후 ')+(_rH%12||12)+':'+String(_rM).padStart(2,'0');}
-    }
-
-    // admin / leader / sub 모두 전체 보기 가능
+    if(r2Rows.length>0){var _rs=r2Rows.slice().sort(function(a,b){return (b.shared_at||'').localeCompare(a.shared_at||'');});var _rd=new Date(_rs[0].shared_at||'');if(!isNaN(_rd)){var _rh=_rd.getHours(),_rm=_rd.getMinutes();r2At=(_rh<12?'오전 ':'오후 ')+(_rh%12||12)+':'+String(_rm).padStart(2,'0');}}
     var _canSeeR2All=(isAdmin||CU.role==='leader'||CU.role==='sub');
-
-    // 팝업용 기사 역할 조회
     var r2DriversRoleMap={};
-    if(_canSeeR2All&&r2DriverIds.length>0){
-      try{
-        var _dNames=r2DriverIds.map(function(k){return r2ByDriver[k].driver_name;}).filter(Boolean);
-        var _drRes=await sbClient.from('drivers').select('name,role').in('name',_dNames);
-        if(!_drRes.error&&_drRes.data){_drRes.data.forEach(function(d){r2DriversRoleMap[d.name]=d.role||'driver';});}
-      }catch(e){}
-    }
-
-    // 내비게이션 총합 업데이트
+    if(_canSeeR2All&&r2DriverIds.length>0){try{var _dn=r2DriverIds.map(function(k){return r2ByDriver[k].driver_name;}).filter(Boolean);var _dr=await sbClient.from('drivers').select('name,role').in('name',_dn);if(!_dr.error&&_dr.data){_dr.data.forEach(function(d){r2DriversRoleMap[d.name]=d.role||'driver';});}}catch(e){}}
     _freshNavTotal=r2Rows.reduce(function(s,r){return s+(r.qty||0);},0);
     updateNavDots();
-
-    // 내 r2 데이터 (driver_id 우선, 없으면 이름 매칭)
     var _myR2Key=CU&&CU.driver_id?CU.driver_id:null;
     if(!_myR2Key&&CU&&CU.name){_myR2Key=Object.keys(r2ByDriver).find(function(k){return r2ByDriver[k].driver_name===CU.name;})||null;}
     var myR2Rows=_myR2Key&&r2ByDriver[_myR2Key]?r2ByDriver[_myR2Key].rows:[];
-
-    // ── 카드 빌더 (본인 2회전 예상) ─────────────────────────────
-    function _buildR2Card(driverRows){
-      var tf=driverRows.reduce(function(s,r){return s+(r.fresh_qty||0);},0);
-      var ts=driverRows.reduce(function(s,r){return s+(r.samedaydel_qty||0);},0);
-      var tq=driverRows.reduce(function(s,r){return s+(r.qty||0);},0);
-      var trs=driverRows.map(function(r){
-        return '<tr>'+
-          '<td style="padding:9px 14px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0">'+(r.route||'-')+'</td>'+
-          '<td style="padding:9px 10px;font-size:13px;text-align:center;color:#2e7d32;border-bottom:1px solid #f0f0f0">'+(r.fresh_qty||0)+'</td>'+
-          '<td style="padding:9px 10px;font-size:13px;text-align:center;color:#1565c0;border-bottom:1px solid #f0f0f0">'+(r.samedaydel_qty||0)+'</td>'+
-          '<td style="padding:9px 10px;font-size:13px;text-align:center;font-weight:700;color:#333;border-bottom:1px solid #f0f0f0">'+(r.qty||0)+'</td>'+
-        '</tr>';
-      }).join('');
-      var sumRow=(driverRows.length>1)?
-        '<tr style="background:#f5f5f5">'+
-          '<td style="padding:9px 14px;font-size:12px;color:#aaa;font-weight:700">합계</td>'+
-          '<td style="padding:9px 10px;font-size:13px;text-align:center;font-weight:700;color:#2e7d32">'+tf+'</td>'+
-          '<td style="padding:9px 10px;font-size:13px;text-align:center;font-weight:700;color:#1565c0">'+ts+'</td>'+
-          '<td style="padding:9px 10px;font-size:13px;text-align:center;font-weight:700;color:#333">'+tq+'</td>'+
-        '</tr>':'';
-      var allBtn=_canSeeR2All?
-        '<button onclick="document.getElementById(\'r2-full-popup\').style.display=\'flex\'" '+
-        'style="background:#1b5e20;color:#fff;border:none;border-radius:8px;padding:5px 10px;'+
-        'font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:3px">'+
-        '&#x1F4CB; 전체 수량 ('+r2DriverIds.length+'명)</button>':'';
-      return '<div style="background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid #c8e6c9;margin-bottom:12px">'+
-        '<div style="padding:12px 14px;background:linear-gradient(90deg,#f1f8e9,#e8f5e9);display:flex;align-items:flex-start;justify-content:space-between">'+
-          '<div>'+
-            '<div style="font-size:14px;font-weight:800;color:#2e7d32">&#x1F33F; 내 2회전 예상</div>'+
-            '<div style="font-size:11px;color:#888;margin-top:3px">'+r2At+' 공유</div>'+
-          '</div>'+allBtn+
-        '</div>'+
-        '<table style="width:100%;border-collapse:collapse">'+
-          '<thead><tr style="background:#fafafa">'+
-            '<th style="padding:7px 14px;font-size:11px;color:#aaa;text-align:left;font-weight:600;border-bottom:1px solid #f0f0f0">라우트</th>'+
-            '<th style="padding:7px 10px;font-size:11px;color:#2e7d32;text-align:center;font-weight:600;border-bottom:1px solid #f0f0f0">신선</th>'+
-            '<th style="padding:7px 10px;font-size:11px;color:#1565c0;text-align:center;font-weight:600;border-bottom:1px solid #f0f0f0">당배</th>'+
-            '<th style="padding:7px 10px;font-size:11px;color:#333;text-align:center;font-weight:600;border-bottom:1px solid #f0f0f0">총합</th>'+
-          '</tr></thead>'+
-          '<tbody>'+trs+sumRow+'</tbody>'+
-        '</table>'+
-      '</div>';
+    function _buildR2Card(dr){
+      var tf=dr.reduce(function(s,r){return s+(r.fresh_qty||0);},0),ts=dr.reduce(function(s,r){return s+(r.samedaydel_qty||0);},0),tq=dr.reduce(function(s,r){return s+(r.qty||0);},0);
+      var trs=dr.map(function(r){return '<tr><td style="padding:9px 14px;font-size:13px;color:#333;border-bottom:1px solid #f0f0f0">'+(r.route||'-')+'</td><td style="padding:9px 10px;font-size:13px;text-align:center;color:#2e7d32;border-bottom:1px solid #f0f0f0">'+(r.fresh_qty||0)+'</td><td style="padding:9px 10px;font-size:13px;text-align:center;color:#1565c0;border-bottom:1px solid #f0f0f0">'+(r.samedaydel_qty||0)+'</td><td style="padding:9px 10px;font-size:13px;text-align:center;font-weight:700;color:#333;border-bottom:1px solid #f0f0f0">'+(r.qty||0)+'</td></tr>';}).join('');
+      var sum=(dr.length>1)?'<tr style="background:#f5f5f5"><td style="padding:9px 14px;font-size:12px;color:#aaa;font-weight:700">합계</td><td style="padding:9px 10px;text-align:center;font-weight:700;color:#2e7d32">'+tf+'</td><td style="padding:9px 10px;text-align:center;font-weight:700;color:#1565c0">'+ts+'</td><td style="padding:9px 10px;text-align:center;font-weight:700;color:#333">'+tq+'</td></tr>':'';
+      var btn=_canSeeR2All?'<button onclick="document.getElementById(\'r2-full-popup\').style.display=\'flex\'" style="background:#1b5e20;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer">&#x1F4CB; 전체 수량 ('+r2DriverIds.length+'명)</button>':'';
+      return '<div style="background:#fff;border-radius:14px;overflow:hidden;border:1.5px solid #c8e6c9;margin-bottom:12px"><div style="padding:12px 14px;background:linear-gradient(90deg,#f1f8e9,#e8f5e9);display:flex;align-items:flex-start;justify-content:space-between"><div><div style="font-size:14px;font-weight:800;color:#2e7d32">&#x1F33F; 내 2회전 예상</div><div style="font-size:11px;color:#888;margin-top:3px">'+r2At+' 공유 &nbsp;&#x1F4C5; 20:00 마감</div></div>'+btn+'</div><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#fafafa"><th style="padding:7px 14px;font-size:11px;color:#aaa;text-align:left">라우트</th><th style="padding:7px 10px;font-size:11px;color:#2e7d32;text-align:center">신선</th><th style="padding:7px 10px;font-size:11px;color:#1565c0;text-align:center">당배</th><th style="padding:7px 10px;font-size:11px;color:#333;text-align:center">총합</th></tr></thead><tbody>'+trs+sum+'</tbody></table></div>';
     }
-
-    // ── 전체 수량 팝업 빌더 (역할별 섹션) ───────────────────────
     function _buildR2AllPopupHtml(){
       var rg={'leader':[],'sub':[],'driver':[]};
-      r2DriverIds.forEach(function(did){
-        var rl=r2DriversRoleMap[r2ByDriver[did].driver_name]||'driver';
-        (rg[rl]=rg[rl]||[]).push(did);
-      });
+      r2DriverIds.forEach(function(did){var rl=r2DriversRoleMap[r2ByDriver[did].driver_name]||'driver';(rg[rl]=rg[rl]||[]).push(did);});
       var rl2={'leader':'팀장','sub':'조장','driver':'기사'};
-      var allRows='';var ri=0;
+      var rows='';var ri=0;
       ['leader','sub','driver'].forEach(function(role){
         var ids=rg[role];if(!ids||!ids.length)return;
-        allRows+='<tr><td colspan="5" style="padding:5px 10px;background:#f0f4f0;font-size:11px;font-weight:700;color:#888;border-top:2px solid #e8f5e9">— '+rl2[role]+' —</td></tr>';
+        rows+='<tr><td colspan="5" style="padding:5px 10px;background:#f0f4f0;font-size:11px;font-weight:700;color:#888;border-top:2px solid #e8f5e9">— '+rl2[role]+' —</td></tr>';
         ids.forEach(function(did){
-          var dInfo=r2ByDriver[did];
-          var sf=dInfo.rows.reduce(function(s,r){return s+(r.fresh_qty||0);},0);
-          var ss=dInfo.rows.reduce(function(s,r){return s+(r.samedaydel_qty||0);},0);
-          var sq=dInfo.rows.reduce(function(s,r){return s+(r.qty||0);},0);
-          dInfo.rows.forEach(function(r,i){
-            var bg=(ri++%2===0)?'#fff':'#f9fbe7';
-            allRows+='<tr style="background:'+bg+'">'+
-              '<td style="padding:7px 10px;font-size:12px;font-weight:700;color:#1b5e20">'+(i===0?dInfo.driver_name:'↳')+'</td>'+
-              '<td style="padding:7px 8px;font-size:12px;text-align:center;color:#555">'+(r.route||'-')+'</td>'+
-              '<td style="padding:7px 8px;font-size:12px;text-align:center;color:#2e7d32">'+(r.fresh_qty||0)+'</td>'+
-              '<td style="padding:7px 8px;font-size:12px;text-align:center;color:#1565c0">'+(r.samedaydel_qty||0)+'</td>'+
-              '<td style="padding:7px 8px;font-size:12px;text-align:center;font-weight:700;color:#333">'+(r.qty||0)+'</td>'+
-            '</tr>';
-          });
-          if(dInfo.rows.length>1){
-            allRows+='<tr style="background:#e8f5e9">'+
-              '<td style="padding:5px 10px;font-size:11px;color:#aaa;font-style:italic">합계</td>'+
-              '<td style="padding:5px 8px;font-size:11px;text-align:center;color:#ccc">-</td>'+
-              '<td style="padding:5px 8px;font-size:12px;text-align:center;font-weight:700;color:#2e7d32">'+sf+'</td>'+
-              '<td style="padding:5px 8px;font-size:12px;text-align:center;font-weight:700;color:#1565c0">'+ss+'</td>'+
-              '<td style="padding:5px 8px;font-size:12px;text-align:center;font-weight:700;color:#333">'+sq+'</td>'+
-            '</tr>';
-          }
+          var di=r2ByDriver[did];
+          var sf=di.rows.reduce(function(s,r){return s+(r.fresh_qty||0);},0),ss=di.rows.reduce(function(s,r){return s+(r.samedaydel_qty||0);},0),sq=di.rows.reduce(function(s,r){return s+(r.qty||0);},0);
+          di.rows.forEach(function(r,i){var bg=(ri++%2===0)?'#fff':'#f9fbe7';rows+='<tr style="background:'+bg+'"><td style="padding:7px 10px;font-size:12px;font-weight:700;color:#1b5e20">'+(i===0?di.driver_name:'↳')+'</td><td style="padding:7px 8px;font-size:12px;text-align:center;color:#555">'+(r.route||'-')+'</td><td style="padding:7px 8px;font-size:12px;text-align:center;color:#2e7d32">'+(r.fresh_qty||0)+'</td><td style="padding:7px 8px;font-size:12px;text-align:center;color:#1565c0">'+(r.samedaydel_qty||0)+'</td><td style="padding:7px 8px;font-size:12px;text-align:center;font-weight:700;color:#333">'+(r.qty||0)+'</td></tr>';});
+          if(di.rows.length>1){rows+='<tr style="background:#00c853"><td style="padding:7px 10px;font-size:13px;color:#fff;font-weight:800">합계</td><td style="padding:7px 8px;text-align:center;color:#e8f5e9;font-size:12px">-</td><td style="padding:7px 8px;font-size:13px;text-align:center;font-weight:800;color:#fff">'+sf+'</td><td style="padding:7px 8px;font-size:13px;text-align:center;font-weight:800;color:#e3f2fd">'+ss+'</td><td style="padding:7px 8px;font-size:13px;text-align:center;font-weight:800;color:#fff">'+sq+'</td></tr>';}
         });
       });
-      var gf=r2Rows.reduce(function(s,r){return s+(r.fresh_qty||0);},0);
-      var gs=r2Rows.reduce(function(s,r){return s+(r.samedaydel_qty||0);},0);
-      var gq=r2Rows.reduce(function(s,r){return s+(r.qty||0);},0);
-      return '<div id="r2-full-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;'+
-        'background:rgba(0,0,0,0.6);z-index:30000;align-items:center;justify-content:center" '+
-        'onclick="if(event.target===this)this.style.display=\'none\'">'+
-        '<div style="background:#fff;border-radius:18px;width:92%;max-width:480px;max-height:82vh;'+
-        'display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.35)">'+
-          '<div style="padding:14px 16px;background:linear-gradient(90deg,#f1f8e9,#e8f5e9);flex-shrink:0;'+
-          'display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #c8e6c9">'+
-            '<div>'+
-              '<div style="font-size:15px;font-weight:900;color:#1b5e20">&#x1F4CB; 2회전 전체 수량</div>'+
-              '<div style="font-size:11px;color:#888;margin-top:2px">'+r2At+' 공유</div>'+
-            '</div>'+
-            '<button onclick="document.getElementById(\'r2-full-popup\').style.display=\'none\'" '+
-            'style="background:rgba(0,0,0,0.07);border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;color:#555">닫기 ✕</button>'+
-          '</div>'+
-          '<div style="overflow-y:auto;flex:1">'+
-          '<table style="width:100%;border-collapse:collapse">'+
-            '<thead><tr style="background:#fafafa">'+
-              '<th style="padding:8px 10px;font-size:11px;color:#aaa;text-align:left;font-weight:600;border-bottom:2px solid #e8f5e9">기사</th>'+
-              '<th style="padding:8px 8px;font-size:11px;color:#aaa;text-align:center;font-weight:600;border-bottom:2px solid #e8f5e9">라우트</th>'+
-              '<th style="padding:8px 8px;font-size:11px;color:#2e7d32;text-align:center;font-weight:600;border-bottom:2px solid #e8f5e9">신선</th>'+
-              '<th style="padding:8px 8px;font-size:11px;color:#1565c0;text-align:center;font-weight:600;border-bottom:2px solid #e8f5e9">당배</th>'+
-              '<th style="padding:8px 8px;font-size:11px;color:#333;text-align:center;font-weight:600;border-bottom:2px solid #e8f5e9">총합</th>'+
-            '</tr></thead>'+
-            '<tbody>'+allRows+
-              '<tr style="background:#e8f5e9;border-top:2px solid #a5d6a7">'+
-                '<td colspan="2" style="padding:8px 10px;font-size:12px;font-weight:700;color:#1b5e20">전체 합계</td>'+
-                '<td style="padding:8px 8px;font-size:13px;text-align:center;font-weight:900;color:#2e7d32">'+gf+'</td>'+
-                '<td style="padding:8px 8px;font-size:13px;text-align:center;font-weight:900;color:#1565c0">'+gs+'</td>'+
-                '<td style="padding:8px 8px;font-size:13px;text-align:center;font-weight:900;color:#333">'+gq+'</td>'+
-              '</tr>'+
-            '</tbody>'+
-          '</table>'+
-          '</div>'+
-        '</div></div>';
+      var gf=r2Rows.reduce(function(s,r){return s+(r.fresh_qty||0);},0),gs=r2Rows.reduce(function(s,r){return s+(r.samedaydel_qty||0);},0),gq=r2Rows.reduce(function(s,r){return s+(r.qty||0);},0);
+      return '<div id="r2-full-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:30000;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display=\'none\'"><div style="background:#fff;border-radius:18px;width:92%;max-width:480px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.35)"><div style="padding:14px 16px;background:linear-gradient(90deg,#f1f8e9,#e8f5e9);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #c8e6c9"><div><div style="font-size:15px;font-weight:900;color:#1b5e20">&#x1F4CB; 2회전 전체 수량</div><div style="font-size:11px;color:#888;margin-top:2px">'+r2At+' 공유</div></div><button onclick="document.getElementById(\'r2-full-popup\').style.display=\'none\'" style="background:rgba(0,0,0,0.07);border:none;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;color:#555">닫기</button></div><div style="overflow-y:auto;flex:1"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#fafafa"><th style="padding:8px 10px;font-size:11px;color:#aaa;text-align:left">기사</th><th style="padding:8px 8px;font-size:11px;color:#aaa;text-align:center">라우트</th><th style="padding:8px 8px;font-size:11px;color:#2e7d32;text-align:center">신선</th><th style="padding:8px 8px;font-size:11px;color:#1565c0;text-align:center">당배</th><th style="padding:8px 8px;font-size:11px;color:#333;text-align:center">총합</th></tr></thead><tbody>'+rows+'<tr style="background:#c8e6c9;border-top:2px solid #a5d6a7"><td colspan="2" style="padding:8px 10px;font-size:12px;font-weight:700;color:#1b5e20">전체 합계</td><td style="padding:8px 8px;font-size:14px;text-align:center;font-weight:900;color:#2e7d32">'+gf+'</td><td style="padding:8px 8px;font-size:14px;text-align:center;font-weight:900;color:#1565c0">'+gs+'</td><td style="padding:8px 8px;font-size:14px;text-align:center;font-weight:900;color:#333">'+gq+'</td></tr></tbody></table></div></div></div>';
     }
-
     var r2Banner='';
     if(r2Rows.length>0){
-      if(myR2Rows.length>0){
-        r2Banner=_buildR2Card(myR2Rows);
-      } else if(_canSeeR2All){
-        // 전체 보기 권한 있지만 본인 데이터 없음 → 버튼만 표시
-        r2Banner='<button onclick="document.getElementById(\'r2-full-popup\').style.display=\'flex\'" '+
-          'style="width:100%;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:12px;'+
-          'font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px">'+
-          '&#x1F4CB; 전체 수량 ('+r2DriverIds.length+'명) 보기</button>';
-      } else {
-        r2Banner='<div style="margin:0 0 12px 0;padding:10px 14px;background:#f9fbe7;border-radius:12px;border:1px solid #dce775;font-size:12px;color:#827717">'+
-          '&#x1F33F; 내 2회전 예상 데이터 없음</div>';
-      }
+      if(myR2Rows.length>0){r2Banner=_buildR2Card(myR2Rows);}
+      else if(_canSeeR2All){r2Banner='<button onclick="document.getElementById(\'r2-full-popup\').style.display=\'flex\'" style="width:100%;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px">&#x1F4CB; 전체 수량 ('+r2DriverIds.length+'명) 보기</button>';}
+      else{r2Banner='<div style="margin:0 0 12px 0;padding:10px 14px;background:#f9fbe7;border-radius:12px;border:1px solid #dce775;font-size:12px;color:#827717">&#x1F33F; 내 2회전 예상 데이터 없음</div>';}
       if(_canSeeR2All) r2Banner+=_buildR2AllPopupHtml();
     } else {
-      r2Banner='<div style="margin:0 0 12px 0;padding:10px 14px;background:#f9fbe7;border-radius:12px;border:1px solid #dce775;font-size:12px;color:#827717">'+
-        '&#x1F33F; 오늘('+today+') 2회전 예상 데이터 없음 — Teams 채널에서 "2회전 예상" 키워드 입력 시 자동 조회됩니다.</div>';
+      r2Banner='<div style="margin:0 0 12px 0;padding:10px 14px;background:#f9fbe7;border-radius:12px;border:1px solid #dce775;font-size:12px;color:#827717">&#x1F33F; 오늘('+today+') 2회전 예상 데이터 없음.</div>';
     }
 
     // ── 신선 배송 현황 (app_settings.fresh_snapshot) ────────────────
@@ -7396,7 +7360,8 @@ async function loadFreshStatus(){
       .select('value').eq('key','fresh_snapshot').limit(1);
 
     var _canSeePddLog=(isAdmin||CU.role==='leader');
-    var html=frKwPopupHtml+frTimePopupHtml+'__ADMIN_BAR__'+
+    var frNPH=isAdmin?'<div id="fr-notify-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
+    var html=frKwPopupHtml+frTimePopupHtml+frNPH+'__ADMIN_BAR__'+
       '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
       '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">'+
         (_canSeePddLog?'<button onclick="showFreshPddLog()" style="background:#6a1b9a;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x26A0; PDD 기록</button>':'')+
@@ -7435,9 +7400,14 @@ async function loadFreshStatus(){
     var myName=CU?(CU.name||''):'';
     var isTeamLead=(CU.role==='leader'||CU.role==='sub');  // 실제 role값: leader=팀장, sub=조장
 
-    // ── PDD 미스 판정 (조건: scan>0 AND undelivered<pdd_miss) ─────
+    // ── PDD 미스 판정 (20시 이후: 미배송 < pdd_miss) ─────────────
+    var _now=new Date(), _hr=_now.getHours(), _isAfter20=(_hr>=20);
     function _isPddMiss(rt){
-      return (rt.pdd_miss||0)>0 && (rt.scan||0)>0 && (rt.undelivered||0)<(rt.pdd_miss||0);
+      if(_isAfter20){
+        return (rt.pdd_miss||0)>0 && (rt.undelivered||0)>0 && (rt.undelivered||0)<(rt.pdd_miss||0);
+      } else {
+        return (rt.pdd_miss||0)>0 && (rt.scan||0)>0 && (rt.undelivered||0)<(rt.pdd_miss||0);
+      }
     }
 
     // ── 기사별 그룹핑 ──────────────────────────────────────────────
@@ -7451,9 +7421,14 @@ async function loadFreshStatus(){
     function _buildCard(wName,wRoutes,wi,suffix){
       var csg=0,scn=0,cmp=0,und=0,pdd=0;
       wRoutes.forEach(function(rt){csg+=rt.consignment||0;scn+=rt.scan||0;cmp+=rt.completed||0;und+=rt.undelivered||0;pdd+=rt.pdd_miss||0;});
-      // 완료율: (완료+미배송) 기준 — 미배송=반송완료이므로 완료와 동일 처리
-      var rate=(cmp+und)>0?Math.round(cmp/(cmp+und)*1000)/10:0;
+      // 완료율: 완료/(완료+스캔) — 스캔=아직 배달 전 물량, fly.coupang.com 기준
+      var rate=(cmp+scn)>0?Math.round(cmp/(cmp+scn)*1000)/10:0;
       var hasMiss=wRoutes.some(_isPddMiss);
+      // ✅ 신선완료 / 진행중 / PDD MISS 판정 (20시 전/후 동일 기준)
+      var isCompleteCard=false, isPddMissCard=false;
+      if(und===0){isCompleteCard=true;}
+      else if(pdd>0&&und===pdd){isCompleteCard=true;}
+      else if(pdd>0&&und>0&&und<pdd){isPddMissCard=true;}
       var pfxAll=[],ps={};
       wRoutes.forEach(function(rt){(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!ps[pf]){ps[pf]=1;pfxAll.push(pf);}});});
       var routeLabel=pfxAll.join(', ')||'-';
@@ -7477,7 +7452,13 @@ async function loadFreshStatus(){
         var missList=wRoutes.filter(_isPddMiss).map(function(rt){return(rt.route||'').split(/[,\s]+/).filter(Boolean).join(', ');}).join(' / ');
         s+='<div style="margin:0 14px 8px 14px;background:#ffebee;border-radius:8px;padding:7px 12px;font-size:11px;color:#c62828;font-weight:600">&#x2B06; 미배송: '+missList+'</div>';
       }
-      s+='<div style="padding:0 14px 8px 14px;font-size:12px;font-weight:700;color:'+(hasMiss?'#c62828':'#2e7d32')+'">'+(hasMiss?'&#x26A0;&#xFE0F; PDD MISS '+pdd+'건 발생':'&#x2705; 신선 모두 완료되었습니다.')+'</div>';
+      if(isCompleteCard){
+        s+='<div style="margin:4px 14px 8px;padding:7px 12px;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:8px;font-size:12px;font-weight:700;color:#1b5e20;text-align:center">&#x2705; 신선 마감 완료</div>';
+      }else{
+        var _cStat=(isPddMissCard||hasMiss)?'&#x26A0;&#xFE0F; PDD MISS '+pdd+'건 발생':'&#x23F3; 진행 중입니다.';
+        var _cClr=(isPddMissCard||hasMiss)?'#c62828':'#f57c00';
+        s+='<div style="padding:0 14px 8px 14px;font-size:12px;font-weight:700;color:'+_cClr+'">'+ _cStat+'</div>';
+      }
       s+='<div id="'+did+'" style="display:none;margin:0 14px 8px 14px">'+
         '<table style="width:100%;border-collapse:collapse;font-size:11px">'+
         '<thead><tr style="background:#f1f8e9;font-size:10px;color:#666">'+
@@ -7491,7 +7472,7 @@ async function loadFreshStatus(){
         '</tr></thead><tbody>';
       wRoutes.forEach(function(rt){
         var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0,sc=rt.scan||0;
-        var r=(cp+u)>0?Math.round(cp/(cp+u)*1000)/10:0;
+        var r=(cp+sc)>0?Math.round(cp/(cp+sc)*1000)/10:0;  // 완료율: 완료/(완료+스캔)
         var miss=_isPddMiss(rt);
         var pfx2=[],ps2={};(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
         s+='<tr style="border-bottom:1px solid #f0f0f0'+(miss?';background:#fff3e0':'')+'">'  +
@@ -7532,11 +7513,13 @@ async function loadFreshStatus(){
       var ua=_wUnd(a),ub=_wUnd(b);
       if(ua===ub)return 0;if(ua===0)return 1;if(ub===0)return -1;return ub-ua;
     });
-    // 진행중 기사 = 신선완료 조건에 해당하지 않는 기사
-    // (und===0, und===pdd, scn===0 이면 완료)
+    // 진행중 기사 = 신선완료 조건에 해당하지 않는 기사 (20시 전/후 동일 기준)
     var incompleteW=allWorkers.filter(function(w){
-      var u=_wUnd(w),p=_wPdd(w),s=_wScn(w);
-      return !((u===0)||(p>0&&u===p)||(s===0));
+      var u=_wUnd(w),p=_wPdd(w);
+      // 완료 조건: 미배송 없음, 또는 미배송 수 = PDD miss 수 (PDD miss만큼만 남은 것)
+      if(u===0){return false;}
+      if(p>0&&u===p){return false;}
+      return true;
     });
 
     // ── PDD MISS 전체 공유 알림 설정 사전 로드 (관리자 전용 표시용) ──
@@ -7553,16 +7536,16 @@ async function loadFreshStatus(){
       var und=_wUnd(w), csg=_wCsg(w), pdd=_wPdd(w), scn=_wScn(w);
       var cmp=wR.reduce(function(s,rt){return s+(rt.completed||0);},0);
       var hasMiss=wR.some(_isPddMiss);
-      // ✅ 신선완료 조건:
-      //   1) 미배송=0 (전량 배송 완료)
-      //   2) 미배송 == pdd_miss (남은건이 전부 PDD 대상 — 배송 불가 처리)
-      //   3) 스캔=0 (아직 배송 시작 전 — 데이터 없음)
-      var isComplete=(und===0)||(pdd>0&&und===pdd)||(scn===0);
+      // ✅ 신선완료 / 진행중 / PDD MISS 판정 (20시 전/후 동일 기준)
+      var isComplete=false, isPddMissFlag=false;
+      if(und===0){isComplete=true;}
+      else if(pdd>0&&und===pdd){isComplete=true;}
+      else if(pdd>0&&und>0&&und<pdd){isPddMissFlag=true;}
       var routeLabel=_wRouteLabel(w);
       var detId='frdet_'+suffix+'_'+wi2;
       var statusBadge=isComplete
-        ?'<span style="color:#2e7d32;font-size:11px;font-weight:700;white-space:nowrap">&#x2705; 신선완료</span>'
-        :hasMiss
+        ?'<span style="background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9;border-radius:6px;font-size:10px;padding:2px 8px;font-weight:700;white-space:nowrap">&#x2705; 신선 마감 완료</span>'
+        :(isPddMissFlag||hasMiss)
           ?'<span style="background:#c62828;color:#fff;border-radius:5px;font-size:10px;padding:2px 7px;font-weight:700;white-space:nowrap">&#x26A0; PDD MISS '+pdd+'&#xAC74;</span>'
           :'<span style="color:#f57c00;font-size:11px;font-weight:700;white-space:nowrap">&#x23F3; 진행중</span>';
       var undBadge=(!isComplete&&und>0)
@@ -7582,7 +7565,7 @@ async function loadFreshStatus(){
         '</tr></thead><tbody>';
       wR.forEach(function(rt){
         var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0,sc=rt.scan||0;
-        var r=(cp+u)>0?Math.round(cp/(cp+u)*1000)/10:0;
+        var r=(cp+sc)>0?Math.round(cp/(cp+sc)*1000)/10:0;  // 완료율: 완료/(완료+스캔)
         var miss=_isPddMiss(rt);
         var pfx2=[],ps2={};
         (rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
@@ -7680,4 +7663,184 @@ async function loadFreshStatus(){
       html+='</div>';
       html+=_buildFullPopupHtml();
 
-    // ── 팀장: 버튼 �
+    // ── 팀장: 버튼 상단 + 본인 카드 + 전체 현황 팝업 ─────────────────
+    } else if(isTeamLead){
+      if(missWorkers.length>0){
+        html+='<div id="fr-miss-alert" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(198,40,40,0.92);z-index:20000;display:flex;align-items:center;justify-content:center" onclick="this.style.display=\'none\'">'+
+          '<div style="background:#fff;border-radius:20px;padding:28px 24px;width:90%;max-width:380px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.5)">'+
+          '<div style="font-size:36px;margin-bottom:8px">&#x1F6A8;</div>'+
+          '<div style="font-size:18px;font-weight:900;color:#c62828;margin-bottom:10px">PDD MISS 발생!</div>'+
+          missWorkers.map(function(w){return '<div style="font-size:14px;font-weight:700;color:#333;margin:4px 0">'+w+' &#x2014; PDD MISS '+_wPdd(w)+'&#xAC74;</div>';}).join('')+
+          '<div style="margin-top:16px;font-size:11px;color:#888">화면을 탭하면 닫힙니다</div>'+
+          '</div></div>';
+      }
+      // ── 버튼 상단 배치 (2회전 물량 아래, 내 카드 위) ───────────────
+      if(incompleteW.length>0){
+        html+='<button onclick="sendFreshAlert(\'all\')" style="width:100%;padding:11px;background:#e65100;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4E2; 전체 알림 &#x2014; 신선 우선 배송하여, 마감해주세요. ('+incompleteW.length+'&#xBA85;)</button>';
+      }
+      if(CU.role==='leader'){html+='<button onclick="document.getElementById(\'fr-full-popup\').style.display=\'flex\'" style="width:100%;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">&#x1F4CB; 전체 현황 보기 ('+allWorkers.length+'&#xBA85;)</button>';}
+      // ── 팀장 본인 카드 (버튼 아래) ──────────────────────────────────
+      var tlRoutes=workerGroups[myName];
+      if(tlRoutes&&tlRoutes.length>0){
+        html+=_buildCard(myName,tlRoutes,0,'tl');
+      } else {
+        html+='<div style="padding:16px;background:#f1f8e9;border-radius:12px;margin-bottom:10px;text-align:center;border:1.5px solid #aed581"><div style="font-size:13px;font-weight:700;color:#33691e">🌿 신선 정보가 없습니다</div><div style="font-size:11px;color:#558b2f;margin-top:4px">새로운 정보가 발견될 때까지 대기 상태입니다</div></div>';
+      }
+      html+=_buildFullPopupHtml();
+
+    } else {
+      // ── 기사 본인 카드만 ───────────────────────────────────────────
+      var myRoutes=workerGroups[myName];
+      if(!myRoutes||myRoutes.length===0){
+        html+='<div style="padding:24px 16px;background:#f1f8e9;border-radius:14px;text-align:center;margin:16px 0;border:1.5px solid #aed581"><div style="font-size:32px;margin-bottom:10px">🌿</div><div style="font-size:15px;font-weight:700;color:#33691e;margin-bottom:6px">신선 정보가 없습니다</div><div style="font-size:12px;color:#558b2f;line-height:1.7">새로운 정보가 발견될 때까지<br>대기 상태입니다</div></div>';
+        mc.innerHTML=html;return;
+      }
+      html+=_buildCard(myName,myRoutes,0,'me');
+    }
+
+    // 비관리자는 플레이스홀더 제거
+    html=html.replace('__ADMIN_BAR__','');
+    mc.innerHTML=html;
+
+  }catch(ex){
+    if(mc&&CUR_TAB==='fr'){
+      mc.innerHTML=frKwPopupHtml+frTimePopupHtml+(isAdmin?'<div id="fr-notify-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'')+
+        '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
+        '<div class="empty"><div class="ei">&#x274C;</div><p>불러오기 실패<br><span style="font-size:11px;color:#999">'+ex.message+'</span></p></div>';
+    }
+  }
+}
+
+// ── 신선 우선 배송 알림 요청 ────────────────────────────────────────
+async function sendFreshAlert(target){
+  var msg='신선 우선 배송하여, 마감해주세요.';
+  var label=(target==='all')?'전체 기사':target;
+  if(!confirm('['+label+']에게 알림을 보내시겠습니까?\n\n"'+msg+'"')){return;}
+  try{
+    var payload=JSON.stringify({target:target,message:msg,requested_at:new Date().toISOString()});
+    var res=await sbClient.from('app_settings').upsert({key:'fresh_alert_request',value:payload},{onConflict:'key'});
+    if(res.error)throw new Error(res.error.message);
+    alert('['+label+'] 알림 요청 완료\n폰 푸시 알림이 발송됩니다.');
+  }catch(e){
+    alert('알림 요청 실패: '+e.message);
+  }
+}
+
+// ── 전체 공유 알림 토글 ─────────────────────────────────────────────
+async function toggleFreshNotifyAll(val){
+  try{
+    var v=val?'true':'false';
+    var res=await sbClient.from('app_settings').upsert({key:'fresh_notify_all',value:v},{onConflict:'key'});
+    if(res.error)throw new Error(res.error.message);
+    loadFreshStatus();
+  }catch(e){
+    alert('설정 저장 실패: '+e.message+'\n\n(Supabase RLS 권한 확인 필요)');
+  }
+}
+
+// ── PDD MISS 기록 ──────────────────────────────────────────────────
+var _pddLogSaved={};
+
+async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRouteLabel){
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+    var log=[];
+    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
+    var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
+    var cutoffStr=cutoff.toISOString().slice(0,10);
+    log=log.filter(function(e){return(e.date||'')>=cutoffStr;});
+    var added=false;
+    missWorkers.forEach(function(w){
+      var key=todayStr+'_'+w;
+      if(_pddLogSaved[key])return;
+      _pddLogSaved[key]=true;
+      var already=log.some(function(e){return e.date===todayStr&&e.worker===w;});
+      if(already)return;
+      log.push({id:Date.now()+'_'+Math.random().toString(36).slice(2),date:todayStr,worker:w,route:wRouteLabel(w),miss:wPdd(w)});
+      added=true;
+    });
+    if(!added)return;
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
+  }catch(e){console.warn('[PDD LOG] 저장 실패:',e.message);}
+}
+
+async function showFreshPddLog(){
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+    var log=[];
+    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
+    log.sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
+    var isAdmin=(CU&&CU.role==='admin');
+    _renderPddLogPopup(log,isAdmin);
+  }catch(e){alert('기록 불러오기 실패: '+e.message);}
+}
+
+function _renderPddLogPopup(log,canDelete){
+  var existing=document.getElementById('pdd-log-popup');
+  if(existing)existing.remove();
+  var cols=canDelete?5:4;
+  var rows=log.length>0?log.map(function(e){
+    return '<tr style="border-bottom:1px solid #f0f0f0">'+
+      (canDelete?'<td style="padding:6px 8px;text-align:center"><input type="checkbox" class="pdd-log-chk" value="'+e.id+'"></td>':'')+
+      '<td style="padding:6px 8px;font-size:12px;color:#555">'+e.date+'</td>'+
+      '<td style="padding:6px 8px;font-size:12px;font-weight:700;color:#1a237e">'+e.worker+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;color:#555">'+e.route+'</td>'+
+      '<td style="padding:6px 8px;text-align:center;font-weight:700;color:#c62828">'+e.miss+'건</td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="'+cols+'" style="padding:20px;text-align:center;color:#aaa;font-size:13px">기록 없음</td></tr>';
+  var thead=(canDelete?'<th style="padding:6px 4px;text-align:center;width:28px"><input type="checkbox" id="pdd-log-chk-all" onchange="document.querySelectorAll(\'.pdd-log-chk\').forEach(function(c){c.checked=this.checked;}.bind(this))"></th>':'')+
+    '<th style="padding:6px 8px;text-align:left;min-width:80px">날짜</th>'+
+    '<th style="padding:6px 8px;text-align:left">기사</th>'+
+    '<th style="padding:6px 8px;text-align:left">라우트</th>'+
+    '<th style="padding:6px 8px;text-align:center">미스</th>';
+  var delBtns=canDelete?
+    '<div style="display:flex;gap:8px;margin-bottom:12px">'+
+      '<button onclick="deletePddLogSelected()" style="flex:1;padding:8px;background:#ef6c00;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">선택 삭제</button>'+
+      '<button onclick="deletePddLogAll()" style="flex:1;padding:8px;background:#c62828;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">전체 삭제</button>'+
+    '</div>':'';
+  var popup='<div id="pdd-log-popup" style="display:flex;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:20100;align-items:flex-start;justify-content:center;overflow-y:auto">'+
+    '<div style="background:#fff;width:100%;max-width:480px;min-height:100%;padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:1px solid #e0e0e0;z-index:1">'+
+      '<span style="font-size:15px;font-weight:800;color:#6a1b9a">&#x26A0; PDD MISS 기록</span>'+
+      '<button onclick="document.getElementById(\'pdd-log-popup\').remove()" style="background:#757575;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer">&#x2715; 닫기</button>'+
+    '</div>'+
+    delBtns+
+    '<div style="overflow-x:auto">'+
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead style="background:#f3e5f5;color:#6a1b9a;font-size:11px"><tr>'+thead+'</tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+    '</table></div>'+
+    '<div style="margin-top:12px;font-size:11px;color:#9e9e9e;text-align:center">60일 이상 경과 기록은 자동 삭제됩니다</div>'+
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend',popup);
+}
+
+async function deletePddLogSelected(){
+  if(!sbClient)return;
+  var checked=Array.from(document.querySelectorAll('.pdd-log-chk:checked')).map(function(c){return c.value;});
+  if(checked.length===0){alert('삭제할 항목을 선택해주세요.');return;}
+  if(!confirm(checked.length+'건을 삭제하시겠습니까?'))return;
+  try{
+    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+    var log=[];
+    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
+    log=log.filter(function(e){return!checked.includes(String(e.id));});
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
+    showFreshPddLog();
+  }catch(e){alert('삭제 실패: '+e.message);}
+}
+
+async function deletePddLogAll(){
+  if(!sbClient)return;
+  if(!confirm('전체 PDD MISS 기록을 삭제하시겠습니까?'))return;
+  try{
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:'[]'},{onConflict:'key'});
+    showFreshPddLog();
+  }catch(e){alert('삭제 실패: '+e.message);}
+}
+
+
+</script>
+</body></html>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
