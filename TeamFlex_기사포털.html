@@ -7424,11 +7424,10 @@ async function loadFreshStatus(){
       var rate=(cmp+scn)>0?Math.round(cmp/(cmp+scn)*1000)/10:0;
       var hasMiss=wRoutes.some(_isPddMiss);
       // ✅ 신선완료 / 진행중 / PDD MISS 판정
-      // 완료: 스캔=0 AND 위탁=0 AND (미배송=0 OR 미배송=PDD miss) — 20시 전/후 모두
-      // PDD Miss: 스캔=0 AND 위탁=0 AND 20시 이후에만 확정
-      var isInProgressCard=(scn>0||csg>0);
-      var isCompleteCard=!isInProgressCard&&(und===0||(pdd>0&&und===pdd));
-      var isPddMissCard=_isAfter20&&!isInProgressCard&&!isCompleteCard&&(pdd>0&&und>0&&und<pdd);
+      // 완료: 미배송=0 (위탁/스캔 수량 무관 — 위탁은 스캔되면 0으로 줄어들므로)
+      // PDD Miss: 20시 이후 AND 미배송>0 AND 일부만 PDD miss
+      var isCompleteCard=(und===0||(pdd>0&&und===pdd));
+      var isPddMissCard=_isAfter20&&!isCompleteCard&&(pdd>0&&und>0&&und<pdd);
       var pfxAll=[],ps={};
       wRoutes.forEach(function(rt){(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!ps[pf]){ps[pf]=1;pfxAll.push(pf);}});});
       var routeLabel=pfxAll.join(', ')||'-';
@@ -7457,7 +7456,7 @@ async function loadFreshStatus(){
       }else if(isPddMissCard||hasMiss){
         s+='<div style="padding:0 14px 8px 14px;font-size:12px;font-weight:700;color:#c62828">&#x26A0;&#xFE0F; PDD Miss '+pdd+'건 발생</div>';
       }else{
-        var _inpStat=isInProgressCard?'&#x23F3; 배달 진행 중 (스캔/위탁 잔여)':'&#x23F3; 신선 배송 진행 중';
+        var _inpStat=(scn>0||csg>0)?'&#x23F3; 배달 진행 중 (스캔/위탁 잔여)':'&#x23F3; 신선 배송 진행 중';
         s+='<div style="padding:0 14px 8px 14px;font-size:12px;font-weight:700;color:#f57c00">'+_inpStat+'</div>';
       }
       s+='<div id="'+did+'" style="display:none;margin:0 14px 8px 14px">'+
@@ -7521,8 +7520,9 @@ async function loadFreshStatus(){
     // 진행중 기사 = 신선완료 조건에 해당하지 않는 기사
     // 완료: 스캔=0 AND 위탁=0 AND (미배송=0 OR 미배송=PDD miss) — 20시 전/후 모두 적용
     var incompleteW=allWorkers.filter(function(w){
-      var u=_wUnd(w),p=_wPdd(w),sc=_wScn(w),cs=_wCsg(w);
-      if(sc===0&&cs===0&&(u===0||(p>0&&u===p))){return false;}  // 완료
+      var u=_wUnd(w),p=_wPdd(w);
+      if(u===0){return false;}           // 완료: 미배송=0
+      if(p>0&&u===p){return false;}      // 완료: 전부 PDD miss
       return true;
     });
 
@@ -7541,18 +7541,17 @@ async function loadFreshStatus(){
       var cmp=wR.reduce(function(s,rt){return s+(rt.completed||0);},0);
       var hasMiss=wR.some(_isPddMiss);
       // ✅ 신선완료 / 진행중 / PDD MISS 판정
-      // 완료: 스캔=0 AND 위탁=0 AND (미배송=0 OR 미배송=PDD miss) — 20시 전/후 모두
-      // PDD Miss: 스캔=0 AND 위탁=0 AND 20시 이후에만 확정
-      var isInProgress=(scn>0||csg>0);
-      var isComplete=!isInProgress&&(und===0||(pdd>0&&und===pdd));
-      var isPddMissFlag=_isAfter20&&!isInProgress&&!isComplete&&(pdd>0&&und>0&&und<pdd);
+      // 완료: 미배송=0 (위탁/스캔 수량 무관)
+      // PDD Miss: 20시 이후 AND 미배송>0 AND 일부만 PDD miss
+      var isComplete=(und===0||(pdd>0&&und===pdd));
+      var isPddMissFlag=_isAfter20&&!isComplete&&(pdd>0&&und>0&&und<pdd);
       var routeLabel=_wRouteLabel(w);
       var detId='frdet_'+suffix+'_'+wi2;
       var statusBadge=isComplete
         ?'<span style="background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9;border-radius:6px;font-size:10px;padding:2px 8px;font-weight:700;white-space:nowrap">&#x2705; 신선 배송 완료</span>'
         :(isPddMissFlag||hasMiss)
           ?'<span style="background:#c62828;color:#fff;border-radius:5px;font-size:10px;padding:2px 7px;font-weight:700;white-space:nowrap">&#x26A0; PDD Miss '+pdd+'&#xAC74;</span>'
-          :isInProgress
+          :(scn>0||csg>0)
             ?'<span style="color:#f57c00;font-size:11px;font-weight:700;white-space:nowrap">&#x23F3; 배달 진행 중</span>'
             :'<span style="color:#f57c00;font-size:11px;font-weight:700;white-space:nowrap">&#x23F3; 신선 배송 중</span>';
       var undBadge=(!isComplete&&und>0)
