@@ -6050,7 +6050,7 @@ function pgMisdelivery(){
 
   var reqFilter='';
   if(isAdmin||isLeader){
-    reqFilter='<button id="md-flt-req" onclick="mdToggleReqFilter()" style="padding:5px 14px;border:1.5px solid #7c4dff;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:#7c4dff;margin-left:4px" id="md-flt-req">&#x1F4DD; 요청<span id="md-req-badge" style="display:none;background:#7c4dff;color:#fff;border-radius:10px;padding:0 5px;font-size:10px;margin-left:3px">0</span></button>';
+    reqFilter='<span id="md-req-badge" style="display:none;background:#7c4dff;color:#fff;border-radius:10px;padding:2px 7px;font-size:11px;font-weight:700;margin-left:4px">0</span>';
   }
   var filterBar='<div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap">'+
     '<span style="font-size:12px;font-weight:700;color:#888">&#x1F4C5; 기간</span>'+
@@ -6365,21 +6365,11 @@ function mdRenderList(cases){
   var cntEl=document.getElementById('md-flt-count');
   if(cntEl)cntEl.textContent=_mdDateFilter==='today'?cases.length+'건 (오늘)':allCount+'건 (전체)';
 
-  // ── 요청 필터 모드 ──────────────────────────────────────────
-  if(window._mdShowReqOnly){
-    var reqHtml='<div style="font-size:12px;font-weight:700;color:#7c4dff;margin-bottom:8px">&#x1F4DD; 각종 요청 건</div>';
-    if(!_rqCases||_rqCases.length===0){
-      reqHtml+='<div class="md-empty"><div class="md-empty-icon">&#x1F4DD;</div><div>요청 없음</div></div>';
-    } else {
-      reqHtml+=_rqCases.map(function(r){return rqBuildCard(r);}).join('');
-    }
-    el.innerHTML=reqHtml;
-    // 뱃지 갱신
-    var pend=(_rqCases||[]).filter(function(r){return r.status==='pending';}).length;
-    var badge=document.getElementById('md-req-badge');
-    if(badge){badge.textContent=pend;badge.style.display=pend>0?'inline':'none';}
-    return;
-  }
+  // ── 요청 건 섹션 (오배송 목록과 항상 같이 표시) ──────────────────
+  // 뱃지 갱신
+  var pend=(_rqCases||[]).filter(function(r){return r.status==='pending';}).length;
+  var badge=document.getElementById('md-req-badge');
+  if(badge){badge.textContent=pend;badge.style.display=pend>0?'inline':'none';}
 
   // 활성 건 (미처리/승인대기/재요청) vs 완료 건 분리
   var active=[];var completed=[];
@@ -6394,6 +6384,23 @@ function mdRenderList(cases){
   }
 
   var html='';
+  
+  // ── 각종 요청 건 (항상 같이 표시) ────────────────────────────
+  if(isLeader && _rqCases && _rqCases.length > 0){
+    var todayStr2=new Date().toISOString().slice(0,10);
+    var todayReqs = _mdDateFilter==='today' 
+      ? _rqCases.filter(function(r){return (r.created_at||'').slice(0,10)===todayStr2 || r.status==='pending';})
+      : _rqCases;
+    if(todayReqs.length > 0){
+      html += '<div style="border-bottom:2px dashed #e8eaf6;margin-bottom:12px;padding-bottom:2px">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'+
+          '<span style="font-size:12px;font-weight:800;color:#7c4dff">&#x1F4DD; 각종 요청 건</span>'+
+          '<span style="font-size:10px;background:#ede7f6;color:#7c4dff;padding:1px 7px;border-radius:10px;font-weight:700">'+todayReqs.length+'건</span>'+
+          (pend>0?'<span style="font-size:10px;background:#7c4dff;color:#fff;padding:1px 7px;border-radius:10px;font-weight:700">&#x23F3; 대기 '+pend+'</span>':'')+'</div>'+
+        todayReqs.map(function(r){return rqBuildCard(r);}).join('')+
+      '</div>';
+    }
+  }
 
   // ── 활성 건: 상태 우선순위 정렬 ──────────────────────────────
   if(active.length>0){
@@ -7522,8 +7529,19 @@ function pgRequest(){
   // 관리자 제어 바
   var adminBar = isAdm ? _featureBar('requests') : '';
 
+  var campSelect = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:#e8eaf6;border-radius:10px;padding:9px 12px">'+
+    '<span style="font-size:12px;font-weight:800;color:#3949ab">&#x1F3E2; 캠프</span>'+
+    '<select id="rq-camp-select" onchange="window._rqCamp=this.value" style="flex:1;padding:6px 10px;border:1.5px solid #7986cb;border-radius:8px;font-size:13px;font-weight:700;color:#3949ab;background:#fff;cursor:pointer">'+
+      '<option value="일산3캠프">일산3캠프</option>'+
+      '<option value="일산8캠프2wave">일산8캠프2wave</option>'+
+    '</select>'+
+    '<span style="font-size:10px;color:#7986cb">전송 채팅방 구분</span>'+
+  '</div>';
+  if(!window._rqCamp) window._rqCamp = '일산3캠프';
+
   return '<div class="stit">&#x1F4DD; 각종 요청</div>'+
     adminBar+
+    campSelect+
     tabHtml+
     '<div id="rq-body"></div>';
 }
@@ -7741,7 +7759,8 @@ function rqDamagePreviewText(){
   var wb = window._rqDmWaybill||'(미입력)';
   var od = window._rqDmOrder||'-';
   var cnt = _rqDmPhotos.filter(function(p){return p;}).length;
-  return '■ 파손 처리 요청\n\n운송장번호: '+wb+'\n주문번호: '+od+'\n첨부사진: '+cnt+'장 / 3장\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'')+'\n\n분실 처리 부탁드립니다.';
+  var camp = window._rqCamp||'일산3캠프';
+  return '■ 파손 처리 요청 ['+camp+']\n\n운송장번호: '+wb+'\n주문번호: '+od+'\n첨부사진: '+cnt+'장 / 3장\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'')+'\n\n분실 처리 부탁드립니다.';
 }
 
 function rqUpdateDmBtn(){
@@ -7772,7 +7791,8 @@ async function rqSendDamage(){
   var cnt = _rqDmPhotos.filter(function(p){return p;}).length;
   if(!wb){alert('운송장번호를 입력해주세요.');return;}
   if(cnt<3){alert('사진 3장을 모두 첨부해주세요.');return;}
-  var text = '■ 파손 처리 요청\n\n운송장번호: '+wb+'\n주문번호: '+(od||'없음')+'\n첨부사진: 3장\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'')+'\n\n분실 처리 부탁드립니다.';
+  var camp = window._rqCamp||'일산3캠프';
+  var text = '■ 파손 처리 요청 ['+camp+']\n\n운송장번호: '+wb+'\n주문번호: '+(od||'없음')+'\n첨부사진: 3장\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'')+'\n\n분실 처리 부탁드립니다.';
   await rqSubmit({type:'damage', text:text, photos:_rqDmPhotos, okId:'rq-dm-ok'});
   // 초기화
   window._rqDmRaw=''; window._rqDmWaybill=''; window._rqDmOrder='';
@@ -7870,7 +7890,7 @@ function rqRoutePreviewText(){
   var order = window._rqOrderSel||'1,2차';
   var valid = _rqRouteRows.filter(function(r){return r.id||r.route;});
   var lines = valid.map(function(r){return (r.id||'?')+' '+(r.route||'?');}).join('\n');
-  return '■ 라우트 변경 요청\n\n'+(lines||'(입력없음)')+'\n\n'+order+' 부탁드립니다.\n\n요청자: '+CU.name;
+  var camp=window._rqCamp||'일산3캠프'; return '■ 라우트 변경 요청 ['+camp+']\n\n'+(lines||'(입력없음)')+'\n\n'+order+' 부탁드립니다.\n\n요청자: '+CU.name;
 }
 
 function rqUpdateRoutePreview(){
@@ -7978,7 +7998,7 @@ function rqReturnPreviewText(){
   var to   = window._rqRtnTo||'(미입력)';
   var wbs  = _rqReturnWaybills.filter(function(w){return w.trim();});
   var lines = wbs.map(function(w,i){return (i+1)+'. 운송장번호: '+w;}).join('\n');
-  return '■ 반품 이관 요청\n\n'+(lines||'(운송장번호 없음)')+'\n\n'+from+' ▶ '+to+' 으로\n이관 부탁드립니다.\n\n요청자: '+CU.name;
+  var camp=window._rqCamp||'일산3캠프'; return '■ 반품 이관 요청 ['+camp+']\n\n'+(lines||'(운송장번호 없음)')+'\n\n'+from+' ▶ '+to+' 으로\n이관 부탁드립니다.\n\n요청자: '+CU.name;
 }
 
 function rqUpdateReturnPreview(){
@@ -8012,16 +8032,16 @@ async function rqSendReturn(){
 // ── 스캔 대기 삭제 폼 ──────────────────────────────────────────────
 function rqScanForm(){
   return rqSimpleForm('scan','&#x1F5D1;&#xFE0F; 스캔 대기 삭제','rq-sc',
-    function(wb,od){return '■ 스캔 대기 삭제 요청\n\n운송장번호: '+wb+'\n주문번호: '+od+'\n\n업무 마감하였으나, 스캔 대기건 없습니다.\n삭제 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
+    function(wb,od){var camp=window._rqCamp||'일산3캠프';return '■ 스캔 대기 삭제 요청 ['+camp+']\n\n운송장번호: '+wb+'\n주문번호: '+od+'\n\n업무 마감하였으나, 스캔 대기건 없습니다.\n삭제 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
 }
 
 // ── 분실 처리 폼 ────────────────────────────────────────────────────
 function rqLostForm(){
   return rqSimpleForm('lost','&#x1F50D; 분실 처리','rq-ls',
-    function(wb,od){return '■ 분실 처리 요청\n\n운송장번호: '+wb+'\n주문번호: '+od+'\n\n업무 마감하였으나, 해당건을 발견하지 못하였습니다.\n분실 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
+    function(wb,od){var camp=window._rqCamp||'일산3캠프';return '■ 분실 처리 요청 ['+camp+']\n\n운송장번호: '+wb+'\n주문번호: '+od+'\n\n업무 마감하였으나, 해당건을 발견하지 못하였습니다.\n분실 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
 }
 
-// ── 공통 단순 폼 (스캔/분실) ────────────────────────────────────────
+// ── 공통 단순 폼 (스캔/분실) — 파손처럼 자동 파싱 ────────────────────
 function rqSimpleForm(type, title, pfx, previewFn){
   if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
   var isAdm = CU && CU.role==='admin';
@@ -8031,8 +8051,9 @@ function rqSimpleForm(type, title, pfx, previewFn){
         '<div class="rq-ap-chip'+(_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(true)">&#x26A1; 자동 승인</div>'+
         '<div class="rq-ap-chip'+(!_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(false)">&#x1F4CB; 승인 요청</div>'+
       '</div></div>' : '';
-  var wbKey = pfx+'-wb-val', odKey = pfx+'-od-val';
-  var wb = window[wbKey]||'', od = window[odKey]||'';
+  var rawKey = pfx+'-raw';
+  var raw = window[rawKey]||'';
+  var wb = window[pfx+'-wb-str']||'', od = window[pfx+'-od-str']||'';
   var ok = wb && od;
   var btnClass = ok ? (_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req') : '';
   var btnTxt = _rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
@@ -8040,42 +8061,57 @@ function rqSimpleForm(type, title, pfx, previewFn){
   return '<div class="rq-card">'+
     '<div id="'+pfx+'-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
-    '<label class="rq-label">&#x1F4E6; 운송장번호 <span class="rq-req">필수</span></label>'+
-    '<input class="rq-inp" id="'+pfx+'-wb" type="text" inputmode="numeric" placeholder="복사 후 붙여넣기" value="'+rqEsc(wb)+'" oninput="window[\''+wbKey+'\']=this.value;rqUpdateSimplePreview(\''+pfx+'\')">'+
-    '<label class="rq-label">&#x1F6D2; 주문번호 <span class="rq-req">필수</span></label>'+
-    '<input class="rq-inp" id="'+pfx+'-od" type="text" inputmode="numeric" placeholder="주문번호" value="'+rqEsc(od)+'" oninput="window[\''+odKey+'\']=this.value;rqUpdateSimplePreview(\''+pfx+'\')">'+
+    '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
+    '<textarea class="rq-paste" id="'+pfx+'-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호 자동 추출됩니다" oninput="rqParseSimple(''+pfx+'')">'+rqEsc(raw)+'</textarea>'+
+    '<div class="rq-checks" id="'+pfx+'-checks">'+
+      '<div class="rq-ck-row"><span class="'+(wb?'rq-ok':'rq-no')+'">■</span> <span>운송장번호: </span><span id="'+pfx+'-wb-val" style="font-weight:700;color:'+(wb?'#222':'#e53935')+'">'+rqEsc(wb||'인식 안됨')+'</span></div>'+
+      '<div class="rq-ck-row"><span class="'+(od?'rq-ok':'rq-no')+'">■</span> <span>주문번호: </span><span id="'+pfx+'-od-val" style="font-weight:700;color:'+(od?'#222':'#999')+'">'+rqEsc(od||'자동 추출 안됨')+'</span></div>'+
+    '</div>'+
+    '<div class="rq-hint" id="'+pfx+'-hint">'+(ok?'✅ 운송장·주문번호 인식 완료':'운송장번호·주문번호를 붙여넣기로 자동 추출합니다')+'</div>'+
     '<label class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</label>'+
     '<div class="rq-preview-box" id="'+pfx+'-preview">'+rqEsc(previewFn(wb||'(미입력)',od||'(미입력)'))+'</div>'+
-    '<button class="rq-btn '+btnClass+'" id="'+pfx+'-btn" onclick="rqSendSimple(\''+type+'\',\''+pfx+'\')" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
+    '<button class="rq-btn '+btnClass+'" id="'+pfx+'-btn" onclick="rqSendSimple(''+type+'',''+pfx+'')" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
   '</div>';
 }
 
-function rqUpdateSimplePreview(pfx){
-  var wb = window[pfx+'-wb-val']||'(미입력)';
-  var od = window[pfx+'-od-val']||'(미입력)';
+function rqParseSimple(pfx){
+  var raw = (document.getElementById(pfx+'-paste')||{}).value||'';
+  window[pfx+'-raw'] = raw;
+  var wbM = raw.match(/\b(\d{13,14})\b/);
+  var odM = raw.match(/\b(\d{11})\b/);
+  window[pfx+'-wb-str'] = wbM ? wbM[1] : '';
+  window[pfx+'-od-str'] = odM ? odM[1] : '';
+  var wbEl = document.getElementById(pfx+'-wb-val');
+  var odEl = document.getElementById(pfx+'-od-val');
+  if(wbEl){ wbEl.textContent = window[pfx+'-wb-str']||'인식 안됨'; wbEl.style.color = window[pfx+'-wb-str']?'#222':'#e53935'; }
+  if(odEl){ odEl.textContent = window[pfx+'-od-str']||'자동 추출 안됨'; odEl.style.color = window[pfx+'-od-str']?'#222':'#999'; }
+  var ok = !!(window[pfx+'-wb-str'] && window[pfx+'-od-str']);
+  var hint = document.getElementById(pfx+'-hint');
+  if(hint){ hint.textContent=ok?'✅ 운송장·주문번호 인식 완료':'운송장번호 13-14자리, 주문번호 11자리가 인식됩니다'; hint.style.background=ok?'#e8f5e9':'#fff8e1'; hint.style.color=ok?'#2e7d32':'#c62828'; }
   var fn = window[pfx+'-prevFn'];
-  var el = document.getElementById(pfx+'-preview');
-  if(el&&fn) el.textContent = fn(wb,od);
-  var ok = (window[pfx+'-wb-val']||'') && (window[pfx+'-od-val']||'');
+  var prev = document.getElementById(pfx+'-preview');
+  if(prev&&fn) prev.textContent = fn(window[pfx+'-wb-str']||'(미입력)', window[pfx+'-od-str']||'(미입력)');
   var btn = document.getElementById(pfx+'-btn');
-  if(btn){
-    btn.disabled=!ok;
-    btn.className='rq-btn '+(ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):'');
-    btn.innerHTML=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
-  }
+  if(btn){ btn.disabled=!ok; btn.className='rq-btn '+(ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):''); btn.innerHTML=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청'; }
+}
+
+function rqUpdateSimplePreview(pfx){
+  // 호환성 유지
+  rqParseSimple(pfx);
 }
 
 async function rqSendSimple(type, pfx){
-  var wb = window[pfx+'-wb-val']||'';
-  var od = window[pfx+'-od-val']||'';
+  var wb = window[pfx+'-wb-str']||'';
+  var od = window[pfx+'-od-str']||'';
   if(!wb){alert('운송장번호를 입력해주세요.');return;}
   if(!od){alert('주문번호를 입력해주세요.');return;}
   var fn = window[pfx+'-prevFn'];
   var text = fn(wb,od);
   await rqSubmit({type:type, text:text, photos:[], okId:pfx+'-ok'});
-  window[pfx+'-wb-val']=''; window[pfx+'-od-val']='';
+  window[pfx+'-raw']=''; window[pfx+'-wb-str']=''; window[pfx+'-od-str']='';
   rqRenderBody();
 }
+
 
 // ── 승인방식 변경 ────────────────────────────────────────────────────
 async function rqSetAutoApprove(val){
@@ -8105,7 +8141,7 @@ async function rqSubmit(opts){
   if(!sbClient){alert('Supabase 연결이 필요합니다.');return;}
   try{
     var status = _rqAutoApprove ? 'approved' : 'pending';
-    var payload = {text: opts.text};
+    var payload = {text: opts.text, camp: window._rqCamp||'일산3캠프'};
     if(opts.photos && opts.photos.length>0){
       // 사진은 base64로 payload에 포함 (압축됨)
       payload.photos = opts.photos.filter(function(p){return p;});
@@ -8206,25 +8242,60 @@ function rqBuildCard(r){
   var sent = r.teams_sent ? '<span style="color:#1565c0;font-size:10px">&#x2705; 팀즈 전송됨</span>' : '<span style="color:#888;font-size:10px">&#x23F3; 팀즈 대기</span>';
   var dt = r.created_at ? new Date(r.created_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
   var payload = r.payload||{};
-  var preview = (payload.text||'').substring(0,60).replace(/\n/g,' ');
+  var preview = (payload.text||'').substring(0,50).replace(/\n/g,' ');
+  var camp = payload.camp ? ' <span style="background:#e8eaf6;color:#3949ab;font-size:10px;padding:1px 6px;border-radius:8px;font-weight:700">'+mdEsc(payload.camp)+'</span>' : '';
+  var detailId = 'rq-detail-'+r.id;
+  // 상세 내용
+  var fullText = mdEsc(payload.text||'').replace(/\n/g,'<br>');
+  // 사진
+  var photosHtml = '';
+  if(payload.photos && payload.photos.length>0){
+    photosHtml = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">';
+    payload.photos.forEach(function(p,i){
+      if(p) photosHtml += '<img src="'+p+'" onclick="rqOpenPhoto(this)" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid #e0e0e0;cursor:pointer">';
+    });
+    photosHtml += '</div>';
+  }
+  var detail = '<div id="'+detailId+'" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #e0e0e0">'+
+    '<div style="font-size:11px;color:#333;line-height:1.8;background:#f5f5f5;border-radius:6px;padding:8px;white-space:pre-wrap;font-family:monospace;word-break:break-all">'+fullText+'</div>'+
+    photosHtml+
+  '</div>';
   var btns = '';
   if(isLdr && r.status==='pending'){
     btns = '<div style="display:flex;gap:6px;margin-top:8px">'+
-      '<button onclick="rqApprove('+r.id+')" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">&#x2705; 승인+팀즈전송</button>'+
-      '<button onclick="rqReject('+r.id+')" style="flex:1;padding:6px;background:#ffebee;color:#c62828;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">&#x274C; 반려</button>'+
+      '<button onclick="event.stopPropagation();rqApprove('+r.id+')" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">&#x2705; 승인+팀즈전송</button>'+
+      '<button onclick="event.stopPropagation();rqReject('+r.id+')" style="flex:1;padding:6px;background:#ffebee;color:#c62828;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">&#x274C; 반려</button>'+
     '</div>';
   } else if(r.status==='approved'){
-    btns = sent;
+    btns = '<div style="margin-top:6px">'+sent+'</div>';
   }
-  return '<div style="border:0.5px solid #e0e0e0;border-left:3px solid #7c4dff;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff">'+
+  return '<div onclick="rqToggleDetail(''+detailId+'')" style="border:0.5px solid #e0e0e0;border-left:3px solid #7c4dff;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;cursor:pointer;user-select:none">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
-      '<span style="font-size:12px;font-weight:700;color:#4527a0">'+typeLbl+'</span>'+sts+
+      '<span style="font-size:12px;font-weight:700;color:#4527a0">'+typeLbl+camp+'</span>'+sts+
     '</div>'+
-    '<div style="font-size:11px;color:#666;margin-bottom:3px">요청자: '+mdEsc(r.requester_name||'')+'</div>'+
-    '<div style="font-size:11px;color:#888;margin-bottom:3px">'+mdEsc(preview)+'</div>'+
+    '<div style="font-size:11px;color:#666;margin-bottom:2px">요청자: '+mdEsc(r.requester_name||'')+'</div>'+
+    '<div style="font-size:11px;color:#888;margin-bottom:2px">'+mdEsc(preview)+'<span style="color:#bbb;font-size:10px"> ▼ 탭하여 전체보기</span></div>'+
     '<div style="font-size:10px;color:#bbb">'+dt+'</div>'+
+    detail+
     btns+
   '</div>';
+}
+
+function rqToggleDetail(id){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+
+function rqOpenPhoto(img){
+  var overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.9);z-index:99999;display:flex;align-items:center;justify-content:center';
+  overlay.onclick=function(){document.body.removeChild(overlay);};
+  var im = document.createElement('img');
+  im.src=img.src;
+  im.style.cssText='max-width:95vw;max-height:90vh;border-radius:8px;object-fit:contain';
+  overlay.appendChild(im);
+  document.body.appendChild(overlay);
 }
 
 async function rqApprove(id){
