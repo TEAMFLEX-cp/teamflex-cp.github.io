@@ -1271,7 +1271,7 @@ async function loadFeatureControls(){
   if(!sbClient) return;
   try{
     var {data} = await sbClient.from('app_settings').select('value').eq('key','feature_controls').maybeSingle();
-    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}};
+    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}};
     if(data && data.value){
       var parsed = typeof data.value==='string' ? JSON.parse(data.value) : data.value;
       _featureControls = Object.assign({}, defaults, parsed);
@@ -1279,13 +1279,14 @@ async function loadFeatureControls(){
       _featureControls = defaults;
     }
   } catch(e){
-    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}};
+    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}};
   }
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
   if(!mc)return;
   var isAdm=CU&&CU.role==='admin';
   if(CUR_TAB==='md'&&!getFeatureCtrl('misdelivery','active')&&!isAdm){mc.innerHTML=pgMisdelivery();}
+  else if(CUR_TAB==='rq'&&!getFeatureCtrl('requests','active')&&!isAdm){mc.innerHTML=pgRequest();}
   else if(CUR_TAB==='fr'&&!getFeatureCtrl('fresh','active')&&!isAdm){mc.innerHTML=pgFresh();}
   else if(CUR_TAB==='sl'&&!getFeatureCtrl('sched','active')&&!isAdm){mc.innerHTML=pgSchedLog();}
   else if((CUR_TAB==='nc'||CUR_TAB==='ab')&&!getFeatureCtrl('ann','active')&&!isAdm){mc.innerHTML=pgAnn(CUR_TAB==='ab');}
@@ -1307,7 +1308,7 @@ function getFeatureCtrl(feat, key){
 }
 async function saveFeatureCtrl(feat, key, val){
   if(!sbClient||!CU||CU.role!=='admin') return;
-  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}};
+  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}};
   if(!_featureControls[feat]) _featureControls[feat] = {active:true, notify:true};
   _featureControls[feat][key] = val;
   // Supabase 저장 (실패 시 롤백 + 에러 알림)
@@ -1341,6 +1342,7 @@ async function saveFeatureCtrl(feat, key, val){
       else if(feat==='schedule') mc.innerHTML=pgFullSched();
       else if(feat==='settle') mc.innerHTML=(CU&&CU.role==='admin')?pgAdminSettle():pgSettle();
       else if(feat==='emergency') mc.innerHTML=pgEmergencyContact();
+      else if(feat==='requests') mc.innerHTML=pgRequest();
     }
   }
 }
@@ -2021,7 +2023,7 @@ window.addEventListener('popstate',function(e){
     else if(prev==='ph')mc.innerHTML=pgPhoneBook();
     else if(prev==='cfg')mc.innerHTML=pgSettings();
     else if(prev==='sl')mc.innerHTML=pgSchedLog();
-    else if(prev==='md'){mc.innerHTML=pgMisdelivery();setTimeout(mdLoadCases,200);}
+    else if(prev==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
     else if(prev==='fr'){mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
     else if(prev==='er')mc.innerHTML=pgEmergencyContact();
     window.history.pushState({tab:prev,ts:Date.now()},'');
@@ -2621,6 +2623,7 @@ function launchApp(){
       '<div class="ni" id="ni-ab" onclick="go(\'ab\')"><span class="nicon">&#x1F4E2;</span>공지</div>'+
       '<div class="ni" id="ni-as" onclick="go(\'as\')"><span class="nicon">&#x1F4C5;</span>스케줄</div>'+
       '<div class="ni" id="ni-sl" onclick="go(\'sl\')"><span class="nicon">&#x1F4CB;</span>변경이력</div>'+
+      '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
       '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>오배송</div>'+
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       '<div class="ni" id="ni-az" onclick="go(\'az\')"><span class="nicon">&#x1F4B0;</span>정산</div>'+
@@ -2638,6 +2641,7 @@ function launchApp(){
       '<div class="ni on" id="ni-hm" onclick="go(\'hm\')"><span class="nicon">&#x1F3E0;</span>홈</div>'+
       '<div class="ni" id="ni-nc" onclick="go(\'nc\')"><span class="nicon">&#x1F4E2;</span>공지</div>'+
       '<div class="ni" id="ni-fs" onclick="go(\'fs\')"><span class="nicon">&#x1F4C5;</span>전체스케줄</div>'+
+      '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
       '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>오배송</div>'+
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       '<div class="ni" id="ni-usr-cfg" onclick="openUserSubMenu()"><span class="nicon">&#x2699;&#xFE0F;</span>설정</div>';
@@ -3100,7 +3104,8 @@ function go(tab){
   else if(tab==='ph')mc.innerHTML=pgPhoneBook();
   else if(tab==='cfg')mc.innerHTML=pgSettings();
   else if(tab==='sl')mc.innerHTML=pgSchedLog();
-  else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(mdLoadCases,200);}
+  else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
+  else if(tab==='rq'){mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
   else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
   else if(tab==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;}}).catch(function(){});}
   // Re-show important unread announcements on each tab switch (except the announcement tab itself)
@@ -6043,17 +6048,137 @@ function pgMisdelivery(){
     '</div>'+
     '</div>':'';
 
-  var filterBar='<div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">'+
+  var reqFilter='';
+  if(isAdmin||isLeader){
+    reqFilter='<button id="md-flt-req" onclick="mdToggleReqFilter()" style="padding:5px 14px;border:1.5px solid #7c4dff;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:#fff;color:#7c4dff;margin-left:4px" id="md-flt-req">&#x1F4DD; 요청<span id="md-req-badge" style="display:none;background:#7c4dff;color:#fff;border-radius:10px;padding:0 5px;font-size:10px;margin-left:3px">0</span></button>';
+  }
+  var filterBar='<div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap">'+
     '<span style="font-size:12px;font-weight:700;color:#888">&#x1F4C5; 기간</span>'+
     '<button id="md-flt-today" onclick="mdSetDateFilter(\'today\')" style="padding:5px 14px;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:#1565c0;color:#fff">오늘</button>'+
     '<button id="md-flt-all" onclick="mdSetDateFilter(\'all\')" style="padding:5px 14px;border:none;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;background:#eee;color:#888">전체</button>'+
+    (reqFilter||'')+
     '<span id="md-flt-count" style="font-size:11px;color:#aaa;margin-left:2px"></span>'+
     '</div>';
+
+  // ── 오배송 검색 바 (관리자·팀장 전용) ──────────────────────────────
+  var searchBar='';
+  if(isAdmin||isLeader){
+    searchBar=
+      '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">'+
+        '<div style="position:relative;flex:1">'+
+          '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none">🔍</span>'+
+          '<input id="md-search-input" type="search" placeholder="송장번호, 뒤 4자리, 기사 이름 검색..." '+
+            'oninput="mdSearchCases(this.value)" '+
+            'style="width:100%;padding:10px 12px 10px 36px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;background:#f9f9f9;" '+
+            'onfocus="this.style.borderColor=\'#1565c0\';this.style.background=\'#fff\'" '+
+            'onblur="this.style.borderColor=\'#e0e0e0\';this.style.background=\'#f9f9f9\'">'+
+        '</div>'+
+        '<button onclick="mdClearSearch()" style="padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:10px;background:#fff;font-size:12px;color:#888;cursor:pointer;white-space:nowrap">초기화</button>'+
+      '</div>'+
+      '<div id="md-search-result" style="display:none"></div>';
+  }
+
   return _featureBar('misdelivery')+
     '<div class="stit">🚨 오배송 알림'+kwBtn+'</div>'+
     mdKwPopup+
-    modeSec+sumSec+filterBar+
+    modeSec+sumSec+searchBar+filterBar+
     '<div id="md-list"><div class="md-empty"><div class="md-empty-icon">⏳</div><div>로딩 중...</div></div></div>';
+}
+
+// ── 오배송 검색 (관리자·팀장 전용) ──────────────────────────────────
+var _mdSearchTimer=null;
+function mdSearchCases(val){
+  clearTimeout(_mdSearchTimer);
+  var q=(val||'').trim();
+  var resEl=document.getElementById('md-search-result');
+  var listEl=document.getElementById('md-list');
+  if(!q){
+    if(resEl){resEl.style.display='none';resEl.innerHTML='';}
+    if(listEl)listEl.style.display='';
+    return;
+  }
+  _mdSearchTimer=setTimeout(async function(){
+    if(listEl)listEl.style.display='none';
+    if(resEl){resEl.style.display='block';resEl.innerHTML='<div style="text-align:center;padding:16px;color:#aaa;font-size:13px">🔍 검색 중...</div>';}
+    try{
+      if(!sbClient)throw new Error('sbClient 없음');
+      // 검색 조건: 송장번호 포함 OR 기사명 포함
+      var isLast4=/^\d{4}$/.test(q);
+      var orParts=[];
+      if(isLast4){
+        orParts.push('waybill_no.like.*'+q);
+      } else if(/^\d+$/.test(q)){
+        orParts.push('waybill_no.ilike.*'+q+'*');
+      }
+      // 기사 이름 항상 검색
+      orParts.push('driver_name.ilike.*'+q+'*');
+      if(!isLast4&&!/^\d+$/.test(q)){
+        // 숫자 아니면 issue_content도 검색
+        orParts.push('issue_content.ilike.*'+q+'*');
+      }
+      var {data:rows,error:e}=await sbClient
+        .from('misdelivery_cases')
+        .select('*')
+        .not('status','in','("archived","deleted")')
+        .or(orParts.join(','))
+        .order('created_at',{ascending:false})
+        .limit(50);
+      if(e)throw e;
+      if(!rows||!rows.length){
+        resEl.innerHTML='<div style="text-align:center;padding:32px;color:#aaa;font-size:13px"><div style="font-size:28px;margin-bottom:8px">🔍</div>검색 결과 없음<div style="font-size:11px;margin-top:6px;color:#ccc">송장번호, 뒤 4자리, 또는 기사 이름으로 검색하세요</div></div>';
+        return;
+      }
+      var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
+      var hi=function(s,q){
+        if(!s||!q)return esc(s);
+        var idx=String(s).toLowerCase().indexOf(q.toLowerCase());
+        if(idx<0)return esc(s);
+        return esc(String(s).slice(0,idx))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(idx,idx+q.length))+'</mark>'+esc(String(s).slice(idx+q.length));
+      };
+      var stMap={open:'처리중',closed:'완료',archived:'보관',pending_reply:'답변대기',waiting_approval:'승인대기',deleted:'삭제'};
+      var stColor={open:'#e53935',closed:'#2e7d32',pending_reply:'#1565c0',waiting_approval:'#e65100'};
+      var catColor={'오배송':'#e53935','오회수':'#0d47a1','미반납':'#6a1b9a','기타':'#33691e'};
+      var html='<div style="font-size:12px;color:#888;margin-bottom:8px;padding:0 2px">검색 결과 <b style="color:#1565c0">'+rows.length+'건</b></div>';
+      rows.forEach(function(r){
+        var st=r.status||'open';
+        var stLabel=stMap[st]||st;
+        var stC=stColor[st]||'#888';
+        var cat=r.category||'오배송';
+        var catC=catColor[cat]||'#888';
+        var dt=(r.occurred_at||r.created_at||'').slice(0,10);
+        html+=
+          '<div style="border:1px solid #e8e8e8;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:box-shadow .15s" '+
+               'onmouseover="this.style.boxShadow=\'0 2px 8px rgba(0,0,0,.08)\'" '+
+               'onmouseout="this.style.boxShadow=\'none\'" '+
+               'onclick="mdOpenCase(\''+esc(r.id)+'\')" >'+
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'+
+              '<span style="font-family:monospace;font-size:14px;font-weight:700;color:#1a237e;letter-spacing:.5px">'+hi(r.waybill_no,q)+'</span>'+
+              '<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:'+stC+'22;color:'+stC+'">'+esc(stLabel)+'</span>'+
+            '</div>'+
+            '<div style="display:flex;gap:12px;font-size:12px;color:#555;margin-bottom:5px;flex-wrap:wrap">'+
+              '<span>👤 '+hi(r.driver_name,q)+'</span>'+
+              '<span>📅 '+esc(dt)+'</span>'+
+              (r.address?'<span>📍 '+esc(String(r.address).slice(0,20))+'</span>':'')+
+            '</div>'+
+            '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+              '<span style="border-radius:4px;padding:2px 7px;font-size:11px;font-weight:700;background:'+catC+'22;color:'+catC+'">'+esc(cat)+'</span>'+
+              (r.issue_content?'<span style="font-size:12px;color:#666">'+esc(String(r.issue_content).slice(0,40))+'</span>':'')+
+            '</div>'+
+          '</div>';
+      });
+      resEl.innerHTML=html;
+    }catch(err){
+      if(resEl)resEl.innerHTML='<div style="text-align:center;padding:20px;color:#e53935;font-size:13px">검색 오류: '+(err.message||err)+'</div>';
+    }
+  },300);
+}
+function mdClearSearch(){
+  var inp=document.getElementById('md-search-input');
+  var resEl=document.getElementById('md-search-result');
+  var listEl=document.getElementById('md-list');
+  if(inp)inp.value='';
+  if(resEl){resEl.style.display='none';resEl.innerHTML='';}
+  if(listEl)listEl.style.display='';
 }
 
 // ── 케이스 목록 로드 ──────────────────────────────────────────────────
@@ -6135,6 +6260,8 @@ async function mdLoadCases(){
     await mdAutoArchive(_mdCases);
 
     mdRenderList(_mdCases);
+    // 요청 뱃지 갱신
+    mdRenderRequestBadge();
     // 팀장/관리자 통계 로드
     if((CU&&(CU.role==='admin'||CU.role==='leader'))&&document.getElementById('md-leader-stats-container')){
       mdLoadLeaderStats('md-leader-stats-container');
@@ -6175,6 +6302,22 @@ async function mdAutoArchive(cases){
         .eq('id',parseInt(toArchive[i]));
     }
   }catch(ae){console.warn('[autoArchive]',ae);}
+  // ── 60일 초과 archived 케이스 자동 삭제 (관리자 권한으로만 실행) ──
+  if(CU&&CU.role==='admin'){
+    try{
+      var cutoff60=new Date(Date.now()-60*24*60*60*1000).toISOString();
+      var {data:oldCases}=await sbClient.from('misdelivery_cases')
+        .select('id').eq('status','archived').lt('archived_at',cutoff60);
+      if(oldCases&&oldCases.length>0){
+        var oldIds=oldCases.map(function(x){return x.id;});
+        // 관련 replies, reads도 함께 삭제
+        await sbClient.from('misdelivery_replies').delete().in('case_id',oldIds);
+        await sbClient.from('misdelivery_reads').delete().in('case_id',oldIds);
+        await sbClient.from('misdelivery_cases').delete().in('id',oldIds);
+        console.log('[AutoDelete] 60일 초과 케이스 삭제:',oldIds.length,'건');
+      }
+    }catch(de){console.warn('[AutoDelete60]',de);}
+  }
 }
 
 function mdSetDateFilter(f){
@@ -6186,12 +6329,29 @@ function mdSetDateFilter(f){
   mdRenderList(_mdCases);
 }
 // ── 케이스 목록 렌더링 ────────────────────────────────────────────────
+var _mdShowReqOnly = false;
+function mdToggleReqFilter(){
+  _mdShowReqOnly = !_mdShowReqOnly;
+  var btn = document.getElementById('md-flt-req');
+  if(btn){
+    btn.style.background = _mdShowReqOnly ? '#7c4dff' : '#fff';
+    btn.style.color = _mdShowReqOnly ? '#fff' : '#7c4dff';
+  }
+  if(_mdShowReqOnly){
+    // 요청 목록 표시
+    mdRenderList(_mdCases||[]);
+  } else {
+    // 오배송 목록으로 돌아가기
+    mdRenderList(_mdCases||[]);
+  }
+}
+
 function mdRenderList(cases){
   var el=document.getElementById('md-list');
   if(!el)return;
   var isAdmin=CU.role==='admin';
   var isLeader=CU.role==='leader'||CU.role==='sub';
-  var canDelete=isAdmin||isLeader;
+  var canDelete=isAdmin; // 삭제는 관리자만 가능
 
   // 날짜 필터 적용
   var allCount=(cases||[]).length;
@@ -6204,6 +6364,22 @@ function mdRenderList(cases){
   }
   var cntEl=document.getElementById('md-flt-count');
   if(cntEl)cntEl.textContent=_mdDateFilter==='today'?cases.length+'건 (오늘)':allCount+'건 (전체)';
+
+  // ── 요청 필터 모드 ──────────────────────────────────────────
+  if(window._mdShowReqOnly){
+    var reqHtml='<div style="font-size:12px;font-weight:700;color:#7c4dff;margin-bottom:8px">&#x1F4DD; 각종 요청 건</div>';
+    if(!_rqCases||_rqCases.length===0){
+      reqHtml+='<div class="md-empty"><div class="md-empty-icon">&#x1F4DD;</div><div>요청 없음</div></div>';
+    } else {
+      reqHtml+=_rqCases.map(function(r){return rqBuildCard(r);}).join('');
+    }
+    el.innerHTML=reqHtml;
+    // 뱃지 갱신
+    var pend=(_rqCases||[]).filter(function(r){return r.status==='pending';}).length;
+    var badge=document.getElementById('md-req-badge');
+    if(badge){badge.textContent=pend;badge.style.display=pend>0?'inline':'none';}
+    return;
+  }
 
   // 활성 건 (미처리/승인대기/재요청) vs 완료 건 분리
   var active=[];var completed=[];
@@ -6377,6 +6553,8 @@ async function mdSendReply(caseId){
       case_id:caseId,reply_text:txt,replied_by:CU.name,replied_by_id:CU.id,
       approval_status:mode==='auto'?'approved':'pending',posted_to_teams:false,
       reply_photo_urls:photoUrls.length?photoUrls:null,
+      proxy_writer:(CU.role==='admin'||CU.role==='leader')?CU.name:null,
+      proxy_role:(CU.role==='admin'||CU.role==='leader')?CU.role:null,
     }).select().single();
     if(rErr)throw rErr;
     var newStatus=mode==='auto'?'approved':'replied';
@@ -6532,7 +6710,7 @@ function mdRenderModeBar(mode){
 function mdPushToDriver(driverName,title,body,caseId){
   fetch(SB_URL+'/functions/v1/send-push',{
     method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},
-    body:JSON.stringify({title:title,body:body,target_driver_name:driverName,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}}),
+    body:JSON.stringify({title:title,body:body,driver_name:driverName,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}}),
   }).catch(function(e){console.warn('[mdPushToDriver]',e);});
 }
 function mdPushToLeaders(title,body,caseId){
@@ -6663,6 +6841,41 @@ async function mdLoadLeaderStats(containerId){
   }
 }
 
+// ── 검색 결과에서 케이스 열기 (Supabase 직접 조회) ──────────────────────
+async function mdOpenCase(caseId){
+  // 먼저 _mdCases에 있으면 바로 열기
+  var existing=(_mdCases||[]).find(function(x){return String(x.id)===String(caseId);});
+  if(existing){mdOpenDetail(existing.id);return;}
+  // 없으면 Supabase에서 직접 조회
+  if(!sbClient){alert('Supabase 연결이 필요합니다.');return;}
+  try{
+    var el=document.getElementById('md-search-result');
+    if(el){var orig=el.innerHTML;el.innerHTML='<div style="text-align:center;padding:16px;color:#1565c0;font-size:13px">⏳ 로딩 중...</div>';}
+    var {data,error}=await sbClient.from('misdelivery_cases').select('*').eq('id',caseId).single();
+    if(error||!data){if(el)el.innerHTML=orig||'';alert('케이스를 불러올 수 없습니다.');return;}
+    if(el)el.innerHTML=orig||'';
+    // 임시로 _mdCases에 추가 후 상세 열기
+    if(!_mdCases)_mdCases=[];
+    if(!_mdCases.find(function(x){return x.id===data.id;}))_mdCases.push(data);
+    mdOpenDetail(data.id);
+  }catch(e){alert('오류: '+e.message);}
+}
+
+// ── 사진 확대 뷰어 ────────────────────────────────────────────────────
+function mdViewPhoto(url){
+  var existing=document.getElementById('md-photo-viewer');
+  if(existing)existing.remove();
+  var div=document.createElement('div');
+  div.id='md-photo-viewer';
+  div.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column';
+  div.onclick=function(e){if(e.target===div||e.target.tagName!=='IMG')div.remove();};
+  div.innerHTML=
+    '<button onclick="document.getElementById(\'md-photo-viewer\').remove()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:24px;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>'+
+    '<img src="'+url+'" style="max-width:96vw;max-height:88vh;border-radius:10px;object-fit:contain;box-shadow:0 4px 32px rgba(0,0,0,.5)" onclick="event.stopPropagation()" onerror="this.style.display=\'none\'">'+
+    '<div style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:12px">화면을 탭하면 닫힙니다</div>';
+  document.body.appendChild(div);
+}
+
 // ── 오배송 상세 모달 ──────────────────────────────────────────────────
 function mdOpenDetail(caseId){
   var c=(_mdCases||[]).find(function(x){return x.id===caseId;});
@@ -6754,7 +6967,7 @@ function mdOpenDetail(caseId){
     var apprLabel=hasReply?'✅ 승인 (팀즈답글 게시)':'✅ 승인 (팀즈답글) — 기사 답변 후 활성화';
     adminBtns='<div style="margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+
       '<button '+(hasReply?'onclick="mdApproveLatestReply('+c.id+')"':'')+' style="'+apprStyle+'" '+(hasReply?'':'disabled')+'>'+apprLabel+'</button>'+
-      ((isAdmin||isLeader)?
+      (isAdmin?
         '<div style="display:flex;gap:8px">'+
           '<button onclick="mdMarkNotSent('+c.id+')" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📤 미전송완료</button>'+
           '<button onclick="mdDeleteCase('+c.id+')" style="flex:1;padding:10px;background:#ffebee;color:#c62828;border:1.5px solid #c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑️ 삭제</button>'+
@@ -6826,7 +7039,28 @@ async function mdLoadModalReply(caseId,isAdmin,isLeader){
     .select('*').eq('case_id',caseId).order('created_at',{ascending:false}).limit(1);
   var el=document.getElementById('md-modal-reply-'+caseId);
   if(!el)return;
+  var caseObj=(_mdCases||[]).find(function(x){return x.id===caseId;});
+  var cSt=caseObj?caseObj.status:(replies&&replies.length?'replied':'pending');
   if(!replies||replies.length===0){
+    if((isAdmin||isLeader)&&(cSt==='pending'||cSt==='rejected')){
+      var proxyLbl=isAdmin?'관리자':'팀장';
+      el.innerHTML=
+        '<div style="border-top:1px solid #f0f0f0;padding-top:14px">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'+
+          '<span style="font-size:12px;font-weight:700;color:#555">💬 처리 내용 입력</span>'+
+          '<span style="background:#e8eaf6;color:#3949ab;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700">👤 '+proxyLbl+' 대리작성</span>'+
+        '</div>'+
+        '<textarea id="md-ta-'+caseId+'" class="md-ta" placeholder="처리 내용을 입력하세요 (대리작성)..." style="width:100%;min-height:80px;box-sizing:border-box"></textarea>'+
+        '<div style="display:flex;gap:8px;margin-top:8px">'+
+          '<button type="button" onclick="mdTriggerPhoto('+caseId+',true)" style="flex:1;padding:9px 4px;background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📷 촬영</button>'+
+          '<button type="button" onclick="mdTriggerPhoto('+caseId+',false)" style="flex:1;padding:9px 4px;background:#e8eaf6;color:#3949ab;border:1.5px solid #9fa8da;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🖼️ 사진첩</button>'+
+        '</div>'+
+        '<input type="file" id="md-fi-'+caseId+'" accept="image/*" style="display:none" multiple onchange="mdHandlePhoto('+caseId+',this)">'+
+        '<div id="md-fpreview-'+caseId+'" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>'+
+        '<button class="md-send-btn" style="width:100%;margin-top:8px" onclick="mdSendReplyFromModal('+caseId+')">💬 대리 답변 전송</button>'+
+        '</div>';
+      return;
+    }
     el.innerHTML='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">아직 기사 답변이 없습니다.</div>';
     return;
   }
@@ -6867,8 +7101,10 @@ async function mdLoadModalReply(caseId,isAdmin,isLeader){
       '<button onclick="mdStartEditReply('+r.id+','+caseId+')" style="padding:8px 16px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;cursor:pointer">✏️ 수정</button>'+
     '</div>';
   }
+  var proxyBadge=r.proxy_writer?
+    '<span style="background:#e8eaf6;color:#3949ab;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:6px">👤 '+mdEsc(r.proxy_writer)+(r.proxy_role==='admin'?' (관리자)':' (팀장)')+' 대리작성</span>':'';
   el.innerHTML='<div class="md-appr-box" style="background:#f8f9ff">'+
-    '<div style="font-size:12px;font-weight:700;color:#3c4043;margin-bottom:6px">📝 기사 답변</div>'+
+    '<div style="font-size:12px;font-weight:700;color:#3c4043;margin-bottom:6px">📝 답변'+proxyBadge+'</div>'+
     '<div id="md-edit-area-'+r.id+'" style="font-size:13px;color:#1a1a1a;line-height:1.6;white-space:pre-wrap">'+mdEsc(r.reply_text)+'</div>'+
     replyPhotos+
     '<div class="md-replied-meta">'+mdEsc(r.replied_by)+' · '+modeText+'</div>'+
@@ -7242,6 +7478,796 @@ async function mdDeleteCase(caseId){
 // ══════════════════════════════════════════════════════════════════════
 // ── 신선 탭 ──────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
+
+
+// ══════════════════════════════════════════════════════════════════
+// ── 각종 요청 탭 ──────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+
+var _rqTab = 'damage';
+var _rqRouteRows = [{id:'',route:''}];
+var _rqReturnWaybills = [''];
+var _rqSavedRoutes = [];
+var _rqDmPhotos = [null, null, null];
+var _rqAutoApprove = false; // 관리자가 설정한 승인 방식 (Supabase에서 로드)
+var _rqWebhookUrl = null;
+
+// ── 각종 요청 탭 메인 페이지 ──────────────────────────────────────
+function pgRequest(){
+  if(!CU) return '';
+  var isAdm = (CU.role==='admin');
+  var isActive = getFeatureCtrl('requests','active');
+  // 비활성화 + 비관리자 → 잠금 화면
+  if(!isActive && !isAdm){
+    return '<div class="stit">&#x1F4DD; 각종 요청</div>'+
+      '<div style="background:#fff;border-radius:14px;padding:40px 20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.08)">'+
+        '<div style="font-size:40px;margin-bottom:12px">&#x1F512;</div>'+
+        '<div style="font-size:16px;font-weight:700;color:#555;margin-bottom:8px">관리자에 의해서<br>잠겨있는 기능입니다.</div>'+
+        '<div style="font-size:13px;color:#999">곧 업데이트 예정입니다.</div>'+
+      '</div>';
+  }
+  var tabs = [
+    {k:'damage', lbl:'&#x1F4E6; 파손'},
+    {k:'route',  lbl:'&#x1F504; 라우트 변경'},
+    {k:'return', lbl:'&#x21A9;&#xFE0F; 반품 이관'},
+    {k:'scan',   lbl:'&#x1F5D1;&#xFE0F; 스캔대기 삭제'},
+    {k:'lost',   lbl:'&#x1F50D; 분실 처리'}
+  ];
+  var tabHtml = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">';
+  tabs.forEach(function(t){
+    tabHtml += '<button style="flex:1;min-width:74px;padding:7px 3px;border:2px solid '+(t.k===_rqTab?'#3949ab':'#c5cae9')+';border-radius:10px;background:'+(t.k===_rqTab?'#3949ab':'#fff')+';color:'+(t.k===_rqTab?'#fff':'#3949ab')+';font-size:11px;font-weight:700;cursor:pointer" onclick="rqSwitchTab(\''+t.k+'\')">'+t.lbl+'</button>';
+  });
+  tabHtml += '</div>';
+
+  // 관리자 제어 바
+  var adminBar = isAdm ? _featureBar('requests') : '';
+
+  return '<div class="stit">&#x1F4DD; 각종 요청</div>'+
+    adminBar+
+    tabHtml+
+    '<div id="rq-body"></div>';
+}
+
+function rqInit(){
+  _rqSavedRoutes = JSON.parse(localStorage.getItem('rq_saved_routes')||'[]');
+  // Supabase에서 자동승인 설정 로드
+  rqLoadSettings();
+  rqRenderBody();
+}
+
+async function rqLoadSettings(){
+  if(!sbClient) return;
+  try{
+    var res = await sbClient.from('misdelivery_settings').select('request_webhook_url,request_auto_approve').eq('id',1).maybeSingle();
+    if(res.data){
+      _rqWebhookUrl = res.data.request_webhook_url || null;
+      _rqAutoApprove = res.data.request_auto_approve || false;
+    }
+  }catch(e){ console.warn('rqLoadSettings',e); }
+}
+
+function rqSwitchTab(k){
+  _rqTab = k;
+  // 사진·행 초기화 없이 탭만 변경
+  var mc = document.getElementById('mc');
+  if(!mc) return;
+  // 탭 버튼 스타일 갱신
+  mc.querySelectorAll('[data-rqtab]').forEach(function(b){
+    var isOn = b.dataset.rqtab === k;
+    b.style.background = isOn ? '#3949ab' : '#fff';
+    b.style.color = isOn ? '#fff' : '#3949ab';
+    b.style.borderColor = isOn ? '#3949ab' : '#c5cae9';
+  });
+  rqRenderBody();
+}
+
+function rqRenderBody(){
+  var el = document.getElementById('rq-body');
+  if(!el) return;
+  // 탭 버튼에 data-rqtab 속성 추가 (rqSwitchTab 위해)
+  var mc = document.getElementById('mc');
+  if(mc){
+    var btns = mc.querySelectorAll('button[onclick^="rqSwitchTab"]');
+    var tabs = ['damage','route','return','scan','lost'];
+    btns.forEach(function(b,i){ if(tabs[i]) b.dataset.rqtab = tabs[i]; });
+  }
+  if(_rqTab==='damage')      el.innerHTML = rqDamageForm();
+  else if(_rqTab==='route')  el.innerHTML = rqRouteForm();
+  else if(_rqTab==='return') el.innerHTML = rqReturnForm();
+  else if(_rqTab==='scan')   el.innerHTML = rqScanForm();
+  else if(_rqTab==='lost')   el.innerHTML = rqLostForm();
+  rqUpdateDmBtn();
+}
+
+// ── CSS (공통) ─────────────────────────────────────────────────────
+var _rqCSS = '<style id="rq-css">'+
+'.rq-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:10px}'+
+'.rq-label{font-size:12px;font-weight:700;color:#444;margin-bottom:4px;display:block}'+
+'.rq-req{color:#c62828;font-size:10px;margin-left:3px}'+
+'.rq-inp{width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #c5cae9;border-radius:8px;font-size:14px;margin-bottom:8px;background:#fff;color:#333}'+
+'.rq-inp:focus{border-color:#3949ab;outline:none}'+
+'.rq-paste{width:100%;box-sizing:border-box;padding:10px 12px;border:2px dashed #3949ab;border-radius:8px;font-size:13px;min-height:60px;background:#f3f4ff;color:#333;resize:none;margin-bottom:8px;font-family:monospace}'+
+'.rq-paste:focus{outline:none;background:#eef}'+
+'.rq-parsed{background:#f5f5f5;border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px;line-height:1.8}'+
+'.rq-photo-row{display:flex;gap:8px;margin-bottom:6px}'+
+'.rq-photo-slot{flex:1;aspect-ratio:1;border:2px dashed #c5cae9;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:#fafafa;position:relative;font-size:10px;color:#bbb;gap:2px}'+
+'.rq-photo-slot.rq-filled{border:2px solid #43a047;padding:0}'+
+'.rq-photo-slot img{width:100%;height:100%;object-fit:cover}'+
+'.rq-photo-del{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}'+
+'.rq-hint{font-size:11px;color:#c62828;background:#fff8e1;border-radius:6px;padding:5px 8px;margin-bottom:8px;text-align:center}'+
+'.rq-checks{background:#f9f9f9;border-radius:8px;padding:8px 10px;margin-bottom:10px}'+
+'.rq-ck-row{display:flex;align-items:center;gap:6px;font-size:11px;margin-bottom:2px}'+
+'.rq-ok{color:#43a047;font-weight:700}.rq-no{color:#ccc}'+
+'.rq-admin-box{background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 10px;margin-bottom:10px}'+
+'.rq-admin-lbl{font-size:10px;color:#e65100;font-weight:700;margin-bottom:5px}'+
+'.rq-ap-row{display:flex;gap:6px}'+
+'.rq-ap-chip{flex:1;padding:6px 4px;border-radius:7px;font-size:11px;text-align:center;border:1.5px solid #ffe082;color:#795548;background:#fff;cursor:pointer;font-weight:700}'+
+'.rq-ap-chip.on{background:#e65100;color:#fff;border-color:#e65100}'+
+'.rq-btn{width:100%;padding:12px;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;margin-top:4px;transition:all .15s}'+
+'.rq-btn:disabled{background:#e0e0e0;color:#bbb;cursor:not-allowed}'+
+'.rq-btn-active-auto{background:#2e7d32;color:#fff}'+
+'.rq-btn-active-req{background:#3949ab;color:#fff}'+
+'.rq-btn-save{background:#e8eaf6;color:#3949ab;width:100%;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px}'+
+'.rq-preview-box{background:#f0f2f5;border:1px solid #dde1f0;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;white-space:pre-wrap;color:#333;font-family:monospace;word-break:break-all;min-height:60px;margin-bottom:10px}'+
+'.rq-route-row{display:flex;gap:5px;margin-bottom:6px;align-items:center}'+
+'.rq-route-row input{flex:1;padding:7px 10px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;background:#fff;color:#333}'+
+'.rq-route-row input:focus{border-color:#3949ab;outline:none}'+
+'.rq-route-del{padding:6px 10px;background:#ffebee;color:#c62828;border:none;border-radius:6px;cursor:pointer;font-size:13px}'+
+'.rq-add-row{width:100%;padding:7px;background:#e8eaf6;color:#3949ab;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px}'+
+'.rq-chip-row{display:flex;gap:6px;margin-bottom:10px}'+
+'.rq-chip{padding:6px 12px;border-radius:16px;font-size:12px;border:1.5px solid #c5cae9;cursor:pointer;background:#fff;color:#555;font-weight:700}'+
+'.rq-chip.on{background:#3949ab;color:#fff;border-color:#3949ab}'+
+'.rq-preset-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}'+
+'.rq-preset-chip{padding:3px 10px;border-radius:12px;font-size:11px;border:1px solid #c5cae9;color:#3949ab;background:#fff;cursor:pointer}'+
+'.rq-wb-row{display:flex;gap:5px;margin-bottom:5px;align-items:center}'+
+'.rq-wb-row input{flex:1;padding:7px 10px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;background:#fff;color:#333}'+
+'.rq-wb-del{padding:5px 9px;background:#ffebee;color:#c62828;border:none;border-radius:6px;cursor:pointer;font-size:12px}'+
+'.rq-success{background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px;text-align:center;color:#2e7d32;font-weight:700;font-size:13px;margin-bottom:10px}'+
+'</style>';
+
+// ── 파손 폼 ────────────────────────────────────────────────────────
+function rqDamageForm(){
+  if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
+  var isAdm = CU && CU.role==='admin';
+  var adminBox = isAdm ?
+    '<div class="rq-admin-box">'+
+      '<div class="rq-admin-lbl">&#x1F510; 관리자 전용 — 승인 방식</div>'+
+      '<div class="rq-ap-row">'+
+        '<div class="rq-ap-chip'+(_rqAutoApprove?' on':'')+'" id="rq-ap-auto" onclick="rqSetAutoApprove(true)">&#x26A1; 자동 승인</div>'+
+        '<div class="rq-ap-chip'+(!_rqAutoApprove?' on':'')+'" id="rq-ap-req" onclick="rqSetAutoApprove(false)">&#x1F4CB; 승인 요청</div>'+
+      '</div>'+
+    '</div>' : '';
+
+  var photos = _rqDmPhotos;
+  var slots = '';
+  for(var i=0;i<3;i++){
+    if(photos[i]){
+      slots += '<div class="rq-photo-slot rq-filled" id="rq-dm-s'+i+'" onclick="rqPhotoClick(\'dm\','+i+')">'+
+        '<img src="'+photos[i]+'" alt="사진'+(i+1)+'">'+
+        '<button class="rq-photo-del" onclick="event.stopPropagation();rqRemovePhoto(\'dm\','+i+')">✕</button>'+
+      '</div>';
+    } else {
+      slots += '<div class="rq-photo-slot" id="rq-dm-s'+i+'" onclick="rqPhotoClick(\'dm\','+i+')">'+
+        '<span style="font-size:22px">&#x1F4F7;</span><span>'+(i+1)+'장</span>'+
+      '</div>';
+    }
+  }
+
+  var wb = (window._rqDmWaybill||'');
+  var od = (window._rqDmOrder||'');
+  var filled = photos.filter(function(p){return p;}).length;
+  var btnClass = (wb && filled===3) ? (_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req') : '';
+  var btnTxt = _rqAutoApprove ? '&#x26A1; 팀즈 전송' : '&#x1F4E4; 팀즈 전송 요청';
+
+  return '<div class="rq-card">'+
+    '<div id="rq-dm-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
+    adminBox+
+    '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
+    '<textarea class="rq-paste" id="rq-dm-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호 자동 추출됩니다" oninput="rqParseDamage()">'+rqEsc(window._rqDmRaw||'')+'</textarea>'+
+    '<div class="rq-parsed" id="rq-dm-parsed">'+
+      '<div><span style="color:#888;font-size:11px">운송장번호: </span><span id="rq-dm-wb-val" style="font-weight:700;color:'+(wb?'#222':'#bbb')+'">'+(wb||'자동 추출 대기')+'</span></div>'+
+      '<div><span style="color:#888;font-size:11px">주문번호: </span><span id="rq-dm-od-val" style="font-weight:700;color:'+(od?'#222':'#999')+'">'+(od||'자동 추출 대기')+'</span></div>'+
+    '</div>'+
+    '<label class="rq-label">&#x1F4F7; 사진 3장 <span class="rq-req">필수 (3장 모두)</span></label>'+
+    (filled<3?'<div class="rq-hint" id="rq-dm-hint">사진 '+filled+'장 / 3장 — 3장 모두 첨부해야 전송 가능합니다</div>':'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:5px 8px;margin-bottom:8px;text-align:center;font-size:11px" id="rq-dm-hint">&#x2705; 사진 3장 완료</div>')+
+    '<div class="rq-photo-row">'+slots+'</div>'+
+    '<input type="file" id="rq-dm-file" accept="image/*" style="display:none" onchange="rqFileSelected(\'dm\')">'+
+    '<div class="rq-checks">'+
+      '<div class="rq-ck-row"><span class="'+(wb?'rq-ok':'rq-no')+'">'+(wb?'●':'○')+'</span><span style="color:'+(wb?'#43a047':'#999')+'">운송장번호 '+(wb?'인식됨 ✓':'파싱 대기')+'</span></div>'+
+      '<div class="rq-ck-row"><span class="'+(photos[0]?'rq-ok':'rq-no')+'">'+(photos[0]?'●':'○')+'</span><span style="color:'+(photos[0]?'#43a047':'#999')+'">사진 1장</span></div>'+
+      '<div class="rq-ck-row"><span class="'+(photos[1]?'rq-ok':'rq-no')+'">'+(photos[1]?'●':'○')+'</span><span style="color:'+(photos[1]?'#43a047':'#999')+'">사진 2장</span></div>'+
+      '<div class="rq-ck-row"><span class="'+(photos[2]?'rq-ok':'rq-no')+'">'+(photos[2]?'●':'○')+'</span><span style="color:'+(photos[2]?'#43a047':'#999')+'">사진 3장</span></div>'+
+    '</div>'+
+    '<div class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</div>'+
+    '<div class="rq-preview-box" id="rq-dm-preview">'+rqEsc(rqDamagePreviewText())+'</div>'+
+    '<button class="rq-btn '+btnClass+'" id="rq-dm-btn" onclick="rqSendDamage()" '+((!wb||filled<3)?'disabled':'')+'>'+btnTxt+'</button>'+
+  '</div>';
+}
+
+var _rqDmSlotIdx = 0;
+
+function rqPhotoClick(prefix, i){
+  _rqDmSlotIdx = i;
+  document.getElementById('rq-'+prefix+'-file').click();
+}
+
+function rqFileSelected(prefix){
+  var inp = document.getElementById('rq-'+prefix+'-file');
+  var file = inp.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    // 이미지 압축 (최대 800px, 품질 0.75)
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      var max = 800;
+      var w = img.width, h = img.height;
+      if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      var data = canvas.toDataURL('image/jpeg',0.75);
+      _rqDmPhotos[_rqDmSlotIdx] = data;
+      rqRenderBody();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  inp.value='';
+}
+
+function rqRemovePhoto(prefix, i){
+  _rqDmPhotos[i] = null;
+  rqRenderBody();
+}
+
+function rqParseDamage(){
+  var raw = (document.getElementById('rq-dm-paste')||{}).value||'';
+  window._rqDmRaw = raw;
+  var wbM = raw.match(/\b(\d{13,14})\b/);
+  var odM = raw.match(/\b(\d{11})\b/);
+  window._rqDmWaybill = wbM ? wbM[1] : '';
+  window._rqDmOrder   = odM ? odM[1] : '';
+  // DOM 업데이트 (재렌더 없이)
+  var wbEl = document.getElementById('rq-dm-wb-val');
+  var odEl = document.getElementById('rq-dm-od-val');
+  if(wbEl){ wbEl.textContent = window._rqDmWaybill||'인식 안됨'; wbEl.style.color = window._rqDmWaybill?'#222':'#e53935'; }
+  if(odEl){ odEl.textContent = window._rqDmOrder||'자동 추출 안됨'; odEl.style.color = window._rqDmOrder?'#222':'#999'; }
+  var prev = document.getElementById('rq-dm-preview');
+  if(prev) prev.textContent = rqDamagePreviewText();
+  rqUpdateDmBtn();
+}
+
+function rqDamagePreviewText(){
+  var wb = window._rqDmWaybill||'(미입력)';
+  var od = window._rqDmOrder||'-';
+  var cnt = _rqDmPhotos.filter(function(p){return p;}).length;
+  return '■ 파손 처리 요청\n\n운송장번호: '+wb+'\n주문번호: '+od+'\n첨부사진: '+cnt+'장 / 3장\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'')+'\n\n분실 처리 부탁드립니다.';
+}
+
+function rqUpdateDmBtn(){
+  var btn = document.getElementById('rq-dm-btn');
+  if(!btn) return;
+  var wb = window._rqDmWaybill||'';
+  var cnt = _rqDmPhotos.filter(function(p){return p;}).length;
+  var ok = wb && cnt===3;
+  btn.disabled = !ok;
+  if(ok){
+    btn.className = 'rq-btn '+(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req');
+    btn.innerHTML = _rqAutoApprove ? '&#x26A1; 팀즈 전송' : '&#x1F4E4; 팀즈 전송 요청';
+  } else {
+    btn.className = 'rq-btn';
+    btn.innerHTML = _rqAutoApprove ? '&#x26A1; 팀즈 전송' : '&#x1F4E4; 팀즈 전송 요청';
+  }
+  // 사진 힌트 갱신
+  var hint = document.getElementById('rq-dm-hint');
+  if(hint){
+    if(cnt===3){ hint.style.background='#e8f5e9'; hint.style.color='#2e7d32'; hint.textContent='✅ 사진 3장 완료'; }
+    else { hint.style.background='#fff8e1'; hint.style.color='#c62828'; hint.textContent='사진 '+cnt+'장 / 3장 — 3장 모두 첨부해야 전송 가능합니다'; }
+  }
+}
+
+async function rqSendDamage(){
+  var wb = window._rqDmWaybill||'';
+  var od = window._rqDmOrder||'';
+  var cnt = _rqDmPhotos.filter(function(p){return p;}).length;
+  if(!wb){alert('운송장번호를 입력해주세요.');return;}
+  if(cnt<3){alert('사진 3장을 모두 첨부해주세요.');return;}
+  var text = '■ 파손 처리 요청\n\n운송장번호: '+wb+'\n주문번호: '+(od||'없음')+'\n첨부사진: 3장\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'')+'\n\n분실 처리 부탁드립니다.';
+  await rqSubmit({type:'damage', text:text, photos:_rqDmPhotos, okId:'rq-dm-ok'});
+  // 초기화
+  window._rqDmRaw=''; window._rqDmWaybill=''; window._rqDmOrder='';
+  _rqDmPhotos=[null,null,null];
+  rqRenderBody();
+}
+
+// ── 라우트 변경 폼 ──────────────────────────────────────────────────
+function rqRouteForm(){
+  if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
+  var isAdm = CU && CU.role==='admin';
+  var adminBox = isAdm ?
+    '<div class="rq-admin-box">'+
+      '<div class="rq-admin-lbl">&#x1F510; 관리자 전용 — 승인 방식</div>'+
+      '<div class="rq-ap-row">'+
+        '<div class="rq-ap-chip'+(_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(true)">&#x26A1; 자동 승인</div>'+
+        '<div class="rq-ap-chip'+(!_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(false)">&#x1F4CB; 승인 요청</div>'+
+      '</div>'+
+    '</div>' : '';
+
+  var savedHtml = '';
+  if(_rqSavedRoutes.length>0){
+    savedHtml = '<label class="rq-label">&#x1F4C2; 저장된 설정</label>'+
+      '<div class="rq-preset-row">';
+    _rqSavedRoutes.forEach(function(s,i){
+      savedHtml += '<span class="rq-preset-chip" onclick="rqLoadSaved('+i+')">'+rqEsc(s.name)+'</span>'+
+        '<span style="font-size:11px;color:#c62828;cursor:pointer" onclick="rqDelSaved('+i+')"> ✕</span>';
+    });
+    savedHtml += '</div>';
+  }
+
+  var rowsHtml = '';
+  _rqRouteRows.forEach(function(r,i){
+    rowsHtml += '<div class="rq-route-row" id="rq-rt-row-'+i+'">'+
+      '<input type="text" placeholder="기사 ID" value="'+rqEsc(r.id||'')+'" oninput="_rqRouteRows['+i+'].id=this.value;rqUpdateRoutePreview()">'+
+      '<input type="text" placeholder="라우트 (예:115B01)" value="'+rqEsc(r.route||'')+'" oninput="_rqRouteRows['+i+'].route=this.value;rqUpdateRoutePreview()">'+
+      '<button class="rq-route-del" onclick="rqRouteDelRow('+i+')">&#x1F5D1;</button>'+
+    '</div>';
+  });
+
+  var validRows = _rqRouteRows.filter(function(r){return r.id&&r.route;});
+  var orderSel = window._rqOrderSel||'1,2차';
+  var previewText = rqRoutePreviewText();
+  var ok = validRows.length>0;
+  var btnClass = ok ? (_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req') : '';
+  var btnTxt = _rqAutoApprove ? '&#x26A1; 팀즈 전송' : '&#x1F4E4; 팀즈 전송 요청';
+
+  return '<div class="rq-card">'+
+    '<div id="rq-rt-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
+    adminBox+
+    savedHtml+
+    '<label class="rq-label">&#x1F465; 기사 ID / 라우트 <span class="rq-req">필수 (최소 1행)</span></label>'+
+    '<div id="rq-rt-rows">'+rowsHtml+'</div>'+
+    '<button class="rq-add-row" onclick="rqRouteAddRow()">+ 행 추가</button>'+
+    '<label class="rq-label">&#x1F697; 차수 <span class="rq-req">필수</span></label>'+
+    '<div class="rq-chip-row">'+
+      '<span class="rq-chip'+(orderSel==='1차'?' on':'')+'" onclick="rqSetOrder(this,\'1차\')">1차</span>'+
+      '<span class="rq-chip'+(orderSel==='2차'?' on':'')+'" onclick="rqSetOrder(this,\'2차\')">2차</span>'+
+      '<span class="rq-chip'+(orderSel==='1,2차'?' on':'')+'" onclick="rqSetOrder(this,\'1,2차\')">1,2차</span>'+
+    '</div>'+
+    '<label class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</label>'+
+    '<div class="rq-preview-box" id="rq-rt-preview">'+rqEsc(previewText)+'</div>'+
+    '<button class="rq-btn '+btnClass+'" id="rq-rt-btn" onclick="rqSendRoute()" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
+    '<button class="rq-btn-save" onclick="rqSaveRoutePreset()">&#x1F4BE; 현재 설정 저장</button>'+
+  '</div>';
+}
+
+function rqRouteAddRow(){
+  _rqRouteRows.push({id:'',route:''});
+  var container = document.getElementById('rq-rt-rows');
+  if(!container) return;
+  var i = _rqRouteRows.length-1;
+  var div = document.createElement('div');
+  div.className='rq-route-row'; div.id='rq-rt-row-'+i;
+  div.innerHTML = '<input type="text" placeholder="기사 ID" oninput="_rqRouteRows['+i+'].id=this.value;rqUpdateRoutePreview()">'+
+    '<input type="text" placeholder="라우트 (예:115B01)" oninput="_rqRouteRows['+i+'].route=this.value;rqUpdateRoutePreview()">'+
+    '<button class="rq-route-del" onclick="rqRouteDelRow('+i+')">&#x1F5D1;</button>';
+  container.appendChild(div);
+}
+
+function rqRouteDelRow(i){
+  if(_rqRouteRows.length<=1){alert('최소 1행이 필요합니다.');return;}
+  _rqRouteRows.splice(i,1);
+  rqRenderBody();
+}
+
+function rqSetOrder(el,val){
+  window._rqOrderSel = val;
+  el.closest('.rq-chip-row').querySelectorAll('.rq-chip').forEach(function(c){c.classList.remove('on');});
+  el.classList.add('on');
+  rqUpdateRoutePreview();
+}
+
+function rqRoutePreviewText(){
+  var order = window._rqOrderSel||'1,2차';
+  var valid = _rqRouteRows.filter(function(r){return r.id||r.route;});
+  var lines = valid.map(function(r){return (r.id||'?')+' '+(r.route||'?');}).join('\n');
+  return '■ 라우트 변경 요청\n\n'+(lines||'(입력없음)')+'\n\n'+order+' 부탁드립니다.\n\n요청자: '+CU.name;
+}
+
+function rqUpdateRoutePreview(){
+  var el = document.getElementById('rq-rt-preview');
+  if(el) el.textContent = rqRoutePreviewText();
+  var validRows = _rqRouteRows.filter(function(r){return r.id&&r.route;});
+  var btn = document.getElementById('rq-rt-btn');
+  if(btn){
+    btn.disabled = validRows.length===0;
+    btn.className = 'rq-btn '+(validRows.length>0?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):'');
+    btn.innerHTML = _rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
+  }
+}
+
+async function rqSendRoute(){
+  var valid = _rqRouteRows.filter(function(r){return r.id&&r.route;});
+  if(valid.length===0){alert('기사 ID와 라우트를 1개 이상 입력해주세요.');return;}
+  var text = rqRoutePreviewText();
+  await rqSubmit({type:'route', text:text, photos:[], okId:'rq-rt-ok'});
+}
+
+function rqSaveRoutePreset(){
+  var valid = _rqRouteRows.filter(function(r){return r.id&&r.route;});
+  if(valid.length===0){alert('저장할 내용이 없습니다.');return;}
+  var name = prompt('프리셋 이름:','설정 '+(new Date().toLocaleDateString()));
+  if(!name) return;
+  _rqSavedRoutes.push({name:name, rows:JSON.parse(JSON.stringify(valid)), order:window._rqOrderSel||'1,2차'});
+  localStorage.setItem('rq_saved_routes',JSON.stringify(_rqSavedRoutes));
+  alert('저장되었습니다!');
+  rqRenderBody();
+}
+
+function rqLoadSaved(i){
+  var s = _rqSavedRoutes[i]; if(!s) return;
+  _rqRouteRows = JSON.parse(JSON.stringify(s.rows));
+  window._rqOrderSel = s.order||'1,2차';
+  rqRenderBody();
+}
+
+function rqDelSaved(i){
+  if(!confirm('삭제하시겠습니까?')) return;
+  _rqSavedRoutes.splice(i,1);
+  localStorage.setItem('rq_saved_routes',JSON.stringify(_rqSavedRoutes));
+  rqRenderBody();
+}
+
+// ── 반품 이관 폼 ────────────────────────────────────────────────────
+function rqReturnForm(){
+  if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
+  var isAdm = CU && CU.role==='admin';
+  var adminBox = isAdm ?
+    '<div class="rq-admin-box"><div class="rq-admin-lbl">&#x1F510; 관리자 전용 — 승인 방식</div>'+
+      '<div class="rq-ap-row">'+
+        '<div class="rq-ap-chip'+(_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(true)">&#x26A1; 자동 승인</div>'+
+        '<div class="rq-ap-chip'+(!_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(false)">&#x1F4CB; 승인 요청</div>'+
+      '</div></div>' : '';
+  var fromVal = window._rqRtnFrom||'';
+  var toVal   = window._rqRtnTo||'';
+  var wbsHtml = '';
+  _rqReturnWaybills.forEach(function(wb,i){
+    wbsHtml += '<div class="rq-wb-row" id="rq-rtn-wb-'+i+'">'+
+      '<input type="text" inputmode="numeric" placeholder="운송장번호" value="'+rqEsc(wb)+'" oninput="_rqReturnWaybills['+i+']=this.value;rqUpdateReturnPreview()">'+
+      '<button class="rq-wb-del" onclick="rqReturnDelWb('+i+')">✕</button>'+
+    '</div>';
+  });
+  var ok = fromVal && toVal && _rqReturnWaybills.filter(function(w){return w.trim();}).length>0;
+  var btnClass = ok ? (_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req') : '';
+  var btnTxt = _rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
+  return '<div class="rq-card">'+
+    '<div id="rq-rtn-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
+    adminBox+
+    '<label class="rq-label">&#x1F464; 이관 하는 팀원 <span class="rq-req">필수</span></label>'+
+    '<input class="rq-inp" id="rq-rtn-from" placeholder="ID 또는 이름 정확히" value="'+rqEsc(fromVal)+'" oninput="window._rqRtnFrom=this.value;rqUpdateReturnPreview()">'+
+    '<label class="rq-label">&#x27A1;&#xFE0F; 이관 받는 팀원 <span class="rq-req">필수</span></label>'+
+    '<input class="rq-inp" id="rq-rtn-to" placeholder="ID 또는 이름 정확히" value="'+rqEsc(toVal)+'" oninput="window._rqRtnTo=this.value;rqUpdateReturnPreview()">'+
+    '<label class="rq-label">&#x1F4E6; 운송장번호 <span class="rq-req">필수 (최소 1개)</span></label>'+
+    '<div id="rq-rtn-wbs">'+wbsHtml+'</div>'+
+    '<button class="rq-add-row" onclick="rqReturnAddWb()">+ 운송장 추가</button>'+
+    '<label class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</label>'+
+    '<div class="rq-preview-box" id="rq-rtn-preview">'+rqEsc(rqReturnPreviewText())+'</div>'+
+    '<button class="rq-btn '+btnClass+'" id="rq-rtn-btn" onclick="rqSendReturn()" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
+  '</div>';
+}
+
+function rqReturnAddWb(){
+  _rqReturnWaybills.push('');
+  var c = document.getElementById('rq-rtn-wbs');
+  if(!c) return;
+  var i = _rqReturnWaybills.length-1;
+  var d = document.createElement('div');
+  d.className='rq-wb-row'; d.id='rq-rtn-wb-'+i;
+  d.innerHTML = '<input type="text" inputmode="numeric" placeholder="운송장번호" oninput="_rqReturnWaybills['+i+']=this.value;rqUpdateReturnPreview()">'+
+    '<button class="rq-wb-del" onclick="rqReturnDelWb('+i+')">✕</button>';
+  c.appendChild(d);
+}
+
+function rqReturnDelWb(i){
+  if(_rqReturnWaybills.length<=1){alert('최소 1개가 필요합니다.');return;}
+  _rqReturnWaybills.splice(i,1);
+  rqRenderBody();
+}
+
+function rqReturnPreviewText(){
+  var from = window._rqRtnFrom||'(미입력)';
+  var to   = window._rqRtnTo||'(미입력)';
+  var wbs  = _rqReturnWaybills.filter(function(w){return w.trim();});
+  var lines = wbs.map(function(w,i){return (i+1)+'. 운송장번호: '+w;}).join('\n');
+  return '■ 반품 이관 요청\n\n'+(lines||'(운송장번호 없음)')+'\n\n'+from+' ▶ '+to+' 으로\n이관 부탁드립니다.\n\n요청자: '+CU.name;
+}
+
+function rqUpdateReturnPreview(){
+  var el = document.getElementById('rq-rtn-preview');
+  if(el) el.textContent = rqReturnPreviewText();
+  var from = window._rqRtnFrom||'';
+  var to   = window._rqRtnTo||'';
+  var ok   = from && to && _rqReturnWaybills.filter(function(w){return w.trim();}).length>0;
+  var btn  = document.getElementById('rq-rtn-btn');
+  if(btn){
+    btn.disabled=!ok;
+    btn.className='rq-btn '+(ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):'');
+    btn.innerHTML=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
+  }
+}
+
+async function rqSendReturn(){
+  var from = window._rqRtnFrom||'';
+  var to   = window._rqRtnTo||'';
+  var wbs  = _rqReturnWaybills.filter(function(w){return w.trim();});
+  if(!from){alert('이관하는 팀원을 입력해주세요.');return;}
+  if(!to){alert('이관받는 팀원을 입력해주세요.');return;}
+  if(wbs.length===0){alert('운송장번호를 최소 1개 입력해주세요.');return;}
+  var text = rqReturnPreviewText();
+  await rqSubmit({type:'return', text:text, photos:[], okId:'rq-rtn-ok'});
+  window._rqRtnFrom=''; window._rqRtnTo='';
+  _rqReturnWaybills=[''];
+  rqRenderBody();
+}
+
+// ── 스캔 대기 삭제 폼 ──────────────────────────────────────────────
+function rqScanForm(){
+  return rqSimpleForm('scan','&#x1F5D1;&#xFE0F; 스캔 대기 삭제','rq-sc',
+    function(wb,od){return '■ 스캔 대기 삭제 요청\n\n운송장번호: '+wb+'\n주문번호: '+od+'\n\n업무 마감하였으나, 스캔 대기건 없습니다.\n삭제 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
+}
+
+// ── 분실 처리 폼 ────────────────────────────────────────────────────
+function rqLostForm(){
+  return rqSimpleForm('lost','&#x1F50D; 분실 처리','rq-ls',
+    function(wb,od){return '■ 분실 처리 요청\n\n운송장번호: '+wb+'\n주문번호: '+od+'\n\n업무 마감하였으나, 해당건을 발견하지 못하였습니다.\n분실 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
+}
+
+// ── 공통 단순 폼 (스캔/분실) ────────────────────────────────────────
+function rqSimpleForm(type, title, pfx, previewFn){
+  if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
+  var isAdm = CU && CU.role==='admin';
+  var adminBox = isAdm ?
+    '<div class="rq-admin-box"><div class="rq-admin-lbl">&#x1F510; 관리자 전용 — 승인 방식</div>'+
+      '<div class="rq-ap-row">'+
+        '<div class="rq-ap-chip'+(_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(true)">&#x26A1; 자동 승인</div>'+
+        '<div class="rq-ap-chip'+(!_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(false)">&#x1F4CB; 승인 요청</div>'+
+      '</div></div>' : '';
+  var wbKey = pfx+'-wb-val', odKey = pfx+'-od-val';
+  var wb = window[wbKey]||'', od = window[odKey]||'';
+  var ok = wb && od;
+  var btnClass = ok ? (_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req') : '';
+  var btnTxt = _rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
+  window[pfx+'-prevFn'] = previewFn;
+  return '<div class="rq-card">'+
+    '<div id="'+pfx+'-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
+    adminBox+
+    '<label class="rq-label">&#x1F4E6; 운송장번호 <span class="rq-req">필수</span></label>'+
+    '<input class="rq-inp" id="'+pfx+'-wb" type="text" inputmode="numeric" placeholder="복사 후 붙여넣기" value="'+rqEsc(wb)+'" oninput="window[\''+wbKey+'\']=this.value;rqUpdateSimplePreview(\''+pfx+'\')">'+
+    '<label class="rq-label">&#x1F6D2; 주문번호 <span class="rq-req">필수</span></label>'+
+    '<input class="rq-inp" id="'+pfx+'-od" type="text" inputmode="numeric" placeholder="주문번호" value="'+rqEsc(od)+'" oninput="window[\''+odKey+'\']=this.value;rqUpdateSimplePreview(\''+pfx+'\')">'+
+    '<label class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</label>'+
+    '<div class="rq-preview-box" id="'+pfx+'-preview">'+rqEsc(previewFn(wb||'(미입력)',od||'(미입력)'))+'</div>'+
+    '<button class="rq-btn '+btnClass+'" id="'+pfx+'-btn" onclick="rqSendSimple(\''+type+'\',\''+pfx+'\')" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
+  '</div>';
+}
+
+function rqUpdateSimplePreview(pfx){
+  var wb = window[pfx+'-wb-val']||'(미입력)';
+  var od = window[pfx+'-od-val']||'(미입력)';
+  var fn = window[pfx+'-prevFn'];
+  var el = document.getElementById(pfx+'-preview');
+  if(el&&fn) el.textContent = fn(wb,od);
+  var ok = (window[pfx+'-wb-val']||'') && (window[pfx+'-od-val']||'');
+  var btn = document.getElementById(pfx+'-btn');
+  if(btn){
+    btn.disabled=!ok;
+    btn.className='rq-btn '+(ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):'');
+    btn.innerHTML=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
+  }
+}
+
+async function rqSendSimple(type, pfx){
+  var wb = window[pfx+'-wb-val']||'';
+  var od = window[pfx+'-od-val']||'';
+  if(!wb){alert('운송장번호를 입력해주세요.');return;}
+  if(!od){alert('주문번호를 입력해주세요.');return;}
+  var fn = window[pfx+'-prevFn'];
+  var text = fn(wb,od);
+  await rqSubmit({type:type, text:text, photos:[], okId:pfx+'-ok'});
+  window[pfx+'-wb-val']=''; window[pfx+'-od-val']='';
+  rqRenderBody();
+}
+
+// ── 승인방식 변경 ────────────────────────────────────────────────────
+async function rqSetAutoApprove(val){
+  _rqAutoApprove = val;
+  // 관리자가 바꾸면 Supabase 저장
+  if(CU&&CU.role==='admin'&&sbClient){
+    try{
+      await sbClient.from('misdelivery_settings').update({request_auto_approve:val}).eq('id',1);
+    }catch(e){console.warn('rqSetAutoApprove save',e);}
+  }
+  // 버튼 UI 갱신 (재렌더 없이)
+  document.querySelectorAll('.rq-ap-chip').forEach(function(el){el.classList.remove('on');});
+  document.querySelectorAll('.rq-ap-chip').forEach(function(el,i){
+    if(i%2===0 && val) el.classList.add('on');
+    if(i%2===1 && !val) el.classList.add('on');
+  });
+  // 전송 버튼 텍스트 갱신
+  var btnTxt = val ? '&#x26A1; 팀즈 전송' : '&#x1F4E4; 팀즈 전송 요청';
+  document.querySelectorAll('#rq-dm-btn,#rq-rt-btn,#rq-rtn-btn,#rq-sc-btn,#rq-ls-btn,[id$="-btn"].rq-btn').forEach(function(b){
+    if(!b.disabled) b.innerHTML = btnTxt;
+  });
+}
+
+// ── 공통 전송 로직 ─────────────────────────────────────────────────
+async function rqSubmit(opts){
+  // opts: {type, text, photos, okId}
+  if(!sbClient){alert('Supabase 연결이 필요합니다.');return;}
+  try{
+    var status = _rqAutoApprove ? 'approved' : 'pending';
+    var payload = {text: opts.text};
+    if(opts.photos && opts.photos.length>0){
+      // 사진은 base64로 payload에 포함 (압축됨)
+      payload.photos = opts.photos.filter(function(p){return p;});
+    }
+    var insertRes = await sbClient.from('requests').insert({
+      type: opts.type,
+      status: status,
+      requester_id: CU.id||CU.name,
+      requester_name: CU.name,
+      requester_role: CU.role,
+      payload: payload,
+      teams_sent: false,
+      created_at: new Date().toISOString()
+    }).select().single();
+    if(insertRes.error) throw new Error(insertRes.error.message);
+
+    // 자동 승인 → 즉시 Teams 전송
+    if(_rqAutoApprove){
+      await rqSendToTeams(opts.text, opts.photos||[], insertRes.data.id);
+    } else {
+      // 승인 요청 → 관리자/팀장에게 푸시 알림
+      rqNotifyApprovers(opts.type, opts.text);
+    }
+    var ok = document.getElementById(opts.okId);
+    if(ok){ok.style.display='block';setTimeout(function(){ok.style.display='none';},4000);}
+  }catch(e){
+    alert('전송 실패: '+e.message);
+    console.error('rqSubmit error',e);
+  }
+}
+
+async function rqSendToTeams(text, photos, requestId){
+  if(!sbClient) return;
+  try{
+    // PA 웹훅 URL 가져오기
+    if(!_rqWebhookUrl){
+      var r = await sbClient.from('misdelivery_settings').select('request_webhook_url,pa_webhook_url').eq('id',1).maybeSingle();
+      if(r.data) _rqWebhookUrl = r.data.request_webhook_url || r.data.pa_webhook_url || null;
+    }
+    if(!_rqWebhookUrl){
+      console.warn('rqSendToTeams: 웹훅 URL 없음');
+      // DB에만 저장 (팀즈 전송 실패 기록)
+      return;
+    }
+    var body = {text: text};
+    if(photos && photos.length>0) body.photos = photos;
+    var res = await fetch(_rqWebhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    // teams_sent 업데이트
+    if(requestId) await sbClient.from('requests').update({teams_sent:true,updated_at:new Date().toISOString()}).eq('id',requestId);
+  }catch(e){ console.warn('rqSendToTeams error',e); }
+}
+
+function rqNotifyApprovers(type, text){
+  if(!sbClient) return;
+  // send-push Edge Function 호출 (관리자/팀장에게)
+  var typeLabels={damage:'파손요청',route:'라우트변경',return:'반품이관',scan:'스캔삭제',lost:'분실처리'};
+  var lbl = typeLabels[type]||'각종요청';
+  try{
+    fetch(SB_URL+'/functions/v1/send-push',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY},
+      body:JSON.stringify({title:'&#x1F4DD; '+lbl+' 승인 요청',body:CU.name+'님이 '+lbl+' 승인을 요청했습니다.',roles:['admin','leader']})
+    });
+  }catch(e){}
+}
+
+// ── 오배송 탭에서 요청 불러오기 ────────────────────────────────────
+var _rqCases = [];
+async function mdLoadRequests(){
+  if(!sbClient) return;
+  try{
+    var {data,error} = await sbClient.from('requests')
+      .select('*').order('created_at',{ascending:false}).limit(100);
+    if(error) throw error;
+    _rqCases = data||[];
+    mdRenderRequestBadge();
+  }catch(e){ console.warn('mdLoadRequests',e); _rqCases=[]; }
+}
+
+function mdRenderRequestBadge(){
+  var pending = _rqCases.filter(function(r){return r.status==='pending';}).length;
+  var niMd = document.getElementById('ni-md');
+  if(niMd){
+    niMd.innerHTML = '<span class="nicon">&#x1F6A8;</span>오배송'+(pending>0?'<span class="ndot"></span>':'');
+  }
+}
+
+// ── 요청 카드 HTML ──────────────────────────────────────────────────
+function rqBuildCard(r){
+  var isAdm = CU&&CU.role==='admin';
+  var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
+  var typeMap={damage:'&#x1F4E6; 파손요청',route:'&#x1F504; 라우트 변경',return:'&#x21A9; 반품 이관',scan:'&#x1F5D1; 스캔대기 삭제',lost:'&#x1F50D; 분실 처리'};
+  var typeLbl = typeMap[r.type]||r.type;
+  var stsMap={pending:'<span style="background:#fff3e0;color:#e65100;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">&#x23F3; 승인대기</span>',
+    approved:'<span style="background:#e8f5e9;color:#2e7d32;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">&#x2705; 승인완료</span>',
+    rejected:'<span style="background:#ffebee;color:#c62828;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">&#x274C; 반려됨</span>'};
+  var sts = stsMap[r.status]||r.status;
+  var sent = r.teams_sent ? '<span style="color:#1565c0;font-size:10px">&#x2705; 팀즈 전송됨</span>' : '<span style="color:#888;font-size:10px">&#x23F3; 팀즈 대기</span>';
+  var dt = r.created_at ? new Date(r.created_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+  var payload = r.payload||{};
+  var preview = (payload.text||'').substring(0,60).replace(/\n/g,' ');
+  var btns = '';
+  if(isLdr && r.status==='pending'){
+    btns = '<div style="display:flex;gap:6px;margin-top:8px">'+
+      '<button onclick="rqApprove('+r.id+')" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">&#x2705; 승인+팀즈전송</button>'+
+      '<button onclick="rqReject('+r.id+')" style="flex:1;padding:6px;background:#ffebee;color:#c62828;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">&#x274C; 반려</button>'+
+    '</div>';
+  } else if(r.status==='approved'){
+    btns = sent;
+  }
+  return '<div style="border:0.5px solid #e0e0e0;border-left:3px solid #7c4dff;border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+      '<span style="font-size:12px;font-weight:700;color:#4527a0">'+typeLbl+'</span>'+sts+
+    '</div>'+
+    '<div style="font-size:11px;color:#666;margin-bottom:3px">요청자: '+mdEsc(r.requester_name||'')+'</div>'+
+    '<div style="font-size:11px;color:#888;margin-bottom:3px">'+mdEsc(preview)+'</div>'+
+    '<div style="font-size:10px;color:#bbb">'+dt+'</div>'+
+    btns+
+  '</div>';
+}
+
+async function rqApprove(id){
+  if(!sbClient) return;
+  if(!confirm('승인하고 팀즈로 전송하시겠습니까?')) return;
+  var r = _rqCases.find(function(c){return c.id===id;});
+  if(!r){alert('요청을 찾을 수 없습니다.');return;}
+  try{
+    await sbClient.from('requests').update({
+      status:'approved', approved_by:CU.name, approved_at:new Date().toISOString(), updated_at:new Date().toISOString()
+    }).eq('id',id);
+    await rqSendToTeams(r.payload&&r.payload.text?r.payload.text:'', r.payload&&r.payload.photos?r.payload.photos:[], id);
+    r.status='approved'; r.teams_sent=true;
+    // 현재 탭이 md면 재렌더
+    if(CUR_TAB==='md'){
+      var mc=document.getElementById('mc');
+      if(mc){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
+    }
+  }catch(e){alert('오류: '+e.message);}
+}
+
+async function rqReject(id){
+  if(!sbClient) return;
+  var reason = prompt('반려 사유 (선택):','');
+  if(reason===null) return;
+  try{
+    await sbClient.from('requests').update({
+      status:'rejected', rejected_by:CU.name, rejected_at:new Date().toISOString(),
+      rejection_reason:reason, updated_at:new Date().toISOString()
+    }).eq('id',id);
+    var r = _rqCases.find(function(c){return c.id===id;});
+    if(r) r.status='rejected';
+    if(CUR_TAB==='md'){
+      var mc=document.getElementById('mc');
+      if(mc){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
+    }
+  }catch(e){alert('오류: '+e.message);}
+}
+
+// ── 공통 유틸 ───────────────────────────────────────────────────────
+function rqEsc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 // pgFresh: 신선 탭 초기 HTML (스켈레톤 + 비활성화 체크)
 function pgFresh(){
