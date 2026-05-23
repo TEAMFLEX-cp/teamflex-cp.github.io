@@ -7473,14 +7473,15 @@ async function loadFreshStatus(){
         '</tr></thead><tbody>';
       wRoutes.forEach(function(rt){
         var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0,sc=rt.scan||0;
-        var tot=c+sc+cp+u;
-        var r=(cp+sc)>0?Math.round(cp/(cp+sc)*1000)/10:0;  // 완료율: 완료/(완료+스캔)
+        var cRemain=Math.max(0,c-sc-cp-u);  // 위탁 잔여 = 총수량 - 스캔 - 완료 - 미배송
+        var tot=c;  // 총수량 = 원래 배정 수량 (고정)
+        var r=c>0?Math.round(cp/c*1000)/10:0;  // 완료율: 완료/총수량
         var miss=_isPddMiss(rt);
         var pfx2=[],ps2={};(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
         s+='<tr style="border-bottom:1px solid #f0f0f0'+(miss?';background:#fff3e0':'')+'">'  +
           '<td style="padding:5px 6px;font-weight:700;color:#1a237e;font-size:10px">'+pfx2.join(', ')+'</td>'+
           '<td style="text-align:center;color:#555;font-weight:700">'+tot+'</td>'+
-          '<td style="text-align:center;color:#888">'+c+'</td>'+
+          '<td style="text-align:center;color:#888">'+cRemain+'</td>'+
           '<td style="text-align:center;color:#555">'+sc+'</td>'+
           '<td style="text-align:center;color:#2e7d32;font-weight:700">'+cp+'</td>'+
           '<td style="text-align:center;color:'+(u>0?'#e65100':'#aaa')+';font-weight:'+(u>0?'700':'400')+'">'+u+'</td>'+
@@ -7489,9 +7490,10 @@ async function loadFreshStatus(){
         '</tr>';
       });
       s+='</tbody></table></div>';
-      var totCard=csg+scn+cmp+und;
+      var totCard=csg;  // 총수량 = rt.consignment 합계 (고정)
+      var csgRemain=Math.max(0,csg-scn-cmp-und);  // 위탁 잔여 합계
       s+='<div style="display:flex;border-top:1.5px solid #e8f5e9;padding:8px 0 10px 0">'+
-        _fStat(totCard,'총수량','#1a237e')+_fStat(csg,'위탁','#1b5e20')+_fStat(scn,'스캔','#555')+_fStat(cmp,'완료','#2e7d32')+
+        _fStat(totCard,'총수량','#1a237e')+_fStat(csgRemain,'위탁','#1b5e20')+_fStat(scn,'스캔','#555')+_fStat(cmp,'완료','#2e7d32')+
         _fStat(und,'미배송',und>0?'#e65100':'#888')+_fStat(pdd,'PDD Miss',pdd>0?'#c62828':'#888')+
         '<div style="flex:1.2;text-align:center"><div style="font-size:14px;font-weight:900;color:'+(rate>=100?'#2e7d32':rate>=95?'#f57c00':'#c62828')+'">'+rate+'%</div><div style="font-size:10px;color:#999">완료율</div></div>'+
       '</div>';
@@ -7572,15 +7574,16 @@ async function loadFreshStatus(){
         '</tr></thead><tbody>';
       wR.forEach(function(rt){
         var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0,sc=rt.scan||0;
-        var tot=c+sc+cp+u;
-        var r=(cp+sc)>0?Math.round(cp/(cp+sc)*1000)/10:0;  // 완료율: 완료/(완료+스캔)
+        var cRemain=Math.max(0,c-sc-cp-u);  // 위탁 잔여 = 총수량 - 스캔 - 완료 - 미배송
+        var tot=c;  // 총수량 = 원래 배정 수량 (고정)
+        var r=c>0?Math.round(cp/c*1000)/10:0;  // 완료율: 완료/총수량
         var miss=_isPddMiss(rt);
         var pfx2=[],ps2={};
         (rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
         dtbl+='<tr style="border-bottom:1px solid #f0f0f0'+(miss?';background:#fff3e0':'')+'">'  +
           '<td style="padding:5px 6px;font-weight:700;color:#1a237e;font-size:10px">'+pfx2.join(', ')+'</td>'+
           '<td style="text-align:center;color:#555;font-weight:700">'+tot+'</td>'+
-          '<td style="text-align:center;color:#888">'+c+'</td>'+
+          '<td style="text-align:center;color:#888">'+cRemain+'</td>'+
           '<td style="text-align:center;color:#555">'+sc+'</td>'+
           '<td style="text-align:center;color:#2e7d32;font-weight:700">'+cp+'</td>'+
           '<td style="text-align:center;color:'+(u>0?'#e65100':'#aaa')+';font-weight:'+(u>0?'700':'400')+'">'+u+'</td>'+
