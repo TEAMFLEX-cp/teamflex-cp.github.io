@@ -7403,11 +7403,10 @@ async function loadFreshStatus(){
     // ── PDD 미스 판정 (20시 이후: 미배송 < pdd_miss) ─────────────
     var _now=new Date(), _hr=_now.getHours(), _isAfter20=(_hr>=20);
     function _isPddMiss(rt){
-      if(_isAfter20){
-        return (rt.pdd_miss||0)>0 && (rt.undelivered||0)>0 && (rt.undelivered||0)<(rt.pdd_miss||0);
-      } else {
-        return (rt.pdd_miss||0)>0 && (rt.scan||0)>0 && (rt.undelivered||0)<(rt.pdd_miss||0);
-      }
+      // PDD Miss는 20시 이후에만 확정
+      if(!_isAfter20) return false;
+      var p=rt.pdd_miss||0, u=rt.undelivered||0;
+      return p>0 && u>0 && u<p;
     }
 
     // ── 기사별 그룹핑 ──────────────────────────────────────────────
@@ -7424,11 +7423,12 @@ async function loadFreshStatus(){
       // 완료율: 완료/(완료+스캔) — 스캔=아직 배달 전 물량, fly.coupang.com 기준
       var rate=(cmp+scn)>0?Math.round(cmp/(cmp+scn)*1000)/10:0;
       var hasMiss=wRoutes.some(_isPddMiss);
-      // ✅ 신선완료 / 진행중 / PDD MISS 판정 (20시 전/후 동일 기준)
-      var isCompleteCard=false, isPddMissCard=false;
-      if(und===0){isCompleteCard=true;}
-      else if(pdd>0&&und===pdd){isCompleteCard=true;}
-      else if(pdd>0&&und>0&&und<pdd){isPddMissCard=true;}
+      // ✅ 신선완료 / 진행중 / PDD MISS 판정
+      // 완료: 스캔=0 AND 위탁=0 AND (미배송=0 OR 미배송=PDD miss) — 20시 전/후 모두
+      // PDD Miss: 스캔=0 AND 위탁=0 AND 20시 이후에만 확정
+      var isInProgressCard=(scn>0||csg>0);
+      var isCompleteCard=!isInProgressCard&&(und===0||(pdd>0&&und===pdd));
+      var isPddMissCard=_isAfter20&&!isInProgressCard&&!isCompleteCard&&(pdd>0&&und>0&&und<pdd);
       var pfxAll=[],ps={};
       wRoutes.forEach(function(rt){(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!ps[pf]){ps[pf]=1;pfxAll.push(pf);}});});
       var routeLabel=pfxAll.join(', ')||'-';
@@ -7453,30 +7453,34 @@ async function loadFreshStatus(){
         s+='<div style="margin:0 14px 8px 14px;background:#ffebee;border-radius:8px;padding:7px 12px;font-size:11px;color:#c62828;font-weight:600">&#x2B06; 미배송: '+missList+'</div>';
       }
       if(isCompleteCard){
-        s+='<div style="margin:4px 14px 8px;padding:7px 12px;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:8px;font-size:12px;font-weight:700;color:#1b5e20;text-align:center">&#x2705; 신선 마감 완료</div>';
+        s+='<div style="margin:4px 14px 8px;padding:7px 12px;background:#e8f5e9;border:1px solid #c8e6c9;border-radius:8px;font-size:12px;font-weight:700;color:#1b5e20;text-align:center">&#x2705; 신선 배송 완료</div>';
+      }else if(isPddMissCard||hasMiss){
+        s+='<div style="padding:0 14px 8px 14px;font-size:12px;font-weight:700;color:#c62828">&#x26A0;&#xFE0F; PDD Miss '+pdd+'건 발생</div>';
       }else{
-        var _cStat=(isPddMissCard||hasMiss)?'&#x26A0;&#xFE0F; PDD MISS '+pdd+'건 발생':'&#x23F3; 진행 중입니다.';
-        var _cClr=(isPddMissCard||hasMiss)?'#c62828':'#f57c00';
-        s+='<div style="padding:0 14px 8px 14px;font-size:12px;font-weight:700;color:'+_cClr+'">'+ _cStat+'</div>';
+        var _inpStat=isInProgressCard?'&#x23F3; 배달 진행 중 (스캔/위탁 잔여)':'&#x23F3; 신선 배송 진행 중';
+        s+='<div style="padding:0 14px 8px 14px;font-size:12px;font-weight:700;color:#f57c00">'+_inpStat+'</div>';
       }
       s+='<div id="'+did+'" style="display:none;margin:0 14px 8px 14px">'+
         '<table style="width:100%;border-collapse:collapse;font-size:11px">'+
         '<thead><tr style="background:#f1f8e9;font-size:10px;color:#666">'+
           '<th style="padding:5px 6px;text-align:left">라우트</th>'+
+          '<th style="padding:5px 4px;text-align:center">총수량</th>'+
           '<th style="padding:5px 4px;text-align:center">위탁</th>'+
           '<th style="padding:5px 4px;text-align:center">스캔</th>'+
           '<th style="padding:5px 4px;text-align:center">완료</th>'+
           '<th style="padding:5px 4px;text-align:center">미배송</th>'+
-          '<th style="padding:5px 4px;text-align:center">PDD</th>'+
+          '<th style="padding:5px 4px;text-align:center">PDD Miss</th>'+
           '<th style="padding:5px 4px;text-align:center">완료율</th>'+
         '</tr></thead><tbody>';
       wRoutes.forEach(function(rt){
         var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0,sc=rt.scan||0;
+        var tot=c+sc+cp+u;
         var r=(cp+sc)>0?Math.round(cp/(cp+sc)*1000)/10:0;  // 완료율: 완료/(완료+스캔)
         var miss=_isPddMiss(rt);
         var pfx2=[],ps2={};(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
         s+='<tr style="border-bottom:1px solid #f0f0f0'+(miss?';background:#fff3e0':'')+'">'  +
           '<td style="padding:5px 6px;font-weight:700;color:#1a237e;font-size:10px">'+pfx2.join(', ')+'</td>'+
+          '<td style="text-align:center;color:#555;font-weight:700">'+tot+'</td>'+
           '<td style="text-align:center;color:#888">'+c+'</td>'+
           '<td style="text-align:center;color:#555">'+sc+'</td>'+
           '<td style="text-align:center;color:#2e7d32;font-weight:700">'+cp+'</td>'+
@@ -7486,9 +7490,10 @@ async function loadFreshStatus(){
         '</tr>';
       });
       s+='</tbody></table></div>';
+      var totCard=csg+scn+cmp+und;
       s+='<div style="display:flex;border-top:1.5px solid #e8f5e9;padding:8px 0 10px 0">'+
-        _fStat(csg,'위탁','#1b5e20')+_fStat(scn,'스캔','#555')+_fStat(cmp,'완료','#2e7d32')+
-        _fStat(und,'미배송',und>0?'#e65100':'#888')+_fStat(pdd,'PDD미스',pdd>0?'#c62828':'#888')+
+        _fStat(totCard,'총수량','#1a237e')+_fStat(csg,'위탁','#1b5e20')+_fStat(scn,'스캔','#555')+_fStat(cmp,'완료','#2e7d32')+
+        _fStat(und,'미배송',und>0?'#e65100':'#888')+_fStat(pdd,'PDD Miss',pdd>0?'#c62828':'#888')+
         '<div style="flex:1.2;text-align:center"><div style="font-size:14px;font-weight:900;color:'+(rate>=100?'#2e7d32':rate>=95?'#f57c00':'#c62828')+'">'+rate+'%</div><div style="font-size:10px;color:#999">완료율</div></div>'+
       '</div>';
       s+='</div>';
@@ -7513,12 +7518,11 @@ async function loadFreshStatus(){
       var ua=_wUnd(a),ub=_wUnd(b);
       if(ua===ub)return 0;if(ua===0)return 1;if(ub===0)return -1;return ub-ua;
     });
-    // 진행중 기사 = 신선완료 조건에 해당하지 않는 기사 (20시 전/후 동일 기준)
+    // 진행중 기사 = 신선완료 조건에 해당하지 않는 기사
+    // 완료: 스캔=0 AND 위탁=0 AND (미배송=0 OR 미배송=PDD miss) — 20시 전/후 모두 적용
     var incompleteW=allWorkers.filter(function(w){
-      var u=_wUnd(w),p=_wPdd(w);
-      // 완료 조건: 미배송 없음, 또는 미배송 수 = PDD miss 수 (PDD miss만큼만 남은 것)
-      if(u===0){return false;}
-      if(p>0&&u===p){return false;}
+      var u=_wUnd(w),p=_wPdd(w),sc=_wScn(w),cs=_wCsg(w);
+      if(sc===0&&cs===0&&(u===0||(p>0&&u===p))){return false;}  // 완료
       return true;
     });
 
@@ -7536,18 +7540,21 @@ async function loadFreshStatus(){
       var und=_wUnd(w), csg=_wCsg(w), pdd=_wPdd(w), scn=_wScn(w);
       var cmp=wR.reduce(function(s,rt){return s+(rt.completed||0);},0);
       var hasMiss=wR.some(_isPddMiss);
-      // ✅ 신선완료 / 진행중 / PDD MISS 판정 (20시 전/후 동일 기준)
-      var isComplete=false, isPddMissFlag=false;
-      if(und===0){isComplete=true;}
-      else if(pdd>0&&und===pdd){isComplete=true;}
-      else if(pdd>0&&und>0&&und<pdd){isPddMissFlag=true;}
+      // ✅ 신선완료 / 진행중 / PDD MISS 판정
+      // 완료: 스캔=0 AND 위탁=0 AND (미배송=0 OR 미배송=PDD miss) — 20시 전/후 모두
+      // PDD Miss: 스캔=0 AND 위탁=0 AND 20시 이후에만 확정
+      var isInProgress=(scn>0||csg>0);
+      var isComplete=!isInProgress&&(und===0||(pdd>0&&und===pdd));
+      var isPddMissFlag=_isAfter20&&!isInProgress&&!isComplete&&(pdd>0&&und>0&&und<pdd);
       var routeLabel=_wRouteLabel(w);
       var detId='frdet_'+suffix+'_'+wi2;
       var statusBadge=isComplete
-        ?'<span style="background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9;border-radius:6px;font-size:10px;padding:2px 8px;font-weight:700;white-space:nowrap">&#x2705; 신선 마감 완료</span>'
+        ?'<span style="background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9;border-radius:6px;font-size:10px;padding:2px 8px;font-weight:700;white-space:nowrap">&#x2705; 신선 배송 완료</span>'
         :(isPddMissFlag||hasMiss)
-          ?'<span style="background:#c62828;color:#fff;border-radius:5px;font-size:10px;padding:2px 7px;font-weight:700;white-space:nowrap">&#x26A0; PDD MISS '+pdd+'&#xAC74;</span>'
-          :'<span style="color:#f57c00;font-size:11px;font-weight:700;white-space:nowrap">&#x23F3; 진행중</span>';
+          ?'<span style="background:#c62828;color:#fff;border-radius:5px;font-size:10px;padding:2px 7px;font-weight:700;white-space:nowrap">&#x26A0; PDD Miss '+pdd+'&#xAC74;</span>'
+          :isInProgress
+            ?'<span style="color:#f57c00;font-size:11px;font-weight:700;white-space:nowrap">&#x23F3; 배달 진행 중</span>'
+            :'<span style="color:#f57c00;font-size:11px;font-weight:700;white-space:nowrap">&#x23F3; 신선 배송 중</span>';
       var undBadge=(!isComplete&&und>0)
         ?'<span style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;padding:2px 8px;font-weight:700;white-space:nowrap;margin-right:6px">&#xB0A8;&#xC740; '+und+'&#xAC74;</span>'
         :'';
@@ -7556,21 +7563,24 @@ async function loadFreshStatus(){
       var dtbl='<table style="width:100%;border-collapse:collapse;font-size:11px">'+
         '<thead><tr style="background:#f5f5f5;color:#666;font-size:10px">'+
           '<th style="padding:5px 6px;text-align:left">라우트</th>'+
+          '<th style="padding:5px 4px;text-align:center">총수량</th>'+
           '<th style="padding:5px 4px;text-align:center">위탁</th>'+
           '<th style="padding:5px 4px;text-align:center">스캔</th>'+
           '<th style="padding:5px 4px;text-align:center">완료</th>'+
           '<th style="padding:5px 4px;text-align:center">미배송</th>'+
-          '<th style="padding:5px 4px;text-align:center">PDD</th>'+
+          '<th style="padding:5px 4px;text-align:center">PDD Miss</th>'+
           '<th style="padding:5px 4px;text-align:center">완료율</th>'+
         '</tr></thead><tbody>';
       wR.forEach(function(rt){
         var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0,sc=rt.scan||0;
+        var tot=c+sc+cp+u;
         var r=(cp+sc)>0?Math.round(cp/(cp+sc)*1000)/10:0;  // 완료율: 완료/(완료+스캔)
         var miss=_isPddMiss(rt);
         var pfx2=[],ps2={};
         (rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
         dtbl+='<tr style="border-bottom:1px solid #f0f0f0'+(miss?';background:#fff3e0':'')+'">'  +
           '<td style="padding:5px 6px;font-weight:700;color:#1a237e;font-size:10px">'+pfx2.join(', ')+'</td>'+
+          '<td style="text-align:center;color:#555;font-weight:700">'+tot+'</td>'+
           '<td style="text-align:center;color:#888">'+c+'</td>'+
           '<td style="text-align:center;color:#555">'+sc+'</td>'+
           '<td style="text-align:center;color:#2e7d32;font-weight:700">'+cp+'</td>'+
@@ -7843,4 +7853,4 @@ async function deletePddLogAll(){
 
 
 </script>
-</body></html>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+</body></html>
