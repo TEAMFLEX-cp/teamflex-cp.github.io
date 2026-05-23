@@ -7655,9 +7655,12 @@ var _rqCSS = '<style id="rq-css">'+
 '.rq-btn-active-req{background:#3949ab;color:#fff}'+
 '.rq-btn-save{background:#e8eaf6;color:#3949ab;width:100%;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px}'+
 '.rq-preview-box{background:#f0f2f5;border:1px solid #dde1f0;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;white-space:pre-wrap;color:#333;font-family:monospace;word-break:break-all;min-height:60px;margin-bottom:10px}'+
-'.rq-route-row{display:flex;gap:5px;margin-bottom:6px;align-items:center}'+
-'.rq-route-row input{flex:1;padding:7px 10px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;background:#fff;color:#333}'+
-'.rq-route-row input:focus{border-color:#3949ab;outline:none}'+
+'.rq-route-row{margin-bottom:8px;background:#f8f9ff;border:1.5px solid #c5cae9;border-radius:10px;padding:8px 10px;}'+
+'.rq-route-row .rq-rt-id{width:100%;padding:7px 10px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;background:#fff;color:#333;margin-bottom:5px;box-sizing:border-box}'+
+'.rq-route-row .rq-rt-id:focus{border-color:#3949ab;outline:none}'+
+'.rq-route-row .rq-rt-inner{display:flex;gap:5px;align-items:center}'+
+'.rq-route-row .rq-rt-route{flex:1;padding:7px 10px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;background:#fff;color:#333}'+
+'.rq-route-row .rq-rt-route:focus{border-color:#3949ab;outline:none}'+
 '.rq-route-del{padding:6px 10px;background:#ffebee;color:#c62828;border:none;border-radius:6px;cursor:pointer;font-size:13px}'+
 '.rq-add-row{width:100%;padding:7px;background:#e8eaf6;color:#3949ab;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px}'+
 '.rq-chip-row{display:flex;gap:6px;margin-bottom:10px}'+
@@ -7716,8 +7719,15 @@ function rqDamageForm(){
     '</div>'+
     '<label class="rq-label">&#x1F4F7; 사진 3장 <span class="rq-req">필수 (3장 모두)</span></label>'+
     (filled<3?'<div class="rq-hint" id="rq-dm-hint">사진 '+filled+'장 / 3장 — 3장 모두 첨부해야 전송 가능합니다</div>':'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:5px 8px;margin-bottom:8px;text-align:center;font-size:11px" id="rq-dm-hint">&#x2705; 사진 3장 완료</div>')+
+    '<div style="margin-bottom:4px;text-align:center;font-size:10px;color:#7986cb">📷 아래 칸 클릭 → 카메라 직접 촬영</div>'+
     '<div class="rq-photo-row">'+slots+'</div>'+
-    '<input type="file" id="rq-dm-file" accept="image/*" style="display:none" onchange="rqFileSelected(\'dm\')">'+
+    '<div style="display:flex;gap:6px;margin-bottom:8px">'+
+    '<button type="button" onclick="rqGalleryClick(\'dm\',0)" style="flex:1;padding:8px 4px;background:#e8eaf6;color:#3949ab;border:1.5px solid #c5cae9;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">'+(window._rqDmPhotos&&window._rqDmPhotos[0]?'✅ 1장 변경':'📁 1장 사진첩')+'</button>'+
+    '<button type="button" onclick="rqGalleryClick(\'dm\',1)" style="flex:1;padding:8px 4px;background:#e8eaf6;color:#3949ab;border:1.5px solid #c5cae9;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">'+(window._rqDmPhotos&&window._rqDmPhotos[1]?'✅ 2장 변경':'📁 2장 사진첩')+'</button>'+
+    '<button type="button" onclick="rqGalleryClick(\'dm\',2)" style="flex:1;padding:8px 4px;background:#e8eaf6;color:#3949ab;border:1.5px solid #c5cae9;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">'+(window._rqDmPhotos&&window._rqDmPhotos[2]?'✅ 3장 변경':'📁 3장 사진첩')+'</button>'+
+    '</div>'+
+    '<input type="file" id="rq-dm-file" accept="image/*" capture="camera" style="display:none" onchange="rqFileSelected(\'dm\')">'+
+    '<input type="file" id="rq-dm-file-gallery" accept="image/*" style="display:none" onchange="rqGallerySelected(\'dm\')">'+
     '<div class="rq-checks">'+
       '<div class="rq-ck-row"><span class="'+(wb?'rq-ok':'rq-no')+'">'+(wb?'●':'○')+'</span><span style="color:'+(wb?'#43a047':'#999')+'">운송장번호 '+(wb?'인식됨 ✓':'파싱 대기')+'</span></div>'+
       '<div class="rq-ck-row"><span class="'+(photos[0]?'rq-ok':'rq-no')+'">'+(photos[0]?'●':'○')+'</span><span style="color:'+(photos[0]?'#43a047':'#999')+'">사진 1장</span></div>'+
@@ -7735,6 +7745,35 @@ var _rqDmSlotIdx = 0;
 function rqPhotoClick(prefix, i){
   _rqDmSlotIdx = i;
   document.getElementById('rq-'+prefix+'-file').click();
+}
+function rqGalleryClick(prefix, i){
+  _rqDmSlotIdx = i;
+  var el = document.getElementById('rq-'+prefix+'-file-gallery');
+  if(el) el.click();
+  else document.getElementById('rq-'+prefix+'-file').click();
+}
+function rqGallerySelected(prefix){
+  var inp = document.getElementById('rq-'+prefix+'-file-gallery');
+  if(!inp) return;
+  var file = inp.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      var max = 800;
+      var w = img.width, h = img.height;
+      if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      var data = canvas.toDataURL('image/jpeg',0.75);
+      _rqDmPhotos[_rqDmSlotIdx] = data;
+      rqRenderBody();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  inp.value='';
 }
 
 function rqFileSelected(prefix){
@@ -7855,9 +7894,11 @@ function rqRouteForm(){
   var rowsHtml = '';
   _rqRouteRows.forEach(function(r,i){
     rowsHtml += '<div class="rq-route-row" id="rq-rt-row-'+i+'">'+
-      '<input type="text" placeholder="기사 ID" value="'+rqEsc(r.id||'')+'" oninput="_rqRouteRows['+i+'].id=this.value;rqUpdateRoutePreview()">'+
-      '<input type="text" placeholder="라우트 (예:115B01)" value="'+rqEsc(r.route||'')+'" oninput="_rqRouteRows['+i+'].route=this.value;rqUpdateRoutePreview()">'+
-      '<button class="rq-route-del" onclick="rqRouteDelRow('+i+')">&#x1F5D1;</button>'+
+      '<input class="rq-rt-id" type="text" placeholder="기사 ID" value="'+rqEsc(r.id||'')+'" oninput="_rqRouteRows['+i+'].id=this.value;rqUpdateRoutePreview()">'+
+      '<div class="rq-rt-inner">'+
+        '<input class="rq-rt-route" type="text" placeholder="라우트 (예:115B01)" value="'+rqEsc(r.route||'')+'" oninput="_rqRouteRows['+i+'].route=this.value;rqUpdateRoutePreview()">'+
+        '<button class="rq-route-del" onclick="rqRouteDelRow('+i+')">&#x1F5D1;</button>'+
+      '</div>'+
     '</div>';
   });
 
@@ -7895,9 +7936,11 @@ function rqRouteAddRow(){
   var i = _rqRouteRows.length-1;
   var div = document.createElement('div');
   div.className='rq-route-row'; div.id='rq-rt-row-'+i;
-  div.innerHTML = '<input type="text" placeholder="기사 ID" oninput="_rqRouteRows['+i+'].id=this.value;rqUpdateRoutePreview()">'+
-    '<input type="text" placeholder="라우트 (예:115B01)" oninput="_rqRouteRows['+i+'].route=this.value;rqUpdateRoutePreview()">'+
-    '<button class="rq-route-del" onclick="rqRouteDelRow('+i+')">&#x1F5D1;</button>';
+  div.innerHTML = '<input class="rq-rt-id" type="text" placeholder="기사 ID" oninput="_rqRouteRows['+i+'].id=this.value;rqUpdateRoutePreview()">'+
+    '<div class="rq-rt-inner">'+
+    '<input class="rq-rt-route" type="text" placeholder="라우트 (예:115B01)" oninput="_rqRouteRows['+i+'].route=this.value;rqUpdateRoutePreview()">'+
+    '<button class="rq-route-del" onclick="rqRouteDelRow('+i+')">&#x1F5D1;</button>'+
+    '</div>';
   container.appendChild(div);
 }
 
@@ -8433,7 +8476,7 @@ function pgFresh(){
         '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div>'+
       '</div>';
   }
-  var frKwBtn=isAdmin?'<button onclick="openFrNotifyPopup()" style="float:right;padding:6px 14px;background:#e65100;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x1F514; 알림 설정</button><button onclick="openFrTimePopup()" style="float:right;padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x23F0; 시간 설정</button><button onclick="openFrKwPopup()" style="float:right;padding:6px 14px;background:#388e3c;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px">&#x1F33F; 키워드 설정</button>':'';
+  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'</div>':'';
   var frKwPopupHtml=isAdmin?
     '<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center">'+
     '<div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">'+
@@ -8452,7 +8495,7 @@ function pgFresh(){
   var frTimePopupHtml=isAdmin?'<div id="fr-time-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#1565c0">&#x23F0; 신선 체크 시간 설정</span><button onclick="closeFrTimePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 앱 데이터를 새로 갱신합니다. 기사 폰 알림 없이 화면만 업데이트됩니다.</div><div id="fr-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-time-input" type="text" placeholder="예: 19:55" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrTime()"><button onclick="addFrTime()" style="padding:8px 14px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
   var frNotifyPopupHtml=isAdmin?'<div id="fr-notify-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)<br>앱을 설치한 기사에게만 전달됩니다.</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
   return (isAdmin?_featureBar('fresh'):'')+frKwPopupHtml+frTimePopupHtml+frNotifyPopupHtml+
-    '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
+    '<div class="stit">&#x1F33F; 신선 현황</div>'+frKwBtn+
     '<div style="text-align:center;padding:40px;color:#888">&#x23F3; 불러오는 중...</div>';
 }
 
@@ -8463,14 +8506,14 @@ async function loadFreshStatus(){
   if(!CU)return;
   var isAdmin=(CU.role==='admin');
   if(!getFeatureCtrl('fresh','active')&&!isAdmin)return;
-  var frKwBtn=isAdmin?'<button onclick="openFrNotifyPopup()" style="float:right;padding:6px 14px;background:#e65100;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x1F514; 알림 설정</button><button onclick="openFrTimePopup()" style="float:right;padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px;margin-right:4px">&#x23F0; 시간 설정</button><button onclick="openFrKwPopup()" style="float:right;padding:6px 14px;background:#388e3c;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px">&#x1F33F; 키워드 설정</button>':'';
+  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'</div>':'';
   var frTimePopupHtml=isAdmin?'<div id="fr-time-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#1565c0">&#x23F0; 신선 체크 시간 설정</span><button onclick="closeFrTimePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 앱 데이터를 새로 갱신합니다. 기사 폰 알림 없이 화면만 업데이트됩니다.</div><div id="fr-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-time-input" type="text" placeholder="예: 19:55" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrTime()"><button onclick="addFrTime()" style="padding:8px 14px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
   var frKwPopupHtml=isAdmin?'<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#2e7d32">&#x1F33F; 2회전 트리거 키워드</span><button onclick="closeFrKwPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">Teams에서 이 키워드 감지 시 2회전 수량을 자동 파싱합니다.</div><div id="kw-fresh-list" style="margin-bottom:10px;min-height:32px"></div><div style="display:flex;gap:8px"><input id="kw-fresh-input" type="text" placeholder="예: 2회전 예상" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')saveFrKeyword()"><button onclick="saveFrKeyword()" style="padding:8px 14px;background:#2e7d32;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
 
   if(!sbClient){
     var frNotifyPopupHtml2=isAdmin?'<div id="fr-notify-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)<br>앱을 설치한 기사에게만 전달됩니다.</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
     mc.innerHTML=frKwPopupHtml+frTimePopupHtml+frNotifyPopupHtml2+(isAdmin?_featureBar('fresh'):'')+
-      '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
+      '<div class="stit">&#x1F33F; 신선 현황</div>'+frKwBtn+
       '<div class="empty"><div class="ei">&#x26A0;&#xFE0F;</div><p>서버 연결 없음</p></div>';
     return;
   }
@@ -8539,7 +8582,7 @@ async function loadFreshStatus(){
     var _canSeePddLog=(isAdmin||CU.role==='leader');
     var frNPH=isAdmin?'<div id="fr-notify-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
     var html=frKwPopupHtml+frTimePopupHtml+frNPH+'__ADMIN_BAR__'+
-      '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
+      '<div class="stit">&#x1F33F; 신선 현황</div>'+frKwBtn+
       '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">'+
         (_canSeePddLog?'<button onclick="showFreshPddLog()" style="background:#6a1b9a;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x26A0; PDD 기록</button>':'')+
         '<button onclick="loadFreshStatus()" style="background:#388e3c;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 새로고침</button>'+
@@ -8894,7 +8937,7 @@ async function loadFreshStatus(){
   }catch(ex){
     if(mc&&CUR_TAB==='fr'){
       mc.innerHTML=frKwPopupHtml+frTimePopupHtml+(isAdmin?'<div id="fr-notify-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'')+
-        '<div class="stit">&#x1F33F; 신선 현황'+frKwBtn+'</div>'+
+        '<div class="stit">&#x1F33F; 신선 현황</div>'+frKwBtn+
         '<div class="empty"><div class="ei">&#x274C;</div><p>불러오기 실패<br><span style="font-size:11px;color:#999">'+ex.message+'</span></p></div>';
     }
   }
