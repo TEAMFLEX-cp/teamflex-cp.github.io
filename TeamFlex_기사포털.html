@@ -3130,7 +3130,7 @@ function go(tab){
   else if(tab==='ph')mc.innerHTML=pgPhoneBook();
   else if(tab==='cfg')mc.innerHTML=pgSettings();
   else if(tab==='sl')mc.innerHTML=pgSchedLog();
-  else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
+  else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();mdStartRqRefresh();},200);}
   else if(tab==='rq'){mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
   else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
   else if(tab==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;}}).catch(function(){});}
@@ -5844,6 +5844,18 @@ function pgSettings(){
     '<div class="cfg-row"><div class="cfg-label">공지 작성 가능한 역할 (다중 선택)</div>'+
     '<div class="perm-checks">'+annChecks+'</div></div></div>'+
     // ── Teams 오배송 연동 (PA URL 미사용 — 삭제됨) ──
+    // ── 각종요청 캠프별 Teams 웹훅 설정 ──
+    '<div class="card"><div class="ctit">&#x1F4AC; 각종요청 Teams 웹훅 (캠프별)</div>'+
+    '<div style="background:#f8f9ff;border-radius:10px;padding:12px 14px;font-size:12px;color:#555;margin-bottom:10px">캠프별 Teams 채팅방 웹훅 URL을 설정합니다.<br>기사가 요청 전송 시 선택한 캠프의 채팅방으로 자동 라우팅됩니다.</div>'+
+    '<div class="cfg-row"><div class="cfg-label">&#x1F3E2; 일산3캠프 웹훅 URL</div>'+
+    '<input id="cfg-rq-url-3camp" type="text" placeholder="https://..." style="width:100%;padding:8px 10px;border:1.5px solid #c5cae9;border-radius:8px;font-size:12px;margin-top:4px" onfocus="mdLoadRqUrls()">'+
+    '</div>'+
+    '<div class="cfg-row" style="margin-top:8px"><div class="cfg-label">&#x1F3E2; 일산8캠프2wave 웹훅 URL</div>'+
+    '<input id="cfg-rq-url-8camp" type="text" placeholder="https://..." style="width:100%;padding:8px 10px;border:1.5px solid #c5cae9;border-radius:8px;font-size:12px;margin-top:4px" onfocus="mdLoadRqUrls()">'+
+    '</div>'+
+    '<div id="cfg-rq-err" style="font-size:11px;color:#c62828;margin-top:6px"></div>'+
+    '<button onclick="mdSaveRqUrls()" style="margin-top:10px;width:100%;padding:9px;background:#3949ab;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#x1F4BE; 저장</button>'+
+    '</div>'+
     // ── 공지 알림 설정 ──
     '<div class="card"><div class="ctit">&#x1F514; 공지 알림 설정</div>'+
     '<div style="background:#f8f9ff;border-radius:10px;padding:12px 14px">'+
@@ -5956,6 +5968,35 @@ async function mdSavePaUrl(){
   if(!url.startsWith('http')){errEl.textContent='올바른 URL을 입력해주세요.';return;}
   var res=await sbClient.from('misdelivery_settings').update({pa_webhook_url:url,updated_by:CU.name,updated_at:new Date().toISOString()}).eq('id',1);
   if(res.error){errEl.textContent='저장 실패: '+res.error.message;return;}
+  errEl.style.color='#2e7d32';errEl.textContent='✅ 저장되었습니다.';
+  setTimeout(function(){errEl.textContent='';errEl.style.color='';},3000);
+}
+async function mdLoadRqUrls(){
+  var el3=document.getElementById('cfg-rq-url-3camp');
+  var el8=document.getElementById('cfg-rq-url-8camp');
+  if(!el3||el3.dataset.loaded)return;
+  el3.dataset.loaded='1';
+  if(!sbClient)return;
+  var res=await sbClient.from('misdelivery_settings').select('request_webhook_url_3camp,request_webhook_url_8camp').eq('id',1).single();
+  if(res.data){
+    if(res.data.request_webhook_url_3camp) el3.value=res.data.request_webhook_url_3camp;
+    if(res.data.request_webhook_url_8camp) el8.value=res.data.request_webhook_url_8camp;
+  }
+}
+async function mdSaveRqUrls(){
+  var url3=(document.getElementById('cfg-rq-url-3camp').value||'').trim();
+  var url8=(document.getElementById('cfg-rq-url-8camp').value||'').trim();
+  var errEl=document.getElementById('cfg-rq-err');
+  if(url3&&!url3.startsWith('http')){errEl.textContent='3캠프 URL이 올바르지 않습니다.';return;}
+  if(url8&&!url8.startsWith('http')){errEl.textContent='8캠프 URL이 올바르지 않습니다.';return;}
+  var update={updated_by:CU.name,updated_at:new Date().toISOString()};
+  if(url3) update.request_webhook_url_3camp=url3;
+  if(url8) update.request_webhook_url_8camp=url8;
+  var res=await sbClient.from('misdelivery_settings').update(update).eq('id',1);
+  if(res.error){errEl.textContent='저장 실패: '+res.error.message;return;}
+  // 메모리 캐시 갱신
+  _rqWebhookUrl3camp=url3||_rqWebhookUrl3camp;
+  _rqWebhookUrl8camp=url8||_rqWebhookUrl8camp;
   errEl.style.color='#2e7d32';errEl.textContent='✅ 저장되었습니다.';
   setTimeout(function(){errEl.textContent='';errEl.style.color='';},3000);
 }
@@ -6584,15 +6625,19 @@ async function mdSendReply(caseId){
   if(btn){btn.disabled=true;btn.textContent='전송 중...';}
   try{
     var photoUrls=await mdUploadReplyPhotos(caseId);
+    // 관리자/팀장 대리 답변은 즉시 approved (본인이 승인자이므로 별도 승인 불필요)
+    var isProxyApprover = (CU.role==='admin'||CU.role==='leader');
+    var approvalSt = (mode==='auto'||isProxyApprover) ? 'approved' : 'pending';
     var {data:reply,error:rErr}=await sbClient.from('misdelivery_replies').insert({
       case_id:caseId,reply_text:txt,replied_by:CU.name,replied_by_id:CU.id,
-      approval_status:mode==='auto'?'approved':'pending',posted_to_teams:false,
+      approval_status:approvalSt,posted_to_teams:false,
       reply_photo_urls:photoUrls.length?photoUrls:null,
-      proxy_writer:(CU.role==='admin'||CU.role==='leader')?CU.name:null,
-      proxy_role:(CU.role==='admin'||CU.role==='leader')?CU.role:null,
+      proxy_writer:isProxyApprover?CU.name:null,
+      proxy_role:isProxyApprover?CU.role:null,
+      approved_by:isProxyApprover?CU.name:null,
     }).select().single();
     if(rErr)throw rErr;
-    var newStatus=mode==='auto'?'approved':'replied';
+    var newStatus=(mode==='auto'||isProxyApprover)?'approved':'replied';
     await sbClient.from('misdelivery_cases').update({status:newStatus}).eq('id',caseId);
     // 로컬 캐시 업데이트 (모달 재렌더링 시 정확한 상태 반영)
     var localCase=_mdCases.find(function(x){return x.id===caseId;});
@@ -6620,14 +6665,29 @@ async function mdSendReply(caseId){
 
 // ── Teams 게시 ────────────────────────────────────────────────────────
 async function mdPostToTeams(replyId){
+  // Edge Function이 없으면 폴러(poller)가 자동 처리 — 30초~1분 내 전송
+  // 여기서 실패해도 misdelivery_replies.posted_to_teams=false 상태이므로 폴러 재시도
   try{
     var res=await fetch(SB_URL+'/functions/v1/post-teams-reply',{
       method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},
       body:JSON.stringify({reply_id:replyId}),
     });
+    if(!res.ok){
+      var errTxt=await res.text().catch(function(){return res.status;});
+      console.warn('[mdPostToTeams] HTTP '+res.status,errTxt);
+      // Edge Function 실패 → 폴러가 처리하므로 사용자에게 안내만
+      alert('✅ 답변이 저장됐습니다.\n⚠️ 팀즈 즉시 전송은 실패했지만, 클라우드PC 폴러가 1분 내로 자동 재전송합니다.\n(오류: HTTP '+res.status+')');
+      return;
+    }
     var json=await res.json();
-    if(!json.ok)console.warn('[mdPostToTeams]',json);
-  }catch(e){console.error('[mdPostToTeams]',e);}
+    if(!json.ok){
+      console.warn('[mdPostToTeams]',json);
+      alert('✅ 답변이 저장됐습니다.\n⚠️ 팀즈 전송 응답 오류: '+(json.error||JSON.stringify(json))+'\n클라우드PC 폴러가 재전송합니다.');
+    }
+  }catch(e){
+    console.error('[mdPostToTeams]',e);
+    alert('✅ 답변이 저장됐습니다.\n⚠️ 팀즈 전송 연결 실패: '+e.message+'\n클라우드PC 폴러가 1분 내 자동 재전송합니다.');
+  }
 }
 async function mdPostTeamsAck(caseId){
   try{
@@ -7526,6 +7586,8 @@ var _rqSavedRoutes = [];
 var _rqDmPhotos = [null, null, null];
 var _rqAutoApprove = false; // 관리자가 설정한 승인 방식 (Supabase에서 로드)
 var _rqWebhookUrl = null;
+var _rqWebhookUrl3camp = null;
+var _rqWebhookUrl8camp = null;
 
 // ── 각종 요청 탭 메인 페이지 ──────────────────────────────────────
 function pgRequest(){
@@ -7584,10 +7646,12 @@ function rqInit(){
 async function rqLoadSettings(){
   if(!sbClient) return;
   try{
-    var res = await sbClient.from('misdelivery_settings').select('request_webhook_url,request_auto_approve').eq('id',1).maybeSingle();
+    var res = await sbClient.from('misdelivery_settings').select('request_webhook_url,request_webhook_url_3camp,request_webhook_url_8camp,request_auto_approve').eq('id',1).maybeSingle();
     if(res.data){
-      _rqWebhookUrl = res.data.request_webhook_url || null;
-      _rqAutoApprove = res.data.request_auto_approve || false;
+      _rqWebhookUrl       = res.data.request_webhook_url        || null;
+      _rqWebhookUrl3camp  = res.data.request_webhook_url_3camp  || null;
+      _rqWebhookUrl8camp  = res.data.request_webhook_url_8camp  || null;
+      _rqAutoApprove      = res.data.request_auto_approve       || false;
     }
   }catch(e){ console.warn('rqLoadSettings',e); }
 }
@@ -7655,13 +7719,13 @@ var _rqCSS = '<style id="rq-css">'+
 '.rq-btn-active-req{background:#3949ab;color:#fff}'+
 '.rq-btn-save{background:#e8eaf6;color:#3949ab;width:100%;padding:8px;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px}'+
 '.rq-preview-box{background:#f0f2f5;border:1px solid #dde1f0;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.7;white-space:pre-wrap;color:#333;font-family:monospace;word-break:break-all;min-height:60px;margin-bottom:10px}'+
-'.rq-route-row{margin-bottom:8px;background:#f8f9ff;border:1.5px solid #c5cae9;border-radius:10px;padding:8px 10px;}'+
-'.rq-route-row .rq-rt-id{width:100%;padding:7px 10px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;background:#fff;color:#333;margin-bottom:5px;box-sizing:border-box}'+
+'.rq-route-row{display:flex;gap:5px;margin-bottom:6px;align-items:center}'+
+'.rq-route-row .rq-rt-id{width:90px;min-width:0;padding:7px 8px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;background:#fff;color:#333;flex-shrink:0}'+
 '.rq-route-row .rq-rt-id:focus{border-color:#3949ab;outline:none}'+
-'.rq-route-row .rq-rt-inner{display:flex;gap:5px;align-items:center}'+
-'.rq-route-row .rq-rt-route{flex:1;padding:7px 10px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;background:#fff;color:#333}'+
+'.rq-route-row .rq-rt-inner{display:flex;gap:5px;align-items:center;flex:1;min-width:0}'+
+'.rq-route-row .rq-rt-route{flex:1;min-width:0;padding:7px 8px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;background:#fff;color:#333}'+
 '.rq-route-row .rq-rt-route:focus{border-color:#3949ab;outline:none}'+
-'.rq-route-del{padding:6px 10px;background:#ffebee;color:#c62828;border:none;border-radius:6px;cursor:pointer;font-size:13px}'+
+'.rq-route-del{padding:6px 10px;background:#ffebee;color:#c62828;border:none;border-radius:6px;cursor:pointer;font-size:13px;flex-shrink:0}'+
 '.rq-add-row{width:100%;padding:7px;background:#e8eaf6;color:#3949ab;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px}'+
 '.rq-chip-row{display:flex;gap:6px;margin-bottom:10px}'+
 '.rq-chip{padding:6px 12px;border-radius:16px;font-size:12px;border:1.5px solid #c5cae9;cursor:pointer;background:#fff;color:#555;font-weight:700}'+
@@ -7721,13 +7785,9 @@ function rqDamageForm(){
     (filled<3?'<div class="rq-hint" id="rq-dm-hint">사진 '+filled+'장 / 3장 — 3장 모두 첨부해야 전송 가능합니다</div>':'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:5px 8px;margin-bottom:8px;text-align:center;font-size:11px" id="rq-dm-hint">&#x2705; 사진 3장 완료</div>')+
     '<div style="margin-bottom:4px;text-align:center;font-size:10px;color:#7986cb">📷 아래 칸 클릭 → 카메라 직접 촬영</div>'+
     '<div class="rq-photo-row">'+slots+'</div>'+
-    '<div style="display:flex;gap:6px;margin-bottom:8px">'+
-    '<button type="button" onclick="rqGalleryClick(\'dm\',0)" style="flex:1;padding:8px 4px;background:#e8eaf6;color:#3949ab;border:1.5px solid #c5cae9;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">'+(window._rqDmPhotos&&window._rqDmPhotos[0]?'✅ 1장 변경':'📁 1장 사진첩')+'</button>'+
-    '<button type="button" onclick="rqGalleryClick(\'dm\',1)" style="flex:1;padding:8px 4px;background:#e8eaf6;color:#3949ab;border:1.5px solid #c5cae9;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">'+(window._rqDmPhotos&&window._rqDmPhotos[1]?'✅ 2장 변경':'📁 2장 사진첩')+'</button>'+
-    '<button type="button" onclick="rqGalleryClick(\'dm\',2)" style="flex:1;padding:8px 4px;background:#e8eaf6;color:#3949ab;border:1.5px solid #c5cae9;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer">'+(window._rqDmPhotos&&window._rqDmPhotos[2]?'✅ 3장 변경':'📁 3장 사진첩')+'</button>'+
-    '</div>'+
+    '<button type="button" onclick="rqGalleryClickMulti(\'dm\')" style="width:100%;padding:10px;background:#e8eaf6;color:#3949ab;border:1.5px solid #c5cae9;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">'+((_rqDmPhotos[0]&&_rqDmPhotos[1]&&_rqDmPhotos[2])?'✅ 사진첩 3장 완료 (재선택)':'📁 사진첩에서 3장 한번에 첨부')+'</button>'+
     '<input type="file" id="rq-dm-file" accept="image/*" capture="camera" style="display:none" onchange="rqFileSelected(\'dm\')">'+
-    '<input type="file" id="rq-dm-file-gallery" accept="image/*" style="display:none" onchange="rqGallerySelected(\'dm\')">'+
+    '<input type="file" id="rq-dm-file-gallery" accept="image/*" multiple style="display:none" onchange="rqGallerySelectedMulti(\'dm\')">'+
     '<div class="rq-checks">'+
       '<div class="rq-ck-row"><span class="'+(wb?'rq-ok':'rq-no')+'">'+(wb?'●':'○')+'</span><span style="color:'+(wb?'#43a047':'#999')+'">운송장번호 '+(wb?'인식됨 ✓':'파싱 대기')+'</span></div>'+
       '<div class="rq-ck-row"><span class="'+(photos[0]?'rq-ok':'rq-no')+'">'+(photos[0]?'●':'○')+'</span><span style="color:'+(photos[0]?'#43a047':'#999')+'">사진 1장</span></div>'+
@@ -7752,6 +7812,10 @@ function rqGalleryClick(prefix, i){
   if(el) el.click();
   else document.getElementById('rq-'+prefix+'-file').click();
 }
+function rqGalleryClickMulti(prefix){
+  var el = document.getElementById('rq-'+prefix+'-file-gallery');
+  if(el) el.click();
+}
 function rqGallerySelected(prefix){
   var inp = document.getElementById('rq-'+prefix+'-file-gallery');
   if(!inp) return;
@@ -7773,6 +7837,33 @@ function rqGallerySelected(prefix){
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+  inp.value='';
+}
+function rqGallerySelectedMulti(prefix){
+  var inp = document.getElementById('rq-'+prefix+'-file-gallery');
+  if(!inp) return;
+  var files = Array.from(inp.files).slice(0,3);
+  if(!files.length) return;
+  var loaded = 0;
+  files.forEach(function(file, i){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var canvas = document.createElement('canvas');
+        var max = 800;
+        var w = img.width, h = img.height;
+        if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        _rqDmPhotos[i] = canvas.toDataURL('image/jpeg',0.75);
+        loaded++;
+        if(loaded===files.length) rqRenderBody();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
   inp.value='';
 }
 
@@ -7981,6 +8072,10 @@ async function rqSendRoute(){
   if(valid.length===0){alert('기사 ID와 라우트를 1개 이상 입력해주세요.');return;}
   var text = rqRoutePreviewText();
   await rqSubmit({type:'route', text:text, photos:[], okId:'rq-rt-ok'});
+  // 입력란 초기화 (저장된 프리셋은 유지)
+  _rqRouteRows = [{id:'',route:''}];
+  window._rqOrderSel = '1,2차';
+  rqRenderBody();
 }
 
 function rqSaveRoutePreset(){
@@ -8253,24 +8348,23 @@ async function rqSubmit(opts){
 }
 
 async function rqSendToTeams(text, photos, requestId){
-  if(!sbClient) return;
+  // 웹훅 직접 호출 ❌ → 폴러(teams_poller.py)가 다음 사이클에 Graph API로 전송
+  // 게스트 계정 제약으로 앱에서 직접 Teams 채팅방 접근 불가
+  // Supabase requests 테이블에 approved+teams_sent=false 상태로 저장하면
+  // 폴러가 30초~1분 내에 해당 캠프 채팅방에 자동 전송
+  if(!sbClient || !requestId) return;
   try{
-    // PA 웹훅 URL 가져오기
-    if(!_rqWebhookUrl){
-      var r = await sbClient.from('misdelivery_settings').select('request_webhook_url,pa_webhook_url').eq('id',1).maybeSingle();
-      if(r.data) _rqWebhookUrl = r.data.request_webhook_url || r.data.pa_webhook_url || null;
-    }
-    if(!_rqWebhookUrl){
-      console.warn('rqSendToTeams: 웹훅 URL 없음');
-      // DB에만 저장 (팀즈 전송 실패 기록)
-      return;
-    }
-    var body = {text: text};
-    if(photos && photos.length>0) body.photos = photos;
-    var res = await fetch(_rqWebhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    // teams_sent 업데이트
-    if(requestId) await sbClient.from('requests').update({teams_sent:true,updated_at:new Date().toISOString()}).eq('id',requestId);
-  }catch(e){ console.warn('rqSendToTeams error',e); }
+    var camp = rqGetCamp();
+    await sbClient.from('requests').update({
+      teams_sent: false,
+      teams_camp: camp,
+      updated_at: new Date().toISOString()
+    }).eq('id', requestId);
+    console.log('[rqSendToTeams] 폴러 전송 대기 등록 완료 (camp='+camp+')');
+  }catch(e){
+    console.warn('[rqSendToTeams] Supabase 업데이트 오류:',e);
+    // teams_sent=false가 이미 기본값이므로 폴러가 다음 사이클에 재시도
+  }
 }
 
 function rqNotifyApprovers(type, text){
@@ -8289,6 +8383,7 @@ function rqNotifyApprovers(type, text){
 
 // ── 오배송 탭에서 요청 불러오기 ────────────────────────────────────
 var _rqCases = [];
+var _rqRefreshTimer = null;
 async function mdLoadRequests(){
   if(!sbClient) return;
   try{
@@ -8297,7 +8392,16 @@ async function mdLoadRequests(){
     if(error) throw error;
     _rqCases = data||[];
     mdRenderRequestBadge();
+    // 오배송 탭 열려 있으면 카드 UI도 갱신
+    if(document.getElementById('md-list')) mdRenderList();
   }catch(e){ console.warn('mdLoadRequests',e); _rqCases=[]; }
+}
+function mdStartRqRefresh(){
+  if(_rqRefreshTimer) clearInterval(_rqRefreshTimer);
+  _rqRefreshTimer = setInterval(function(){ mdLoadRequests(); }, 30000);
+}
+function mdStopRqRefresh(){
+  if(_rqRefreshTimer){ clearInterval(_rqRefreshTimer); _rqRefreshTimer=null; }
 }
 
 function mdRenderRequestBadge(){
@@ -8341,6 +8445,7 @@ function rqBuildCard(r){
     '<div style="display:flex;align-items:center;gap:6px;white-space:nowrap">'+
       '<span style="font-size:10px;color:#aaa">'+dt+'</span>'+
       stsDot+'<span style="font-size:10px;font-weight:700;color:'+(r.status==='pending'?'#e65100':r.status==='approved'?'#2e7d32':'#c62828')+'">'+stsLbl+'</span>'+
+      (r.teams_response_status==='responded'?'<span style="font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:8px;margin-left:2px">✅ 처리됨</span>':(r.teams_sent&&r.teams_response_status==='pending'?'<span style="font-size:10px;font-weight:700;background:#fff8e1;color:#e65100;padding:1px 6px;border-radius:8px;margin-left:2px">⏳ 대기중</span>':''))+
     '</div>'+
   '</div>';
 }
@@ -8366,36 +8471,51 @@ function rqShowPopup(id){
   }
   var stsColor={pending:'#ff9800',approved:'#4caf50',rejected:'#f44336'};
   var stsLbl={pending:'⏳ 승인대기',approved:'✅ 승인완료',rejected:'❌ 반려됨'};
+  var delBtn = isLdr ? '<button onclick="rqClosePopup();rqDelete('+r.id+')" style="width:100%;margin-top:8px;padding:11px;background:#fff;color:#9e9e9e;border:1.5px solid #e0e0e0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">🗑 삭제</button>' : '';
   var btns = '';
   if(isLdr && r.status==='pending'){
     btns='<div style="display:flex;gap:8px;margin-top:14px">'+
       '<button onclick="rqClosePopup();rqApprove('+r.id+')" style="flex:1;padding:12px;background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">✅ 승인+팀즈전송</button>'+
       '<button onclick="rqClosePopup();rqReject('+r.id+')" style="flex:1;padding:12px;background:#ffebee;color:#c62828;border:1.5px solid #ef9a9a;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">❌ 반려</button>'+
-    '</div>';
+    '</div>'+delBtn;
   } else if(r.status==='approved'){
-    btns='<div style="margin-top:10px;text-align:center;font-size:12px;color:#1565c0">'+(r.teams_sent?'✅ 팀즈 전송 완료':'⏳ 팀즈 전송 대기')+'</div>';
+    var teamsStsHtml = r.teams_sent
+      ? (r.teams_response_status==='responded'
+          ? '<div style="margin-top:10px;text-align:center"><span style="font-size:13px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:5px 14px;border-radius:10px">✅ 캠프 매니저 처리 완료</span>'
+            +(r.teams_response_text ? '<div style="font-size:11px;color:#666;margin-top:4px">답글: '+mdEsc(r.teams_response_text)+'</div>' : '')+'</div>'
+          : '<div style="margin-top:10px;text-align:center"><span style="font-size:12px;font-weight:700;background:#fff8e1;color:#e65100;padding:4px 12px;border-radius:10px">⏳ 팀즈 전송 완료 · 캠프 매니저 처리 대기중</span></div>')
+      : '<div style="margin-top:10px;text-align:center;font-size:12px;color:#1565c0">⏳ 팀즈 전송 대기</div>';
+    btns=teamsStsHtml+delBtn;
   } else if(r.status==='rejected'){
-    btns='<div style="margin-top:10px;text-align:center;font-size:12px;color:#c62828">❌ 반려됨'+(r.rejection_reason?' — '+mdEsc(r.rejection_reason):'')+'</div>';
+    btns='<div style="margin-top:10px;text-align:center;font-size:12px;color:#c62828">❌ 반려됨'+(r.rejection_reason?' — '+mdEsc(r.rejection_reason):'')+'</div>'+delBtn;
+  } else if(isLdr){
+    btns=delBtn;
   }
   var overlay = document.createElement('div');
   overlay.id='rq-popup-overlay';
-  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9990;display:flex;align-items:flex-end;justify-content:center';
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9990;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
   overlay.onclick=function(e){if(e.target===overlay)rqClosePopup();};
   overlay.innerHTML=
-    '<div style="background:#fff;border-radius:18px 18px 0 0;width:100%;max-width:520px;max-height:85vh;overflow-y:auto;padding:20px 18px 28px;box-shadow:0 -4px 24px rgba(0,0,0,0.18)">'+
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'+
-        '<div>'+
-          '<div style="font-size:16px;font-weight:800;color:#4527a0">'+typeLbl+camp+'</div>'+
-          '<div style="font-size:11px;color:#888;margin-top:2px">요청자: '+mdEsc(r.requester_name||'')+' · '+dt+'</div>'+
-        '</div>'+
-        '<div style="display:flex;align-items:center;gap:6px">'+
-          '<span style="font-size:12px;font-weight:700;color:'+(stsColor[r.status]||'#888')+';background:#f5f5f5;padding:3px 10px;border-radius:20px">'+(stsLbl[r.status]||r.status)+'</span>'+
-          '<button onclick="rqClosePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#aaa;line-height:1;padding:0 2px">✕</button>'+
+    '<div style="background:#fff;border-radius:18px;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.25)">'+
+      '<div style="flex-shrink:0;padding:16px 18px 10px;border-bottom:1px solid #f0f0f0">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+          '<div>'+
+            '<div style="font-size:16px;font-weight:800;color:#4527a0">'+typeLbl+camp+'</div>'+
+            '<div style="font-size:11px;color:#888;margin-top:2px">요청자: '+mdEsc(r.requester_name||'')+' · '+dt+'</div>'+
+          '</div>'+
+          '<div style="display:flex;align-items:center;gap:6px">'+
+            '<span style="font-size:12px;font-weight:700;color:'+(stsColor[r.status]||'#888')+';background:#f5f5f5;padding:3px 10px;border-radius:20px">'+(stsLbl[r.status]||r.status)+'</span>'+
+            '<button onclick="rqClosePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#aaa;line-height:1;padding:0 2px">✕</button>'+
+          '</div>'+
         '</div>'+
       '</div>'+
-      '<div style="font-size:12px;color:#333;line-height:1.8;background:#f8f8fc;border-radius:10px;padding:12px;white-space:pre-wrap;font-family:monospace;word-break:break-all;border:1px solid #e8eaf6">'+fullText+'</div>'+
-      photosHtml+
-      btns+
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 18px 8px">'+
+        '<div style="font-size:12px;color:#333;line-height:1.8;background:#f8f8fc;border-radius:10px;padding:12px;white-space:pre-wrap;font-family:monospace;word-break:break-all;border:1px solid #e8eaf6">'+fullText+'</div>'+
+        photosHtml+
+      '</div>'+
+      '<div style="flex-shrink:0;padding:10px 18px 28px;border-top:1px solid #f0f0f0">'+
+        btns+
+      '</div>'+
     '</div>';
   document.body.appendChild(overlay);
 }
@@ -8431,13 +8551,15 @@ async function rqApprove(id){
       status:'approved', approved_by:CU.name, approved_at:new Date().toISOString(), updated_at:new Date().toISOString()
     }).eq('id',id);
     await rqSendToTeams(r.payload&&r.payload.text?r.payload.text:'', r.payload&&r.payload.photos?r.payload.photos:[], id);
-    r.status='approved'; r.teams_sent=true;
+    r.status='approved'; r.teams_sent=false;
+    alert('✅ 승인 완료!\n클라우드PC 폴러가 팀즈 채팅방에 1분 내 자동 전송합니다.');
+    rqClosePopup();
     // 현재 탭이 md면 재렌더
     if(CUR_TAB==='md'){
       var mc=document.getElementById('mc');
       if(mc){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
     }
-  }catch(e){alert('오류: '+e.message);}
+  }catch(e){alert('승인 오류: '+e.message);}
 }
 
 async function rqReject(id){
@@ -8456,6 +8578,20 @@ async function rqReject(id){
       if(mc){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
     }
   }catch(e){alert('오류: '+e.message);}
+}
+
+async function rqDelete(id){
+  if(!sbClient) return;
+  if(!confirm('이 요청을 삭제하시겠습니까?\n삭제 후 복구가 불가능합니다.')) return;
+  try{
+    await sbClient.from('requests').delete().eq('id',id);
+    var idx = (_rqCases||[]).findIndex(function(c){return c.id===id;});
+    if(idx>=0) _rqCases.splice(idx,1);
+    if(CUR_TAB==='md'){
+      var mc=document.getElementById('mc');
+      if(mc){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
+    }
+  }catch(e){alert('삭제 오류: '+e.message);}
 }
 
 // ── 공통 유틸 ───────────────────────────────────────────────────────

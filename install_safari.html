@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+<title>TeamFlex 설치 (iPhone)</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'맑은 고딕',Apple SD Gothic Neo,sans-serif;background:#0A1628;color:#fff;min-height:100vh;display:flex;flex-direction:column}
+.hd{background:linear-gradient(160deg,#0D1B2A,#0E2647);padding:28px 20px 20px;text-align:center}
+.hd-icon{font-size:56px;display:block;margin-bottom:6px}
+.hd-title{font-size:28px;font-weight:900;letter-spacing:2px}
+.hd-sub{font-size:14px;color:#88AACC;margin-top:4px}
+.stepbar{display:flex;justify-content:center;align-items:center;padding:16px 24px 0;gap:6px}
+.dot{width:14px;height:14px;border-radius:50%;background:#1B3A5A;transition:all .3s;flex-shrink:0}
+.dot.on{background:#1B6FD8;box-shadow:0 0 10px #1B6FD8AA;transform:scale(1.2)}
+.dot.done{background:#00C853}
+.dline{flex:1;height:3px;background:#1B3A5A;border-radius:2px;transition:background .3s}
+.dline.done{background:#00C853}
+.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 20px 40px}
+.card{width:100%;max-width:400px;border-radius:22px;padding:28px 22px;text-align:center}
+.card-blue{background:#0D2440;border:3px solid #1B6FD8}
+.card-green{background:#0B2414;border:3px solid #00C853}
+.card-red{background:#1a0808;border:3px solid #E53935}
+.big-icon{font-size:72px;display:block;margin-bottom:16px;line-height:1}
+.step-title{font-size:22px;font-weight:900;margin-bottom:10px;line-height:1.3}
+.step-desc{font-size:16px;color:#B8CCE0;line-height:1.7;margin-bottom:24px}
+.step-desc b{color:#fff;font-size:18px}
+.t-blue{color:#5BC4FF}
+.t-green{color:#00E676}
+.megabtn{width:100%;padding:22px 16px;border-radius:18px;border:none;font-size:22px;font-weight:900;cursor:pointer;transition:transform .12s,box-shadow .12s;display:flex;align-items:center;justify-content:center;gap:10px;letter-spacing:.5px;text-decoration:none}
+.megabtn:active{transform:scale(0.96)}
+.btn-blue{background:linear-gradient(135deg,#1B6FD8,#0A3A8A);color:#fff;box-shadow:0 6px 24px #1B6FD860}
+.btn-green{background:linear-gradient(135deg,#00C853,#007E33);color:#fff;box-shadow:0 6px 24px #00C85360}
+.btn-gray{background:#1B3A5A;color:#88AACC;box-shadow:none;font-size:14px;padding:15px}
+.hint{margin-top:14px;font-size:13px;color:#3A5A7A;line-height:1.6}
+.subbtn{margin-top:12px;width:100%;padding:15px;border-radius:14px;border:1.5px solid #1B4A6B;background:transparent;color:#607080;font-size:14px;font-weight:700;cursor:pointer}
+.subbtn:active{opacity:.7}
+.progress-box{background:#071525;border-radius:14px;padding:16px;margin:12px 0;text-align:left}
+.prog-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px;color:#607080;border-bottom:1px solid #0D2440}
+.prog-row:last-child{border-bottom:none}
+.prog-row.ok{color:#00C853}
+.prog-row.fail{color:#EF5350}
+.prog-row.loading{color:#5BC4FF}
+.prog-dot{width:20px;height:20px;border-radius:50%;background:#1B3A5A;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px}
+.prog-row.ok .prog-dot{background:#00C853;color:#fff}
+.prog-row.fail .prog-dot{background:#E53935;color:#fff}
+.prog-row.loading .prog-dot{background:#1B6FD8;color:#fff;animation:pulse .8s infinite alternate}
+@keyframes pulse{from{opacity:.5}to{opacity:1}}
+.how-box{background:#071525;border-radius:12px;padding:14px 16px;margin:12px 0;text-align:left}
+.how-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px;font-size:15px;color:#C8D8EC;line-height:1.5}
+.how-row:last-child{margin-bottom:0}
+.how-num{min-width:28px;height:28px;border-radius:50%;background:#1B6FD8;color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.hidden{display:none!important}
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+#overlay.show{display:flex}
+.ov-card{background:#0D2440;border:3px solid #E53935;border-radius:22px;padding:30px 22px;max-width:340px;width:100%;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <span class="hd-icon">🚚</span>
+  <div class="hd-title">TeamFlex</div>
+  <div class="hd-sub">iPhone 앱 설치 안내</div>
+</div>
+
+<div class="stepbar">
+  <div class="dot on" id="d1"></div>
+  <div class="dline" id="dl1"></div>
+  <div class="dot" id="d2"></div>
+  <div class="dline" id="dl2"></div>
+  <div class="dot" id="d3"></div>
+</div>
+
+<div class="main" id="main">
+
+  <!-- S1: 시작 -->
+  <div class="card card-blue" id="s-start">
+    <span class="big-icon">🍎</span>
+    <div class="step-title t-blue">iPhone 설치 안내</div>
+    <div class="step-desc">사파리(Safari)로 열려있는지 확인해주세요<br>아래 버튼을 눌러 시작해요 😊</div>
+    <button class="megabtn btn-blue" onclick="goStep(2)">시작하기 →</button>
+  </div>
+
+  <!-- S2: 알림 허용 -->
+  <div class="card card-blue hidden" id="s-notif">
+    <span class="big-icon" id="ni-icon">🔔</span>
+    <div class="step-title t-blue" id="ni-title">알림을 허용해 주세요</div>
+    <div class="step-desc" id="ni-desc">스케줄·공지·정산 알림을 받으려면<br><b>반드시 허용</b>해야 해요</div>
+    <div id="notif-btn-area">
+      <button class="megabtn btn-blue" id="btn-notif" onclick="doSetupPush()">🔔 알림 허용하기</button>
+      <div class="hint">버튼을 누르면 허용 창이 떠요<br><b>"허용"</b>을 눌러주세요</div>
+    </div>
+    <div id="notif-progress" class="hidden">
+      <div class="progress-box">
+        <div class="prog-row" id="pr-perm"><div class="prog-dot">1</div><span>알림 권한 확인 중...</span></div>
+        <div class="prog-row" id="pr-sw"><div class="prog-dot">2</div><span>백그라운드 서비스 등록 중...</span></div>
+        <div class="prog-row" id="pr-sub"><div class="prog-dot">3</div><span>알림 구독 등록 중...</span></div>
+        <div class="prog-row" id="pr-save"><div class="prog-dot">4</div><span>서버 저장 중...</span></div>
+      </div>
+    </div>
+    <div id="notif-done" class="hidden">
+      <button class="megabtn btn-green" onclick="goStep(3)">다음 단계 → (앱 설치)</button>
+    </div>
+    <div id="notif-error" class="hidden">
+      <div style="margin:10px 0;padding:16px;background:#1a0808;border:2px solid #E53935;border-radius:14px">
+        <div style="font-size:15px;font-weight:900;color:#EF5350;margin-bottom:8px" id="err-title">오류</div>
+        <div style="font-size:13px;color:#C8D8EC;line-height:1.6" id="err-desc"></div>
+      </div>
+      <button class="megabtn btn-blue" onclick="retryPush()" style="font-size:18px;padding:18px;margin-top:10px">🔄 다시 시도</button>
+      <button class="subbtn" onclick="goStep(3)">알림 없이 계속하기</button>
+    </div>
+  </div>
+
+  <!-- S3: 홈화면 추가 -->
+  <div class="card card-blue hidden" id="s-install">
+    <span class="big-icon">📲</span>
+    <div class="step-title t-blue">홈 화면에 추가해요</div>
+    <div class="step-desc">
+      아래 버튼으로 앱을 먼저 여세요<br>
+      그 다음 화면 아래 <b>공유 버튼(□↑)</b>을 누르고<br>
+      <b>"홈 화면에 추가"</b>를 눌러요
+    </div>
+    <button class="megabtn btn-blue" onclick="openApp()">🚀 앱 열기</button>
+    <button class="subbtn" onclick="goStep(4)">이미 추가했어요</button>
+  </div>
+
+  <!-- S4(완료) -->
+  <div class="card card-green hidden" id="s-done">
+    <span class="big-icon">🎉</span>
+    <div class="step-title t-green">설치 완료!</div>
+    <div class="step-desc">바탕화면의 <b>🚚 TeamFlex</b> 아이콘을<br>눌러서 시작하세요 😊</div>
+    <button class="megabtn btn-green" onclick="openApp()">🚀 지금 앱 열기</button>
+    <button class="megabtn btn-gray" onclick="sendTestPush()" style="margin-top:10px;font-size:16px">🔔 테스트 알림 보내기</button>
+    <div class="hint" id="test-hint" style="display:none;color:#00C853">✅ 테스트 알림을 발송했어요!</div>
+  </div>
+
+</div>
+
+<!-- 알림 차단 오버레이 -->
+<div id="overlay">
+  <div class="ov-card">
+    <div style="font-size:60px;margin-bottom:12px">🚫</div>
+    <div style="font-size:20px;font-weight:900;color:#EF5350;margin-bottom:10px">알림이 막혀있어요</div>
+    <div class="how-box">
+      <div class="how-row"><div class="how-num">1</div><div>iPhone <b>설정</b> 앱을 여세요</div></div>
+      <div class="how-row"><div class="how-num">2</div><div><b>Safari → 알림 → 허용</b></div></div>
+      <div class="how-row"><div class="how-num">3</div><div>아래 <b>"새로고침"</b> 버튼을 누르세요</div></div>
+    </div>
+    <button class="megabtn btn-blue" onclick="location.reload()" style="font-size:18px;padding:18px">🔄 새로고침</button>
+  </div>
+</div>
+
+<script>
+var APP      = 'https://teamflex-cp.github.io/TeamFlex_%EA%B8%B0%EC%82%AC%ED%8F%AC%ED%84%B8.html';
+var SB_URL   = 'https://czpinyfirgvkhdfnvkls.supabase.co';
+var PUSH_URL = SB_URL + '/functions/v1/send-push';
+var VAPID_PUB= 'BLzatW0XMphfRY8rlynT8AIwZPHk-z5IdTWREp37m7QLJOn04RR1YIU3AG9BVuZnYFIZOqypxe9SLUJLgKCq15w';
+var _step = 1;
+
+function goStep(n){
+  _step = n;
+  var total = 3;
+  for(var i=1;i<=total;i++){
+    var d=document.getElementById('d'+i);
+    var l=document.getElementById('dl'+i);
+    if(d) d.className = i<n?'dot done':(i===n?'dot on':'dot');
+    if(l) l.className = i<n?'dline done':'dline';
+  }
+  // hide all
+  ['s-start','s-notif','s-install','s-done'].forEach(function(id){
+    var e=document.getElementById(id); if(e) e.classList.add('hidden');
+  });
+  if(n===2) document.getElementById('s-notif').classList.remove('hidden');
+  else if(n===3) document.getElementById('s-install').classList.remove('hidden');
+  else if(n===4){ document.getElementById('s-done').classList.remove('hidden'); }
+  else document.getElementById('s-start').classList.remove('hidden');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function urlB64ToUint8(b64){
+  var p='='.repeat((4-b64.length%4)%4);
+  var b=(b64+p).replace(/-/g,'+').replace(/_/g,'/');
+  var raw=atob(b); var out=new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i);
+  return out;
+}
+function uint8ToBase64(arr){
+  var bytes=new Uint8Array(arr),s='';
+  for(var i=0;i<bytes.byteLength;i++) s+=String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+async function doSetupPush(){
+  document.getElementById('notif-btn-area').classList.add('hidden');
+  document.getElementById('notif-progress').classList.remove('hidden');
+
+  // 1. 알림 권한
+  setProg('pr-perm','loading','알림 권한 확인 중...');
+  try{
+    var perm = Notification.permission;
+    if(perm!=='granted') perm = await Notification.requestPermission();
+    if(perm!=='granted'){
+      if(perm==='denied') showDeniedOverlay();
+      else showError('알림 권한이 필요해요','허용 창에서 "허용"을 눌러주세요');
+      return;
+    }
+    setProg('pr-perm','ok','✅ 알림 권한 허용됨');
+  }catch(e){ showError('알림 권한 오류',e.message||String(e)); return; }
+
+  // 2. SW 등록
+  setProg('pr-sw','loading','백그라운드 서비스 등록 중...');
+  var swReg=null;
+  try{
+    if(!('serviceWorker' in navigator)) throw new Error('이 브라우저는 백그라운드 서비스를 지원하지 않아요');
+    swReg = await navigator.serviceWorker.getRegistration('/');
+    if(!swReg||!swReg.active){
+      swReg = await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+      await waitSWActive(swReg,5000);
+    }
+    setProg('pr-sw','ok','✅ 백그라운드 서비스 준비됨');
+  }catch(e){ showError('서비스 오류',e.message||String(e)); return; }
+
+  // 3. Push 구독
+  setProg('pr-sub','loading','알림 구독 등록 중...');
+  var sub=null;
+  try{
+    sub = await swReg.pushManager.getSubscription();
+    if(!sub) sub = await swReg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8(VAPID_PUB)});
+    setProg('pr-sub','ok','✅ 알림 구독 완료');
+  }catch(e){ showError('알림 구독 실패',e.message||String(e)); return; }
+
+  // 4. 서버 저장
+  setProg('pr-save','loading','서버에 저장 중...');
+  try{
+    var res = await fetch(PUSH_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'subscribe',endpoint:sub.endpoint,p256dh:uint8ToBase64(sub.getKey('p256dh')),auth:uint8ToBase64(sub.getKey('auth')),driver_name:''})
+    });
+    if(!res.ok) throw new Error('저장 실패 ('+res.status+')');
+    setProg('pr-save','ok','✅ 서버 저장 완료');
+  }catch(e){
+    setProg('pr-save','fail','❌ 서버 저장 실패');
+    showError('서버 저장 실패',e.message||String(e)); return;
+  }
+
+  document.getElementById('ni-icon').textContent='✅';
+  document.getElementById('ni-title').textContent='알림 설정 완료!';
+  document.getElementById('ni-desc').innerHTML='이제 스케줄·공지·정산 알림을<br>받을 수 있어요 😊';
+  document.getElementById('notif-done').classList.remove('hidden');
+  setTimeout(function(){ goStep(3); }, 1500);
+}
+
+function retryPush(){
+  document.getElementById('notif-error').classList.add('hidden');
+  document.getElementById('notif-progress').classList.add('hidden');
+  document.getElementById('notif-btn-area').classList.remove('hidden');
+  ['pr-perm','pr-sw','pr-sub','pr-save'].forEach(function(id,i){
+    var row=document.getElementById(id); if(!row) return;
+    row.className='prog-row';
+    row.querySelector('.prog-dot').textContent=i+1;
+    row.querySelector('span').textContent=['알림 권한 확인 중...','백그라운드 서비스 등록 중...','알림 구독 등록 중...','서버 저장 중...'][i];
+  });
+}
+
+function waitSWActive(reg,ms){
+  return new Promise(function(resolve,reject){
+    if(reg.active){resolve(reg);return;}
+    var t=setTimeout(function(){reject(new Error('SW 활성화 시간 초과'));},ms);
+    var sw=reg.installing||reg.waiting;
+    if(!sw){clearTimeout(t);resolve(reg);return;}
+    sw.addEventListener('statechange',function(){if(sw.state==='activated'){clearTimeout(t);resolve(reg);}});
+  });
+}
+
+function setProg(rowId,state,text){
+  var row=document.getElementById(rowId); if(!row) return;
+  row.className='prog-row'+(state?' '+state:'');
+  var span=row.querySelector('span'); if(span&&text) span.textContent=text;
+  var dot=row.querySelector('.prog-dot'); if(dot){var icons={ok:'✓',fail:'✕',loading:'…'};dot.textContent=icons[state]||dot.textContent;}
+}
+function showError(title,desc){
+  document.getElementById('notif-progress').classList.add('hidden');
+  document.getElementById('err-title').textContent=title;
+  document.getElementById('err-desc').textContent=desc;
+  document.getElementById('notif-error').classList.remove('hidden');
+}
+function showDeniedOverlay(){ document.getElementById('overlay').classList.add('show'); }
+
+async function sendTestPush(){
+  var hint=document.getElementById('test-hint');
+  hint.style.display='block'; hint.style.color='#88AACC'; hint.textContent='⏳ 발송 중...';
+  try{
+    var res=await fetch(PUSH_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'🔔 TeamFlex 테스트',body:'알림이 정상적으로 작동해요! ✅'})});
+    var d=await res.json();
+    hint.style.color=d.sent>0?'#00C853':'#FFA726';
+    hint.textContent=d.sent>0?'✅ 테스트 알림 발송 완료!':'⚠️ 앱 로그인 후 기기가 등록됩니다';
+  }catch(e){ hint.style.color='#EF5350'; hint.textContent='❌ '+e.message; }
+}
+
+function openApp(){ window.location.href=APP; }
+</script>
+</body>
+</html>
