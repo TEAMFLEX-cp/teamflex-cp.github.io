@@ -16,6 +16,7 @@
 <title>TeamFlex 기사 포털</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser/lib/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 // ── MSAL Microsoft 인증 (Teams 이미지 로드용) ──────────────────────────
 var MSAL_CLIENT_ID='e3428c2f-8025-4a24-9bec-bee6d720b164';
@@ -1175,7 +1176,7 @@ async function sbSaveSchedOvr(key,newDriver){
 }
 
 // ── STORAGE ──────────────────────────────────────────────────────────
-function getDB(){var r=localStorage.getItem('tfdb6');if(r){try{return JSON.parse(r);}catch(e){}}var db=JSON.parse(JSON.stringify(IDRV));saveDB(db);return db;}
+function getDB(){var r=localStorage.getItem('tfdb6');if(r){try{return JSON.parse(r);}catch(e){}}return JSON.parse(JSON.stringify(IDRV));/*폴백: syncFromSupabase가 실제 데이터 로드, IDRV는 읽기 전용 기본값으로만 사용*/}
 function saveDB(db){
   localStorage.setItem('tfdb6',JSON.stringify(db));
   // 변경된 기사들 Supabase에도 저장
@@ -1267,6 +1268,28 @@ var _schedPushTimer=null;   // 스케줄 변경 Push 디바운스 타이머
 var _schedPushChanges=[];   // 디바운스 기간 중 누적된 변경 목록
 
 // ── 기능별 활성화/알림 제어 ──────────────────────────────────────────────
+async function loadSchedSettings(){
+  if(!sbClient) return;
+  try{
+    var {data} = await sbClient.from('app_settings').select('value').eq('key','sched_settings').maybeSingle();
+    if(data && data.value){
+      var parsed = typeof data.value==='string' ? JSON.parse(data.value) : data.value;
+      var cfg = getCfg();
+      if(parsed.schedEditDays !== undefined) cfg.schedEditDays = parsed.schedEditDays;
+      if(parsed.schedPerm !== undefined) cfg.schedPerm = parsed.schedPerm;
+      if(parsed.annPerm !== undefined) cfg.annPerm = parsed.annPerm;
+      saveCfg(cfg);
+    }
+  } catch(e){ console.warn('[loadSchedSettings]', e); }
+}
+async function sbSaveSchedSettings(){
+  if(!sbClient||!CU||(CU.role!=='admin'&&CU.role!=='leader')) return;
+  var cfg = getCfg();
+  var val = {schedEditDays: cfg.schedEditDays||90, schedPerm: cfg.schedPerm||['admin','leader'], annPerm: cfg.annPerm||['admin','leader']};
+  await sbClient.from('app_settings').upsert({key:'sched_settings', value:JSON.stringify(val)},{onConflict:'key'}).then(function(r){
+    if(r&&r.error){ console.warn('[sbSaveSchedSettings]', r.error); }
+  }).catch(function(e){ console.warn('[sbSaveSchedSettings]', e); });
+}
 async function loadFeatureControls(){
   if(!sbClient) return;
   try{
@@ -1809,8 +1832,8 @@ function _reRenderCurTab(){
 tryAutoLogin();
 // 2) 어드민 설정 + 전체 동기화 (백그라운드)
 loadAdminCfgFromSB().then(function(){
-  // syncFromSupabase + loadFeatureControls 병렬 실행 → 둘 다 완료 후 재렌더
-  return Promise.all([syncFromSupabase(), loadFeatureControls()]);
+  // syncFromSupabase + loadFeatureControls + loadSchedSettings 병렬 실행 → 둘 다 완료 후 재렌더
+  return Promise.all([syncFromSupabase(), loadFeatureControls(), loadSchedSettings()]);
 }).then(function(){
   console.log('Supabase 동기화 완료');
   _reRenderCurTab();
@@ -1819,7 +1842,7 @@ loadAdminCfgFromSB().then(function(){
 // ── 앱 복귀 시 즉시 동기화 (화면 전환 → 앱으로 돌아올 때) ───────────
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden&&sbClient){
-    Promise.all([syncFromSupabase(), loadFeatureControls()])
+    Promise.all([syncFromSupabase(), loadFeatureControls(), loadSchedSettings()])
       .then(function(){_reRenderCurTab();}).catch(function(){});
   }
 });
@@ -1846,7 +1869,7 @@ document.addEventListener('visibilitychange',function(){
   setInterval(function(){
     if(!sbClient||document.hidden)return; // 화면이 꺼져있으면 생략
     var before=_awHash();
-    Promise.all([syncFromSupabase(), loadFeatureControls()]).then(function(){
+    Promise.all([syncFromSupabase(), loadFeatureControls(), loadSchedSettings()]).then(function(){
       var after=_awHash();
       // 항상 화면 갱신 (스크롤 위치 보존) — 변경 여부와 무관하게 최신 데이터 표시
       _reRenderCurTab();
@@ -4481,7 +4504,7 @@ function pgSettle(){
       summaryBar+
       '<div class="month-grid">'+chart+'</div>'+
     '</div>'+
-    '</div>'+(detailHtml?'<div id="settle-detail">'+detailHtml+'</div>':'');
+    '</div>'+(detailHtml?'<div id="settle-detail"><button onclick="downloadSettleImage()" style="display:block;width:100%;padding:11px;margin-bottom:10px;background:#1b5e20;color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px">&#x2B07; 정산 내역 이미지 저장</button>'+detailHtml+'</div>':'');
 }
 function showMonthDetail(mi){
   SETTLE_MONTH=(SETTLE_MONTH===mi)?-1:mi;
@@ -4491,6 +4514,32 @@ function showMonthDetail(mi){
 function toggleChart(){
   CHART_OPEN=!CHART_OPEN;
   document.getElementById('mc').innerHTML=pgSettle();
+}
+function downloadSettleImage(){
+  var el=document.getElementById('settle-detail');
+  if(!el){alert('정산 내역을 먼저 선택해주세요.');return;}
+  // 다운로드 버튼 임시 숨김 (이미지에서 제외)
+  var btn=el.querySelector('button');
+  if(btn)btn.style.display='none';
+  var months=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  var mLabel=SETTLE_MONTH>=0?months[SETTLE_MONTH]:'';
+  var dName=CU?CU.name:'기사';
+  var fileName='정산내역_'+dName+'_'+mLabel+'.png';
+  html2canvas(el,{
+    backgroundColor:'#ffffff',
+    scale:2,
+    useCORS:true,
+    logging:false
+  }).then(function(canvas){
+    if(btn)btn.style.display='block';
+    var link=document.createElement('a');
+    link.download=fileName;
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+  }).catch(function(e){
+    if(btn)btn.style.display='block';
+    alert('이미지 저장 실패: '+e.message);
+  });
 }
 function renderSettleDetail(s){
   // Revenue table (exact Excel format)
@@ -5932,6 +5981,7 @@ function clearContactsPw(){
 }
 function setSchedEditDays(days){
   var cfg=getCfg();cfg.schedEditDays=days;saveCfg(cfg);
+  if(sbClient) sbSaveSchedSettings().catch(function(e){console.warn('[setSchedEditDays]',e);});
   document.getElementById('mc').innerHTML=pgSettings();
 }
 function setSchedMinLockDays(days){
@@ -6005,6 +6055,7 @@ function togglePerm(type,role,checked){
   var arr=cfg[key]||[];var idx=arr.indexOf(role);
   if(checked&&idx<0)arr.push(role);else if(!checked&&idx>=0)arr.splice(idx,1);
   cfg[key]=arr;saveCfg(cfg);
+  if(sbClient) sbSaveSchedSettings().catch(function(e){console.warn('[setPerm]',e);});
 }
 
 // ── UTILITY ──────────────────────────────────────────────────────────────────
@@ -6361,7 +6412,7 @@ async function mdAutoArchive(cases){
       if(!latestPost[r.case_id]||r.created_at>latestPost[r.case_id])latestPost[r.case_id]=r.created_at;
     });
     var toArchive=Object.keys(latestPost).filter(function(cid){
-      return (now-new Date(latestPost[cid]).getTime())>24*60*60*1000;
+      return (now-new Date(latestPost[cid]).getTime())>60*24*60*60*1000;
     });
     for(var i=0;i<toArchive.length;i++){
       await sbClient.from('misdelivery_cases')
@@ -6922,7 +6973,7 @@ async function mdLoadLeaderStats(containerId){
     if(!sorted.length){el.innerHTML='<div style="font-size:11px;color:#aaa;text-align:center;padding:8px 0">팀장 없음</div>';return;}
     var rows=sorted.map(function(name){
       var d=byLeader[name];var rc=d.reads.size;
-      return '<div style="display:grid;grid-template-columns:1fr 36px 36px 36px;align-items:center;padding:5px 0;border-bottom:0.5px solid #dde3f5;font-size:10px;gap:3px">'+
+      return '<div style="display:grid;grid-template-columns:minmax(60px,1fr) 36px 36px 36px;align-items:center;padding:5px 0;border-bottom:0.5px solid #dde3f5;font-size:10px;gap:3px">'+
         '<span style="color:#1a237e;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+mdEsc(name)+'</span>'+
         '<span style="text-align:center;color:#888;font-size:9px">확인<br><strong style="color:#1565c0;font-size:12px">'+rc+'</strong></span>'+
         '<span style="text-align:center;color:#888;font-size:9px">재요청<br><strong style="color:#e65100;font-size:12px">'+d.rejects+'</strong></span>'+
@@ -8782,7 +8833,7 @@ async function loadFreshStatus(){
       // ✅ 신선완료 / 진행중 / PDD MISS 판정
       // 완료: 미배송=0 (위탁/스캔 수량 무관 — 위탁은 스캔되면 0으로 줄어들므로)
       // PDD Miss: 20시 이후 AND 미배송>0 AND 일부만 PDD miss
-      var isCompleteCard=(und===0||(pdd>0&&und===pdd));
+      var isCompleteCard=(und===0&&scn===0)||(pdd>0&&und===pdd&&scn===0);
       var isPddMissCard=_isAfter20&&!isCompleteCard&&(pdd>0&&und>0&&und<pdd);
       var pfxAll=[],ps={};
       wRoutes.forEach(function(rt){(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!ps[pf]){ps[pf]=1;pfxAll.push(pf);}});});
@@ -8878,9 +8929,9 @@ async function loadFreshStatus(){
     // 진행중 기사 = 신선완료 조건에 해당하지 않는 기사
     // 완료: 스캔=0 AND 위탁=0 AND (미배송=0 OR 미배송=PDD miss) — 20시 전/후 모두 적용
     var incompleteW=allWorkers.filter(function(w){
-      var u=_wUnd(w),p=_wPdd(w);
-      if(u===0){return false;}           // 완료: 미배송=0
-      if(p>0&&u===p){return false;}      // 완료: 전부 PDD miss
+      var u=_wUnd(w),p=_wPdd(w),s=_wScn(w);
+      if(u===0&&s===0){return false;}           // 완료: 미배송=0 AND 스캔=0
+      if(p>0&&u===p&&s===0){return false;}      // 완료: 전부 PDD miss AND 스캔=0
       return true;
     });
 
@@ -8901,7 +8952,7 @@ async function loadFreshStatus(){
       // ✅ 신선완료 / 진행중 / PDD MISS 판정
       // 완료: 미배송=0 (위탁/스캔 수량 무관)
       // PDD Miss: 20시 이후 AND 미배송>0 AND 일부만 PDD miss
-      var isComplete=(und===0||(pdd>0&&und===pdd));
+      var isComplete=(und===0&&scn===0)||(pdd>0&&und===pdd&&scn===0);
       var isPddMissFlag=_isAfter20&&!isComplete&&(pdd>0&&und>0&&und<pdd);
       var routeLabel=_wRouteLabel(w);
       var detId='frdet_'+suffix+'_'+wi2;
