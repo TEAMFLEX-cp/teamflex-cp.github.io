@@ -9560,4 +9560,11 @@ async function deletePddLogAll(){
   if(!sbClient)return;
   if(!confirm('전체 PDD MISS 기록을 삭제하시겠습니까?'))return;
   try{
-    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',v
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:'[]'},{onConflict:'key'});
+    showFreshPddLog();
+  }catch(e){alert('삭제 실패: '+e.message);}
+}
+
+
+</script>
+</body></html>
