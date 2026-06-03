@@ -5058,6 +5058,12 @@ async function setRole(name,role){
       var r=await sbClient.from('drivers').update({role:role,synced_at:new Date().toISOString()}).eq('name',name);
       if(r.error)console.error('[setRole] SB err',r.error);
       else console.log('[setRole] Supabase 역할 변경 완료:',name,'→',role);
+      // [즉시 적용] 푸시 구독 role도 함께 동기화 — 직급 변경이 알림 대상에 바로 반영(본인 앱 재실행 불필요)
+      try{
+        var pr=await sbClient.from('push_subscriptions').update({role:role}).eq('driver_name',name);
+        if(pr&&pr.error)console.warn('[setRole] push role 동기화 실패',pr.error);
+        else console.log('[setRole] push_subscriptions role 동기화:',name,'→',role);
+      }catch(e2){console.warn('[setRole] push role 동기화 예외',e2);}
     }catch(e){console.warn('[setRole] SB err',e);}
   }
   var labels={'driver':'기사','leader':'팀장','sub':'조장'};
