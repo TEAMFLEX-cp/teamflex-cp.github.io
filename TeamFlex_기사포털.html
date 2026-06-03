@@ -1465,8 +1465,11 @@ async function requestNotifPerm(){
 async function subscribePush(){
   if(!_swReg||!sbClient)return;
   // localStorage를 primary source로 사용 (CU 타이밍 문제 완전 해결)
-  var driverName=localStorage.getItem('tf_push_name')||(CU?CU.name:'')||(_pendingName||'');
-  var myRole=localStorage.getItem('tf_push_role')||(CU?CU.role:'')||'driver';
+  // [역할 최신화] 현재 로그인 세션(CU)을 우선 — 역할 변경(팀장→조장 등) 시 stale localStorage가 덮어쓰지 않게.
+  //   CU가 아직 준비 안 됐을 때만 localStorage로 폴백(타이밍 보호).
+  var driverName=(CU&&CU.name)?CU.name:(localStorage.getItem('tf_push_name')||(_pendingName||''));
+  var myRole=(CU&&CU.role)?CU.role:(localStorage.getItem('tf_push_role')||'driver');
+  if(CU&&CU.role){try{localStorage.setItem('tf_push_role',CU.role);if(CU.name)localStorage.setItem('tf_push_name',CU.name);}catch(e){}}
   // driver_name 없으면 저장 불필요
   if(!driverName){console.warn('[Push] driver_name 없음 — 구독 저장 건너뜀');return;}
   try{
