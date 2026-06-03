@@ -9025,7 +9025,7 @@ async function loadFreshStatus(){
     _freshNavTotal=r2Rows.reduce(function(s,r){return s+(r.qty||0);},0);
     updateNavDots();
     var _myR2Key=CU&&CU.driver_id?CU.driver_id:null;
-    if(!_myR2Key&&CU&&CU.name){_myR2Key=Object.keys(r2ByDriver).find(function(k){return r2ByDriver[k].driver_name===CU.name;})||null;}
+    if(!_myR2Key&&CU&&CU.name){var _cuN=norm_name_js(CU.name);_myR2Key=Object.keys(r2ByDriver).find(function(k){return norm_name_js(r2ByDriver[k].driver_name)===_cuN;})||null;}
     var myR2Rows=_myR2Key&&r2ByDriver[_myR2Key]?r2ByDriver[_myR2Key].rows:[];
     function _buildR2Card(dr){
       var tf=dr.reduce(function(s,r){return s+(r.fresh_qty||0);},0),ts=dr.reduce(function(s,r){return s+(r.samedaydel_qty||0);},0),tq=dr.reduce(function(s,r){return s+(r.qty||0);},0);
@@ -9105,7 +9105,7 @@ async function loadFreshStatus(){
     html+='<div style="display:flex;align-items:center;justify-content:space-between;background:#1b5e20;border-radius:10px;padding:10px 16px;margin-bottom:12px;box-shadow:0 2px 6px rgba(27,94,32,0.25)"><span style="font-size:12px;color:#a5d6a7;font-weight:600">&#x23F0; 마지막 업데이트</span><span style="font-size:17px;font-weight:900;color:#fff;letter-spacing:0.5px">'+snapDate+' '+snapAt+'</span></div>';
 
     var checkHour=snapAt?parseInt(snapAt.slice(0,2)):0;
-    var myName=CU?(CU.name||''):'';
+    var myName=norm_name_js(CU?(CU.name||''):'');  // 기사명 정규화(박문도AC→박문도)로 매칭
     var isTeamLead=(CU.role==='leader');  // 조장(sub)은 현재 기사와 동일 → 팀장 뷰 제외
 
     // ── PDD 미스 판정 (20시 이후: 미배송 < pdd_miss) ─────────────
@@ -9121,7 +9121,7 @@ async function loadFreshStatus(){
 
     // ── 기사별 그룹핑 ──────────────────────────────────────────────
     var workerGroups={};
-    routes.forEach(function(rt){var w=rt.worker||'미배정';if(!workerGroups[w])workerGroups[w]=[];workerGroups[w].push(rt);});
+    routes.forEach(function(rt){var w=norm_name_js(rt.worker||'')||'미배정';if(!workerGroups[w])workerGroups[w]=[];workerGroups[w].push(rt);});
 
     // ── 카드 HTML 빌더 ──────────────────────────────────────────────
     function _fStat(v,label,color){
@@ -9560,11 +9560,4 @@ async function deletePddLogAll(){
   if(!sbClient)return;
   if(!confirm('전체 PDD MISS 기록을 삭제하시겠습니까?'))return;
   try{
-    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:'[]'},{onConflict:'key'});
-    showFreshPddLog();
-  }catch(e){alert('삭제 실패: '+e.message);}
-}
-
-
-</script>
-</body></html>
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',v
