@@ -7155,6 +7155,29 @@ function mdPushToLeaders(title,body,caseId){
     body:JSON.stringify({title:title,body:body,target_roles:['leader','admin'],data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}}),
   }).catch(function(e){console.warn('[mdPushToLeaders]',e);});
 }
+// 기타/미지정 오배송 건을 특정 기사에게 지정 (관리자·팀장 전용)
+async function mdAssignDriver(caseId){
+  var role=(typeof myRole!=='undefined'?myRole:'')||'';
+  if(role!=='admin'&&role!=='leader'){alert('관리자·팀장만 기사 지정이 가능합니다.');return;}
+  var sel=document.getElementById('md-assign-'+caseId);
+  if(!sel||!sel.value){alert('지정할 기사를 선택하세요.');return;}
+  var name=sel.value;
+  var info=(getDB()||{})[name]||{};
+  var did=info.id||'';
+  var driver_id=(did&&did.indexOf('@')<0)?did+'@df':did;
+  if(!confirm(name+' 기사에게 이 오배송 건을 지정할까요?'))return;
+  try{
+    var upd={driver_name:name};
+    if(driver_id)upd.driver_id=driver_id;
+    var r=await sbClient.from('misdelivery_cases').update(upd).eq('id',caseId);
+    if(r&&r.error)throw r.error;
+    try{mdPushToDriver(name,'📦 오배송 처리 요청','회수 필요 건이 지정되었습니다. 앱에서 확인해주세요.',caseId);}catch(e){}
+    if(typeof showToast==='function')showToast('✔ '+name+' 기사에게 지정되었습니다',true);
+    var modal=document.getElementById('md-detail-modal');if(modal){modal.style.display='none';}
+    if(typeof _mdOpenCaseId!=='undefined')_mdOpenCaseId=null;
+    if(typeof mdLoadCases==='function')mdLoadCases();
+  }catch(e){alert('기사 지정 실패: '+((e&&e.message)||e));}
+}
 
 // ── 기사 답변 사진 업로드 ─────────────────────────────────────────────
 function mdTriggerPhoto(caseId,isCamera){
@@ -7401,7 +7424,12 @@ function mdOpenDetail(caseId){
       ?'width:100%;padding:11px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px'
       :'width:100%;padding:11px;background:#e0e0e0;color:#aaa;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:not-allowed;margin-bottom:8px';
     var apprLabel=hasReply?'✅ 승인 (팀즈답글 게시)':'✅ 승인 (팀즈답글) — 기사 답변 후 활성화';
+    var _adb=getDB();
+    var _adnames=Object.keys(_adb).filter(function(n){return _adb[n]&&(_adb[n].status||'')!=='inactive';}).sort();
+    var _adopts='<option value="">기사 선택…</option>'+_adnames.map(function(n){return '<option value="'+mdEsc(n)+'"'+(n===c.driver_name?' selected':'')+'>'+mdEsc(n)+'</option>';}).join('');
+    var assignRow='<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px"><span style="font-size:12px;color:#5c6bc0;font-weight:700;white-space:nowrap">👤 기사 지정</span><select id="md-assign-'+c.id+'" style="flex:1;min-width:0;padding:8px;border:1px solid #cfd8dc;border-radius:8px;font-size:13px">'+_adopts+'</select><button onclick="mdAssignDriver('+c.id+')" style="padding:8px 12px;background:#5c6bc0;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">지정</button></div>';
     adminBtns='<div style="margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+
+      assignRow+
       '<button '+(hasReply?'onclick="mdApproveLatestReply('+c.id+')"':'')+' style="'+apprStyle+'" '+(hasReply?'':'disabled')+'>'+apprLabel+'</button>'+
       (isAdmin?
         '<div style="display:flex;gap:8px">'+
