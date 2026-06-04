@@ -1314,7 +1314,7 @@ async function loadFeatureControls(){
   if(!sbClient) return;
   try{
     var {data} = await sbClient.from('app_settings').select('value').eq('key','feature_controls').maybeSingle();
-    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}};
+    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false}};
     if(data && data.value){
       var parsed = typeof data.value==='string' ? JSON.parse(data.value) : data.value;
       _featureControls = Object.assign({}, defaults, parsed);
@@ -1322,7 +1322,7 @@ async function loadFeatureControls(){
       _featureControls = defaults;
     }
   } catch(e){
-    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}};
+    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false}};
   }
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
@@ -1336,6 +1336,7 @@ async function loadFeatureControls(){
   else if((CUR_TAB==='fs'||CUR_TAB==='as')&&!getFeatureCtrl('schedule','active')&&!isAdm){mc.innerHTML=pgFullSched();}
   else if((CUR_TAB==='st'||CUR_TAB==='az')&&!getFeatureCtrl('settle','active')&&!isAdm){mc.innerHTML=isAdm?pgAdminSettle():pgSettle();}
   else if(CUR_TAB==='er'&&!getFeatureCtrl('emergency','active')&&!isAdm){mc.innerHTML=pgEmergencyContact();}
+  else if(CUR_TAB==='pb'){mc.innerHTML=pgPback();setTimeout(pbInit,80);}
 }
 var _fcLoading=false;
 function getFeatureCtrl(feat, key){
@@ -1351,7 +1352,7 @@ function getFeatureCtrl(feat, key){
 }
 async function saveFeatureCtrl(feat, key, val){
   if(!sbClient||!CU||CU.role!=='admin') return;
-  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}};
+  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false}};
   if(!_featureControls[feat]) _featureControls[feat] = {active:true, notify:true};
   _featureControls[feat][key] = val;
   // Supabase 저장 (실패 시 롤백 + 에러 알림)
@@ -2711,6 +2712,7 @@ function launchApp(){
       '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>오배송</div>'+
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
+      '<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백소명</div>'+
       '<div class="ni" id="ni-az" onclick="go(\'az\')"><span class="nicon">&#x1F4B0;</span>정산</div>'+
       '<div class="ni" id="ni-cfg" onclick="openCfgSubMenu()"><span class="nicon">&#x2699;</span>설정</div>';
     go('hm');
@@ -2729,6 +2731,7 @@ function launchApp(){
       '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>오배송</div>'+
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
+      (getFeatureCtrl('pback','active')?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백소명</div>':'')+
       '<div class="ni" id="ni-usr-cfg" onclick="openUserSubMenu()"><span class="nicon">&#x2699;&#xFE0F;</span>설정</div>';
     go('hm');
   }
@@ -3198,6 +3201,7 @@ function go(tab){
   else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();mdStartRqRefresh();},200);}
   else if(tab==='rq'){mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
   else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
+  else if(tab==='pb'){mc.innerHTML=pgPback();setTimeout(pbInit,100);}
   else if(tab==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;}}).catch(function(){});}
   // Re-show important unread announcements on each tab switch (except the announcement tab itself)
   if(CU&&tab!=='nc'&&tab!=='ab'){setTimeout(function(){checkUnreadAnns(true);},300);}
@@ -7924,6 +7928,114 @@ var _rqWebhookUrl3camp = null;
 var _rqWebhookUrl8camp = null;
 
 // ── 각종 요청 탭 메인 페이지 ──────────────────────────────────────
+/* ════════ 프백 소명 (pback) — Supabase: pback_somyeong / app_settings(pback_config) ════════ */
+var PB_ITEMS=[], PB_CFG={mode:'approval',form_url:'',period:''}, PB_DONE_OPEN=false, PB_CANT_OPEN=false, PB_DSUB_OPEN=false, PB_DCANT_OPEN=false;
+var PB_ST={pending:{t:'미작성',bg:'#ffe5e5',c:'#c0392b'},answered:{t:'작성완료',bg:'#fff4e0',c:'#b9770e'},approved:{t:'승인됨·제출대기',bg:'#e3f2fd',c:'#1565c0'},submitted:{t:'제출완료',bg:'#e3f4e8',c:'#2d6040'},rejected:{t:'반려',bg:'#ffe1d6',c:'#d84315'},failed:{t:'제출실패',bg:'#ffd6d6',c:'#b71c1c'},cant:{t:'소명불가',bg:'#eceff1',c:'#546e7a'}};
+var PB_DEFRJ='사진상 내용을 확인할 수 없습니다.\n자세한 내용 작성 부탁드립니다.';
+function pbPeriod(){var d=new Date();var y=d.getFullYear(),m=d.getMonth()+1;if(d.getDate()>=26){m++;if(m>12){m=1;y++;}}return y+'-'+(m<10?'0'+m:m);}
+function pbPeriodLabel(){return parseInt(pbPeriod().split('-')[1])+'월분';}
+function pbRange(){var p=pbPeriod().split('-');var m=+p[1];var pm=m-1>=1?m-1:12;return pm+'/26 ~ '+m+'/25';}
+function pbDeadline(){var p=pbPeriod().split('-');return (+p[1])+'/'+new Date(+p[0],+p[1],0).getDate();}
+function pbEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function pbInjectStyle(){
+  if(!document.getElementById('pb-sty')){var s=document.createElement('style');s.id='pb-sty';s.textContent='.pb-wrap{padding:12px 12px 90px}.pb-empty{padding:30px 16px;text-align:center;color:#888;font-size:14px}.pb-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.pb-chip{font-size:12px;padding:5px 10px;border-radius:8px;font-weight:700}.pb-row{background:#fff;border:1px solid #e3e8ea;border-radius:13px;padding:13px 14px;margin-bottom:9px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}.pb-row .d{font-size:15px;font-weight:800}.pb-row .m{font-size:12px;color:#888;margin-top:2px}.pb-bd{font-size:11px;padding:3px 9px;border-radius:7px;font-weight:800;white-space:nowrap}.pb-droph{background:#eef2f1;border:1px solid #dde5e2;border-radius:11px;padding:11px 14px;margin:6px 0 9px;display:flex;justify-content:space-between;cursor:pointer;font-size:13px;font-weight:800;color:#2d6040}.pb-card{background:#fff;border:1px solid #e3e8ea;border-radius:14px;padding:14px 15px;margin-bottom:12px}.pb-card h4{margin:0 0 3px;font-size:15px;font-weight:800;color:#1b5e20}.pb-card .sub{font-size:12px;color:#888;margin-bottom:11px}.pb-pill{border:none;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}.pb-pill.on{background:#2d6040;color:#fff}.pb-pill.noti.on{background:#ef9f27;color:#fff}.pb-pill.off{background:#eceff1;color:#90a4ae}.pb-seg{display:flex;gap:7px}.pb-mb{flex:1;border:1.5px solid #e0e5e7;border-radius:11px;padding:10px 3px;text-align:center;cursor:pointer;background:#fff}.pb-mb.on{border-color:#2d6040;border-width:2px;background:#f1f8f3}.pb-mb .n{font-size:16px;font-weight:800;color:#666}.pb-mb.on .n{color:#2d6040}.pb-mb .l{font-size:11px;color:#999;margin-top:2px;font-weight:700}.pb-mb.on .l{color:#2d6040}.pb-urlrow{display:flex;gap:7px}.pb-urlrow input{flex:1;border:1.5px solid #cfd8d3;border-radius:10px;padding:10px;font-size:12px}.pb-urlrow button{background:#2d6040;color:#fff;border:none;border-radius:10px;padding:0 16px;font-weight:800;cursor:pointer}.pb-mets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:2px 0 12px}.pb-met{background:#f5f7f8;border-radius:11px;padding:11px 5px;text-align:center}.pb-met .v{font-size:21px;font-weight:800}.pb-met .k{font-size:11px;color:#888}.pb-aprow{background:#fff;border:1px solid #e8e1c8;border-radius:11px;padding:11px 13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}.pb-aprow .nm{font-size:14px;font-weight:800}.pb-aprow .sn{font-size:11px;color:#999;margin-top:2px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pb-dl{width:100%;border:1.5px solid #2d6040;color:#2d6040;background:#fff;border-radius:11px;padding:12px;font-size:14px;font-weight:800;cursor:pointer}.pb-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:40000;padding:16px}.pb-ov.show{display:flex}.pb-sheet{background:#f3f5f6;width:100%;max-width:400px;max-height:86vh;border-radius:18px;display:flex;flex-direction:column;overflow:hidden}.pb-sh{background:linear-gradient(90deg,#2d6040,#1b5e20);color:#fff;padding:13px 16px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}.pb-sh .x{font-size:22px;cursor:pointer}.pb-sb{padding:14px 16px;overflow-y:auto}.pb-lbl{font-size:12px;color:#777;margin:12px 0 6px;font-weight:700}.pb-pics{display:grid;grid-template-columns:1fr 1fr;gap:9px}.pb-pic{position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;border:1px solid #ddd;cursor:zoom-in;background:#dfe4e6;display:flex;align-items:center;justify-content:center}.pb-pic img{width:100%;height:100%;object-fit:cover}.pb-pic .cap{position:absolute;left:0;bottom:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:11px;padding:3px 7px;font-weight:700}.pb-ta{width:100%;min-height:74px;border:1.5px solid #cfd8d3;border-radius:11px;padding:11px;font-size:14px;font-family:inherit;resize:vertical}.pb-rd{background:#fff;border:1px solid #e0e5e7;border-radius:11px;padding:12px;font-size:14px;line-height:1.6;white-space:pre-wrap}.pb-ban{border-radius:11px;padding:11px 13px;font-size:13px;font-weight:700;line-height:1.55;white-space:pre-wrap;margin-bottom:4px}.pb-btn{width:100%;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;margin-top:12px;color:#fff;background:#2d6040}.pb-btn.save{background:#1565c0}.pb-btn.cant{background:#fff;color:#546e7a;border:1.5px solid #b0bec5}.pb-btn.revert{background:#fff;color:#2d6040;border:1.5px solid #9ed3b3}.pb-b2{display:flex;gap:9px;margin-top:12px}.pb-b2 button{flex:1;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:800;cursor:pointer}.pb-zoom{position:fixed;inset:0;background:rgba(0,0,0,.93);display:none;align-items:center;justify-content:center;z-index:41000}.pb-zoom.show{display:flex}.pb-zoom img{width:min(94vw,900px);max-height:90vh;object-fit:contain;border-radius:8px}.pb-zx{position:absolute;top:14px;right:18px;color:#fff;font-size:32px;cursor:pointer}';document.head.appendChild(s);}
+  if(!document.getElementById('pb-ov')){var o=document.createElement('div');o.id='pb-ov';o.className='pb-ov';o.onclick=function(e){if(e.target===o)pbCloseOv();};o.innerHTML='<div class="pb-sheet" id="pb-sheet"></div>';document.body.appendChild(o);}
+  if(!document.getElementById('pb-zoom')){var z=document.createElement('div');z.id='pb-zoom';z.className='pb-zoom';z.onclick=function(){z.classList.remove('show');};z.innerHTML='<span class="pb-zx">×</span><img id="pb-zimg">';document.body.appendChild(z);}
+}
+function pgPback(){
+  pbInjectStyle();
+  var isAdm=CU&&CU.role==='admin';
+  if(!isAdm && !getFeatureCtrl('pback','active')) return '<div class="pb-wrap"><div class="pb-empty">🧾 프백 소명 기능이 아직 활성화되지 않았습니다.</div></div>';
+  return '<div class="pb-wrap" id="pb-root"><div class="pb-empty">불러오는 중…</div></div>';
+}
+async function pbInit(){
+  var root=document.getElementById('pb-root'); if(!root||!sbClient)return;
+  try{var cfgR=await sbClient.from('app_settings').select('value').eq('key','pback_config').maybeSingle();
+      if(cfgR&&cfgR.data&&cfgR.data.value){var v=typeof cfgR.data.value==='string'?JSON.parse(cfgR.data.value):cfgR.data.value;PB_CFG=Object.assign({mode:'approval',form_url:'',period:''},v);}}catch(e){}
+  try{var q=await sbClient.from('pback_somyeong').select('*').eq('period',pbPeriod()).order('pdd_date',{ascending:true});PB_ITEMS=(q&&!q.error&&q.data)?q.data:[];}catch(e){PB_ITEMS=[];}
+  pbRender();
+}
+function pbMyItems(){var n=norm_name_js((CU&&CU.name)||'');return PB_ITEMS.filter(function(it){return norm_name_js(it.driver_name||'')===n;});}
+function pbCounts(arr){var c={pending:0,answered:0,approved:0,submitted:0,rejected:0,failed:0,cant:0};arr.forEach(function(i){if(c[i.status]!=null)c[i.status]++;});c.total=arr.length;c.unsub=c.pending+c.answered+c.approved+c.rejected+c.failed;return c;}
+function pbRowHtml(it){var s=PB_ST[it.status]||PB_ST.pending;return '<div class="pb-row" onclick="pbOpen('+it.id+')"><div><div class="d">'+pbEsc(it.pdd_date||'')+' · '+pbEsc(it.route||'')+'</div><div class="m">'+pbEsc(it.camp||'')+' · '+pbEsc(it.type||'')+'</div></div><div style="display:flex;align-items:center;gap:8px"><span class="pb-bd" style="background:'+s.bg+';color:'+s.c+'">'+s.t+'</span><span style="color:#bbb;font-size:18px">›</span></div></div>';}
+function pbRender(){var root=document.getElementById('pb-root');if(!root)return;root.innerHTML=(CU&&CU.role==='admin')?pbAdminHtml():pbDriverHtml();}
+function pbDriverHtml(){
+  var mine=pbMyItems(),c=pbCounts(mine);
+  var act=mine.filter(function(i){return ['pending','answered','approved','rejected','failed'].indexOf(i.status)>=0;});
+  var done=mine.filter(function(i){return i.status==='submitted';});
+  var cant=mine.filter(function(i){return i.status==='cant';});
+  var h='<div class="pb-chips"><span class="pb-chip" style="background:#ffe5e5;color:#c0392b">미작성 '+c.pending+'</span>'+(c.rejected?'<span class="pb-chip" style="background:#ffe1d6;color:#d84315">반려 '+c.rejected+'</span>':'')+(c.failed?'<span class="pb-chip" style="background:#ffd6d6;color:#b71c1c">제출실패 '+c.failed+'</span>':'')+'<span class="pb-chip" style="background:#fff4e0;color:#b9770e">작성완료 '+(c.answered+c.approved)+'</span><span class="pb-chip" style="background:#e3f4e8;color:#2d6040">제출완료 '+c.submitted+'</span>'+(c.cant?'<span class="pb-chip" style="background:#eceff1;color:#546e7a">소명불가 '+c.cant+'</span>':'')+'</div>';
+  h+=act.length?act.map(pbRowHtml).join(''):'<div class="pb-empty">남은 소명 건이 없습니다 👍</div>';
+  if(done.length){h+='<div class="pb-droph" onclick="PB_DSUB_OPEN=!PB_DSUB_OPEN;pbRender()"><span>✅ 제출완료 ('+done.length+')</span><span>'+(PB_DSUB_OPEN?'▴':'▾')+'</span></div>';if(PB_DSUB_OPEN)h+=done.map(pbRowHtml).join('');}
+  if(cant.length){h+='<div class="pb-droph" style="color:#546e7a" onclick="PB_DCANT_OPEN=!PB_DCANT_OPEN;pbRender()"><span>🚫 소명불가 ('+cant.length+')</span><span>'+(PB_DCANT_OPEN?'▴':'▾')+'</span></div>';if(PB_DCANT_OPEN)h+=cant.map(pbRowHtml).join('');}
+  return '<div style="margin-bottom:12px"><div style="font-size:18px;font-weight:800;color:#1b5e20">🧾 프백 소명 — 내 목록</div><div style="font-size:12px;color:#888;margin-top:2px">'+pbPeriodLabel()+' · '+pbRange()+' · '+pbDeadline()+' 마감</div></div>'+h;
+}
+function pbAdminHtml(){
+  var c=pbCounts(PB_ITEMS),mode=PB_CFG.mode||'approval',urlok=!!(PB_CFG.form_url);
+  var act=getFeatureCtrl('pback','active'),noti=getFeatureCtrl('pback','notify');
+  var h='<div style="margin-bottom:12px"><div style="font-size:18px;font-weight:800;color:#1b5e20">⚙️ 프백 소명 · 관리자</div><div style="font-size:12px;color:#888;margin-top:2px">'+pbPeriodLabel()+' · 기간 '+pbRange()+' · '+pbDeadline()+' 마감</div></div>';
+  h+='<div class="pb-card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div style="font-size:15px;font-weight:800;color:#1b5e20">탭 노출 / 알림</div><div style="font-size:11px;color:#888;margin-top:2px">기사 앱 메뉴 노출 · 알림</div></div><div style="display:flex;gap:6px"><button class="pb-pill '+(act?'on':'off')+'" onclick="pbToggle(\'active\')">'+(act?'✅ 활성화':'⬜ 비활성')+'</button><button class="pb-pill noti '+(noti?'on':'off')+'" onclick="pbToggle(\'notify\')">'+(noti?'🔔 알림켜짐':'🔕 알림꺼짐')+'</button></div></div></div>';
+  h+='<div class="pb-card"><h4>이번 달 폼 URL</h4><div class="sub">매월 바뀜 · 저장 시 적용</div><div class="pb-urlrow"><input id="pb-url" value="'+pbEsc(PB_CFG.form_url||'')+'" placeholder="https://forms.gle/..."><button onclick="pbSaveUrl()">저장</button></div>'+(urlok?'<div style="font-size:12px;color:#2d6040;font-weight:700;margin-top:7px">✔ 적용됨 (제출 준비 완료)</div>':'<div style="font-size:12px;color:#c62828;font-weight:700;margin-top:7px">⚠ URL 저장 필요 — 저장해야 제출됩니다</div>')+'</div>';
+  h+='<div class="pb-card"><h4>제출 방식</h4><div class="sub">선택에 따라 아래가 바뀝니다 · 언제든 변경</div><div class="pb-seg">'+pbMseg('direct','①','기사 직접')+pbMseg('approval','②','관리자 승인')+pbMseg('batch','③','관리자 일괄')+'</div></div>';
+  if(mode==='approval'){var wait=PB_ITEMS.filter(function(i){return i.status==='answered';});
+    h+='<div class="pb-card" style="border:2px solid #2d6040;background:#f6fbf7"><h4>✅ 승인 대기 ('+wait.length+')</h4><div class="sub">건을 눌러 사진·소명 확인 후 승인/반려</div>'+(wait.length?wait.map(function(it){return '<div class="pb-aprow" onclick="pbReview('+it.id+')"><div><div class="nm">'+pbEsc(it.driver_name)+' · '+pbEsc(it.route)+'</div><div class="sn">'+pbEsc(it.reason||'')+'</div></div><span style="color:#b9770e;font-weight:800;font-size:13px">검토 ›</span></div>';}).join(''):'<div class="pb-empty">승인 대기 건이 없습니다</div>')+'</div>';}
+  else if(mode==='batch'){var wb=PB_ITEMS.filter(function(i){return i.status==='answered';});
+    h+='<div class="pb-card" style="border:2px solid #2d6040;background:#f6fbf7"><h4>📦 일괄 제출 (스케줄 프로그램)</h4><div class="sub">③ 방식은 PC 스케줄 프로그램에서 진행</div><div style="font-size:11px;color:#888;line-height:1.6">프로그램에서 소명자료 내려받기 → 점검 → URL 적용 후 일괄 제출. (작성완료 '+wb.length+'건)</div></div>';}
+  var fails=PB_ITEMS.filter(function(i){return i.status==='failed';});
+  if(fails.length){h+='<div class="pb-card" style="border:2px solid #c62828;background:#fff6f6"><h4 style="color:#c62828">⛔ 제출 실패 ('+fails.length+')</h4><div class="sub">원인 확인 후 재시도 (서버 자동 재시도됨)</div>'+fails.map(function(it){return '<div class="pb-aprow" style="border-color:#ef9a9a"><div><div class="nm">'+pbEsc(it.driver_name)+' · '+pbEsc(it.route)+'</div><div class="sn" style="color:#b71c1c">'+pbEsc(it.fail_reason||'제출 실패')+'</div></div></div>';}).join('')+'</div>';}
+  var done=PB_ITEMS.filter(function(i){return i.status==='submitted';});
+  if(done.length){h+='<div class="pb-droph" onclick="PB_DONE_OPEN=!PB_DONE_OPEN;pbRender()"><span>✅ 제출완료 ('+done.length+')</span><span>'+(PB_DONE_OPEN?'▴':'▾')+'</span></div>';if(PB_DONE_OPEN)h+=done.map(function(it){return '<div class="pb-aprow" style="border-color:#c8e6c9" onclick="pbView('+it.id+')"><div><div class="nm">'+pbEsc(it.driver_name)+' · '+pbEsc(it.route)+'</div><div class="sn">'+pbEsc(it.reason||'')+'</div></div><span style="color:#2d6040;font-weight:800;font-size:12px">보기 ›</span></div>';}).join('');}
+  var cants=PB_ITEMS.filter(function(i){return i.status==='cant';});
+  if(cants.length){h+='<div class="pb-droph" style="color:#546e7a" onclick="PB_CANT_OPEN=!PB_CANT_OPEN;pbRender()"><span>🚫 소명불가 ('+cants.length+')</span><span>'+(PB_CANT_OPEN?'▴':'▾')+'</span></div>';if(PB_CANT_OPEN)h+=cants.map(function(it){return '<div class="pb-aprow" style="border-color:#cfd8dc"><div><div class="nm">'+pbEsc(it.driver_name)+' · '+pbEsc(it.route)+'</div><div class="sn">'+pbEsc(it.reason||'사유 없음')+'</div></div><span style="color:#2d6040;font-weight:800;font-size:12px" onclick="event.stopPropagation();pbRevert('+it.id+')">되돌리기</span></div>';}).join('');}
+  h+='<div class="pb-card"><h4>제출 현황</h4><div class="pb-mets"><div class="pb-met"><div class="v">'+c.total+'</div><div class="k">대상</div></div><div class="pb-met"><div class="v" style="color:#2d6040">'+c.submitted+'</div><div class="k">제출완료</div></div><div class="pb-met"><div class="v" style="color:#546e7a">'+c.cant+'</div><div class="k">소명불가</div></div><div class="pb-met"><div class="v" style="color:#c0392b">'+c.unsub+'</div><div class="k">미제출</div></div></div><button class="pb-dl" onclick="pbDownload()">⬇ 현황 엑셀(CSV) 내려받기</button><div style="font-size:11px;color:#888;margin-top:9px">💻 스케줄 프로그램에서도 동일하게 다운로드 가능</div></div>';
+  return h;
+}
+function pbMseg(m,n,l){var on=(PB_CFG.mode||'approval')===m;return '<div class="pb-mb'+(on?' on':'')+'" onclick="pbSetMode(\''+m+'\')"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>';}
+function pbToggle(key){var cur=getFeatureCtrl('pback',key);saveFeatureCtrl('pback',key,!cur).then(function(){pbRender();if(typeof renderNav==='function'){}});}
+function pbSetMode(m){PB_CFG.mode=m;pbSaveCfg();pbRender();}
+async function pbSaveCfg(){try{await sbClient.from('app_settings').upsert({key:'pback_config',value:JSON.stringify(PB_CFG)},{onConflict:'key'});}catch(e){}}
+function pbSaveUrl(){var el=document.getElementById('pb-url');if(!el)return;PB_CFG.form_url=el.value.trim();PB_CFG.period=pbPeriod();pbSaveCfg();if(typeof showToast==='function')showToast('✔ 폼 URL 저장됨',true);pbRender();}
+function pbZoom(u){if(!u)return;document.getElementById('pb-zimg').src=u;document.getElementById('pb-zoom').classList.add('show');}
+function pbCloseOv(){var o=document.getElementById('pb-ov');if(o)o.classList.remove('show');}
+function pbPicsHtml(it){
+  var p1=it.photo_miss_url,p2=it.photo_deliver_url;
+  function cell(u,cap){return '<div class="pb-pic" onclick="'+(u?'pbZoom(\''+u+'\')':'')+'">'+(u?'<img src="'+u+'">':'<span style=\"color:#90a4ae;font-size:12px\">사진없음</span>')+'<span class="cap">'+cap+'</span></div>';}
+  return '<div class="pb-pics">'+cell(p1,'미회수 사진')+cell(p2,'배송완료 사진')+'</div>';
+}
+function pbOpen(id){var it=PB_ITEMS.find(function(x){return x.id==id;});if(!it)return;var mode=PB_CFG.mode||'approval';var direct=mode==='direct';
+  var ban='';
+  if(it.status==='rejected'&&it.reject_reason)ban='<div class="pb-ban" style="background:#fff1ea;border:1.5px solid #f0a98c;color:#b3360c"><b style="display:block;color:#d84315;font-size:12px;margin-bottom:3px">⚠ 반려됨 — 다시 작성해주세요</b>'+pbEsc(it.reject_reason)+'</div>';
+  else if(it.status==='failed')ban='<div class="pb-ban" style="background:#ffecec;border:1.5px solid #ef9a9a;color:#b71c1c"><b style="display:block;color:#c62828;font-size:12px;margin-bottom:3px">⛔ 제출 실패</b>'+pbEsc(it.fail_reason||'잠시 후 자동 재시도됩니다')+'</div>';
+  else if(it.status==='submitted')ban='<div class="pb-ban" style="background:#e9f6ee;border:1.5px solid #9ed3b3;color:#1b5e20"><b style="display:block;color:#2d6040;font-size:12px;margin-bottom:3px">✅ 제출 완료</b>본사 폼에 정상 제출되었습니다.</div>';
+  else if(it.status==='approved')ban='<div class="pb-ban" style="background:#e3f2fd;border:1.5px solid #90caf9;color:#1565c0"><b style="display:block;font-size:12px;margin-bottom:3px">✔ 승인됨 — 제출 대기중</b>관리자 승인 완료, 곧 제출됩니다.</div>';
+  else if(it.status==='cant')ban='<div class="pb-ban" style="background:#eceff1;border:1.5px solid #b0bec5;color:#455a64"><b style="display:block;color:#546e7a;font-size:12px;margin-bottom:3px">🚫 소명불가 처리됨</b>폼 제출에서 제외됩니다.</div>';
+  var btns='';
+  if(it.status==='cant')btns='<button class="pb-btn revert" onclick="pbRevert('+it.id+')">되돌려 다시 작성</button>';
+  else if(it.status==='submitted'||it.status==='approved'){}
+  else btns='<button class="pb-btn'+(direct?'':' save')+'" onclick="pbSave('+it.id+')">'+(direct?'제출하기':'저장하기')+'</button><button class="pb-btn cant" onclick="pbCant('+it.id+')">소명 불가</button>'+(direct?'':'<p style="text-align:center;font-size:11px;color:#999;margin-top:8px">현재 ['+(mode==='approval'?'관리자 승인':'관리자 일괄')+'] 방식 → 저장만, 제출은 관리자가</p>');
+  document.getElementById('pb-sheet').innerHTML='<div class="pb-sh"><div><div style="font-size:17px;font-weight:800">'+pbEsc(it.pdd_date||'')+' · '+pbEsc(it.route||'')+'</div><div style="font-size:12px;color:#cfe3d6">'+pbEsc(it.camp||'')+' · '+pbEsc(it.type||'')+'</div></div><span class="x" onclick="pbCloseOv()">×</span></div><div class="pb-sb">'+ban+'<div class="pb-lbl">📷 사진 — 탭하면 확대</div>'+pbPicsHtml(it)+'<div class="pb-lbl">소명 내용 입력</div><textarea class="pb-ta" id="pb-rsn">'+pbEsc(it.reason||'')+'</textarea>'+btns+'</div>';
+  document.getElementById('pb-ov').classList.add('show');
+}
+function pbReview(id){var it=PB_ITEMS.find(function(x){return x.id==id;});if(!it)return;
+  document.getElementById('pb-sheet').innerHTML='<div class="pb-sh"><div><div style="font-size:17px;font-weight:800">'+pbEsc(it.driver_name)+' · '+pbEsc(it.route)+'</div><div style="font-size:12px;color:#cfe3d6">'+pbEsc(it.pdd_date||'')+' · '+pbEsc(it.camp||'')+' · '+pbEsc(it.type||'')+'</div></div><span class="x" onclick="pbCloseOv()">×</span></div><div class="pb-sb"><div class="pb-lbl">📷 사진 — 탭하면 확대</div>'+pbPicsHtml(it)+'<div class="pb-lbl">기사 소명 내용</div><div class="pb-rd">'+pbEsc(it.reason||'(내용 없음)')+'</div><div class="pb-lbl">반려 사유 (반려 시 기사에게 표시)</div><textarea class="pb-ta" id="pb-rjr" style="min-height:54px;border-color:#e0a98c">'+pbEsc(PB_DEFRJ)+'</textarea><div class="pb-b2"><button style="background:#fff;color:#c0392b;border:1.5px solid #e0a0a0" onclick="pbReject('+it.id+')">반려</button><button style="background:#2d6040;color:#fff" onclick="pbApprove('+it.id+')">승인</button></div></div>';
+  document.getElementById('pb-ov').classList.add('show');
+}
+function pbView(id){var it=PB_ITEMS.find(function(x){return x.id==id;});if(!it)return;
+  document.getElementById('pb-sheet').innerHTML='<div class="pb-sh"><div><div style="font-size:17px;font-weight:800">'+pbEsc(it.driver_name)+' · '+pbEsc(it.route)+'</div><div style="font-size:12px;color:#cfe3d6">'+pbEsc(it.pdd_date||'')+' · '+pbEsc(it.camp||'')+'</div></div><span class="x" onclick="pbCloseOv()">×</span></div><div class="pb-sb"><div class="pb-ban" style="background:#e9f6ee;border:1.5px solid #9ed3b3;color:#1b5e20"><b style="display:block;color:#2d6040;font-size:12px;margin-bottom:3px">✅ 제출 완료</b>본사 폼에 정상 제출되었습니다.</div><div class="pb-lbl">📷 사진</div>'+pbPicsHtml(it)+'<div class="pb-lbl">소명 내용</div><div class="pb-rd">'+pbEsc(it.reason||'(내용 없음)')+'</div></div>';
+  document.getElementById('pb-ov').classList.add('show');
+}
+async function pbUpd(id,patch){try{await sbClient.from('pback_somyeong').update(patch).eq('id',id);var it=PB_ITEMS.find(function(x){return x.id==id;});if(it)Object.assign(it,patch);}catch(e){if(typeof showToast==='function')showToast('저장 실패: '+(e.message||e),false);}pbCloseOv();pbRender();}
+function pbSave(id){var el=document.getElementById('pb-rsn');var r=el?el.value.trim():'';if(!r){alert('소명 내용을 입력해주세요');return;}pbUpd(id,{reason:r,status:'answered',reject_reason:''});}
+function pbCant(id){if(!confirm('소명 불가로 처리할까요?\n(폼 제출에서 제외되고 소명불가로 분류됩니다)'))return;var el=document.getElementById('pb-rsn');var r=el?el.value.trim():'';pbUpd(id,{status:'cant',reason:r||undefined,reject_reason:''});}
+function pbApprove(id){pbUpd(id,{status:'approved',approved_by:(CU&&CU.name)||'',reject_reason:''});}
+function pbReject(id){var el=document.getElementById('pb-rjr');var rj=el?el.value.trim():'';pbUpd(id,{status:'rejected',reject_reason:rj||PB_DEFRJ});}
+function pbRevert(id){pbUpd(id,{status:'pending'});}
+function pbDownload(){
+  var hdr=['상태','발생일','기사','타입','캠프','라우트','소명내용','반려사유','제출시각'];
+  var rows=PB_ITEMS.map(function(it){return [ (PB_ST[it.status]||{}).t||it.status, it.pdd_date||'', it.driver_name||'', it.type||'', it.camp||'', it.route||'', (it.reason||'').replace(/\n/g,' '), (it.reject_reason||'').replace(/\n/g,' '), it.submitted_at||'' ];});
+  var csv=[hdr].concat(rows).map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+  var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='프백소명_'+pbPeriod()+'.csv';a.click();
+}
 function pgRequest(){
   if(!CU) return '';
   var isAdm = (CU.role==='admin');
