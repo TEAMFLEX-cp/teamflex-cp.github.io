@@ -6548,6 +6548,9 @@ function mdClearSearch(){
 function mdEsc(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+// 다중 운송장: 상세는 줄바꿈 전부, 목록은 "첫번호 외 N건"
+function mdWbList(wb){var a=String(wb||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);if(!a.length)return '-';return a.map(mdEsc).join('<br>');}
+function mdWbShort(wb){var a=String(wb||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);if(!a.length)return '-';return mdEsc(a[0])+(a.length>1?' <span style="color:#e65100">외 '+(a.length-1)+'건</span>':'');}
 async function mdLoadCases(){
   if(!CU||!sbClient)return;
   // 비활성 상태면 잠금 화면으로 교체 (비관리자: feature 로드 완료 후 재진입 시 처리)
@@ -6824,7 +6827,7 @@ function mdRenderList(cases){
                 '<div onclick="mdOpenDetail('+c.id+')" style="flex:1;cursor:pointer;min-width:0">'+
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
                     (canDelete?'<span style="font-size:11px;font-weight:700;color:#558b2f">'+mdEsc(c.driver_name||c.driver_id||'-')+'</span>':'')+''+
-                    '<span style="font-size:11px;color:#aaa">'+mdEsc(c.waybill_no||'-')+'</span>'+
+                    '<span style="font-size:11px;color:#aaa">'+mdWbShort(c.waybill_no)+'</span>'+
                   '</div>'+
                   '<div style="font-size:11px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+mdEsc((c.issue_content||'오배송 처리').slice(0,40))+'</div>'+
                 '</div>'+
@@ -6896,7 +6899,7 @@ function mdMibaenaepGroupCard(drvName,groupCases,isAdmin,isLeader){
   var driverTag=(isAdmin||isLeader)?'<span class="md-driver-tag">'+mdEsc(drvName)+'</span>':'';
   var dateStr=mdEsc((groupCases[0].occurred_at||groupCases[0].created_at||'').slice(0,10));
   var waybillTags=groupCases.map(function(c){
-    return '<span onclick="event.stopPropagation();mdOpenDetail('+c.id+')" style="display:inline-flex;align-items:center;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;padding:3px 10px;cursor:pointer;font-weight:600;margin:2px">'+mdEsc(c.waybill_no||'-')+'</span>';
+    return '<span onclick="event.stopPropagation();mdOpenDetail('+c.id+')" style="display:inline-flex;align-items:center;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;padding:3px 10px;cursor:pointer;font-weight:600;margin:2px">'+mdWbShort(c.waybill_no)+'</span>';
   }).join('');
   return '<div class="md-card '+borderCls+'" style="cursor:default">'+
     '<div class="md-top">'+
@@ -7418,7 +7421,7 @@ function mdOpenDetail(caseId){
       '<div style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:12px">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
       '<div style="background:#e8f0fe;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:2">'+
         '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">1. 배송기사</span><span style="color:#1a237e;font-weight:700">'+mdEsc(drvName)+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">2. 운송장</span><span style="color:#1a1a1a">'+mdEsc(c.waybill_no||'-')+'</span></div>'+
+        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block;vertical-align:top">2. 운송장</span><span style="color:#1a1a1a">'+mdWbList(c.waybill_no)+'</span></div>'+
         '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">3. 라우트</span><span style="color:#1a1a1a">'+mdEsc(c.route||'-')+'</span></div>'+
         '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">4. 주소</span><span style="color:#1a1a1a">'+mdEsc(c.address||'-')+'</span></div>'+
         '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">5. 발생일</span><span style="color:#1a1a1a">'+mdEsc(dateStr)+'</span></div>'+
