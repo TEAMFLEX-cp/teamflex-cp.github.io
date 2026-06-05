@@ -6758,20 +6758,28 @@ function mdRenderList(cases){
 
   var html='';
 
-  // ── 각종 요청 건 (관리자·팀장=전체 / 기사·조장=본인 것만) ────────────
+  // ── 각종 요청 건: 대기중은 상단, 완료는 하단(미답변 밑)으로 분리 ────────────
+  var _reqDoneCards='';
   if(_visReqs.length > 0){
     var todayStr2=new Date().toISOString().slice(0,10);
     var todayReqs = _mdDateFilter==='today'
       ? _visReqs.filter(function(r){return (r.created_at||'').slice(0,10)===todayStr2 || r.status==='pending';})
       : _visReqs;
-    if(todayReqs.length > 0){
-      var _pendVis=todayReqs.filter(function(r){return r.status==='pending';}).length;
+    var _reqPend=todayReqs.filter(function(r){return r.status==='pending';});
+    var _reqDone=todayReqs.filter(function(r){return r.status!=='pending';});
+    if(_reqPend.length > 0){
       html += '<div style="border-bottom:2px dashed #e8eaf6;margin-bottom:12px;padding-bottom:2px">'+
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'+
           '<span style="font-size:12px;font-weight:800;color:#7c4dff">&#x1F4DD; 각종 요청 건</span>'+
-          '<span style="font-size:10px;background:#ede7f6;color:#7c4dff;padding:1px 7px;border-radius:10px;font-weight:700">'+todayReqs.length+'건</span>'+
-          (_pendVis>0?'<span style="font-size:10px;background:#7c4dff;color:#fff;padding:1px 7px;border-radius:10px;font-weight:700">&#x23F3; 대기 '+_pendVis+'</span>':'')+'</div>'+
-        todayReqs.map(function(r){return rqBuildCard(r);}).join('')+
+          '<span style="font-size:10px;background:#ede7f6;color:#7c4dff;padding:1px 7px;border-radius:10px;font-weight:700">'+_reqPend.length+'건</span>'+
+          '<span style="font-size:10px;background:#7c4dff;color:#fff;padding:1px 7px;border-radius:10px;font-weight:700">&#x23F3; 대기 '+_reqPend.length+'</span></div>'+
+        _reqPend.map(function(r){return rqBuildCard(r);}).join('')+
+      '</div>';
+    }
+    if(_reqDone.length > 0){
+      _reqDoneCards = '<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">'+
+        '<div style="font-size:12px;color:#9e9e9e;margin-bottom:8px;font-weight:600">&#x1F4DD; 완료 요청 건</div>'+
+        _reqDone.map(function(r){return rqBuildCard(r);}).join('')+
       '</div>';
     }
   }
@@ -6793,6 +6801,9 @@ function mdRenderList(cases){
       Object.keys(mbGroups).forEach(function(drvName){html+=mdMibaenaepGroupCard(drvName,mbGroups[drvName],isAdmin,isLeader);});
     }
   }
+
+  // ── 완료된 각종요청은 미답변(활성) 아래로 ──
+  html+=_reqDoneCards;
 
   // ── 처리완료 건: 일자별 드랍다운 ─────────────────────────────
   if(completed.length>0){
