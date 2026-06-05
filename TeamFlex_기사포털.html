@@ -1515,6 +1515,56 @@ async function adminRequestNotif(){
   if(perm==='granted'){await registerSW();await subscribePush();}
 }
 
+// ── 로그인 시 알림 재요청: 구독 안 된 사람만 배너(관리자 포함, 아이폰 미설치 안내) ──
+async function tfNotifReprompt(){
+  try{
+    if(!('Notification' in window) || !('serviceWorker' in navigator)) return;
+    var old=document.getElementById('tf-notif-banner'); if(old)old.remove();
+    // 이미 허용돼 있으면 → DB 구독만 조용히 최신화하고 끝 (배너 안 띄움)
+    if(Notification.permission==='granted'){
+      try{ await registerSW(); await subscribePush(); }catch(e){}
+      return;
+    }
+    var ua=navigator.userAgent||'';
+    var isIOS=/iphone|ipad|ipod/i.test(ua);
+    var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
+    var b=document.createElement('div');
+    b.id='tf-notif-banner';
+    b.style.cssText='position:fixed;left:50%;bottom:78px;transform:translateX(-50%);width:92vw;max-width:440px;background:#fff;border:1.5px solid #90caf9;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:13px 14px;z-index:10050;display:flex;gap:10px;align-items:flex-start';
+    var msg,btns;
+    if(isIOS && !isStandalone){
+      msg='<div style="font-size:13px;font-weight:700;color:#1565c0">알림을 받으려면 홈 화면에 추가하세요</div><div style="font-size:12px;color:#555;margin-top:3px">아이폰은 <b>공유 → 홈 화면에 추가</b> 후 앱을 열어 알림을 허용해야 알림이 옵니다.</div>';
+      btns='<button onclick="var e=document.getElementById(\'tf-notif-banner\');if(e)e.remove();" style="margin-top:8px;padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">확인</button>';
+    } else if(Notification.permission==='denied'){
+      msg='<div style="font-size:13px;font-weight:700;color:#e53935">알림이 차단돼 있어요</div><div style="font-size:12px;color:#555;margin-top:3px">주소창 자물쇠 → 알림 → <b>허용</b>으로 바꾼 뒤 새로고침해주세요.</div>';
+      btns='<button onclick="var e=document.getElementById(\'tf-notif-banner\');if(e)e.remove();" style="margin-top:8px;padding:6px 14px;background:#e53935;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">확인</button>';
+    } else {
+      msg='<div style="font-size:13px;font-weight:700;color:#1565c0">알림이 꺼져 있어요</div><div style="font-size:12px;color:#555;margin-top:3px">오배송·2회전·스케줄 알림을 받으려면 켜주세요.</div>';
+      btns='<div style="display:flex;gap:6px;margin-top:8px"><button onclick="tfEnableNotifFromBanner()" style="padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">알림 켜기</button><button onclick="var e=document.getElementById(\'tf-notif-banner\');if(e)e.remove();" style="padding:6px 12px;background:#f0f0f0;color:#777;border:none;border-radius:8px;font-size:12px;cursor:pointer">나중에</button></div>';
+    }
+    b.innerHTML='<span style="font-size:20px;flex-shrink:0">&#x1F514;</span><div style="flex:1;min-width:0">'+msg+btns+'</div>';
+    document.body.appendChild(b);
+  }catch(e){console.warn('[notif reprompt]',e);}
+}
+async function tfEnableNotifFromBanner(){
+  var b=document.getElementById('tf-notif-banner'); if(b)b.remove();
+  try{ await requestNotifPerm(); }catch(e){}
+  var ok=(typeof Notification!=='undefined'&&Notification.permission==='granted');
+  if(typeof showToast==='function') showToast(ok?'✔ 알림이 켜졌어요':'알림 권한이 필요해요', ok);
+}
+
+// 관리자: 2회전 수량 재검색 요청 → 폴러가 fly에서 최신 2회전 재수집(≤40초)
+async function tfRound2Refresh(){
+  if(!sbClient||!CU||CU.role!=='admin'){alert('관리자만 사용할 수 있습니다.');return;}
+  if(!confirm('fly에서 최신 2회전 수량을 다시 가져올까요?\n(폴러가 최대 40초 내에 재수집합니다)'))return;
+  try{
+    var ts=new Date().toISOString();
+    var r=await sbClient.from('app_settings').upsert({key:'round2_refresh_request',value:JSON.stringify({ts:ts,by:(CU&&CU.name)||''})},{onConflict:'key'});
+    if(r&&r.error)throw r.error;
+    if(typeof showToast==='function')showToast('🔄 2회전 재검색 요청됨 — 최신 수량 가져오는 중(최대 40초)',true);
+  }catch(e){alert('재검색 요청 실패: '+((e&&e.message)||e));}
+}
+
 // ── 알림 팝업 모달 ──────────────────────────────────────────────────
 var _popupQueue=[];var _popupShowing=false;
 var _annChainCb=null; // 공지 팝업 완료 후 실행할 콜백 (시작 체인용)
@@ -2948,12 +2998,13 @@ function closePwaGuide(){
   requestNotifPerm();
 }
 function checkShowPwaGuide(){
-  if(!CU||CU.role==='admin')return;
+  if(!CU)return;
+  if(CU.role==='admin'){ setTimeout(tfNotifReprompt,1200); return; }   // 관리자도 알림 재요청 (기존엔 통째 건너뜀)
   var shown=localStorage.getItem('tfpwa_shown_'+CU.name);
   if(!shown){
-    setTimeout(showPwaGuide,500);
+    setTimeout(showPwaGuide,500);       // 첫 로그인: PWA 가이드(닫으면 requestNotifPerm)
   } else {
-    requestNotifPerm();
+    setTimeout(tfNotifReprompt,1200);   // 재방문: 구독 안 됐으면 배너로 재요청
   }
 }
 
@@ -9126,7 +9177,7 @@ function pgFresh(){
         '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div>'+
       '</div>';
   }
-  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'</div>':'';
+  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'<button onclick="tfRound2Refresh()" style="flex:1;min-width:80px;padding:9px 4px;background:#6a1b9a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 2회전 재검색</button>'+'</div>':'';
   var frKwPopupHtml=isAdmin?
     '<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center">'+
     '<div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">'+
@@ -9156,7 +9207,7 @@ async function loadFreshStatus(){
   if(!CU)return;
   var isAdmin=(CU.role==='admin');
   if(!getFeatureCtrl('fresh','active')&&!isAdmin)return;
-  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'</div>':'';
+  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'<button onclick="tfRound2Refresh()" style="flex:1;min-width:80px;padding:9px 4px;background:#6a1b9a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 2회전 재검색</button>'+'</div>':'';
   var frTimePopupHtml=isAdmin?'<div id="fr-time-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#1565c0">&#x23F0; 신선 체크 시간 설정</span><button onclick="closeFrTimePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 앱 데이터를 새로 갱신합니다. 기사 폰 알림 없이 화면만 업데이트됩니다.</div><div id="fr-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-time-input" type="text" placeholder="예: 19:55" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrTime()"><button onclick="addFrTime()" style="padding:8px 14px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
   var frKwPopupHtml=isAdmin?'<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#2e7d32">&#x1F33F; 2회전 트리거 키워드</span><button onclick="closeFrKwPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">Teams에서 이 키워드 감지 시 2회전 수량을 자동 파싱합니다.</div><div id="kw-fresh-list" style="margin-bottom:10px;min-height:32px"></div><div style="display:flex;gap:8px"><input id="kw-fresh-input" type="text" placeholder="예: 2회전 예상" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')saveFrKeyword()"><button onclick="saveFrKeyword()" style="padding:8px 14px;background:#2e7d32;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
 
@@ -9638,96 +9689,4 @@ async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRoute
     var cutoffStr=cutoff.toISOString().slice(0,10);
     log=log.filter(function(e){return(e.date||'')>=cutoffStr;});
     var added=false;
-    missWorkers.forEach(function(w){
-      var key=todayStr+'_'+w;
-      if(_pddLogSaved[key])return;
-      _pddLogSaved[key]=true;
-      var already=log.some(function(e){return e.date===todayStr&&e.worker===w;});
-      if(already)return;
-      log.push({id:Date.now()+'_'+Math.random().toString(36).slice(2),date:todayStr,worker:w,route:wRouteLabel(w),miss:wPdd(w)});
-      added=true;
-    });
-    if(!added)return;
-    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
-  }catch(e){console.warn('[PDD LOG] 저장 실패:',e.message);}
-}
-
-async function showFreshPddLog(){
-  if(!sbClient)return;
-  try{
-    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
-    var log=[];
-    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
-    log.sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
-    var isAdmin=(CU&&CU.role==='admin');
-    _renderPddLogPopup(log,isAdmin);
-  }catch(e){alert('기록 불러오기 실패: '+e.message);}
-}
-
-function _renderPddLogPopup(log,canDelete){
-  var existing=document.getElementById('pdd-log-popup');
-  if(existing)existing.remove();
-  var cols=canDelete?5:4;
-  var rows=log.length>0?log.map(function(e){
-    return '<tr style="border-bottom:1px solid #f0f0f0">'+
-      (canDelete?'<td style="padding:6px 8px;text-align:center"><input type="checkbox" class="pdd-log-chk" value="'+e.id+'"></td>':'')+
-      '<td style="padding:6px 8px;font-size:12px;color:#555">'+e.date+'</td>'+
-      '<td style="padding:6px 8px;font-size:12px;font-weight:700;color:#1a237e">'+e.worker+'</td>'+
-      '<td style="padding:6px 8px;font-size:11px;color:#555">'+e.route+'</td>'+
-      '<td style="padding:6px 8px;text-align:center;font-weight:700;color:#c62828">'+e.miss+'건</td>'+
-    '</tr>';
-  }).join(''):'<tr><td colspan="'+cols+'" style="padding:20px;text-align:center;color:#aaa;font-size:13px">기록 없음</td></tr>';
-  var thead=(canDelete?'<th style="padding:6px 4px;text-align:center;width:28px"><input type="checkbox" id="pdd-log-chk-all" onchange="document.querySelectorAll(\'.pdd-log-chk\').forEach(function(c){c.checked=this.checked;}.bind(this))"></th>':'')+
-    '<th style="padding:6px 8px;text-align:left;min-width:80px">날짜</th>'+
-    '<th style="padding:6px 8px;text-align:left">기사</th>'+
-    '<th style="padding:6px 8px;text-align:left">라우트</th>'+
-    '<th style="padding:6px 8px;text-align:center">미스</th>';
-  var delBtns=canDelete?
-    '<div style="display:flex;gap:8px;margin-bottom:12px">'+
-      '<button onclick="deletePddLogSelected()" style="flex:1;padding:8px;background:#ef6c00;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">선택 삭제</button>'+
-      '<button onclick="deletePddLogAll()" style="flex:1;padding:8px;background:#c62828;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">전체 삭제</button>'+
-    '</div>':'';
-  var popup='<div id="pdd-log-popup" style="display:flex;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:20100;align-items:flex-start;justify-content:center;overflow-y:auto">'+
-    '<div style="background:#fff;width:100%;max-width:480px;min-height:100%;padding:16px">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:1px solid #e0e0e0;z-index:1">'+
-      '<span style="font-size:15px;font-weight:800;color:#6a1b9a">&#x26A0; PDD MISS 기록</span>'+
-      '<button onclick="document.getElementById(\'pdd-log-popup\').remove()" style="background:#757575;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer">&#x2715; 닫기</button>'+
-    '</div>'+
-    delBtns+
-    '<div style="overflow-x:auto">'+
-    '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
-    '<thead style="background:#f3e5f5;color:#6a1b9a;font-size:11px"><tr>'+thead+'</tr></thead>'+
-    '<tbody>'+rows+'</tbody>'+
-    '</table></div>'+
-    '<div style="margin-top:12px;font-size:11px;color:#9e9e9e;text-align:center">60일 이상 경과 기록은 자동 삭제됩니다</div>'+
-    '</div></div>';
-  document.body.insertAdjacentHTML('beforeend',popup);
-}
-
-async function deletePddLogSelected(){
-  if(!sbClient)return;
-  var checked=Array.from(document.querySelectorAll('.pdd-log-chk:checked')).map(function(c){return c.value;});
-  if(checked.length===0){alert('삭제할 항목을 선택해주세요.');return;}
-  if(!confirm(checked.length+'건을 삭제하시겠습니까?'))return;
-  try{
-    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
-    var log=[];
-    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
-    log=log.filter(function(e){return!checked.includes(String(e.id));});
-    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
-    showFreshPddLog();
-  }catch(e){alert('삭제 실패: '+e.message);}
-}
-
-async function deletePddLogAll(){
-  if(!sbClient)return;
-  if(!confirm('전체 PDD MISS 기록을 삭제하시겠습니까?'))return;
-  try{
-    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:'[]'},{onConflict:'key'});
-    showFreshPddLog();
-  }catch(e){alert('삭제 실패: '+e.message);}
-}
-
-
-</script>
-</body></html>
+    missWorkers.forEach(functi
