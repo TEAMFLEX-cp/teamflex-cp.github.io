@@ -9689,4 +9689,96 @@ async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRoute
     var cutoffStr=cutoff.toISOString().slice(0,10);
     log=log.filter(function(e){return(e.date||'')>=cutoffStr;});
     var added=false;
-    missWorkers.forEach(functi
+    missWorkers.forEach(function(w){
+      var key=todayStr+'_'+w;
+      if(_pddLogSaved[key])return;
+      _pddLogSaved[key]=true;
+      var already=log.some(function(e){return e.date===todayStr&&e.worker===w;});
+      if(already)return;
+      log.push({id:Date.now()+'_'+Math.random().toString(36).slice(2),date:todayStr,worker:w,route:wRouteLabel(w),miss:wPdd(w)});
+      added=true;
+    });
+    if(!added)return;
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
+  }catch(e){console.warn('[PDD LOG] 저장 실패:',e.message);}
+}
+
+async function showFreshPddLog(){
+  if(!sbClient)return;
+  try{
+    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+    var log=[];
+    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
+    log.sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
+    var isAdmin=(CU&&CU.role==='admin');
+    _renderPddLogPopup(log,isAdmin);
+  }catch(e){alert('기록 불러오기 실패: '+e.message);}
+}
+
+function _renderPddLogPopup(log,canDelete){
+  var existing=document.getElementById('pdd-log-popup');
+  if(existing)existing.remove();
+  var cols=canDelete?5:4;
+  var rows=log.length>0?log.map(function(e){
+    return '<tr style="border-bottom:1px solid #f0f0f0">'+
+      (canDelete?'<td style="padding:6px 8px;text-align:center"><input type="checkbox" class="pdd-log-chk" value="'+e.id+'"></td>':'')+
+      '<td style="padding:6px 8px;font-size:12px;color:#555">'+e.date+'</td>'+
+      '<td style="padding:6px 8px;font-size:12px;font-weight:700;color:#1a237e">'+e.worker+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;color:#555">'+e.route+'</td>'+
+      '<td style="padding:6px 8px;text-align:center;font-weight:700;color:#c62828">'+e.miss+'건</td>'+
+    '</tr>';
+  }).join(''):'<tr><td colspan="'+cols+'" style="padding:20px;text-align:center;color:#aaa;font-size:13px">기록 없음</td></tr>';
+  var thead=(canDelete?'<th style="padding:6px 4px;text-align:center;width:28px"><input type="checkbox" id="pdd-log-chk-all" onchange="document.querySelectorAll(\'.pdd-log-chk\').forEach(function(c){c.checked=this.checked;}.bind(this))"></th>':'')+
+    '<th style="padding:6px 8px;text-align:left;min-width:80px">날짜</th>'+
+    '<th style="padding:6px 8px;text-align:left">기사</th>'+
+    '<th style="padding:6px 8px;text-align:left">라우트</th>'+
+    '<th style="padding:6px 8px;text-align:center">미스</th>';
+  var delBtns=canDelete?
+    '<div style="display:flex;gap:8px;margin-bottom:12px">'+
+      '<button onclick="deletePddLogSelected()" style="flex:1;padding:8px;background:#ef6c00;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">선택 삭제</button>'+
+      '<button onclick="deletePddLogAll()" style="flex:1;padding:8px;background:#c62828;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">전체 삭제</button>'+
+    '</div>':'';
+  var popup='<div id="pdd-log-popup" style="display:flex;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:20100;align-items:flex-start;justify-content:center;overflow-y:auto">'+
+    '<div style="background:#fff;width:100%;max-width:480px;min-height:100%;padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:1px solid #e0e0e0;z-index:1">'+
+      '<span style="font-size:15px;font-weight:800;color:#6a1b9a">&#x26A0; PDD MISS 기록</span>'+
+      '<button onclick="document.getElementById(\'pdd-log-popup\').remove()" style="background:#757575;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer">&#x2715; 닫기</button>'+
+    '</div>'+
+    delBtns+
+    '<div style="overflow-x:auto">'+
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead style="background:#f3e5f5;color:#6a1b9a;font-size:11px"><tr>'+thead+'</tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+    '</table></div>'+
+    '<div style="margin-top:12px;font-size:11px;color:#9e9e9e;text-align:center">60일 이상 경과 기록은 자동 삭제됩니다</div>'+
+    '</div></div>';
+  document.body.insertAdjacentHTML('beforeend',popup);
+}
+
+async function deletePddLogSelected(){
+  if(!sbClient)return;
+  var checked=Array.from(document.querySelectorAll('.pdd-log-chk:checked')).map(function(c){return c.value;});
+  if(checked.length===0){alert('삭제할 항목을 선택해주세요.');return;}
+  if(!confirm(checked.length+'건을 삭제하시겠습니까?'))return;
+  try{
+    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+    var log=[];
+    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
+    log=log.filter(function(e){return!checked.includes(String(e.id));});
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
+    showFreshPddLog();
+  }catch(e){alert('삭제 실패: '+e.message);}
+}
+
+async function deletePddLogAll(){
+  if(!sbClient)return;
+  if(!confirm('전체 PDD MISS 기록을 삭제하시겠습니까?'))return;
+  try{
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:'[]'},{onConflict:'key'});
+    showFreshPddLog();
+  }catch(e){alert('삭제 실패: '+e.message);}
+}
+
+
+</script>
+</body></html>
