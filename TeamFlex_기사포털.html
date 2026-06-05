@@ -854,8 +854,8 @@ async function syncFromSupabase(){
     // 이번 주 일요일(week_start) 계산 (일=0, 월=1, ..., 토=6)
     var thisSunday=new Date(today);thisSunday.setDate(today.getDate()-today.getDay());
     var future=new Date(thisSunday);future.setDate(thisSunday.getDate()+365); // 이번 주 일요일 기준 365일(1년) 후까지
-    var cutStr=thisSunday.toISOString().slice(0,10); // 이번 주 일요일부터
-    var futStr=future.toISOString().slice(0,10);   // +365일까지
+    var cutStr=kstDateStr(thisSunday); // 이번 주 일요일부터(KST)
+    var futStr=kstDateStr(future);   // +365일까지(KST)
     // Supabase 기본 limit 우회 → 10000행씩 페이지네이션 (Max Rows=100,000)
     var allRows=[]; var _off=0; var _batch=10000;
     while(true){
@@ -1604,6 +1604,9 @@ function _nextPopup(){
   },{once:true});
 }
 
+// ── 모든 날짜 비교는 한국(KST) 기준 ──
+function kstToday(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
+function kstDateStr(d){var x=new Date(d);return isNaN(x.getTime())?'':x.toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
 function isQuietHour(){
   var cfg=getCfg();
   var qs=cfg.quietStart!==undefined?Number(cfg.quietStart):22;
@@ -1742,7 +1745,7 @@ function _onSchedChange(e, old, changedBy){
   var route=e.route||old.route||'';
 
   // ★ 과거 날짜 변경 → 알림 완전 무시
-  var todayStr=new Date().toISOString().slice(0,10);
+  var todayStr=kstToday();
   if(workDate&&workDate<todayStr)return;
 
   // ★ 알림 꺼짐 → 아무에게도 알림 안 보냄
@@ -1793,7 +1796,7 @@ function _queueSchedPush(workDate, route, oldDriver, newDriver){
   if(!CU||CU.role==='driver')return;
 
   // 과거 날짜 → 발송 안 함
-  var todayStr=new Date().toISOString().slice(0,10);
+  var todayStr=kstToday();
   if(workDate&&workDate<todayStr)return;
 
   // 같은 변경을 이미 이 기기에서 push 했으면 skip (5분 내 중복 방지)
@@ -6773,9 +6776,9 @@ function mdRenderList(cases){
   // 날짜 필터 적용
   var allCount=(cases||[]).length;
   if(_mdDateFilter==='today'){
-    var todayStr=new Date().toISOString().slice(0,10);
+    var todayStr=kstToday();
     cases=(cases||[]).filter(function(c){
-      return (c.created_at||'').slice(0,10)===todayStr
+      return kstDateStr(c.created_at)===todayStr
           || c.status==='pending' || c.status==='rejected' || c.status==='replied';
     });
   }
@@ -6812,9 +6815,9 @@ function mdRenderList(cases){
   // ── 각종 요청 건: 대기중은 상단, 완료는 하단(미답변 밑)으로 분리 ────────────
   var _reqDoneCards='';
   if(_visReqs.length > 0){
-    var todayStr2=new Date().toISOString().slice(0,10);
+    var todayStr2=kstToday();
     var todayReqs = _mdDateFilter==='today'
-      ? _visReqs.filter(function(r){return (r.created_at||'').slice(0,10)===todayStr2 || r.status==='pending';})
+      ? _visReqs.filter(function(r){return kstDateStr(r.created_at)===todayStr2 || r.status==='pending';})
       : _visReqs;
     var _reqPend=todayReqs.filter(function(r){return r.status==='pending';});
     var _reqDone=todayReqs.filter(function(r){return r.status!=='pending';});
@@ -9220,7 +9223,7 @@ async function loadFreshStatus(){
   }
 
   try{
-    var today=new Date().toISOString().slice(0,10);
+    var today=kstToday();
 
     // ── 2회전 예상 수량 (round2_expected) ─────────────────────────
     var r2Res=await sbClient.from('round2_expected')
@@ -9686,7 +9689,7 @@ async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRoute
     var log=[];
     if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
     var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
-    var cutoffStr=cutoff.toISOString().slice(0,10);
+    var cutoffStr=kstDateStr(cutoff);
     log=log.filter(function(e){return(e.date||'')>=cutoffStr;});
     var added=false;
     missWorkers.forEach(function(w){
