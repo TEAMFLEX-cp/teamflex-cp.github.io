@@ -8065,6 +8065,32 @@ function pbMyItems(){var n=norm_name_js((CU&&CU.name)||'');return PB_ITEMS.filte
 function pbCounts(arr){var c={pending:0,answered:0,approved:0,submitted:0,rejected:0,failed:0,cant:0};arr.forEach(function(i){if(c[i.status]!=null)c[i.status]++;});c.total=arr.length;c.unsub=c.pending+c.answered+c.approved+c.rejected+c.failed;return c;}
 function pbRowHtml(it){var s=PB_ST[it.status]||PB_ST.pending;return '<div class="pb-row" onclick="pbOpen('+it.id+')"><div><div class="d">'+pbEsc(it.pdd_date||'')+' · '+pbEsc(it.route||'')+'</div><div class="m">'+pbEsc(it.camp||'')+' · '+pbEsc(it.type||'')+'</div></div><div style="display:flex;align-items:center;gap:8px"><span class="pb-bd" style="background:'+s.bg+';color:'+s.c+'">'+s.t+'</span><span style="color:#bbb;font-size:18px">›</span></div></div>';}
 function pbRender(){var root=document.getElementById('pb-root');if(!root)return;root.innerHTML=(CU&&CU.role==='admin')?pbAdminHtml():pbDriverHtml();}
+// 관리자: 미작성(pending) 기사 전원에게 프백 소명 알림 1회 발송
+async function pbNotifyPending(){
+  if(!sbClient){alert('서버 연결이 필요합니다.');return;}
+  if(!(CU&&CU.role==='admin')){alert('관리자만 가능합니다.');return;}
+  var btn=document.getElementById('pb-notify-btn');
+  var byDrv={};
+  (PB_ITEMS||[]).forEach(function(i){if(i.status==='pending'){var n=(i.driver_name||'').trim();if(n)byDrv[n]=(byDrv[n]||0)+1;}});
+  var names=Object.keys(byDrv);
+  if(names.length===0){alert('미작성(pending) 기사가 없습니다.');return;}
+  if(!confirm('미작성 기사 '+names.length+'명에게\n프백 소명 알림을 1회 발송할까요?'))return;
+  if(btn){btn.disabled=true;btn.textContent='⏳ 발송 중...';}
+  var ok=0;
+  for(var i=0;i<names.length;i++){
+    var nm=names[i];
+    try{
+      var r=await fetch(PUSH_EDGE_URL,{method:'POST',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({title:'📋 프백 소명 등록',body:'미작성 프백 소명 '+byDrv[nm]+'건이 있어요.\n앱 프백 탭에서 소명 작성 부탁드립니다.',driver_name:nm,data:{url:'/?tab=pb',type:'pback_new'}})});
+      var j=await r.json();
+      if(j&&j.sent>0)ok++;
+    }catch(e){}
+  }
+  if(btn){btn.disabled=false;btn.textContent='미작성자 알림 발송';}
+  if(typeof showToast==='function')showToast('📲 미작성 '+names.length+'명 중 '+ok+'명 발송 완료',true);
+  else alert('미작성 '+names.length+'명 중 '+ok+'명 발송 완료');
+}
 function pbDriverHtml(){
   var mine=pbMyItems(),c=pbCounts(mine);
   var act=mine.filter(function(i){return ['pending','answered','approved','rejected','failed'].indexOf(i.status)>=0;});
@@ -8081,6 +8107,7 @@ function pbAdminHtml(){
   var act=getFeatureCtrl('pback','active'),noti=getFeatureCtrl('pback','notify');
   var h='<div style="margin-bottom:12px"><div style="font-size:18px;font-weight:800;color:#1b5e20">⚙️ 프백 소명 · 관리자</div><div style="font-size:12px;color:#888;margin-top:2px">'+pbPeriodLabel()+' · 기간 '+pbRange()+' · '+pbDeadline()+' 마감</div></div>';
   h+='<div class="pb-card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><div style="font-size:15px;font-weight:800;color:#1b5e20">탭 노출 / 알림</div><div style="font-size:11px;color:#888;margin-top:2px">기사 앱 메뉴 노출 · 알림</div></div><div style="display:flex;gap:6px"><button class="pb-pill '+(act?'on':'off')+'" onclick="pbToggle(\'active\')">'+(act?'✅ 활성화':'⬜ 비활성')+'</button><button class="pb-pill noti '+(noti?'on':'off')+'" onclick="pbToggle(\'notify\')">'+(noti?'🔔 알림켜짐':'🔕 알림꺼짐')+'</button></div></div></div>';
+  h+='<div class="pb-card" style="border:1.5px solid #f0c0c0;background:#fffafa"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><div><h4 style="color:#c0392b">📲 미작성자 알림</h4><div class="sub" style="margin-bottom:0">아직 소명 안 한(미작성) 기사들에게 1회 발송</div></div><button id="pb-notify-btn" class="pb-pill on" style="background:#c0392b" onclick="pbNotifyPending()">미작성자 알림 발송</button></div></div>';
   h+='<div class="pb-card"><h4>이번 달 폼 URL</h4><div class="sub">매월 바뀜 · 저장 시 적용</div><div class="pb-urlrow"><input id="pb-url" value="'+pbEsc(PB_CFG.form_url||'')+'" placeholder="https://forms.gle/..."><button onclick="pbSaveUrl()">저장</button></div>'+(urlok?'<div style="font-size:12px;color:#2d6040;font-weight:700;margin-top:7px">✔ 적용됨 (제출 준비 완료)</div>':'<div style="font-size:12px;color:#c62828;font-weight:700;margin-top:7px">⚠ URL 저장 필요 — 저장해야 제출됩니다</div>')+'</div>';
   h+='<div class="pb-card"><h4>제출 방식</h4><div class="sub">선택에 따라 아래가 바뀝니다 · 언제든 변경</div><div class="pb-seg">'+pbMseg('direct','①','기사 직접')+pbMseg('approval','②','관리자 승인')+pbMseg('batch','③','관리자 일괄')+'</div></div>';
   if(mode==='approval'){var wait=PB_ITEMS.filter(function(i){return i.status==='answered';});
