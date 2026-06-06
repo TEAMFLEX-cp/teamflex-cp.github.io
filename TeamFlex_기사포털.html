@@ -6777,6 +6777,7 @@ function mdToggleReqFilter(){
 }
 
 function mdRenderList(cases){
+  if(cases===undefined||cases===null) cases=_mdCases||[];
   var el=document.getElementById('md-list');
   if(!el)return;
   var isAdmin=CU.role==='admin';
