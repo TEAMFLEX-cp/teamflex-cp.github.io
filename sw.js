@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v28 — 백그라운드 스케줄 체크 + Push 알림
-const CACHE_NAME = 'teamflex-v161';
+// TeamFlex Service Worker v29 — 백그라운드 스케줄 체크 + Push 알림 + 구독 자동 갱신
+const CACHE_NAME = 'teamflex-v162';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -196,4 +196,44 @@ self.addEventListener('notificationclick', e => {
       if (clients.openWindow) return clients.openWindow(targetUrl);
     })
   );
+});
+
+// ── 푸시 구독 자동 갱신 (브라우저가 구독을 교체/만료시킬 때) ──────────────────
+// 죽은 구독을 그대로 두지 않고, SW가 즉시 새 엔드포인트를 서버에 저장 + 옛것 삭제.
+const VAPID_PUBLIC_KEY = 'BLzatW0XMphfRY8rlynT8AIwZPHk-z5IdTWREp37m7QLJOn04RR1YIU3AG9BVuZnYFIZOqypxe9SLUJLgKCq15w';
+function _b64ToU8(b64) {
+  const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+  const s = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(s);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+self.addEventListener('pushsubscriptionchange', e => {
+  e.waitUntil((async () => {
+    try {
+      const userInfo = await dbGet('userInfo').catch(() => null);
+      const driver_name = (userInfo && userInfo.name) || '';
+      const role = (userInfo && userInfo.role) || 'driver';
+      let appKey;
+      try { appKey = e.oldSubscription && e.oldSubscription.options && e.oldSubscription.options.applicationServerKey; } catch (_) {}
+      const newSub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: appKey || _b64ToU8(VAPID_PUBLIC_KEY)
+      });
+      const k = newSub.getKey('p256dh'), a = newSub.getKey('auth');
+      const p256dh = btoa(String.fromCharCode(...new Uint8Array(k)));
+      const auth = btoa(String.fromCharCode(...new Uint8Array(a)));
+      await fetch(SB_URL + '/rest/v1/push_subscriptions?on_conflict=endpoint', {
+        method: 'POST',
+        headers: { apikey: SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify({ endpoint: newSub.endpoint, p256dh: p256dh, auth: auth, driver_name: driver_name, role: role })
+      });
+      if (e.oldSubscription && e.oldSubscription.endpoint) {
+        await fetch(SB_URL + '/rest/v1/push_subscriptions?endpoint=eq.' + encodeURIComponent(e.oldSubscription.endpoint), {
+          method: 'DELETE', headers: { apikey: SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+        });
+      }
+    } catch (err) { /* 갱신 실패는 다음 앱 열기 때 subscribePush가 복구 */ }
+  })());
 });

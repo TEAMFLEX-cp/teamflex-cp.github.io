@@ -1475,6 +1475,12 @@ async function subscribePush(){
   if(!driverName){console.warn('[Push] driver_name 없음 — 구독 저장 건너뜀');return;}
   try{
     var sub=await _swReg.pushManager.getSubscription();
+    var _oldEp=sub?sub.endpoint:null;
+    // ★ 강제 갱신: 권한이 허용된 경우 기존 구독을 해지하고 새로 구독 → '죽은 구독'도 확실히 살림
+    if(sub&&Notification.permission==='granted'){
+      try{await sub.unsubscribe();}catch(e){}
+      sub=null;
+    }
     if(!sub){
       if(Notification.permission!=='granted'){return;}
       sub=await _swReg.pushManager.subscribe({
@@ -1485,12 +1491,16 @@ async function subscribePush(){
     var k=sub.getKey('p256dh');var a=sub.getKey('auth');
     var p256dh=btoa(String.fromCharCode(...new Uint8Array(k)));
     var auth=btoa(String.fromCharCode(...new Uint8Array(a)));
+    // 이 기기의 옛 엔드포인트 행 삭제(중복 누적 방지) — 다른 기기 구독은 안 건드림
+    if(_oldEp&&_oldEp!==sub.endpoint){
+      try{await sbClient.from('push_subscriptions').delete().eq('endpoint',_oldEp);}catch(e){}
+    }
     // endpoint 기준 upsert — 계정 전환 시 driver_name+role 항상 갱신
     await sbClient.from('push_subscriptions').upsert({
       endpoint:sub.endpoint,p256dh:p256dh,auth:auth,
       driver_name:driverName,role:myRole,
     },{onConflict:'endpoint'});
-    console.log('[Push] 구독 등록 완료:',driverName,'('+myRole+')');
+    console.log('[Push] 구독 갱신 완료:',driverName,'('+myRole+')');
   }catch(e){console.warn('[Push] 구독 실패',e);}
 }
 
