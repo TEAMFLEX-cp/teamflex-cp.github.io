@@ -6977,7 +6977,8 @@ function mdMibaenaepGroupCard(drvName,groupCases,isAdmin,isLeader){
   var waybillTags=groupCases.map(function(c){
     return '<span onclick="event.stopPropagation();mdOpenDetail('+c.id+')" style="display:inline-flex;align-items:center;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;padding:3px 10px;cursor:pointer;font-weight:600;margin:2px">'+mdWbShort(c.waybill_no)+'</span>';
   }).join('');
-  return '<div class="md-card '+borderCls+'" style="cursor:default">'+
+  var firstId=groupCases[0].id; // [미반납#2] 박스 아무 곳이나 클릭 → 첫 건 상세 (칩은 각자 stopPropagation으로 개별 건)
+  return '<div class="md-card '+borderCls+'" onclick="mdOpenDetail('+firstId+')" style="cursor:pointer">'+
     '<div class="md-top">'+
       '<div style="flex:1;min-width:0">'+
         '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
@@ -7241,10 +7242,15 @@ async function mdAssignDriver(caseId){
   var info=(getDB()||{})[name]||{};
   var did=info.id||'';
   var driver_id=(did&&did.indexOf('@')<0)?did+'@df':did;
-  if(!confirm(name+' 기사에게 이 오배송 건을 지정할까요?'))return;
+  if(!confirm(name+' 기사에게 이 건을 지정할까요?\n(지정하면 해당 기사가 답변할 수 있도록 "미답변" 상태로 전환됩니다)'))return;
   try{
     var upd={driver_name:name};
     if(driver_id)upd.driver_id=driver_id;
+    // [미반납#1] 기사 지정 = 그 기사가 답변해야 하는 상태 → 미답변(pending)으로 전환.
+    // 단, 이미 기사 답변이 올라와 승인대기(replied)인 건은 흐름 보존을 위해 건드리지 않음.
+    var _curCase=(typeof _mdCases!=='undefined'&&_mdCases)?_mdCases.find(function(x){return x.id===caseId;}):null;
+    var _curStatus=_curCase?_curCase.status:'';
+    if(_curStatus!=='replied') upd.status='pending';
     var r=await sbClient.from('misdelivery_cases').update(upd).eq('id',caseId);
     if(r&&r.error)throw r.error;
     try{mdPushToDriver(name,'📦 오배송 처리 요청','회수 필요 건이 지정되었습니다. 앱에서 확인해주세요.',caseId);}catch(e){}
@@ -8194,6 +8200,7 @@ function pgRequest(){
     {k:'damage', lbl:'&#x1F4E6; 파손'},
     {k:'route',  lbl:'&#x1F504; 라우트 변경'},
     {k:'return', lbl:'&#x21A9;&#xFE0F; 반품 이관'},
+    {k:'dup',    lbl:'&#x1F501; 이중 출고'},
     {k:'scan',   lbl:'&#x1F5D1;&#xFE0F; 스캔대기 삭제'},
     {k:'lost',   lbl:'&#x1F50D; 분실 처리'}
   ];
@@ -8265,12 +8272,13 @@ function rqRenderBody(){
   var mc = document.getElementById('mc');
   if(mc){
     var btns = mc.querySelectorAll('button[onclick^="rqSwitchTab"]');
-    var tabs = ['damage','route','return','scan','lost'];
+    var tabs = ['damage','route','return','dup','scan','lost'];
     btns.forEach(function(b,i){ if(tabs[i]) b.dataset.rqtab = tabs[i]; });
   }
   if(_rqTab==='damage')      el.innerHTML = rqDamageForm();
   else if(_rqTab==='route')  el.innerHTML = rqRouteForm();
   else if(_rqTab==='return') el.innerHTML = rqReturnForm();
+  else if(_rqTab==='dup')    el.innerHTML = rqDupForm();
   else if(_rqTab==='scan')   el.innerHTML = rqScanForm();
   else if(_rqTab==='lost')   el.innerHTML = rqLostForm();
   rqUpdateDmBtn();
@@ -8766,6 +8774,111 @@ async function rqSendReturn(){
   rqRenderBody();
 }
 
+// ── [S7] 중복건 반납 (이중 출고건) — 사진 필수 ────────────────────────
+var _rqDupPhotos = [];
+function rqDupRet(){
+  var t=window._rqDupTotal, d=window._rqDupDeliver;
+  if(t===''||t==null||d===''||d==null||isNaN(t)||isNaN(d)) return null;
+  return parseInt(t,10)-parseInt(d,10);
+}
+function rqDupPreviewText(){
+  var camp=rqGetCamp();
+  var lines=rqPairsToBody(rqParsePairs(window._rqDupRaw||''))||'(운송장번호 없음)';
+  var t=(window._rqDupTotal===''||window._rqDupTotal==null)?'#':window._rqDupTotal;
+  var d=(window._rqDupDeliver===''||window._rqDupDeliver==null)?'#':window._rqDupDeliver;
+  var r=rqDupRet(); var rs=(r==null)?'#':String(r);
+  var sep='─'.repeat(12);
+  return '■ 이중 출고건 ['+camp+'] ■\n'+sep+'\n'+lines+'\n\n이중 출고건\n'+t+'건중 '+d+'건 배송\n'+rs+'건 캠프 반납하겠습니다.\n'+sep+'\n요청자: '+(CU&&CU.name||'');
+}
+function rqDupPhotoClick(){ var el=document.getElementById('rq-dup-file'); if(el) el.click(); }
+function rqDupFileSelected(){
+  var inp=document.getElementById('rq-dup-file'); if(!inp) return;
+  var file=inp.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var img=new Image();
+    img.onload=function(){
+      var canvas=document.createElement('canvas'); var max=800;
+      var w=img.width,h=img.height;
+      if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      _rqDupPhotos[0]=canvas.toDataURL('image/jpeg',0.75);
+      rqRenderBody();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file); inp.value='';
+}
+function rqDupOk(){
+  var pairs=rqParsePairs(window._rqDupRaw||'');
+  var t=window._rqDupTotal, d=window._rqDupDeliver;
+  return pairs.some(function(p){return (p.wb||'').trim();}) && t!==''&&t!=null && d!==''&&d!=null && !!_rqDupPhotos[0];
+}
+function rqUpdateDupPreview(){
+  var el=document.getElementById('rq-dup-preview'); if(el) el.textContent=rqDupPreviewText();
+  var r=rqDupRet(); var rel=document.getElementById('rq-dup-ret'); if(rel) rel.textContent=(r==null?'-':r)+' 개';
+  var pairs=rqParsePairs(window._rqDupRaw||'');
+  var hint=document.getElementById('rq-dup-hint');
+  if(hint){ hint.textContent=pairs.length?('✅ '+pairs.length+'건 인식'):'운송장·주문번호를 붙여넣으면 자동 분리됩니다'; }
+  var ok=rqDupOk();
+  var btn=document.getElementById('rq-dup-btn');
+  if(btn){ btn.disabled=!ok; btn.className='rq-btn '+(ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):''); btn.innerHTML=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청'; }
+}
+function rqDupForm(){
+  if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
+  var isAdm=CU&&CU.role==='admin';
+  var adminBox=isAdm?
+    '<div class="rq-admin-box"><div class="rq-admin-lbl">&#x1F510; 관리자 전용 — 승인 방식</div>'+
+      '<div class="rq-ap-row">'+
+        '<div class="rq-ap-chip'+(_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(true)">&#x26A1; 자동 승인</div>'+
+        '<div class="rq-ap-chip'+(!_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(false)">&#x1F4CB; 승인 요청</div>'+
+      '</div></div>':'';
+  var raw=window._rqDupRaw||'';
+  var pairs=rqParsePairs(raw);
+  var total=(window._rqDupTotal==null?'':window._rqDupTotal);
+  var deliver=(window._rqDupDeliver==null?'':window._rqDupDeliver);
+  var r=rqDupRet();
+  var hasPhoto=!!_rqDupPhotos[0];
+  var photoSlot=hasPhoto?
+    '<div class="rq-photo-slot rq-filled" onclick="rqDupPhotoClick()"><img src="'+_rqDupPhotos[0]+'" alt="사진"><button class="rq-photo-del" onclick="event.stopPropagation();_rqDupPhotos=[];rqRenderBody()">✕</button></div>':
+    '<div class="rq-photo-slot" onclick="rqDupPhotoClick()"><span style="font-size:22px">&#x1F4F7;</span><span>사진</span></div>';
+  var ok=rqDupOk();
+  var btnClass=ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):'';
+  var btnTxt=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
+  return '<div class="rq-card">'+
+    '<div id="rq-dup-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
+    adminBox+
+    '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
+    '<textarea class="rq-paste" id="rq-dup-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호 자동 분리 (여러 건 가능)" oninput="window._rqDupRaw=this.value;rqUpdateDupPreview()">'+rqEsc(raw)+'</textarea>'+
+    '<div class="rq-hint" id="rq-dup-hint">'+(pairs.length?('✅ '+pairs.length+'건 인식'):'운송장·주문번호를 붙여넣으면 자동 분리됩니다')+'</div>'+
+    '<div style="display:flex;gap:8px;margin:6px 0 4px">'+
+      '<div style="flex:1"><label class="rq-label">총 수량 <span class="rq-req">필수</span></label><input class="rq-inp" id="rq-dup-total" type="number" inputmode="numeric" min="0" placeholder="개" value="'+rqEsc(total)+'" oninput="window._rqDupTotal=this.value;rqUpdateDupPreview()"></div>'+
+      '<div style="flex:1"><label class="rq-label">배송 <span class="rq-req">필수</span></label><input class="rq-inp" id="rq-dup-deliver" type="number" inputmode="numeric" min="0" placeholder="개" value="'+rqEsc(deliver)+'" oninput="window._rqDupDeliver=this.value;rqUpdateDupPreview()"></div>'+
+      '<div style="flex:1"><label class="rq-label">반납(자동)</label><div class="rq-inp" id="rq-dup-ret" style="background:#eef7ee;border-color:#a5d6a7;color:#1b5e20;font-weight:700">'+(r==null?'-':r)+' 개</div></div>'+
+    '</div>'+
+    '<label class="rq-label" style="margin-top:6px">&#x1F4F7; 사진 <span class="rq-req">필수</span></label>'+
+    (hasPhoto?'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32">&#x2705; 사진 첨부 완료</div>':'<div class="rq-hint">사진 1장을 꼭 첨부해야 전송 가능합니다</div>')+
+    '<div style="margin-bottom:4px;text-align:center;font-size:10px;color:#7986cb">📷 칸 클릭 → 카메라 촬영 / 사진첩 선택</div>'+
+    '<div class="rq-photo-row">'+photoSlot+'</div>'+
+    '<input type="file" id="rq-dup-file" accept="image/*" style="display:none" onchange="rqDupFileSelected()">'+
+    '<div class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</div>'+
+    '<div class="rq-preview-box" id="rq-dup-preview">'+rqEsc(rqDupPreviewText())+'</div>'+
+    '<button class="rq-btn '+btnClass+'" id="rq-dup-btn" onclick="rqSendDup()" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
+  '</div>';
+}
+async function rqSendDup(){
+  var pairs=rqParsePairs(window._rqDupRaw||'');
+  if(!pairs.some(function(p){return (p.wb||'').trim();})){alert('운송장번호를 인식하지 못했습니다. 붙여넣기 내용을 확인해주세요.');return;}
+  if(window._rqDupTotal===''||window._rqDupTotal==null||window._rqDupDeliver===''||window._rqDupDeliver==null){alert('총 수량과 배송 수량을 입력해주세요.');return;}
+  if(!_rqDupPhotos[0]){alert('사진을 첨부해주세요. (필수)');return;}
+  var text=rqDupPreviewText();
+  var _ok=await rqSubmit({type:'dup', text:text, photos:_rqDupPhotos.slice(), okId:'rq-dup-ok'});
+  if(!_ok) return;
+  window._rqDupRaw='';window._rqDupTotal='';window._rqDupDeliver='';_rqDupPhotos=[];
+  rqRenderBody();
+}
+
 // ── 스캔 대기 삭제 폼 ──────────────────────────────────────────────
 function rqScanForm(){
   return rqSimpleForm('scan','&#x1F5D1;&#xFE0F; 스캔 대기 삭제','rq-sc',
@@ -8958,7 +9071,7 @@ async function rqSendToTeams(text, photos, requestId){
 function rqNotifyApprovers(type, text){
   if(!sbClient) return;
   // send-push Edge Function 호출 (관리자/팀장에게)
-  var typeLabels={damage:'파손요청',route:'라우트변경',return:'반품이관',scan:'스캔삭제',lost:'분실처리'};
+  var typeLabels={damage:'파손요청',route:'라우트변경',return:'반품이관',dup:'이중출고건',scan:'스캔삭제',lost:'분실처리'};
   var lbl = typeLabels[type]||'각종요청';
   try{
     fetch(SB_URL+'/functions/v1/send-push',{
@@ -8997,7 +9110,7 @@ function mdStopRqRefresh(){
 function rqCloseResponsePopup(){ var ov=document.getElementById('rq-resp-popup'); if(ov) ov.remove(); }
 function rqShowResponsePopup(r){
   if(document.getElementById('rq-resp-popup')) return; // 중복 방지
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리'};
   var typeLbl=typeMap[r.type]||r.type;
   var camp=(r.payload&&r.payload.camp)?r.payload.camp:'';
   var txt=r.teams_response_text||'';
@@ -9064,7 +9177,7 @@ function rqSetCamp(v){
 // ── 요청 카드 HTML (간소화 리스트 행) ─────────────────────────────
 function rqBuildCard(r){
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
@@ -9093,7 +9206,7 @@ function rqShowPopup(id){
   var r = (_rqCases||[]).find(function(c){return c.id===id;});
   if(!r) return;
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
