@@ -7172,6 +7172,29 @@ async function mdRejectReply(replyId,caseId,reason){
   }catch(e){console.error('[mdRejectReply]',e);alert('처리 실패: '+e.message);}
 }
 
+// ── [승인취소] 처리완료 건을 관리자만 재요청으로 되돌리기 ──────────────
+async function mdReopenApprovedCase(caseId){
+  if(!CU||CU.role!=='admin'){alert('관리자만 승인 취소가 가능합니다.');return;}
+  if(!sbClient)return;
+  var reason=prompt('재요청 사유 (기사에게 전달됩니다. 비워도 됨):','승인을 취소합니다. 다시 확인 부탁드립니다.');
+  if(reason===null)return;
+  try{
+    var {data:replies}=await sbClient.from('misdelivery_replies').select('id').eq('case_id',caseId).order('created_at',{ascending:false}).limit(1);
+    if(replies&&replies.length){
+      await mdRejectReply(replies[0].id,caseId,reason||'승인을 취소하고 재요청했습니다.');
+    }else{
+      await sbClient.from('misdelivery_cases').update({status:'pending'}).eq('id',caseId);
+      var lc=_mdCases.find(function(x){return x.id===caseId;});if(lc)lc.status='pending';
+      var cd=_mdCases.find(function(c){return c.id===caseId;});
+      if(cd)mdPushToDriver(cd.driver_name,'↩ 재요청','['+CU.name+'] '+(reason||'다시 확인 부탁드립니다.'),caseId);
+      var modal=document.getElementById('md-detail-modal');if(modal)modal.style.display='none';_mdOpenCaseId=null;
+      if(_mdRealtimeCh&&sbClient){try{sbClient.removeChannel(_mdRealtimeCh);}catch(e){}_mdRealtimeCh=null;}
+      await mdLoadCases();
+    }
+    if(typeof showToast==='function')showToast('↩ 승인 취소 — 재요청으로 되돌렸습니다',true);
+  }catch(e){console.error('[mdReopenApprovedCase]',e);alert('재요청 실패: '+((e&&e.message)||e));}
+}
+
 // ── 기사 답변 수정 (관리자/팀장) ─────────────────────────────────────
 function mdStartEditReply(replyId,caseId){
   var area=document.getElementById('md-edit-area-'+replyId);
@@ -7510,8 +7533,12 @@ function mdOpenDetail(caseId){
     var _adnames=Object.keys(_adb).filter(function(n){return _adb[n]&&(_adb[n].status||'')!=='inactive';}).sort();
     var _adopts='<option value="">기사 선택…</option>'+_adnames.map(function(n){return '<option value="'+mdEsc(n)+'"'+(n===c.driver_name?' selected':'')+'>'+mdEsc(n)+'</option>';}).join('');
     var assignRow='<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px"><span style="font-size:12px;color:#5c6bc0;font-weight:700;white-space:nowrap">👤 기사 지정</span><select id="md-assign-'+c.id+'" style="flex:1;min-width:0;padding:8px;border:1px solid #cfd8dc;border-radius:8px;font-size:13px">'+_adopts+'</select><button onclick="mdAssignDriver('+c.id+')" style="padding:8px 12px;background:#5c6bc0;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">지정</button></div>';
+    // [승인취소] 처리완료(approved) 건을 관리자만 "재요청"으로 되돌리기 → 기사 다시 답변 가능
+    var reopenBtn=(isAdmin&&c.status==='approved')?
+      '<button onclick="mdReopenApprovedCase('+c.id+')" style="width:100%;padding:11px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">↩ 승인 취소 · 기사에게 재요청</button>':'';
     adminBtns='<div style="margin-top:14px;border-top:1px solid #f0f0f0;padding-top:14px">'+
       assignRow+
+      reopenBtn+
       '<button '+(hasReply?'onclick="mdApproveLatestReply('+c.id+')"':'')+' style="'+apprStyle+'" '+(hasReply?'':'disabled')+'>'+apprLabel+'</button>'+
       (isAdmin?
         '<div style="display:flex;gap:8px">'+
