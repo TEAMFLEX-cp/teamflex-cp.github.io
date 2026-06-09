@@ -844,6 +844,16 @@ async function syncFromSupabase(){
           };
         });
         localStorage.setItem('tfann',JSON.stringify(anns));
+        // [공지 읽음 v2] 내가 읽은 공지 목록을 announcement_reads에서 로드 → 카드 미확인 판정 정확화
+        if(CU&&(CU.id||CU.name)){
+          try{
+            var _mr=await sbClient.from('announcement_reads').select('announcement_id').eq('reader_id',String(CU.id||CU.name));
+            if(_mr&&!_mr.error&&_mr.data){
+              window._annReadMine=window._annReadMine||{};
+              _mr.data.forEach(function(x){window._annReadMine[String(x.announcement_id)]=true;});
+            }
+          }catch(_eMR){ }
+        }
       } else {
         localStorage.setItem('tfann',JSON.stringify([]));
       }
@@ -3788,7 +3798,7 @@ function pgAnn(isAdmin){
 
   // 활성 카드 렌더러 (일반 카드)
   function renderCard(a){
-    var isUnread=!a.readBy||a.readBy.indexOf(CU.name)<0;
+    var isUnread=!_annIsReadByMe(a);
     var cardBtns='';
     if(isAdm){
       cardBtns+='<button onclick="event.stopPropagation();disableAnn('+a.id+')" style="background:none;border:none;color:#e65100;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">⛔비활성</button>';
@@ -3808,8 +3818,8 @@ function pgAnn(isAdmin){
   }
 
   // 미확인/확인 분리 (활성 공지만)
-  var unreadAnns=activeAnns.filter(function(a){return !a.readBy||a.readBy.indexOf(CU.name)<0;});
-  var readAnns=activeAnns.filter(function(a){return a.readBy&&a.readBy.indexOf(CU.name)>=0;});
+  var unreadAnns=activeAnns.filter(function(a){return !_annIsReadByMe(a);});
+  var readAnns=activeAnns.filter(function(a){return _annIsReadByMe(a);});
 
   var sections='';
   if(activeAnns.length===0){
@@ -3851,6 +3861,15 @@ function pgAnn(isAdmin){
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="stit" style="margin-bottom:0">공지사항</div>'+writeBtn+'</div>'+
     sections;
 }
+// ── [공지 읽음 v2] 1인 1행(announcement_reads) 기반 읽음 판정 ──────────
+window._annReadMine = window._annReadMine || {};   // {sbId: true} — 내가 읽은 공지
+function _annReaderKey(){ return String((CU&&(CU.id||CU.name))||''); }
+function _annIsReadByMe(a){
+  if(!a||!CU) return false;
+  var k=String(a.sb_id||a.id||'');
+  if(window._annReadMine && window._annReadMine[k]) return true;
+  return !!(a.readBy && a.readBy.indexOf(CU.name)>=0);   // 구버전(로컬/read_by) 호환
+}
 function openAnnView(annId){
   var anns=getAnns();
   var a=anns.find(function(x){return String(x.id)===String(annId);});
@@ -3862,16 +3881,29 @@ function openAnnView(annId){
   markAnnRead(a.id);
   // Supabase read_by 동기화 (비동기)
   if(wasUnread&&sbClient){
+    var _sbId0=String(a.sb_id||a.id);
+    window._annReadMine[_sbId0]=true;   // 내 화면 즉시 '확인'
     (async function(){
+      var sbId=_sbId0;
       try{
-        var sbId=a.sb_id||a.id;
+        var r=await sbClient.from('announcement_reads').upsert({
+          announcement_id: isNaN(Number(sbId))?sbId:Number(sbId),
+          reader_id:   _annReaderKey(),
+          reader_name: (CU&&CU.name)||'',
+          reader_role: (CU&&CU.role)||'',
+          read_at:     new Date().toISOString()
+        },{onConflict:'announcement_id,reader_id'});
+        if(r&&r.error)throw r.error;
+        console.log('[Ann] read upsert OK');
+        return;
+      }catch(e){ console.warn('[Ann] announcement_reads upsert 실패 → read_by 폴백',e&&e.message); }
+      try{
         var res=await sbClient.from('announcements').select('read_by').eq('id',sbId).single();
         var sbArr=[];
-        if(res.data&&res.data.read_by){try{sbArr=JSON.parse(res.data.read_by);}catch(e){sbArr=[];}}
+        if(res.data&&res.data.read_by){try{sbArr=JSON.parse(res.data.read_by);}catch(e2){sbArr=[];}}
         if(sbArr.indexOf(CU.name)<0)sbArr.push(CU.name);
         await sbClient.from('announcements').update({read_by:JSON.stringify(sbArr)}).eq('id',sbId);
-        console.log('[Ann] readBy synced to Supabase');
-      }catch(e){console.warn('[Ann] readBy sync failed',e.message);}
+      }catch(e3){console.warn('[Ann] read_by 폴백도 실패',e3&&e3.message);}
     })();
   }
   ANN_QUEUE=[a];ANN_IDX=0;
@@ -3905,19 +3937,28 @@ async function showAnnUnread(annId, view){
   var anns=getAnns();
   var a=anns.find(function(x){return String(x.id)===String(annId);});
   if(!a)return;
-  // Supabase에서 read_by 실시간 조회
-  var sbReadBy=[];
+  // [v2] 실시간 조회: announcement_reads(1인1행, ID) + 구버전 read_by(이름) 둘 다 합쳐 판정
+  var sbReadBy=[];     // 읽은 사람 '이름'들 (v2 reader_name + 구버전 read_by)
+  var readerIds=[];    // 읽은 사람 'ID'들 (v2)
+  var sbId=a.sb_id||a.id;
   if(sbClient){
     try{
-      var sbId=a.sb_id||a.id;
+      var rr=await sbClient.from('announcement_reads').select('reader_id,reader_name').eq('announcement_id', isNaN(Number(sbId))?sbId:Number(sbId));
+      if(rr&&!rr.error&&rr.data){
+        rr.data.forEach(function(x){
+          if(x.reader_id)readerIds.push(String(x.reader_id));
+          if(x.reader_name&&sbReadBy.indexOf(x.reader_name)<0)sbReadBy.push(x.reader_name);
+        });
+      }
+    }catch(eR){}
+    try{
       var sbRes=await sbClient.from('announcements').select('read_by').eq('id',sbId).single();
-      if(sbRes.data&&sbRes.data.read_by){try{sbReadBy=JSON.parse(sbRes.data.read_by);}catch(e2){}}
-    }catch(e){console.warn('[showAnnUnread] SB err',e);}
+      if(sbRes.data&&sbRes.data.read_by){var _o=[];try{_o=JSON.parse(sbRes.data.read_by);}catch(e2){} _o.forEach(function(n){if(sbReadBy.indexOf(n)<0)sbReadBy.push(n);});}
+    }catch(e){}
   }
   var localRby=a.readBy||[];
   var readByArr=sbReadBy.slice();
   localRby.forEach(function(n){if(readByArr.indexOf(n)<0)readByArr.push(n);});
-  if(readByArr.length>localRby.length){a.readBy=readByArr;saveAnns(anns);}
 
   var db=getDB();
   var _aIds2=[ROOT_ADMIN.id];
@@ -3925,8 +3966,9 @@ async function showAnnUnread(annId, view){
   var allDrvs=Object.values(db).filter(function(d){
     return d.status==='approved'&&d.role!=='admin'&&!d.name.includes('/')&&_aIds2.indexOf(d.id)<0;
   }).sort(function(a,b){return a.name.localeCompare(b.name,'ko');});
-  var unread=allDrvs.filter(function(d){return readByArr.indexOf(d.name)<0;});
-  var read=allDrvs.filter(function(d){return readByArr.indexOf(d.name)>=0;});
+  function _drvRead(d){ return readerIds.indexOf(String(d.id))>=0 || readByArr.indexOf(d.name)>=0; }
+  var unread=allDrvs.filter(function(d){return !_drvRead(d);});
+  var read=allDrvs.filter(function(d){return _drvRead(d);});
   var roleMap={'leader':'팀장','sub':'조장','driver':'기사'};
   var uSel=view==='unread';
   var tabUnread='<button onclick="showAnnUnread('+annId+',\'unread\')" style="flex:1;padding:8px 0;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:'+(uSel?'#c62828':'#f5f5f5')+';color:'+(uSel?'#fff':'#888')+'">&#x274C; 미확인 '+unread.length+'명</button>';
@@ -3988,21 +4030,23 @@ async function _pushToUnread(annId){
   var a=anns.find(function(x){return String(x.id)===String(annId);});
   if(!a){showToast('공지를 찾을 수 없습니다.',false);return;}
   var readByArr=(a.readBy||[]).slice();
+  var readerIds=[];
   if(sbClient){
+    var sbId=a.sb_id||a.id;
     try{
-      var sbId=a.sb_id||a.id;
+      var rr=await sbClient.from('announcement_reads').select('reader_id,reader_name').eq('announcement_id', isNaN(Number(sbId))?sbId:Number(sbId));
+      if(rr&&!rr.error&&rr.data){rr.data.forEach(function(x){ if(x.reader_id)readerIds.push(String(x.reader_id)); if(x.reader_name&&readByArr.indexOf(x.reader_name)<0)readByArr.push(x.reader_name); });}
+    }catch(eR){}
+    try{
       var sbRes=await sbClient.from('announcements').select('read_by').eq('id',sbId).single();
-      if(sbRes.data&&sbRes.data.read_by){
-        var sbRb=[];try{sbRb=JSON.parse(sbRes.data.read_by);}catch(e){}
-        sbRb.forEach(function(n){if(readByArr.indexOf(n)<0)readByArr.push(n);});
-      }
-    }catch(e){console.warn('[_pushToUnread] SB err',e);}
+      if(sbRes.data&&sbRes.data.read_by){var sbRb=[];try{sbRb=JSON.parse(sbRes.data.read_by);}catch(e){} sbRb.forEach(function(n){if(readByArr.indexOf(n)<0)readByArr.push(n);});}
+    }catch(e){}
   }
   var db=getDB();
   var _aIds2=[ROOT_ADMIN.id];
   (function(){var c=getCfg();if(c.adminId)_aIds2.push(c.adminId);_sbAdmins.forEach(function(x){if(x.id)_aIds2.push(x.id);});})();
   var unread=Object.values(db).filter(function(d){
-    return d.status==='approved'&&d.role!=='admin'&&!d.name.includes('/')&&_aIds2.indexOf(d.id)<0&&readByArr.indexOf(d.name)<0;
+    return d.status==='approved'&&d.role!=='admin'&&!d.name.includes('/')&&_aIds2.indexOf(d.id)<0&&readerIds.indexOf(String(d.id))<0&&readByArr.indexOf(d.name)<0;
   });
   if(unread.length===0){showToast('✅ 미확인 인원이 없습니다.',true);return;}
   var btn=document.getElementById('btn-push-unread-'+annId);
