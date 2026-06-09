@@ -8790,9 +8790,9 @@ function rqDupPreviewText(){
   var sep='─'.repeat(12);
   return '■ 이중 출고건 ['+camp+'] ■\n'+sep+'\n'+lines+'\n\n이중 출고건\n'+t+'건중 '+d+'건 배송\n'+rs+'건 캠프 반납하겠습니다.\n'+sep+'\n요청자: '+(CU&&CU.name||'');
 }
-function rqDupPhotoClick(){ var el=document.getElementById('rq-dup-file'); if(el) el.click(); }
-function rqDupFileSelected(){
-  var inp=document.getElementById('rq-dup-file'); if(!inp) return;
+function rqDupPick(which){ var el=document.getElementById('rq-dup-file-'+which); if(el) el.click(); }
+function rqDupFileSelected(which){
+  var inp=document.getElementById('rq-dup-file-'+which); if(!inp) return;
   var file=inp.files[0]; if(!file) return;
   var reader=new FileReader();
   reader.onload=function(e){
@@ -8840,9 +8840,13 @@ function rqDupForm(){
   var deliver=(window._rqDupDeliver==null?'':window._rqDupDeliver);
   var r=rqDupRet();
   var hasPhoto=!!_rqDupPhotos[0];
-  var photoSlot=hasPhoto?
-    '<div class="rq-photo-slot rq-filled" onclick="rqDupPhotoClick()"><img src="'+_rqDupPhotos[0]+'" alt="사진"><button class="rq-photo-del" onclick="event.stopPropagation();_rqDupPhotos=[];rqRenderBody()">✕</button></div>':
-    '<div class="rq-photo-slot" onclick="rqDupPhotoClick()"><span style="font-size:22px">&#x1F4F7;</span><span>사진</span></div>';
+  var photoArea='<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'+
+    (hasPhoto?'<div class="rq-photo-slot rq-filled" style="flex:0 0 64px;width:64px;height:64px" onclick="rqDupPick(\'gal\')"><img src="'+_rqDupPhotos[0]+'" alt="사진"><button class="rq-photo-del" onclick="event.stopPropagation();_rqDupPhotos=[];rqRenderBody()">✕</button></div>':'')+
+    '<div style="flex:1;display:flex;gap:8px">'+
+      '<button type="button" onclick="rqDupPick(\'cam\')" style="flex:1;padding:10px 4px;background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#x1F4F7; 촬영</button>'+
+      '<button type="button" onclick="rqDupPick(\'gal\')" style="flex:1;padding:10px 4px;background:#e8eaf6;color:#3949ab;border:1.5px solid #9fa8da;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#x1F5BC;&#xFE0F; 사진첩</button>'+
+    '</div>'+
+  '</div>';
   var ok=rqDupOk();
   var btnClass=ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):'';
   var btnTxt=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
@@ -8859,9 +8863,9 @@ function rqDupForm(){
     '</div>'+
     '<label class="rq-label" style="margin-top:6px">&#x1F4F7; 사진 <span class="rq-req">필수</span></label>'+
     (hasPhoto?'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32">&#x2705; 사진 첨부 완료</div>':'<div class="rq-hint">사진 1장을 꼭 첨부해야 전송 가능합니다</div>')+
-    '<div style="margin-bottom:4px;text-align:center;font-size:10px;color:#7986cb">📷 칸 클릭 → 카메라 촬영 / 사진첩 선택</div>'+
-    '<div class="rq-photo-row">'+photoSlot+'</div>'+
-    '<input type="file" id="rq-dup-file" accept="image/*" style="display:none" onchange="rqDupFileSelected()">'+
+    photoArea+
+    '<input type="file" id="rq-dup-file-cam" accept="image/*" capture="camera" style="display:none" onchange="rqDupFileSelected(\'cam\')">'+
+    '<input type="file" id="rq-dup-file-gal" accept="image/*" style="display:none" onchange="rqDupFileSelected(\'gal\')">'+
     '<div class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</div>'+
     '<div class="rq-preview-box" id="rq-dup-preview">'+rqEsc(rqDupPreviewText())+'</div>'+
     '<button class="rq-btn '+btnClass+'" id="rq-dup-btn" onclick="rqSendDup()" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
