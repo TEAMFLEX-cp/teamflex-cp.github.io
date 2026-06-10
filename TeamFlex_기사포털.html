@@ -7258,7 +7258,10 @@ async function mdSaveEditReply(replyId,caseId){
   var txt=(ta.value||'').trim();
   if(!txt){ta.focus();return;}
   try{
-    await sbClient.from('misdelivery_replies').update({reply_text:txt,edited_by:CU.name,edited_at:new Date().toISOString(),action_leader:CU.name}).eq('id',replyId);
+    // [수정후 승인가능] 답변을 수정하면 다시 '승인대기'로 되돌림 → 승인 버튼 활성화 + 수정본이 Teams에 재게시되게
+    await sbClient.from('misdelivery_replies').update({reply_text:txt,edited_by:CU.name,edited_at:new Date().toISOString(),action_leader:CU.name,approval_status:'pending',posted_to_teams:false}).eq('id',replyId);
+    await sbClient.from('misdelivery_cases').update({status:'replied'}).eq('id',caseId);
+    var _lcE=_mdCases.find(function(x){return x.id===caseId;}); if(_lcE)_lcE.status='replied';
     var caseDataE=_mdCases.find(function(c){return c.id===caseId;});
     if(caseDataE)mdPushToDriver(caseDataE.driver_name,'✏️ 답변 수정됨','['+CU.name+'] 답변이 수정됐습니다.',caseId);
     var el=document.getElementById('md-detail-modal');
