@@ -6941,7 +6941,7 @@ function mdRenderList(cases){
             items.map(function(it){
               if(it.k==='req'){
                 var r=it.c;
-                var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실'};
+                var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실',work:'🧑‍💼 업무신청'};
                 var _tl=_tm[r.type]||r.type;
                 var _cp=(r.payload&&r.payload.camp)?' ['+mdEsc(r.payload.camp)+']':'';
                 var _st=r.status==='approved'?'완료':'반려';
@@ -8290,7 +8290,8 @@ function pgRequest(){
     {k:'return', lbl:'&#x21A9;&#xFE0F; 반품 이관'},
     {k:'dup',    lbl:'&#x1F501; 이중 출고'},
     {k:'scan',   lbl:'&#x1F5D1;&#xFE0F; 스캔대기 삭제'},
-    {k:'lost',   lbl:'&#x1F50D; 분실 처리'}
+    {k:'lost',   lbl:'&#x1F50D; 분실 처리'},
+    {k:'work',   lbl:'&#x1F9D1;&#x200D;&#x1F4BC; 업무신청'}
   ];
   var tabHtml = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">';
   tabs.forEach(function(t){
@@ -8360,7 +8361,7 @@ function rqRenderBody(){
   var mc = document.getElementById('mc');
   if(mc){
     var btns = mc.querySelectorAll('button[onclick^="rqSwitchTab"]');
-    var tabs = ['damage','route','return','dup','scan','lost'];
+    var tabs = ['damage','route','return','dup','scan','lost','work'];
     btns.forEach(function(b,i){ if(tabs[i]) b.dataset.rqtab = tabs[i]; });
   }
   if(_rqTab==='damage')      el.innerHTML = rqDamageForm();
@@ -8369,6 +8370,7 @@ function rqRenderBody(){
   else if(_rqTab==='dup')    el.innerHTML = rqDupForm();
   else if(_rqTab==='scan')   el.innerHTML = rqScanForm();
   else if(_rqTab==='lost')   el.innerHTML = rqLostForm();
+  else if(_rqTab==='work')   el.innerHTML = rqWorkForm();
   rqUpdateDmBtn();
 }
 
@@ -8971,6 +8973,61 @@ async function rqSendDup(){
   rqRenderBody();
 }
 
+// ── [업무신청] 이름·ID만 입력, 날짜·문구 자동 ────────────────────────
+function rqWorkPreviewText(){
+  var camp=rqGetCamp();
+  var nm=((window._rqWorkName||'').trim())||'(이름)';
+  var id=((window._rqWorkId||'').trim())||'(ID)';
+  var sep='─'.repeat(12);
+  var t=(typeof kstToday==='function')?kstToday():new Date().toISOString().slice(0,10);
+  var p=(t||'').split('-');
+  var dstr=(p.length===3)?(p[0]+'년 '+p[1]+'월 '+p[2]+'일'):t;
+  return '🧑‍💼 업무 신청 ['+camp+']\n'+sep+'\n신청자 : '+nm+'\n신청자 ID : '+id+'\n\n'+dstr+'\n업무 신청 부탁드립니다.\n'+sep;
+}
+function rqWorkOk(){ return ((window._rqWorkName||'').trim()!=='') && ((window._rqWorkId||'').trim()!==''); }
+function rqUpdateWorkPreview(){
+  var el=document.getElementById('rq-work-preview'); if(el) el.textContent=rqWorkPreviewText();
+  var ok=rqWorkOk();
+  var btn=document.getElementById('rq-work-btn');
+  if(btn){ btn.disabled=!ok; btn.className='rq-btn '+(ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):''); btn.innerHTML=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청'; }
+}
+function rqWorkForm(){
+  if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
+  var isAdm=CU&&CU.role==='admin';
+  var adminBox=isAdm?
+    '<div class="rq-admin-box"><div class="rq-admin-lbl">&#x1F510; 관리자 전용 — 승인 방식</div>'+
+      '<div class="rq-ap-row">'+
+        '<div class="rq-ap-chip'+(_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(true)">&#x26A1; 자동 승인</div>'+
+        '<div class="rq-ap-chip'+(!_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(false)">&#x1F4CB; 승인 요청</div>'+
+      '</div></div>':'';
+  var nm=(window._rqWorkName==null?'':window._rqWorkName);
+  var id=(window._rqWorkId==null?'':window._rqWorkId);
+  var ok=rqWorkOk();
+  var btnClass=ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):'';
+  var btnTxt=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
+  return '<div class="rq-card">'+
+    '<div id="rq-work-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
+    adminBox+
+    '<label class="rq-label">&#x1F464; 신청자 이름 <span class="rq-req">필수</span></label>'+
+    '<input class="rq-inp" id="rq-work-name" placeholder="이름" value="'+rqEsc(nm)+'" oninput="window._rqWorkName=this.value;rqUpdateWorkPreview()">'+
+    '<label class="rq-label" style="margin-top:6px">&#x1FAAA; 신청자 ID <span class="rq-req">필수</span></label>'+
+    '<input class="rq-inp" id="rq-work-id" placeholder="ID" value="'+rqEsc(id)+'" oninput="window._rqWorkId=this.value;rqUpdateWorkPreview()">'+
+    '<div class="rq-hint">&#x1F4C5; 날짜·문구는 자동으로 들어갑니다 (오늘 날짜)</div>'+
+    '<div class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</div>'+
+    '<div class="rq-preview-box" id="rq-work-preview">'+rqEsc(rqWorkPreviewText())+'</div>'+
+    '<button class="rq-btn '+btnClass+'" id="rq-work-btn" onclick="rqSendWork()" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
+  '</div>';
+}
+async function rqSendWork(){
+  var nm=(window._rqWorkName||'').trim(), id=(window._rqWorkId||'').trim();
+  if(!nm||!id){alert('신청자 이름과 ID를 모두 입력해주세요.');return;}
+  var text=rqWorkPreviewText();
+  var _ok=await rqSubmit({type:'work', text:text, photos:[], okId:'rq-work-ok'});
+  if(!_ok) return;
+  window._rqWorkName='';window._rqWorkId='';
+  rqRenderBody();
+}
+
 // ── 스캔 대기 삭제 폼 ──────────────────────────────────────────────
 function rqScanForm(){
   return rqSimpleForm('scan','&#x1F5D1;&#xFE0F; 스캔 대기 삭제','rq-sc',
@@ -9163,7 +9220,7 @@ async function rqSendToTeams(text, photos, requestId){
 function rqNotifyApprovers(type, text){
   if(!sbClient) return;
   // send-push Edge Function 호출 (관리자/팀장에게)
-  var typeLabels={damage:'파손요청',route:'라우트변경',return:'반품이관',dup:'이중출고건',scan:'스캔삭제',lost:'분실처리'};
+  var typeLabels={damage:'파손요청',route:'라우트변경',return:'반품이관',dup:'이중출고건',scan:'스캔삭제',lost:'분실처리',work:'업무신청'};
   var lbl = typeLabels[type]||'각종요청';
   try{
     fetch(SB_URL+'/functions/v1/send-push',{
@@ -9202,7 +9259,7 @@ function mdStopRqRefresh(){
 function rqCloseResponsePopup(){ var ov=document.getElementById('rq-resp-popup'); if(ov) ov.remove(); }
 function rqShowResponsePopup(r){
   if(document.getElementById('rq-resp-popup')) return; // 중복 방지
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',work:'🧑‍💼 업무 신청'};
   var typeLbl=typeMap[r.type]||r.type;
   var camp=(r.payload&&r.payload.camp)?r.payload.camp:'';
   var txt=r.teams_response_text||'';
@@ -9269,7 +9326,7 @@ function rqSetCamp(v){
 // ── 요청 카드 HTML (간소화 리스트 행) ─────────────────────────────
 function rqBuildCard(r){
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',work:'🧑‍💼 업무 신청'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
@@ -9298,7 +9355,7 @@ function rqShowPopup(id){
   var r = (_rqCases||[]).find(function(c){return c.id===id;});
   if(!r) return;
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',work:'🧑‍💼 업무 신청'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
