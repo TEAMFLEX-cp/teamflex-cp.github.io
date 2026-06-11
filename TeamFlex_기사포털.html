@@ -6867,15 +6867,15 @@ function mdRenderList(cases){
 
   var html='';
 
-  // ── 각종 요청 건: 대기중은 상단, 완료는 하단(미답변 밑)으로 분리 ────────────
-  var _reqDoneCards='';
+  // ── 각종 요청 건: 대기중은 상단, 완료/반려는 아래 '처리완료'(날짜별)에 합침 ────────────
+  var _reqDoneItems=[];
   if(_visReqs.length > 0){
     var todayStr2=kstToday();
     var todayReqs = _mdDateFilter==='today'
       ? _visReqs.filter(function(r){return kstDateStr(r.created_at)===todayStr2 || r.status==='pending';})
       : _visReqs;
     var _reqPend=todayReqs.filter(function(r){return r.status==='pending';});
-    var _reqDone=todayReqs.filter(function(r){return r.status!=='pending';});
+    _reqDoneItems=todayReqs.filter(function(r){return r.status!=='pending';});   // 완료/반려 → 처리완료 섹션으로
     if(_reqPend.length > 0){
       html += '<div style="border-bottom:2px dashed #e8eaf6;margin-bottom:12px;padding-bottom:2px">'+
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'+
@@ -6883,12 +6883,6 @@ function mdRenderList(cases){
           '<span style="font-size:10px;background:#ede7f6;color:#7c4dff;padding:1px 7px;border-radius:10px;font-weight:700">'+_reqPend.length+'건</span>'+
           '<span style="font-size:10px;background:#7c4dff;color:#fff;padding:1px 7px;border-radius:10px;font-weight:700">&#x23F3; 대기 '+_reqPend.length+'</span></div>'+
         _reqPend.map(function(r){return rqBuildCard(r);}).join('')+
-      '</div>';
-    }
-    if(_reqDone.length > 0){
-      _reqDoneCards = '<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">'+
-        '<div style="font-size:12px;color:#9e9e9e;margin-bottom:8px;font-weight:600">&#x1F4DD; 완료 요청 건</div>'+
-        _reqDone.map(function(r){return rqBuildCard(r);}).join('')+
       '</div>';
     }
   }
@@ -6911,22 +6905,24 @@ function mdRenderList(cases){
     }
   }
 
-  // ── 완료된 각종요청은 미답변(활성) 아래로 ──
-  html+=_reqDoneCards;
+  // (각종요청 완료/반려 건은 아래 '처리완료' 날짜별 섹션에 합쳐 표시)
 
-  // ── 처리완료 건: 일자별 드랍다운 ─────────────────────────────
-  if(completed.length>0){
-    // 날짜별 그룹핑 (occurred_at 또는 created_at 앞 10자리)
+  // ── 처리완료 건: 오배송 + 각종요청(완료/반려) 모두 일자별 드랍다운 ─────────────
+  if(completed.length>0 || _reqDoneItems.length>0){
+    // 날짜별 그룹핑 (오배송: occurred_at/created_at, 각종요청: created_at)
     var byDate={};
     completed.forEach(function(c){
       var d=(c.occurred_at||c.created_at||'').slice(0,10)||'날짜 미상';
-      if(!byDate[d])byDate[d]=[];
-      byDate[d].push(c);
+      (byDate[d]=byDate[d]||[]).push({k:'case',c:c});
+    });
+    _reqDoneItems.forEach(function(r){
+      var d=(r.created_at||'').slice(0,10)||'날짜 미상';
+      (byDate[d]=byDate[d]||[]).push({k:'req',c:r});
     });
     var dates=Object.keys(byDate).sort().reverse(); // 최신 날짜 먼저
 
     html+='<div style="margin-top:12px;border-top:1px dashed #e0e0e0;padding-top:10px">';
-    html+='<div style="font-size:12px;color:#9e9e9e;margin-bottom:8px;font-weight:600">✅ 처리완료</div>';
+    html+='<div style="font-size:12px;color:#9e9e9e;margin-bottom:8px;font-weight:600">✅ 처리완료 <span style="font-weight:400;color:#bbb">(오배송·각종요청)</span></div>';
 
     dates.forEach(function(date,di){
       var items=byDate[date];
@@ -6942,7 +6938,25 @@ function mdRenderList(cases){
             '<span id="'+groupId+'-arrow" style="font-size:12px;color:#8bc34a;transition:transform 0.2s">'+(isOpen?'▲':'▼')+'</span>'+
           '</div>'+
           '<div id="'+groupId+'" style="'+(isOpen?'':'display:none;')+'padding:0 10px 10px">'+
-            items.map(function(c){
+            items.map(function(it){
+              if(it.k==='req'){
+                var r=it.c;
+                var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실'};
+                var _tl=_tm[r.type]||r.type;
+                var _cp=(r.payload&&r.payload.camp)?' ['+mdEsc(r.payload.camp)+']':'';
+                var _st=r.status==='approved'?'완료':'반려';
+                var _sc=r.status==='approved'?'#2e7d32':'#c62828';
+                var _desc=((r.requester_name||'')+' · '+(((r.payload&&r.payload.text)||'').replace(/\n/g,' '))).slice(0,40);
+                return '<div onclick="rqShowPopup('+r.id+')" style="background:#fff;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #f0f4c3;cursor:pointer">'+
+                  '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+                    '<span style="font-size:11px;font-weight:700;color:#4527a0">'+_tl+'</span>'+
+                    '<span style="font-size:11px;color:#5c6bc0;font-weight:600">'+_cp+'</span>'+
+                    '<span style="font-size:10px;font-weight:700;color:'+_sc+'">'+_st+'</span>'+
+                  '</div>'+
+                  '<div style="font-size:11px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+mdEsc(_desc)+'</div>'+
+                '</div>';
+              }
+              var c=it.c;
               return '<div style="background:#fff;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #f0f4c3;display:flex;align-items:center;justify-content:space-between;gap:8px">'+
                 '<div onclick="mdOpenDetail('+c.id+')" style="flex:1;cursor:pointer;min-width:0">'+
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
