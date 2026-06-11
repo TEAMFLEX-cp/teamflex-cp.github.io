@@ -7585,11 +7585,11 @@ function mdOpenDetail(caseId){
   // 승인/반려 버튼: 관리자 + 팀장(leader)만 (조장/기사 제외)
   var adminBtns='';
   if(isAdmin||isLeader){
-    var hasReply=(c.status==='replied');
+    var hasReply=(c.status==='replied'||c.status==='rejected');   // [재승인] 재요청(rejected) 상태에서도 기존 답변 바로 승인 가능
     var apprStyle=hasReply
       ?'width:100%;padding:11px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px'
       :'width:100%;padding:11px;background:#e0e0e0;color:#aaa;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:not-allowed;margin-bottom:8px';
-    var apprLabel=hasReply?'✅ 승인 (팀즈답글 게시)':'✅ 승인 (팀즈답글) — 기사 답변 후 활성화';
+    var apprLabel=(c.status==='replied')?'✅ 승인 (팀즈답글 게시)':(c.status==='rejected')?'✅ 기존 답변 재승인':'✅ 승인 (팀즈답글) — 기사 답변 후 활성화';
     var _adb=getDB();
     var _adnames=Object.keys(_adb).filter(function(n){return _adb[n]&&(_adb[n].status||'')!=='inactive';}).sort();
     var _adopts='<option value="">기사 선택…</option>'+_adnames.map(function(n){return '<option value="'+mdEsc(n)+'"'+(n===c.driver_name?' selected':'')+'>'+mdEsc(n)+'</option>';}).join('');
@@ -7781,11 +7781,27 @@ async function mdApproveReplyModal(replyId,caseId){
 async function mdApproveLatestReply(caseId){
   if(!sbClient||!CU)return;
   try{
+    // 승인 대상: 승인대기(pending) 우선, 없으면 재요청(rejected) 건도 허용 → 재요청 상태에서 기존 답변 바로 재승인
     var {data:replies}=await sbClient.from('misdelivery_replies')
-      .select('id').eq('case_id',caseId).eq('approval_status','pending')
+      .select('id,posted_to_teams,approval_status').eq('case_id',caseId)
+      .in('approval_status',['pending','rejected'])
       .order('created_at',{ascending:false}).limit(1);
     if(!replies||replies.length===0){alert('승인할 답변이 없습니다.');return;}
-    await mdApproveReply(replies[0].id,caseId);
+    var rp=replies[0];
+    if(rp.posted_to_teams){
+      // 이미 Teams에 게시된 답변을 재승인 → 중복 게시 없이 상태만 '승인'으로 되돌림
+      await sbClient.from('misdelivery_replies').update({approval_status:'approved',approved_by:CU.name}).eq('id',rp.id);
+      await sbClient.from('misdelivery_cases').update({status:'approved'}).eq('id',caseId);
+      var cD=_mdCases.find(function(x){return x.id===caseId;});
+      if(cD){
+        cD.status='approved';
+        mdPushToDriver(cD.driver_name,'✅ 오배송 처리완료','팀장이 답변을 승인했습니다.',caseId);
+        mdPushToLeaders('✅ 오배송 승인완료',CU.name+' 승인 처리 ('+(cD.waybill_no||'')+')',caseId);
+      }
+      await mdLoadCases();
+    }else{
+      await mdApproveReply(rp.id,caseId);   // 아직 미게시 → 정상 경로(Teams 게시 포함)
+    }
     document.getElementById('md-detail-modal').style.display='none';
   }catch(e){console.error('[mdApproveLatestReply]',e);alert('승인 실패: '+e.message);}
 }
