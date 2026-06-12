@@ -1585,6 +1585,33 @@ async function tfRound2Refresh(){
   }catch(e){alert('재검색 요청 실패: '+((e&&e.message)||e));}
 }
 
+// 관리자: 강제 신선 실시간 수량 체크(테스트) → 폴러가 시간 무시하고 즉시 1회 조회·공유 + 결과 회신
+async function tfForceFreshCheck(){
+  if(!sbClient||!CU||CU.role!=='admin'){alert('관리자만 사용할 수 있습니다.');return;}
+  if(!confirm('지금 즉시 신선 실시간 수량을 강제로 1회 조회·공유할까요?\n(시간대와 무관, 0건이어도 공유 — 테스트용)'))return;
+  try{
+    var ts=new Date().toISOString();
+    var r=await sbClient.from('app_settings').upsert({key:'fresh_force_check',value:JSON.stringify({ts:ts,by:(CU&&CU.name)||''})},{onConflict:'key'});
+    if(r&&r.error)throw r.error;
+    if(typeof showToast==='function')showToast('🌿 강제 신선 체크 요청됨 — 결과 가져오는 중(최대 ~45초)',true);
+    var _t0=Date.now();
+    var _iv=setInterval(async function(){
+      try{
+        var rr=await sbClient.from('app_settings').select('value').eq('key','fresh_force_result').maybeSingle();
+        var v=(rr&&rr.data)?rr.data.value:null;
+        var o=v?(typeof v==='string'?JSON.parse(v):v):null;
+        if(o&&String(o.ts)===String(ts)){
+          clearInterval(_iv);
+          var msg=o.ok?('✅ 조회 성공\n'+(o.detail||((o.n||0)+'건'))):('❌ 실패: '+(o.err||'알 수 없음'));
+          alert('🌿 강제 신선 체크 결과 ('+(o.at||'')+')\n\n'+msg);
+          if(typeof loadFreshStatus==='function'&&CUR_TAB==='fr')loadFreshStatus();
+        }
+      }catch(e){}
+      if(Date.now()-_t0>48000){clearInterval(_iv);}
+    },3500);
+  }catch(e){alert('강제 체크 요청 실패: '+((e&&e.message)||e));}
+}
+
 // ── 알림 팝업 모달 ──────────────────────────────────────────────────
 var _popupQueue=[];var _popupShowing=false;
 var _annChainCb=null; // 공지 팝업 완료 후 실행할 콜백 (시작 체인용)
@@ -9528,7 +9555,7 @@ function pgFresh(){
         '<div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div>'+
       '</div>';
   }
-  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'<button onclick="tfRound2Refresh()" style="flex:1;min-width:80px;padding:9px 4px;background:#6a1b9a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 2회전 재검색</button>'+'</div>':'';
+  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'<button onclick="tfRound2Refresh()" style="flex:1;min-width:80px;padding:9px 4px;background:#6a1b9a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 2회전 재검색</button>'+'<button onclick="tfForceFreshCheck()" style="flex:1;min-width:80px;padding:9px 4px;background:#2e7d32;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 강제 신선 체크</button>'+'</div>':'';
   var frKwPopupHtml=isAdmin?
     '<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center">'+
     '<div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)">'+
@@ -9558,7 +9585,7 @@ async function loadFreshStatus(){
   if(!CU)return;
   var isAdmin=(CU.role==='admin');
   if(!getFeatureCtrl('fresh','active')&&!isAdmin)return;
-  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'<button onclick="tfRound2Refresh()" style="flex:1;min-width:80px;padding:9px 4px;background:#6a1b9a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 2회전 재검색</button>'+'</div>':'';
+  var frKwBtn=isAdmin?'<div style="display:flex;gap:6px;margin:8px 0 12px;flex-wrap:wrap">'+'<button onclick="openFrTimePopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#1565c0;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x23F0; 시간 설정</button>'+'<button onclick="openFrNotifyPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#e65100;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+'<button onclick="openFrKwPopup()" style="flex:1;min-width:80px;padding:9px 4px;background:#388e3c;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 키워드 설정</button>'+'<button onclick="tfRound2Refresh()" style="flex:1;min-width:80px;padding:9px 4px;background:#6a1b9a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 2회전 재검색</button>'+'<button onclick="tfForceFreshCheck()" style="flex:1;min-width:80px;padding:9px 4px;background:#2e7d32;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer">&#x1F33F; 강제 신선 체크</button>'+'</div>':'';
   var frTimePopupHtml=isAdmin?'<div id="fr-time-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#1565c0">&#x23F0; 신선 체크 시간 설정</span><button onclick="closeFrTimePopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 앱 데이터를 새로 갱신합니다. 기사 폰 알림 없이 화면만 업데이트됩니다.</div><div id="fr-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-time-input" type="text" placeholder="예: 19:55" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrTime()"><button onclick="addFrTime()" style="padding:8px 14px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
   var frKwPopupHtml=isAdmin?'<div id="fr-kw-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#2e7d32">&#x1F33F; 2회전 트리거 키워드</span><button onclick="closeFrKwPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">Teams에서 이 키워드 감지 시 2회전 수량을 자동 파싱합니다.</div><div id="kw-fresh-list" style="margin-bottom:10px;min-height:32px"></div><div style="display:flex;gap:8px"><input id="kw-fresh-input" type="text" placeholder="예: 2회전 예상" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')saveFrKeyword()"><button onclick="saveFrKeyword()" style="padding:8px 14px;background:#2e7d32;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
 
