@@ -8362,10 +8362,10 @@ function pgRequest(){
     '<div id="rq-body"></div>';
 }
 
-function rqInit(){
+async function rqInit(){
   _rqSavedRoutes = JSON.parse(localStorage.getItem('rq_saved_routes')||'[]');
-  // Supabase에서 자동승인 설정 로드
-  rqLoadSettings();
+  // [수정] 저장된 자동승인 설정을 '먼저 불러온 뒤' 화면을 그림 → 재접속해도 설정 유지(타이밍 경쟁 제거)
+  await rqLoadSettings();
   rqRenderBody();
 }
 
