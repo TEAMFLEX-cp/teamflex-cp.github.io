@@ -6979,8 +6979,10 @@ function mdRenderList(cases){
                     '<span style="font-size:11px;font-weight:700;color:#4527a0">'+_tl+'</span>'+
                     '<span style="font-size:11px;color:#5c6bc0;font-weight:600">'+_cp+'</span>'+
                     '<span style="font-size:10px;font-weight:700;color:'+_sc+'">'+_st+'</span>'+
+                    (r.teams_response_status==='send_failed'?'<span style="font-size:10px;font-weight:700;color:#c62828;background:#ffebee;padding:1px 6px;border-radius:8px">⚠ 전송실패</span>':'')+
                   '</div>'+
                   '<div style="font-size:11px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+mdEsc(_desc)+'</div>'+
+                  ((CU&&CU.role==='admin'&&r.teams_response_status==='send_failed')?'<button onclick="event.stopPropagation();rqResend('+r.id+')" style="margin-top:6px;padding:5px 12px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">🔄 재전송</button>':'')+
                 '</div>';
               }
               var c=it.c;
@@ -9289,6 +9291,17 @@ async function mdLoadRequests(){
     if(document.getElementById('md-list')) mdRenderList();
     try{ rqCheckNewResponses(); }catch(e){}
   }catch(e){ console.warn('mdLoadRequests',e); _rqCases=[]; }
+}
+// 관리자: 전송 실패한 각종요청 재전송
+async function rqResend(id){
+  if(!sbClient||!CU||CU.role!=='admin'){alert('관리자만 사용할 수 있습니다.');return;}
+  if(!confirm('이 각종요청을 Teams로 다시 전송할까요?'))return;
+  try{
+    var r=await sbClient.from('requests').update({teams_sent:false,teams_response_status:'resend',updated_at:new Date().toISOString()}).eq('id',id);
+    if(r&&r.error)throw r.error;
+    if(typeof showToast==='function')showToast('🔄 재전송 요청됨 — 폴러가 1분 내 다시 전송합니다',true);
+    try{ await mdLoadRequests(); }catch(e){}
+  }catch(e){ alert('재전송 실패: '+((e&&e.message)||e)); }
 }
 function mdStartRqRefresh(){
   if(_rqRefreshTimer) clearInterval(_rqRefreshTimer);
