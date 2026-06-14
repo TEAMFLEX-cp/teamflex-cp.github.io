@@ -6982,7 +6982,7 @@ function mdRenderList(cases){
                     (r.teams_response_status==='send_failed'?'<span style="font-size:10px;font-weight:700;color:#c62828;background:#ffebee;padding:1px 6px;border-radius:8px">⚠ 전송실패</span>':'')+
                   '</div>'+
                   '<div style="font-size:11px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+mdEsc(_desc)+'</div>'+
-                  ((CU&&CU.role==='admin'&&r.teams_response_status==='send_failed')?'<button onclick="event.stopPropagation();rqResend('+r.id+')" style="margin-top:6px;padding:5px 12px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">🔄 재전송</button>':'')+
+                  ((CU&&CU.role==='admin'&&(r.teams_response_status==='send_failed'||(r.payload&&r.payload.photos&&r.payload.photos.length>0)))?'<button onclick="event.stopPropagation();rqResend('+r.id+')" style="margin-top:6px;padding:5px 12px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">🔄 다시 전송(사진 인라인)</button>':'')+
                 '</div>';
               }
               var c=it.c;
