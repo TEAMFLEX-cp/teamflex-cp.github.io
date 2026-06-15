@@ -1311,6 +1311,19 @@ async function loadSchedSettings(){
       saveCfg(cfg);
     }
   } catch(e){ console.warn('[loadSchedSettings]', e); }
+  // [복원] '과거 수정 잠금/해당주차 금지'는 misdelivery_settings.sched_lock_days에 저장됨.
+  //   저장은 되는데 다시 읽어오질 않아, localStorage가 비면(PWA 캐시정리 등) '제한없음'으로 되돌아갔다.
+  //   → 시작/동기화 때마다 클라우드 값을 cfg.schedMinLockDays로 복원해 설정이 유지되게 함.
+  //   값이 없으면(미설정) 건드리지 않음. 컬럼이 없거나 오류면 그냥 기존 동작 유지(안전).
+  try{
+    var lk = await sbClient.from('misdelivery_settings').select('sched_lock_days').eq('id',1).maybeSingle();
+    if(lk && lk.data && lk.data.sched_lock_days !== undefined && lk.data.sched_lock_days !== null && String(lk.data.sched_lock_days) !== ''){
+      var _raw = lk.data.sched_lock_days;
+      var _cfg2 = getCfg();
+      _cfg2.schedMinLockDays = (String(_raw) === 'week') ? 'week' : (parseInt(_raw) || 0);
+      saveCfg(_cfg2);
+    }
+  } catch(e){ console.warn('[loadSchedLock]', e); }
 }
 async function sbSaveSchedSettings(){
   if(!sbClient||!CU||(CU.role!=='admin'&&CU.role!=='leader')) return;
