@@ -125,6 +125,15 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
 .ni.on{color:#1565c0}
 .nicon{font-size:20px}
 .ndot{position:absolute;top:6px;right:calc(50% - 14px);width:8px;height:8px;background:#e53935;border-radius:50%;border:2px solid #fff}
+.nv-new{position:absolute;top:-7px;left:50%;transform:translateX(-50%);background:#e53935;color:#fff;font-size:8px;font-weight:800;padding:1px 4px;border-radius:6px;border:1.5px solid #fff;letter-spacing:.3px;z-index:3;white-space:nowrap;line-height:1.4}
+.nv-new.nv-left{left:4px;transform:none}
+.nv-num{position:absolute;top:-6px;right:4px;min-width:16px;height:15px;padding:0 4px;background:#1565c0;color:#fff;font-size:9px;font-weight:800;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;border:2px solid #fff;z-index:2;line-height:1}
+@keyframes nvglow{0%,100%{box-shadow:0 0 0 0 rgba(229,57,53,0)}50%{box-shadow:0 0 0 4px rgba(229,57,53,.30)}}
+.nv-glow{animation:nvglow 1.7s ease-in-out infinite}
+@keyframes nvwig{0%,100%{transform:rotate(0)}20%{transform:rotate(-12deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(3deg)}}
+.nv-wig{display:inline-block;animation:nvwig 1.8s ease-in-out infinite;transform-origin:50% 80%}
+@keyframes nvshine{0%{background-position:-30px 0}60%,100%{background-position:60px 0}}
+.nv-shine{background-image:linear-gradient(100deg,#1565c0 0%,#7db0ec 45%,#1565c0 60%);background-size:120px 100%;animation:nvshine 2s ease-in-out infinite}
 .card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:18px;margin-bottom:14px}
 .ctit{font-size:13px;font-weight:700;color:#5c6bc0;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #e8eaf6;display:flex;align-items:center;gap:6px}
 .stit{font-size:16px;font-weight:800;color:#1a237e;margin-bottom:14px}
@@ -1981,6 +1990,8 @@ loadAdminCfgFromSB().then(function(){
 }).then(function(){
   console.log('Supabase 동기화 완료');
   _reRenderCurTab();
+  try{ if(typeof refreshNavBadges==='function')refreshNavBadges(); }catch(e){}
+  try{ if(!window._navIv)window._navIv=setInterval(function(){try{refreshNavBadges();}catch(e){}},60000); }catch(e){}
 }).catch(function(e){console.warn('동기화 실패',e);_reRenderCurTab();});
 
 // ── 앱 복귀 시 즉시 동기화 (화면 전환 → 앱으로 돌아올 때) ───────────
@@ -3269,24 +3280,45 @@ async function sgComplete(){
   }
 }
 
+var _navSeen=(function(){try{return JSON.parse(localStorage.getItem('tf_nav_seen')||'{}');}catch(e){return {};}})();
+function _navSaveSeen(){try{localStorage.setItem('tf_nav_seen',JSON.stringify(_navSeen));}catch(e){}}
+var _nav={md:0,pb:0,frRemain:0,frNew:false,frLatest:'',stNew:false,stYm:''};
 function updateNavDots(){
-  var unread=getAnns().filter(function(a){return !a.readBy||a.readBy.indexOf(CU.name)<0;}).length;
-  var niNc=document.getElementById('ni-nc');var niAb=document.getElementById('ni-ab');
-  var dot='<span class="ndot"></span>';
-  if(niNc)niNc.innerHTML='<span class="nicon">&#x1F4E2;</span>공지'+(unread?dot:'');
-  if(niAb)niAb.innerHTML='<span class="nicon">&#x1F4E2;</span>공지사항'+(unread?dot:'');
-  // 변경이력 배지
-  var unreadSl=_unreadSchedLog();
+  if(!CU)return;
+  var newF='<span class="nv-new nv-glow">NEW</span>';
+  var newL='<span class="nv-new nv-left nv-glow">NEW</span>';
+  function numB(n){return n>0?'<span class="nv-num nv-shine">'+(n>99?'99+':n)+'</span>':'';}
+  function ic(e,wig){return '<span class="nicon'+(wig?' nv-wig':'')+'">'+e+'</span>';}
+  var ncNew=false; try{ ncNew=getAnns().filter(function(a){return !isAnnExpired(a)&&!a.disabled&&!_annIsReadByMe(a);}).length>0; }catch(e){}
+  var niNc=document.getElementById('ni-nc'),niAb=document.getElementById('ni-ab');
+  if(niNc)niNc.innerHTML=ic('&#x1F4E2;')+'공지'+(ncNew?newF:'');
+  if(niAb)niAb.innerHTML=ic('&#x1F4E2;')+'공지사항'+(ncNew?newF:'');
   var niSl=document.getElementById('ni-sl');
-  if(niSl)niSl.innerHTML='<span class="nicon">&#x1F4CB;</span>변경이력'+(unreadSl?dot:'');
-  // 신선 탭: 2회전 총 수량 표시
+  if(niSl)niSl.innerHTML=ic('&#x1F4CB;')+'변경이력'+(_unreadSchedLog()?'<span class="ndot"></span>':'');
+  var niMd=document.getElementById('ni-md');
+  if(niMd)niMd.innerHTML=ic('&#x1F6A8;',_nav.md>0)+'오배송'+numB(_nav.md);
   var niFr=document.getElementById('ni-fr');
-  if(niFr){
-    var frBadge=_freshNavTotal>0
-      ?'<span style="display:inline-block;background:#1565c0;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;margin-left:2px;vertical-align:middle;line-height:1.5">'+_freshNavTotal+'</span>'
-      :'';
-    niFr.innerHTML='<span class="nicon">&#x1F33F;</span>신선'+frBadge;
+  if(niFr)niFr.innerHTML=ic('&#x1F33F;',_nav.frRemain>0)+'신선'+(_nav.frNew?newL:'')+numB(_nav.frRemain);
+  var niPb=document.getElementById('ni-pb');
+  if(niPb)niPb.innerHTML=ic('&#x1F9FE;',_nav.pb>0)+'프백소명'+numB(_nav.pb);
+  var niSt=document.getElementById('ni-st'),niAz=document.getElementById('ni-az');
+  if(niSt)niSt.innerHTML=ic('&#x1F4B0;')+'정산'+(_nav.stNew?newF:'');
+  if(niAz)niAz.innerHTML=ic('&#x1F4B0;')+'정산'+(_nav.stNew?newF:'');
+}
+async function refreshNavBadges(){
+  if(!CU)return;
+  var _nowIso=new Date().toISOString();
+  if(_navSeen.md===undefined)_navSeen.md=_nowIso;
+  if(sbClient){
+    try{ var mr=await sbClient.from('misdelivery_cases').select('id',{count:'exact',head:true}).gt('created_at',_navSeen.md||'1970-01-01'); if(mr&&typeof mr.count==='number')_nav.md=mr.count; }catch(e){}
+    try{ var pq=sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',pbPeriod()).eq('status','pending'); if(!(CU.role==='admin'||CU.role==='leader'))pq=pq.eq('driver_name',CU.name); var pr=await pq; if(pr&&typeof pr.count==='number')_nav.pb=pr.count; }catch(e){}
+    var _td=(typeof kstToday==='function')?kstToday():_nowIso.slice(0,10);
+    try{ var rr=await sbClient.from('round2_expected').select('shared_at').eq('shared_date',_td).order('shared_at',{ascending:false}).limit(1); if(rr&&rr.data&&rr.data.length){_nav.frLatest=rr.data[0].shared_at||'';if(_navSeen.fr2===undefined)_navSeen.fr2=_nav.frLatest;_nav.frNew=(_nav.frLatest>(_navSeen.fr2||''));}else{_nav.frNew=false;_nav.frLatest='';} }catch(e){}
+    try{ var fq=await sbClient.from('app_settings').select('value').eq('key','fresh_snapshot').limit(1); var rem=0; if(fq&&fq.data&&fq.data.length){var v=fq.data[0].value;var snap=(typeof v==='string')?JSON.parse(v):v;if(snap&&(snap.snapshot_at||'').slice(0,10)===_td&&snap.routes){snap.routes.forEach(function(rt){rem+=(rt.undelivered||0);});}} _nav.frRemain=rem; }catch(e){}
+    try{ var ms=await sbClient.from('monthly_stats').select('year,month'); if(ms&&ms.data&&ms.data.length){var mx=ms.data.reduce(function(m,r){var y=((r.year||0)*12+(r.month||0));return y>m?y:m;},0);_nav.stYm=String(mx);if(_navSeen.st_ym===undefined)_navSeen.st_ym=_nav.stYm;_nav.stNew=(mx>0&&_nav.stYm!==(_navSeen.st_ym||''));} }catch(e){}
   }
+  _navSaveSeen();
+  updateNavDots();
 }
 
 var _navHistory=[];
@@ -3297,6 +3329,12 @@ function go(tab){
   var _usrSheet=document.getElementById('usr-sub-sheet');if(_usrSheet)_usrSheet.remove();
   if(CUR_TAB&&CUR_TAB!==tab)_navHistory.push(CUR_TAB);
   EDIT_MODE=false;CUR_TAB=tab;
+  try{ var _nw=new Date().toISOString();
+    if(tab==='md'){_navSeen.md=_nw;_nav.md=0;}
+    else if(tab==='fr'){if(_nav.frLatest)_navSeen.fr2=_nav.frLatest;_nav.frNew=false;}
+    else if(tab==='az'||tab==='st'){if(_nav.stYm)_navSeen.st_ym=_nav.stYm;_nav.stNew=false;}
+    _navSaveSeen(); if(typeof updateNavDots==='function')updateNavDots();
+  }catch(e){}
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   var el=document.getElementById('ni-'+tab);if(el)el.classList.add('on');
   // 권한/연락처/설정은 모두 ni-cfg 탭을 활성 표시
