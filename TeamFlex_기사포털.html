@@ -2160,6 +2160,11 @@ window.addEventListener('popstate',function(e){
   if(uSheet){uSheet.remove();window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;}
   // 오배송 팝업 (동적 생성이라 DOM 존재 여부로 체크)
   if(document.getElementById('md-popup-back')){mdCloseCase();window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;}
+  var rqNov=document.getElementById('rq-notice-ov');
+  if(rqNov){rqNov.remove();window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;}
+  if(CUR_TAB==='rq'&&typeof _rqTab!=='undefined'&&_rqTab){
+    rqBackToLanding();window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;
+  }
   // 팝업들 닫기
   var popups=['ann-popup','kw-popup','fr-kw-popup','md-kw-popup'];
   for(var pi=0;pi<popups.length;pi++){
@@ -8373,7 +8378,7 @@ function pgRequest(){
   return '<div class="stit">&#x1F4DD; 각종 요청</div>'+
     adminBar+
     campSelect+
-    (_rqTab ? tabHtml : '')+    // 랜딩(미선택)에선 탭바 숨김 → 안내+선택 그리드만
+    (_rqTab ? rqBackBar() : '')+
     '<div id="rq-body"></div>';
 }
 
@@ -8410,6 +8415,14 @@ function _rqSelectTab(k){
   if(!mc) return;
   mc.innerHTML = pgRequest();
   rqRenderBody();
+}
+function rqBackBar(){
+  return '<div onclick="rqBackToLanding()" style="display:inline-flex;align-items:center;gap:6px;background:#eef0fa;border:1px solid #c5cae9;border-radius:9px;padding:8px 12px;margin-bottom:12px;color:#3949ab;font-size:12.5px;font-weight:700;cursor:pointer"><span style="font-size:15px">\u2190</span> \uC694\uCCAD \uC120\uD0DD\uC73C\uB85C</div>';
+}
+function rqBackToLanding(){
+  _rqTab='';
+  var mc=document.getElementById('mc');
+  if(mc){ mc.innerHTML=pgRequest(); rqRenderBody(); }
 }
 function rqLandingHtml(){
   var types=[{k:'damage',e:'\u{1F4E6}',l:'\uD30C\uC190'},{k:'route',e:'\u{1F504}',l:'\uB77C\uC6B0\uD2B8 \uBCC0\uACBD'},
