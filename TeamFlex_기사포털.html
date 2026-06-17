@@ -3313,7 +3313,7 @@ function go(tab){
   else if(tab==='cfg')mc.innerHTML=pgSettings();
   else if(tab==='sl')mc.innerHTML=pgSchedLog();
   else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();mdStartRqRefresh();},200);}
-  else if(tab==='rq'){mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
+  else if(tab==='rq'){_rqTab='';mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
   else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
   else if(tab==='pb'){mc.innerHTML=pgPback();setTimeout(pbInit,100);}
   else if(tab==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;}}).catch(function(){});}
@@ -8176,7 +8176,7 @@ async function mdDeleteCase(caseId){
 // ── 각종 요청 탭 ──────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════
 
-var _rqTab = 'damage';
+var _rqTab = '';   // ''=안내 랜딩 화면, 그 외=해당 요청 폼 (각종요청 진입 시 파손 자동표시 대신 안내부터)
 var _rqRouteRows = [{id:'',route:''}];
 var _rqReturnWaybills = [{wb:'',od:''}];
 var _rqSavedRoutes = [];
@@ -8373,11 +8373,12 @@ function pgRequest(){
   return '<div class="stit">&#x1F4DD; 각종 요청</div>'+
     adminBar+
     campSelect+
-    tabHtml+
+    (_rqTab ? tabHtml : '')+    // 랜딩(미선택)에선 탭바 숨김 → 안내+선택 그리드만
     '<div id="rq-body"></div>';
 }
 
 async function rqInit(){
+  _rqTab = '';   // 진입 시 항상 안내 랜딩부터 (파손 자동표시 방지)
   _rqSavedRoutes = JSON.parse(localStorage.getItem('rq_saved_routes')||'[]');
   // [수정] 저장된 자동승인 설정을 '먼저 불러온 뒤' 화면을 그림 → 재접속해도 설정 유지(타이밍 경쟁 제거)
   await rqLoadSettings();
@@ -8397,24 +8398,75 @@ async function rqLoadSettings(){
   }catch(e){ console.warn('rqLoadSettings',e); }
 }
 
+// 요청 종류 선택 게이트: 파손·라우트변경은 '안내 팝업 1회' 후 진입, 나머지는 바로 진입.
 function rqSwitchTab(k){
+  if(k === _rqTab) return;
+  if(k === 'damage' || k === 'route'){ rqShowNotice(k); return; }
+  _rqSelectTab(k);
+}
+function _rqSelectTab(k){
   _rqTab = k;
-  // 사진·행 초기화 없이 탭만 변경
   var mc = document.getElementById('mc');
   if(!mc) return;
-  // 탭 버튼 스타일 갱신
-  mc.querySelectorAll('[data-rqtab]').forEach(function(b){
-    var isOn = b.dataset.rqtab === k;
-    b.style.background = isOn ? '#3949ab' : '#fff';
-    b.style.color = isOn ? '#fff' : '#3949ab';
-    b.style.borderColor = isOn ? '#3949ab' : '#c5cae9';
-  });
+  mc.innerHTML = pgRequest();
   rqRenderBody();
+}
+function rqLandingHtml(){
+  var types=[{k:'damage',e:'\u{1F4E6}',l:'\uD30C\uC190'},{k:'route',e:'\u{1F504}',l:'\uB77C\uC6B0\uD2B8 \uBCC0\uACBD'},
+             {k:'return',e:'\u21A9\uFE0F',l:'\uBC18\uD488 \uC774\uAD00'},{k:'dup',e:'\u{1F501}',l:'\uC774\uC911 \uCD9C\uACE0'},
+             {k:'scan',e:'\u{1F5D1}\uFE0F',l:'\uC2A4\uCE94\uB300\uAE30 \uC0AD\uC81C'},{k:'lost',e:'\u{1F50D}',l:'\uBD84\uC2E4 \uCC98\uB9AC'},
+             {k:'work',e:'\u{1F9D1}\u200D\u{1F4BC}',l:'\uC5C5\uBB34\uC2E0\uCCAD'}];
+  var grid='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px">';
+  types.forEach(function(t){
+    var span=(t.k==='work')?';grid-column:span 2':'';
+    grid+='<button onclick="rqSwitchTab(\''+t.k+'\')" style="border:2px solid #c5cae9;border-radius:10px;background:#fff;color:#3949ab;font-size:13px;font-weight:700;padding:13px 4px;text-align:center;cursor:pointer'+span+'">'+t.e+' '+t.l+'</button>';
+  });
+  grid+='</div>';
+  return '<div style="background:#f8f9ff;border:1px solid #d7dbf0;border-radius:12px;padding:18px 14px;margin-bottom:12px;text-align:center">'+
+    '<div style="font-size:30px;margin-bottom:6px">\uD83D\uDD90</div>'+
+    '<div style="font-size:14px;font-weight:700;color:#283593;line-height:1.55">\uD76C\uB9DD\uD558\uC2DC\uB294 \uC5C5\uBB34 \uC694\uCCAD\uC744 \uB20C\uB7EC\uC8FC\uC2DC\uBA74<br>\uC9C4\uD589\uC744 \uB3C4\uC640\uB4DC\uB9AC\uACA0\uC2B5\uB2C8\uB2E4.</div>'+
+    '<div style="font-size:11.5px;color:#5c6bc0;line-height:1.6;border-top:1px dashed #c5cae9;padding-top:9px;margin-top:10px">\uD83D\uDCE6 <b>\uD30C\uC190\uAC74</b>\uC740 \uC6B4\uC1A1\uC7A5 / \uC0C1\uD488 \uC804\uCCB4 / \uD30C\uC190 \uBD80\uC704 \uC0AC\uC9C4\uC744 \uAF2D \uCCA8\uBD80\uD574\uC8FC\uC138\uC694.</div>'+
+  '</div>'+grid;
+}
+function rqShowNotice(type){
+  var prev=document.getElementById('rq-notice-ov'); if(prev)prev.remove();
+  var ov=document.createElement('div'); ov.id='rq-notice-ov';
+  ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(20,20,40,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:99999';
+  ov.setAttribute('onclick','rqNoticeClose()');
+  ov.innerHTML=rqNoticeCard(type);
+  document.body.appendChild(ov);
+}
+function rqNoticeClose(){ var ov=document.getElementById('rq-notice-ov'); if(ov)ov.remove(); }
+function rqNoticeOk(type){ rqNoticeClose(); _rqSelectTab(type); }
+function rqNoticeCard(type){
+  var inner;
+  if(type==='damage'){
+    inner='<div style="background:#e53935;color:#fff;padding:13px 16px;font-size:15px;font-weight:700;text-align:center">\uD83D\uDCF8 \uC0AC\uC9C4 \uCCA8\uBD80 \uD544\uC218 \uC870\uAC74</div>'+
+      '<div style="padding:16px">'+
+        '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">'+
+          '<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:9px;padding:9px 11px;font-size:13px;font-weight:700;color:#c62828">\uD83D\uDCF7 \uC6B4\uC1A1\uC7A5 \uC0AC\uC9C4</div>'+
+          '<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:9px;padding:9px 11px;font-size:13px;font-weight:700;color:#c62828">\uD83D\uDCF7 \uC0C1\uD488 \uC804\uCCB4 \uC0AC\uC9C4</div>'+
+          '<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:9px;padding:9px 11px;font-size:13px;font-weight:700;color:#c62828">\uD83D\uDCF7 \uD30C\uC190 \uBD80\uC704 \uC0AC\uC9C4</div>'+
+        '</div>'+
+        '<div style="background:#fffde7;border:1px solid #fff59d;border-radius:9px;padding:10px 12px;font-size:12px;color:#7a6500;line-height:1.6">\u26A0\uFE0F \uC704 \uC0AC\uC9C4\uC774 <b>\uD544\uC218</b>\uC785\uB2C8\uB2E4. \uC870\uAC74\uC5D0 \uB9DE\uCD94\uC5B4 \uCD2C\uC601\uD558\uC9C0 \uC54A\uC73C\uBA74 <b>\uD30C\uC190 \uCC98\uB9AC\uAC00 \uBD88\uAC00</b>\uD558\uBA70, \uC7AC\uCD2C\uC601\uC758 \uBC88\uAC70\uB85C\uC6C0\uC774 \uC788\uC73C\uB2C8 \uAF2D \uC870\uAC74\uB300\uB85C \uCD2C\uC601\uD574\uC8FC\uC138\uC694.</div>'+
+        '<button onclick="rqNoticeOk(\'damage\')" style="margin-top:14px;width:100%;padding:12px;background:#e53935;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">\uD655\uC778</button>'+
+      '</div>';
+  } else {
+    inner='<div style="background:#3949ab;color:#fff;padding:13px 16px;font-size:15px;font-weight:700;text-align:center">\uD83D\uDD04 \uB77C\uC6B0\uD2B8(\uC11C\uBE0C) \uBCC0\uACBD \uC548\uB0B4</div>'+
+      '<div style="padding:16px">'+
+        '<div style="font-size:12.5px;color:#37474f;line-height:1.65;margin-bottom:10px">\uB77C\uC6B0\uD2B8 \uC11C\uBE0C \uBCC0\uACBD\uC744 \uC694\uCCAD\uD558\uB294 \uACBD\uC6B0, \uC544\uB798\uC640 \uAC19\uC774 <b>\uC804\uCCB4\uC5D0 \uB300\uD55C \uBD80\uBD84</b>\uC744 \uC791\uC131\uD574\uC8FC\uC154\uC57C \uCC98\uB9AC\uB429\uB2C8\uB2E4.</div>'+
+        '<div style="background:#f5f6fb;border:1px solid #d7dbf0;border-radius:9px;padding:11px 13px;font-family:monospace;font-size:12.5px;color:#283593;line-height:1.9">\uD300\uD50C\uB809\uC2A4 / 101A01<br>\uD300\uD50C\uB809\uC2A4 / 101A02<br>\uBB38\uBCD1\uAD6D / 101A03<br>\uBB38\uBCD1\uAD6D / 101A04</div>'+
+        '<div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:9px;padding:10px 12px;font-size:12px;color:#2e7d32;line-height:1.6;margin-top:11px">\u203B \uC8FC\uAE30\uC801\uC73C\uB85C \uC774\uAD00\uD558\uB294 \uACBD\uC6B0 <b>\uC800\uC7A5</b>\uD574\uB450\uC2DC\uBA74, \uB2E4\uC74C\uBD80\uD130\uB294 <b>\uBD88\uB7EC\uC624\uAE30</b>\uB85C \uAC04\uD3B8\uD558\uAC8C \uC791\uC131\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.</div>'+
+        '<button onclick="rqNoticeOk(\'route\')" style="margin-top:14px;width:100%;padding:12px;background:#3949ab;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">\uD655\uC778</button>'+
+      '</div>';
+  }
+  return '<div onclick="event.stopPropagation()" style="width:100%;max-width:320px;background:#fff;border-radius:16px;overflow:hidden">'+inner+'</div>';
 }
 
 function rqRenderBody(){
   var el = document.getElementById('rq-body');
   if(!el) return;
+  if(!_rqTab){ el.innerHTML = rqLandingHtml(); return; }   // 미선택 → 안내 랜딩
   // 탭 버튼에 data-rqtab 속성 추가 (rqSwitchTab 위해)
   var mc = document.getElementById('mc');
   if(mc){
