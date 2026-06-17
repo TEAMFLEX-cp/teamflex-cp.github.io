@@ -8193,7 +8193,7 @@ var _rqWebhookUrl8camp = null;
 
 // ── 각종 요청 탭 메인 페이지 ──────────────────────────────────────
 /* ════════ 프백 소명 (pback) — Supabase: pback_somyeong / app_settings(pback_config) ════════ */
-var PB_ITEMS=[], PB_CFG={mode:'approval',form_url:'',period:''}, PB_DONE_OPEN=false, PB_CANT_OPEN=false, PB_DSUB_OPEN=false, PB_DCANT_OPEN=false;
+var PB_ITEMS=[], PB_CFG={mode:'approval',form_url:'',period:''}, PB_DONE_OPEN=false, PB_CANT_OPEN=false, PB_DSUB_OPEN=false, PB_DCANT_OPEN=false, PB_UNSUB_OPEN=false;
 var PB_ST={pending:{t:'미작성',bg:'#ffe5e5',c:'#c0392b'},answered:{t:'작성완료',bg:'#fff4e0',c:'#b9770e'},approved:{t:'승인됨·제출대기',bg:'#e3f2fd',c:'#1565c0'},submitted:{t:'제출완료',bg:'#e3f4e8',c:'#2d6040'},rejected:{t:'반려',bg:'#ffe1d6',c:'#d84315'},failed:{t:'제출실패',bg:'#ffd6d6',c:'#b71c1c'},cant:{t:'소명불가',bg:'#eceff1',c:'#546e7a'}};
 var PB_DEFRJ='사진상 내용을 확인할 수 없습니다.\n자세한 내용 작성 부탁드립니다.';
 function pbPeriod(){var d=new Date();var y=d.getFullYear(),m=d.getMonth()+1;if(d.getDate()>=26){m++;if(m>12){m=1;y++;}}return y+'-'+(m<10?'0'+m:m);}
@@ -8223,6 +8223,25 @@ function pbMyItems(){var n=norm_name_js((CU&&CU.name)||'');return PB_ITEMS.filte
 function pbCounts(arr){var c={pending:0,answered:0,approved:0,submitted:0,rejected:0,failed:0,cant:0};arr.forEach(function(i){if(c[i.status]!=null)c[i.status]++;});c.total=arr.length;c.unsub=c.pending+c.answered+c.approved+c.rejected+c.failed;return c;}
 function pbRowHtml(it){var s=PB_ST[it.status]||PB_ST.pending;return '<div class="pb-row" onclick="pbOpen('+it.id+')"><div><div class="d">'+pbEsc(it.pdd_date||'')+' · '+pbEsc(it.route||'')+'</div><div class="m">'+pbEsc(it.camp||'')+' · '+pbEsc(it.type||'')+'</div></div><div style="display:flex;align-items:center;gap:8px"><span class="pb-bd" style="background:'+s.bg+';color:'+s.c+'">'+s.t+'</span><span style="color:#bbb;font-size:18px">›</span></div></div>';}
 function pbRender(){var root=document.getElementById('pb-root');if(!root)return;root.innerHTML=(CU&&CU.role==='admin')?pbAdminHtml():pbDriverHtml();}
+function pbUnsubListHtml(){
+  var groups=[{k:'pending',lbl:'미작성',c:'#c0392b'},{k:'answered',lbl:'작성완료·승인대기',c:'#b9770e'},
+              {k:'approved',lbl:'승인됨·제출대기',c:'#1565c0'},{k:'rejected',lbl:'반려',c:'#d84315'},
+              {k:'failed',lbl:'제출실패',c:'#b71c1c'}];
+  var tot=0, body='';
+  groups.forEach(function(g){
+    var arr=(PB_ITEMS||[]).filter(function(i){return i.status===g.k;});
+    if(!arr.length)return;
+    tot+=arr.length;
+    var names=arr.map(function(it){return pbEsc(it.driver_name||'?')+(it.route?' · '+pbEsc(it.route):'');}).join('&nbsp;&nbsp; ');
+    body+='<div style="padding:8px 12px;border-top:1px solid #f3dada">'+
+      '<div style="font-size:11.5px;font-weight:800;color:'+g.c+';margin-bottom:5px">● '+g.lbl+' '+arr.length+'</div>'+
+      '<div style="font-size:12px;color:#444;line-height:1.7">'+names+'</div></div>';
+  });
+  if(!tot) body='<div style="padding:12px;text-align:center;color:#90a4ae;font-size:12px">미제출 건이 없습니다 👍</div>';
+  return '<div class="pb-card" style="border:1px solid #f0c0c0;padding:0!important;overflow:hidden;margin-top:8px">'+
+    '<div style="background:#fff5f5;padding:9px 12px;font-size:12.5px;font-weight:800;color:#c62828;display:flex;justify-content:space-between">📋 미제출 명단 ('+tot+')<span style="font-size:11px;color:#90a4ae;font-weight:600">상태별</span></div>'+
+    body+'</div>';
+}
 // 관리자: 미작성(pending) 기사 전원에게 프백 소명 알림 1회 발송
 async function pbNotifyPending(){
   if(!sbClient){alert('서버 연결이 필요합니다.');return;}
@@ -8265,7 +8284,8 @@ function pbAdminHtml(){
   var act=getFeatureCtrl('pback','active'),noti=getFeatureCtrl('pback','notify');
   var h='<style>.pb-card{padding:11px 13px!important;margin-bottom:8px!important}.pb-card h4{font-size:14px!important;margin-bottom:1px!important}.pb-card .sub{margin-bottom:7px!important;font-size:11px!important}.pb-droph{padding:9px 12px!important;margin:5px 0!important}.pb-aprow{padding:9px 12px!important}.pb-pill{padding:6px 10px!important}.pb-dl{padding:11px!important}</style>';
   h+='<div style="margin-bottom:8px"><div style="font-size:16px;font-weight:800;color:#1b5e20">⚙️ 프백 소명 · 관리자</div><div style="font-size:11px;color:#888;margin-top:1px">'+pbPeriodLabel()+' · 기간 '+pbRange()+' · '+pbDeadline()+' 마감</div></div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">'+'<div style="background:#fff;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#37474f">'+c.total+'</div><div style="font-size:10px;color:#90a4ae">대상</div></div>'+'<div style="background:#fff;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#2d6040">'+c.submitted+'</div><div style="font-size:10px;color:#90a4ae">제출완료</div></div>'+'<div style="background:#fff;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#546e7a">'+c.cant+'</div><div style="font-size:10px;color:#90a4ae">소명불가</div></div>'+'<div style="background:#fff5f5;border:1px solid #f0c0c0;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#c62828">'+c.unsub+'</div><div style="font-size:10px;color:#c62828">미제출</div></div>'+'</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">'+'<div style="background:#fff;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#37474f">'+c.total+'</div><div style="font-size:10px;color:#90a4ae">대상</div></div>'+'<div style="background:#fff;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#2d6040">'+c.submitted+'</div><div style="font-size:10px;color:#90a4ae">제출완료</div></div>'+'<div style="background:#fff;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#546e7a">'+c.cant+'</div><div style="font-size:10px;color:#90a4ae">소명불가</div></div>'+'<div onclick="PB_UNSUB_OPEN=!PB_UNSUB_OPEN;pbRender()" style="background:#fff5f5;border:1px solid #f0c0c0;border-radius:10px;padding:8px 3px;text-align:center;cursor:pointer"><div style="font-size:19px;font-weight:800;color:#c62828">'+c.unsub+'</div><div style="font-size:10px;color:#c62828">미제출 '+(PB_UNSUB_OPEN?'▴':'▾')+'</div></div>'+'</div>';
+  if(PB_UNSUB_OPEN)h+=pbUnsubListHtml();
   h+='<div class="pb-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><div style="display:flex;gap:6px"><button class="pb-pill '+(act?'on':'off')+'" onclick="pbToggle(\'active\')">'+(act?'✅ 활성화':'⬜ 비활성')+'</button><button class="pb-pill noti '+(noti?'on':'off')+'" onclick="pbToggle(\'notify\')">'+(noti?'🔔 알림':'🔕 알림')+'</button></div><button id="pb-notify-btn" class="pb-pill on" style="background:#c0392b" onclick="pbNotifyPending()">📲 미작성자 알림</button></div>';
   h+='<div class="pb-card"><div style="display:flex;align-items:center;gap:7px"><span style="font-size:12px;font-weight:800;color:#1b5e20;white-space:nowrap">폼 URL</span><input id="pb-url" value="'+pbEsc(PB_CFG.form_url||'')+'" placeholder="https://forms.gle/..." style="flex:1;min-width:0"><button onclick="pbSaveUrl()" style="padding:0 14px">저장</button><span style="color:'+(urlok?'#2d6040':'#c62828')+';font-weight:800">'+(urlok?'✔':'⚠')+'</span></div></div>';
   h+='<div class="pb-card"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:800;color:#1b5e20;white-space:nowrap">제출 방식</span><div class="pb-seg" style="flex:1">'+pbMseg('direct','①','직접')+pbMseg('approval','②','승인')+pbMseg('batch','③','일괄')+'</div></div></div>';
