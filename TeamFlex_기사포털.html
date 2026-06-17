@@ -442,7 +442,8 @@ textarea.ann-input:focus{border-color:#1565c0}
     <div class="ann-popup" style="margin:auto">
       <div id="ann-popup-content"></div>
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button class="btn-p" style="flex:1" onclick="closeAnnPopup()">확인</button>
+        <button class="btn-p" style="flex:1.6" onclick="annConfirmRead()">&#x1F4D6; 읽고 숙지함</button>
+        <button style="flex:1;background:#fff;color:#666;border:1.5px solid #ddd;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer" onclick="annJustClose()">닫기</button>
       </div>
     </div>
   </div>
@@ -3383,6 +3384,37 @@ function closeAnnPopup(){
     // 시작 체인: 공지 모두 확인 후 다음 팝업 단계로
     if(_annChainCb){var cb=_annChainCb;_annChainCb=null;setTimeout(cb,200);}
   }
+}
+function annConfirmRead(){
+  var a=ANN_QUEUE[ANN_IDX];
+  if(a) annMarkReadServer(a);
+  ANN_IDX++;
+  if(ANN_IDX<ANN_QUEUE.length){ showNextAnn(); return; }
+  document.getElementById('ann-popup').style.display='none';
+  updateNavDots();
+  if(CUR_TAB==='nc'||CUR_TAB==='ab'){ document.getElementById('mc').innerHTML=(CUR_TAB==='ab')?pgAnn(true):pgAnn(false); }
+  if(_annChainCb){var cb=_annChainCb;_annChainCb=null;setTimeout(cb,200);}
+}
+function annJustClose(){
+  var p=document.getElementById('ann-popup'); if(p)p.style.display='none';
+  ANN_QUEUE=[]; ANN_IDX=0;
+  if(_annChainCb){var cb=_annChainCb;_annChainCb=null;setTimeout(cb,150);}
+}
+function annMarkReadServer(a){
+  try{ var anns=getAnns(); var f=anns.find(function(x){return x.id===a.id;}); if(f){ if(!f.readBy)f.readBy=[]; if(CU&&f.readBy.indexOf(CU.name)<0)f.readBy.push(CU.name); saveAnns(anns);} }catch(e){}
+  try{ markAnnRead(a.id); }catch(e){}
+  if(sbClient&&CU){
+    var sbId=String(a.sb_id||a.id);
+    window._annReadMine=window._annReadMine||{}; window._annReadMine[sbId]=true;
+    (async function(){
+      try{
+        var r=await sbClient.from('announcement_reads').upsert({announcement_id:isNaN(Number(sbId))?sbId:Number(sbId),reader_id:_annReaderKey(),reader_name:(CU&&CU.name)||'',reader_role:(CU&&CU.role)||'',read_at:new Date().toISOString()},{onConflict:'announcement_id,reader_id'});
+        if(r&&r.error)throw r.error; return;
+      }catch(e){}
+      try{ var res=await sbClient.from('announcements').select('read_by').eq('id',sbId).single(); var sbArr=[]; if(res.data&&res.data.read_by){try{sbArr=JSON.parse(res.data.read_by);}catch(e2){}} if(CU&&sbArr.indexOf(CU.name)<0)sbArr.push(CU.name); await sbClient.from('announcements').update({read_by:JSON.stringify(sbArr)}).eq('id',sbId); }catch(e3){}
+    })();
+  }
+  updateNavDots();
 }
 
 // ── HOME ──────────────────────────────────────────────────────────────
@@ -8224,24 +8256,36 @@ function pbCounts(arr){var c={pending:0,answered:0,approved:0,submitted:0,reject
 function pbRowHtml(it){var s=PB_ST[it.status]||PB_ST.pending;return '<div class="pb-row" onclick="pbOpen('+it.id+')"><div><div class="d">'+pbEsc(it.pdd_date||'')+' · '+pbEsc(it.route||'')+'</div><div class="m">'+pbEsc(it.camp||'')+' · '+pbEsc(it.type||'')+'</div></div><div style="display:flex;align-items:center;gap:8px"><span class="pb-bd" style="background:'+s.bg+';color:'+s.c+'">'+s.t+'</span><span style="color:#bbb;font-size:18px">›</span></div></div>';}
 function pbRender(){var root=document.getElementById('pb-root');if(!root)return;root.innerHTML=(CU&&CU.role==='admin')?pbAdminHtml():pbDriverHtml();}
 function pbUnsubListHtml(){
-  var groups=[{k:'pending',lbl:'미작성',c:'#c0392b'},{k:'answered',lbl:'작성완료·승인대기',c:'#b9770e'},
-              {k:'approved',lbl:'승인됨·제출대기',c:'#1565c0'},{k:'rejected',lbl:'반려',c:'#d84315'},
-              {k:'failed',lbl:'제출실패',c:'#b71c1c'}];
-  var tot=0, body='';
-  groups.forEach(function(g){
-    var arr=(PB_ITEMS||[]).filter(function(i){return i.status===g.k;});
-    if(!arr.length)return;
-    tot+=arr.length;
-    var names=arr.map(function(it){return pbEsc(it.driver_name||'?')+(it.route?' · '+pbEsc(it.route):'');}).join('&nbsp;&nbsp; ');
-    body+='<div style="padding:8px 12px;border-top:1px solid #f3dada">'+
-      '<div style="font-size:11.5px;font-weight:800;color:'+g.c+';margin-bottom:5px">● '+g.lbl+' '+arr.length+'</div>'+
-      '<div style="font-size:12px;color:#444;line-height:1.7">'+names+'</div></div>';
+  var UNSUB=['pending','answered','approved','rejected','failed'];
+  var STLBL={pending:'미작성',answered:'작성완료·승인대기',approved:'승인됨·제출대기',rejected:'반려',failed:'제출실패'};
+  var STCOL={pending:'#c0392b',answered:'#b9770e',approved:'#1565c0',rejected:'#d84315',failed:'#b71c1c'};
+  var arr=(PB_ITEMS||[]).filter(function(i){return UNSUB.indexOf(i.status)>=0;});
+  var byDrv={};
+  arr.forEach(function(i){var n=(i.driver_name||'?');if(!byDrv[n])byDrv[n]={name:n,items:[]};byDrv[n].items.push(i);});
+  var drivers=Object.keys(byDrv).map(function(k){return byDrv[k];});
+  drivers.sort(function(a,b){return b.items.length-a.items.length;});
+  var rows='';
+  drivers.forEach(function(d,di){
+    var routes=[];d.items.forEach(function(i){var r=(i.route||'').trim();if(r&&routes.indexOf(r)<0)routes.push(r);});
+    var routeStr=routes.slice(0,3).join('·')+(routes.length>3?'…':'');
+    var stcnt={};d.items.forEach(function(i){stcnt[i.status]=(stcnt[i.status]||0)+1;});
+    var domSt=d.items[0].status,best=-1;
+    UNSUB.forEach(function(s){if((stcnt[s]||0)>best){best=stcnt[s]||0;domSt=s;}});
+    var detail=d.items.map(function(i){return '· '+pbEsc(i.route||'-')+' — '+(STLBL[i.status]||i.status)+(i.reason?' ('+pbEsc(String(i.reason).slice(0,20))+')':'');}).join('<br>');
+    rows+='<div onclick="pbUnsubToggle('+di+')" style="display:flex;align-items:center;font-size:12.5px;color:#333;padding:9px 12px;border-top:1px solid #f6e3e3;cursor:pointer">'+
+      '<div style="flex:1.2;font-weight:700">'+pbEsc(d.name)+'</div>'+
+      '<div style="flex:1.6;color:#666">'+pbEsc(routeStr||'-')+'</div>'+
+      '<div style="width:42px;text-align:center;font-weight:800;color:#c62828">'+d.items.length+'</div>'+
+      '<div style="width:66px;text-align:right;font-size:11px;color:'+(STCOL[domSt]||'#c0392b')+'">'+(STLBL[domSt]||'')+' ›</div></div>'+
+      '<div id="pb-unsub-d'+di+'" style="display:none;background:#fdf6f6;border-top:1px solid #f6e3e3;padding:8px 14px;font-size:12px;color:#555;line-height:1.8">'+detail+'</div>';
   });
-  if(!tot) body='<div style="padding:12px;text-align:center;color:#90a4ae;font-size:12px">미제출 건이 없습니다 👍</div>';
+  if(!arr.length) rows='<div style="padding:12px;text-align:center;color:#90a4ae;font-size:12px">미제출 건이 없습니다 👍</div>';
   return '<div class="pb-card" style="border:1px solid #f0c0c0;padding:0!important;overflow:hidden;margin-top:8px">'+
-    '<div style="background:#fff5f5;padding:9px 12px;font-size:12.5px;font-weight:800;color:#c62828;display:flex;justify-content:space-between">📋 미제출 명단 ('+tot+')<span style="font-size:11px;color:#90a4ae;font-weight:600">상태별</span></div>'+
-    body+'</div>';
+    '<div style="background:#fff5f5;padding:9px 12px;font-size:12.5px;font-weight:800;color:#c62828;display:flex;justify-content:space-between">📋 미제출 명단 · '+drivers.length+'명 / '+arr.length+'건<span style="font-size:11px;color:#90a4ae;font-weight:600">기사별</span></div>'+
+    (arr.length?'<div style="display:flex;font-size:10.5px;color:#90a4ae;padding:6px 12px;border-top:1px solid #f3dada;font-weight:700"><div style="flex:1.2">기사명</div><div style="flex:1.6">라우트</div><div style="width:42px;text-align:center">건수</div><div style="width:66px;text-align:right">상태</div></div>':'')+
+    rows+'</div>';
 }
+function pbUnsubToggle(di){var el=document.getElementById('pb-unsub-d'+di);if(el)el.style.display=(el.style.display==='none'?'block':'none');}
 // 관리자: 미작성(pending) 기사 전원에게 프백 소명 알림 1회 발송
 async function pbNotifyPending(){
   if(!sbClient){alert('서버 연결이 필요합니다.');return;}
