@@ -3314,7 +3314,7 @@ async function refreshNavBadges(){
     try{ var pq; if(CU.role==='admin'){ pq=sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',pbPeriod()).eq('status','answered'); } else { pq=sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',pbPeriod()).eq('status','pending').eq('driver_name',CU.name); } var pr=await pq; if(pr&&typeof pr.count==='number')_nav.pb=pr.count; }catch(e){}
     var _td=(typeof kstToday==='function')?kstToday():_nowIso.slice(0,10);
     try{ var rr=await sbClient.from('round2_expected').select('shared_at').eq('shared_date',_td).order('shared_at',{ascending:false}).limit(1); if(rr&&rr.data&&rr.data.length){_nav.frLatest=rr.data[0].shared_at||'';if(_navSeen.fr2===undefined)_navSeen.fr2=_nav.frLatest;_nav.frNew=(_nav.frLatest>(_navSeen.fr2||''));}else{_nav.frNew=false;_nav.frLatest='';} }catch(e){}
-    try{ var fq=await sbClient.from('app_settings').select('value').eq('key','fresh_snapshot').limit(1); var rem=0; if(fq&&fq.data&&fq.data.length){var v=fq.data[0].value;var snap=(typeof v==='string')?JSON.parse(v):v;if(snap&&(snap.snapshot_at||'').slice(0,10)===_td&&snap.routes){var _mine=(CU.role!=='admin'&&CU.role!=='leader');var _mn=_mine?norm_name_js(CU.name||''):'';snap.routes.forEach(function(rt){if(_mine&&norm_name_js(rt.worker||'')!==_mn)return;rem+=Math.max(0,(rt.consignment||0)-(rt.scan||0)-(rt.completed||0)-(rt.undelivered||0));});}} _nav.frRemain=rem; }catch(e){}
+    try{ var fq=await sbClient.from('app_settings').select('value').eq('key','fresh_snapshot').limit(1); var rem=0; if(fq&&fq.data&&fq.data.length){var v=fq.data[0].value;var snap=(typeof v==='string')?JSON.parse(v):v;if(snap&&(snap.snapshot_at||'').slice(0,10)===_td&&snap.routes){var _mine=(CU.role!=='admin'&&CU.role!=='leader');var _mn=_mine?norm_name_js(CU.name||''):'';snap.routes.forEach(function(rt){if(_mine&&norm_name_js(rt.worker||'')!==_mn)return;rem+=(rt.scan||0);});}} _nav.frRemain=rem; }catch(e){}
     try{ var ms=await sbClient.from('monthly_stats').select('year,month'); if(ms&&ms.data&&ms.data.length){var mx=ms.data.reduce(function(m,r){var y=((r.year||0)*12+(r.month||0));return y>m?y:m;},0);_nav.stYm=String(mx);if(_navSeen.st_ym===undefined)_navSeen.st_ym=_nav.stYm;_nav.stNew=(mx>0&&_nav.stYm!==(_navSeen.st_ym||''));} }catch(e){}
   }
   _navSaveSeen();
@@ -6373,15 +6373,6 @@ function pgSettings(){
     '<div id="cfg-rq-err" style="font-size:11px;color:#c62828;margin-top:6px"></div>'+
     '<button onclick="mdSaveRqUrls()" style="margin-top:10px;width:100%;padding:9px;background:#3949ab;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#x1F4BE; 저장</button>'+
     '</div>'+
-    '<div class="card"><div class="ctit">🔄 라우트 변경 요청 제어 <span style="font-size:11px;color:#888;font-weight:400">(한국시간)</span></div>'+
-    '<div style="font-size:12px;color:#555;margin-bottom:10px;line-height:1.6">라우트 변경 요청이 너무 일찍 올라와 Teams에서 누락되는 걸 막습니다.</div>'+
-    '<div style="display:flex;gap:6px;margin-bottom:10px">'+
-    ['off|끄기(즉시)','time|시간제한','reserve|예약전송'].map(function(x){var k=x.split('|')[0],l=x.split('|')[1];var on=(_rqRouteGate.mode||'off')===k;return '<div onclick="rqSetGateMode(\''+k+'\')" style="flex:1;padding:9px 4px;border:2px solid '+(on?'#3949ab':'#c5cae9')+';border-radius:9px;background:'+(on?'#3949ab':'#fff')+';color:'+(on?'#fff':'#3949ab')+';font-size:12px;font-weight:700;text-align:center;cursor:pointer">'+l+'</div>';}).join('')+
-    '</div>'+
-    '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;font-weight:700;color:#333">기준 시각</span><input id="cfg-rqgate-time" type="time" value="'+(_rqRouteGate.time||'18:00')+'" style="padding:6px 8px;border:1.5px solid #c5cae9;border-radius:7px;font-size:13px;font-weight:700;color:#3949ab"><span style="font-size:11px;color:#888">KST</span></div>'+
-    '<button onclick="rqSaveGate()" style="margin-top:10px;width:100%;padding:9px;background:#3949ab;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#x1F4BE; 저장</button>'+
-    '<div style="font-size:11px;color:#888;margin-top:7px;line-height:1.6">· 시간제한: 그 시각 이후에만 신청 가능<br>· 예약전송: 아무때나 신청 → 그 시각에 자동 공유<br>· 끄기: 즉시</div>'+
-    '</div>'+
     // ── 공지 알림 설정 ──
     '<div class="card"><div class="ctit">&#x1F514; 공지 알림 설정</div>'+
     '<div style="background:#f8f9ff;border-radius:10px;padding:12px 14px">'+
@@ -8264,12 +8255,13 @@ var _rqTab = '';   // ''=안내 랜딩 화면, 그 외=해당 요청 폼 (각종
 var _rqRouteRows = [{id:'',route:''}];
 var _rqReturnWaybills = [{wb:'',od:''}];
 var _rqSavedRoutes = [];
-var _rqRouteGate={mode:'off',time:'18:00'};
+var _rqRouteGate={mode:'off',start:'00:00',end:'07:55'};
 function _kstParts(){var d=new Date(Date.now()+(new Date().getTimezoneOffset()*60000)+9*3600000);return {min:d.getHours()*60+d.getMinutes(),dateStr:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};}
-function _gateMin(){var t=(_rqRouteGate.time||'18:00').split(':');return (+t[0])*60+(+t[1]);}
-function _fmtAmPm(t){var p=(t||'18:00').split(':');var h=+p[0];return (h<12?'오전 ':'오후 ')+((h%12)||12)+':'+(p[1]||'00');}
-function rqSetGateMode(m){var t=document.getElementById('cfg-rqgate-time');if(t)_rqRouteGate.time=t.value||_rqRouteGate.time;_rqRouteGate.mode=m;var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgSettings();}
-async function rqSaveGate(){var t=document.getElementById('cfg-rqgate-time');if(t)_rqRouteGate.time=t.value||'18:00';if(sbClient){try{await sbClient.from('app_settings').upsert({key:'route_req_gate',value:JSON.stringify({mode:_rqRouteGate.mode,time:_rqRouteGate.time})},{onConflict:'key'});if(typeof showToast==='function')showToast('🔄 라우트 요청 제어 저장됨',true);}catch(e){if(typeof showToast==='function')showToast('저장 실패',false);}}}
+function _gm(t){var p=(t||'00:00').split(':');return (+p[0])*60+(+p[1]);}
+function _inGate(){var s=_gm(_rqRouteGate.start),e=_gm(_rqRouteGate.end),n=_kstParts().min;return s===e?false:(s<e?(n>=s&&n<e):(n>=s||n<e));}
+function _fmtAmPm(t){var p=(t||'00:00').split(':');var h=+p[0];return (h<12?'오전 ':'오후 ')+((h%12)||12)+':'+(p[1]||'00');}
+function rqSetGateMode(m){var s=document.getElementById('rqg-start'),e=document.getElementById('rqg-end');if(s)_rqRouteGate.start=s.value||_rqRouteGate.start;if(e)_rqRouteGate.end=e.value||_rqRouteGate.end;_rqRouteGate.mode=m;if(typeof rqRenderBody==='function')rqRenderBody();}
+async function rqSaveGate(){var s=document.getElementById('rqg-start'),e=document.getElementById('rqg-end');if(s)_rqRouteGate.start=s.value||'00:00';if(e)_rqRouteGate.end=e.value||'07:55';if(sbClient){try{await sbClient.from('app_settings').upsert({key:'route_req_gate',value:JSON.stringify({mode:_rqRouteGate.mode,start:_rqRouteGate.start,end:_rqRouteGate.end})},{onConflict:'key'});if(typeof showToast==='function')showToast('🔄 라우트 요청 제어 저장됨',true);}catch(e2){if(typeof showToast==='function')showToast('저장 실패',false);}}}
 var _rqDmPhotos = [null, null, null];
 var _rqAutoApprove = false; // 관리자가 설정한 승인 방식 (Supabase에서 로드)
 var _rqWebhookUrl = null;
@@ -8517,7 +8509,7 @@ async function rqLoadSettings(){
       _rqWebhookUrl8camp  = res.data.request_webhook_url_8camp  || null;
       _rqAutoApprove      = res.data.request_auto_approve       || false;
     }
-    try{ var _rg=await sbClient.from('app_settings').select('value').eq('key','route_req_gate').maybeSingle(); if(_rg&&_rg.data&&_rg.data.value){ var _gv=(typeof _rg.data.value==='string')?JSON.parse(_rg.data.value):_rg.data.value; if(_gv&&_gv.mode)_rqRouteGate={mode:_gv.mode,time:_gv.time||'18:00'}; } }catch(_ge){}
+    try{ var _rg=await sbClient.from('app_settings').select('value').eq('key','route_req_gate').maybeSingle(); if(_rg&&_rg.data&&_rg.data.value){ var _gv=(typeof _rg.data.value==='string')?JSON.parse(_rg.data.value):_rg.data.value; if(_gv&&_gv.mode)_rqRouteGate={mode:_gv.mode,start:_gv.start||'00:00',end:_gv.end||'07:55'}; } }catch(_ge){}
   }catch(e){ console.warn('rqLoadSettings',e); }
 }
 
@@ -8566,7 +8558,7 @@ function rqShowNotice(type){
   ov.setAttribute('onclick','rqNoticeClose()');
   ov.innerHTML=rqNoticeCard(type);
   document.body.appendChild(ov);
-  if(type==='route'){ try{ var _g=_rqRouteGate||{mode:'off'}; if(_g.mode&&_g.mode!=='off'){ var _bf=(_kstParts().min<_gateMin()); var _h=''; if(_g.mode==='time'&&_bf)_h='<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:9px 11px;font-size:12px;color:#c62828;line-height:1.6;margin-top:10px">⏰ <b>'+_fmtAmPm(_g.time)+' 이후</b>에만 신청 가능 · 그 전엔 Teams 공유 안 됨 <span style="color:#888;font-size:11px">(한국시간)</span></div>'; else if(_g.mode==='reserve')_h='<div style="background:#e8f0fe;border:1px solid #90caf9;border-radius:8px;padding:9px 11px;font-size:12px;color:#1565c0;line-height:1.6;margin-top:10px">🗓 지금 신청하면 <b>'+_fmtAmPm(_g.time)+'</b>에 자동 Teams 공유 <span style="color:#888;font-size:11px">(한국시간)</span></div>'; if(_h){var _btn=ov.querySelector('button'); if(_btn)_btn.insertAdjacentHTML('beforebegin',_h);} } }catch(e){} }
+  if(type==='route'){ try{ var _g=_rqRouteGate||{mode:'off'}; if(_g.mode&&_g.mode!=='off'){ var _ig=_inGate(); var _h=''; if(_g.mode==='time'&&_ig)_h='<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:9px 11px;font-size:12px;color:#c62828;line-height:1.6;margin-top:10px">⏰ <b>'+_fmtAmPm(_g.start)+'~'+_fmtAmPm(_g.end)+'</b> 신청 불가 · '+_fmtAmPm(_g.end)+' 이후 신청·공유 <span style="color:#888;font-size:11px">(한국시간)</span></div>'; else if(_g.mode==='reserve'&&_ig)_h='<div style="background:#e8f0fe;border:1px solid #90caf9;border-radius:8px;padding:9px 11px;font-size:12px;color:#1565c0;line-height:1.6;margin-top:10px">🗓 지금 신청하면 <b>'+_fmtAmPm(_g.end)+'</b>에 자동 Teams 공유 <span style="color:#888;font-size:11px">(한국시간)</span></div>'; if(_h){var _btn=ov.querySelector('button'); if(_btn)_btn.insertAdjacentHTML('beforebegin',_h);} } }catch(e){} }
 }
 function rqNoticeClose(){ var ov=document.getElementById('rq-notice-ov'); if(ov)ov.remove(); }
 function rqNoticeOk(type){ rqNoticeClose(); _rqSelectTab(type); }
@@ -8925,17 +8917,19 @@ function rqRouteForm(){
   var orderSel = window._rqOrderSel||'1,2차';
   var previewText = rqRoutePreviewText();
   var ok = validRows.length>0;
-  var _g=_rqRouteGate||{mode:'off'}; var _gBefore=(_kstParts().min<_gateMin()); var _blocked=false; var _gateNote='';
-  if(_g.mode==='time'&&_gBefore){_blocked=true;_gateNote='<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:9px 11px;font-size:12px;color:#c62828;line-height:1.6;margin-bottom:8px">⏰ <b>'+_fmtAmPm(_g.time)+' 이후</b>에만 신청할 수 있습니다. 그 전엔 Teams 공유가 되지 않습니다. <span style="color:#888;font-size:11px">(한국시간)</span></div>';}
-  else if(_g.mode==='reserve'){_gateNote='<div style="background:#e8f0fe;border:1px solid #90caf9;border-radius:8px;padding:9px 11px;font-size:12px;color:#1565c0;line-height:1.6;margin-bottom:8px">🗓 지금 신청하면 <b>'+_fmtAmPm(_g.time)+'</b>에 자동 Teams 공유됩니다.'+(_gBefore?'':' (시각 지남 → 즉시)')+' <span style="color:#888;font-size:11px">(한국시간)</span></div>';}
+  var _g=_rqRouteGate||{mode:'off'}; var _inG=_inGate(); var _blocked=false; var _gateNote='';
+  if(_g.mode==='time'&&_inG){_blocked=true;_gateNote='<div style="background:#fff5f5;border:1px solid #ffcdd2;border-radius:8px;padding:9px 11px;font-size:12px;color:#c62828;line-height:1.6;margin-bottom:8px">⏰ <b>'+_fmtAmPm(_g.start)+'~'+_fmtAmPm(_g.end)+'</b> 사이에는 신청할 수 없습니다. <b>'+_fmtAmPm(_g.end)+' 이후</b> 신청·공유됩니다. <span style="color:#888;font-size:11px">(한국시간)</span></div>';}
+  else if(_g.mode==='reserve'){_gateNote='<div style="background:#e8f0fe;border:1px solid #90caf9;border-radius:8px;padding:9px 11px;font-size:12px;color:#1565c0;line-height:1.6;margin-bottom:8px">🗓 지금 신청하면 '+(_inG?('<b>'+_fmtAmPm(_g.end)+'</b>에 자동 Teams 공유'):'즉시 Teams 공유')+'됩니다. <span style="color:#888;font-size:11px">(한국시간)</span></div>';}
+  var _gateAdmin=(CU&&CU.role==='admin')?('<div style="background:#f3f4ff;border:1.5px solid #c5cae9;border-radius:10px;padding:11px 12px;margin-bottom:12px"><div style="font-size:12px;font-weight:800;color:#283593;margin-bottom:8px">🔐 관리자 — 라우트 신청 시간제한 <span style="font-size:10px;color:#888;font-weight:400">(한국시간)</span></div><div style="display:flex;gap:6px;margin-bottom:9px">'+['off|끄기','time|시간제한','reserve|예약전송'].map(function(x){var k=x.split('|')[0],l=x.split('|')[1];var on=(_g.mode||'off')===k;return '<div onclick="rqSetGateMode(\''+k+'\')" style="flex:1;padding:7px 4px;border:2px solid '+(on?'#3949ab':'#c5cae9')+';border-radius:8px;background:'+(on?'#3949ab':'#fff')+';color:'+(on?'#fff':'#3949ab')+';font-size:11.5px;font-weight:700;text-align:center;cursor:pointer">'+l+'</div>';}).join('')+'</div><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#333;flex-wrap:wrap"><span style="font-weight:700">제한</span><input id="rqg-start" type="time" value="'+(_g.start||'00:00')+'" style="padding:4px 6px;border:1.5px solid #c5cae9;border-radius:6px;font-weight:700;color:#3949ab"><span>~</span><input id="rqg-end" type="time" value="'+(_g.end||'07:55')+'" style="padding:4px 6px;border:1.5px solid #c5cae9;border-radius:6px;font-weight:700;color:#3949ab"><span style="font-size:10px;color:#888">사이 신청 차단</span></div><button onclick="rqSaveGate()" style="margin-top:9px;width:100%;padding:8px;background:#3949ab;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">&#x1F4BE; 저장 (즉시 적용)</button></div>'):'';
   var btnClass = (ok&&!_blocked) ? (_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req') : '';
   var btnTxt = _rqAutoApprove ? '&#x26A1; 팀즈 전송' : '&#x1F4E4; 팀즈 전송 요청';
-  if(_g.mode==='reserve') btnTxt = '🗓 예약 신청 ('+_fmtAmPm(_g.time)+' 공유)';
-  if(_blocked) btnTxt = '⏳ '+_fmtAmPm(_g.time)+' 이후 신청';
+  if(_g.mode==='reserve') btnTxt = '🗓 예약 신청';
+  if(_blocked) btnTxt = '⏳ '+_fmtAmPm(_g.end)+' 이후 신청';
 
   return '<div class="rq-card">'+
     '<div id="rq-rt-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
+    _gateAdmin+
     savedHtml+
     '<label class="rq-label">&#x1F465; 기사 ID / 라우트 <span class="rq-req">필수 (최소 1행)</span></label>'+
     '<div id="rq-rt-rows">'+rowsHtml+'</div>'+
@@ -9006,8 +9000,8 @@ async function rqSendRoute(){
   if(valid.length===0){alert('기사 ID와 라우트를 1개 이상 입력해주세요.');return;}
   var text = rqRoutePreviewText();
   var _g=_rqRouteGate||{mode:'off'}; var _schd=null;
-  if(_g.mode==='time' && _kstParts().min < _gateMin()){ alert(_fmtAmPm(_g.time)+' 이후에 신청할 수 있습니다. (한국시간)'); return; }
-  if(_g.mode==='reserve' && _kstParts().min < _gateMin()){ _schd=_kstParts().dateStr+'T'+(_g.time||'18:00')+':00+09:00'; }
+  if(_g.mode==='time' && _inGate()){ alert(_fmtAmPm(_g.start)+'~'+_fmtAmPm(_g.end)+' 사이에는 신청할 수 없습니다. '+_fmtAmPm(_g.end)+' 이후 신청해주세요. (한국시간)'); return; }
+  if(_g.mode==='reserve' && _inGate()){ _schd=_kstParts().dateStr+'T'+(_g.end||'07:55')+':00+09:00'; }
   var _ok=await rqSubmit({type:'route', text:text, photos:[], okId:'rq-rt-ok', scheduledAt:_schd});
   if(!_ok) return;
   // 입력란 초기화 (저장된 프리셋은 유지)
