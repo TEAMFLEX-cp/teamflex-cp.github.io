@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v40 — 백그라운드 스케줄 체크 + Push 알림 + 구독 자동 갱신
-const CACHE_NAME = 'teamflex-v184';
+// TeamFlex Service Worker v41 — 백그라운드 스케줄 체크 + Push 알림 + 구독 자동 갱신
+const CACHE_NAME = 'teamflex-v185';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 

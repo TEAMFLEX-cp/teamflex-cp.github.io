@@ -3952,7 +3952,8 @@ function pgAnn(isAdmin){
 
   // 만료/비활성 — 관리자 전용 회색 한줄 카드
   if(isAdm&&expiredAnns.length>0){
-    sections+='<div style="display:flex;align-items:center;gap:8px;margin:20px 0 8px"><div style="flex:1;height:1px;background:#e0e0e0"></div><span style="font-size:11px;font-weight:700;color:#9e9e9e;background:#f5f5f5;padding:2px 10px;border-radius:10px;white-space:nowrap">&#x23F8; 기간 만료/비활성 '+expiredAnns.length+'건 (관리자만 보임)</span><div style="flex:1;height:1px;background:#e0e0e0"></div></div>';
+    sections+='<div onclick="toggleExpiredAnns()" style="display:flex;align-items:center;gap:8px;margin:20px 0 8px;cursor:pointer"><div style="flex:1;height:1px;background:#e0e0e0"></div><span style="font-size:11px;font-weight:700;color:#9e9e9e;background:#f5f5f5;padding:2px 10px;border-radius:10px;white-space:nowrap">&#x23F8; 기간 만료/비활성 '+expiredAnns.length+'건 (관리자만 보임) <span id="expAnnCaret" style="display:inline-block;margin-left:2px">&#x25B8;</span></span><div style="flex:1;height:1px;background:#e0e0e0"></div></div>';
+    sections+='<div id="expiredAnnWrap" style="display:none">';
     sections+=expiredAnns.map(function(a){
       var isExp=isAnnExpired(a);
       var expDateStr=a.expireAt?new Date(a.expireAt).toLocaleDateString('ko-KR',{month:'numeric',day:'numeric'}):'';
@@ -3970,11 +3971,19 @@ function pgAnn(isAdmin){
           (isExp&&expDateStr?'<span style="margin-left:8px;font-size:11px;background:#eeeeee;color:#9e9e9e;padding:1px 7px;border-radius:8px">⏸ 만료 ('+expDateStr+')</span>':'<span style="margin-left:8px;font-size:11px;background:#fbe9e7;color:#e65100;padding:1px 7px;border-radius:8px">⛔비활성</span>')+
         '</div></div>';
     }).join('');
+    sections+='</div>';
   }
 
   return (isAdmin?_featureBar('ann'):'')+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="stit" style="margin-bottom:0">공지사항</div>'+writeBtn+'</div>'+
     sections;
+}
+function toggleExpiredAnns(){
+  var w=document.getElementById('expiredAnnWrap'),c=document.getElementById('expAnnCaret');
+  if(!w)return;
+  var open=w.style.display!=='none';
+  w.style.display=open?'none':'block';
+  if(c)c.innerHTML=open?'\u25B8':'\u25BE';
 }
 // ── [공지 읽음 v2] 1인 1행(announcement_reads) 기반 읽음 판정 ──────────
 window._annReadMine = window._annReadMine || {};   // {sbId: true} — 내가 읽은 공지
