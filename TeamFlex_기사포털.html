@@ -9647,19 +9647,36 @@ function mdStopRqRefresh(){
 
 // ── 캠프 매니저 응답(따봉/답글) → 요청자에게 인앱 팝업 ──────────────────
 function rqCloseResponsePopup(){ var ov=document.getElementById('rq-resp-popup'); if(ov) ov.remove(); }
+function _rqParseResponses(txt){
+  if(!txt) return [];
+  var sx=String(txt).trim();
+  if(sx.charAt(0)==='['){ try{ var a=JSON.parse(sx); if(Array.isArray(a)) return a.filter(function(e){return e&&e.t;}); }catch(e){} }
+  var isR=/^이모지\s*반응|^반응/.test(sx);
+  return [{k:isR?'reaction':'reply', t:sx.replace(/^이모지\s*반응:\s*/,'')}];
+}
+function _rqResponsesHtml(txt){
+  var list=_rqParseResponses(txt); if(!list.length) return '';
+  var h=''; var ri=0;
+  list.forEach(function(e){
+    if(e.k==='reaction'){
+      h+='<div style="background:#eef0fb;border:1px solid #c9cdf0;border-radius:9px;padding:9px 11px;margin-top:8px;text-align:left"><div style="font-size:10.5px;font-weight:800;color:#5c6bc0;margin-bottom:3px">이모지 반응</div><div style="font-size:15px;color:#3a3f7a">'+mdEsc(e.t||'👍')+'</div></div>';
+    } else {
+      ri++; var even=(ri%2===0);
+      var bg=even?'#fffbe6':'#eafaf0', bd=even?'#f0e08a':'#a5d6b0', tc=even?'#8a6d00':'#2e7d32', xc=even?'#4a3c00':'#1b3a23';
+      h+='<div style="background:'+bg+';border:1px solid '+bd+';border-radius:9px;padding:9px 11px;margin-top:8px;text-align:left"><div style="font-size:10.5px;font-weight:800;color:'+tc+';margin-bottom:3px">캠프 매니저 답글 '+ri+'</div><div style="font-size:14px;line-height:1.6;color:'+xc+'">'+mdEsc(e.t||'')+'</div></div>';
+    }
+  });
+  return h;
+}
 function rqShowResponsePopup(r){
   if(document.getElementById('rq-resp-popup')) return; // 중복 방지
   var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청'};
   var typeLbl=typeMap[r.type]||r.type;
   var camp=(r.payload&&r.payload.camp)?r.payload.camp:'';
   var txt=r.teams_response_text||'';
-  var isReaction=/이모지\s*반응|반응/.test(txt);
-  var body;
-  if(isReaction){
-    body='<div style="background:#e8f5e9;border-radius:10px;padding:12px 13px;text-align:center;margin:8px 14px"><div style="font-size:15px;font-weight:700;color:#2e7d32">👍 좋아요 반응 — 승인 처리되었습니다</div></div>';
-  } else {
-    body='<div style="background:#f5f5f5;border-left:3px solid #1565c0;padding:12px 13px;margin:8px 14px;text-align:left"><div style="font-size:12px;color:#888;margin-bottom:5px">캠프 매니저 답글</div><div style="font-size:15px;line-height:1.6;color:#1a1a1a">'+mdEsc(txt)+'</div></div>';
-  }
+  var _rl=_rqParseResponses(txt);
+  var isReaction=(_rl.length>0 && _rl[_rl.length-1].k==='reaction');
+  var body='<div style="margin:8px 14px">'+_rqResponsesHtml(txt)+'</div>';
   var ico=isReaction?'👍':'💬';
   var ttl=isReaction?'캠프 매니저 확인 완료':'캠프 매니저 답글 도착';
   var meta=mdEsc((r.requester_name||'')+(camp?' · '+camp:''));
@@ -9772,7 +9789,7 @@ function rqShowPopup(id){
     var teamsStsHtml = r.teams_sent
       ? (r.teams_response_status==='responded'
           ? '<div style="margin-top:10px;text-align:center"><span style="font-size:13px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:5px 14px;border-radius:10px">✅ 캠프 매니저 처리 완료</span>'
-            +(r.teams_response_text ? '<div style="margin-top:8px;background:#f5f5f5;border-left:3px solid #1565c0;border-radius:6px;padding:9px 11px;text-align:left"><div style="font-size:12px;color:#888;margin-bottom:4px">캠프 매니저 답글</div><div style="font-size:15px;line-height:1.55;color:#1a1a1a">'+mdEsc(r.teams_response_text)+'</div></div>' : '')+'</div>'
+            +_rqResponsesHtml(r.teams_response_text)+'</div>'
           : '<div style="margin-top:10px;text-align:center"><span style="font-size:12px;font-weight:700;background:#fff8e1;color:#e65100;padding:4px 12px;border-radius:10px">⏳ 팀즈 전송 완료 · 캠프 매니저 처리 대기중</span></div>')
       : '<div style="margin-top:10px;text-align:center;font-size:12px;color:#1565c0">⏳ 팀즈 전송 대기</div>';
     btns=teamsStsHtml+delBtn;
