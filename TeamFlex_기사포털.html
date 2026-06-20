@@ -7011,7 +7011,7 @@ function mdRenderList(cases){
           '<span style="font-size:10px;color:#2e9e5b;margin-left:auto;font-weight:700">한국시간 예약</span></div>'+
         '<div style="padding:0 10px 10px">'+
         _reqReserved.slice().sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at);}).map(function(r){
-          var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실',pretake:'📥 전취건반납',lostret:'🔎 분실건반납',work:'🧑‍💼 업무신청'};
+          var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무신청'};
           var _tl=_tm[r.type]||r.type;
           var _cp=(r.payload&&r.payload.camp)?' ['+mdEsc(r.payload.camp)+']':'';
           var _sdK=new Date(_rqReserveReleaseMs(r)).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
@@ -7091,7 +7091,7 @@ function mdRenderList(cases){
             items.map(function(it){
               if(it.k==='req'){
                 var r=it.c;
-                var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실',pretake:'📥 전취건반납',lostret:'🔎 분실건반납',work:'🧑‍💼 업무신청'};
+                var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무신청'};
                 var _tl=_tm[r.type]||r.type;
                 var _cp=(r.payload&&r.payload.camp)?' ['+mdEsc(r.payload.camp)+']':'';
                 var _st=r.status==='approved'?'완료':'반려';
@@ -8499,8 +8499,8 @@ function pgRequest(){
     {k:'dup',    lbl:'&#x1F501; 이중 출고'},
     {k:'scan',   lbl:'&#x1F5D1;&#xFE0F; 스캔대기 삭제'},
     {k:'lost',   lbl:'&#x1F50D; 분실건 처리요청'},
-    {k:'pretake',lbl:'&#x1F4E5; 전취건 반납'},
-    {k:'lostret',lbl:'&#x1F50E; 분실건 반납'},
+    {k:'pretake',lbl:'&#x1F4E5; 전취건 반납 확인 요청'},
+    {k:'lostret',lbl:'&#x1F50E; 분실건 반납 확인 요청'},
     {k:'work',   lbl:'&#x1F9D1;&#x200D;&#x1F4BC; 업무신청'}
   ];
   var tabHtml = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">';
@@ -8586,8 +8586,8 @@ function rqLandingHtml(){
   grid+='</div>';
   grid+='<div style="display:flex;align-items:center;gap:8px;margin:13px 2px 10px"><div style="flex:1;height:1px;background:#f1c4c0"></div><span style="font-size:11px;font-weight:800;color:#c0392b;background:#fff0f0;border:1px solid #f1a9a9;padding:3px 12px;border-radius:11px;white-space:nowrap">📥 반납 처리 요청</span><div style="flex:1;height:1px;background:#f1c4c0"></div></div>';
   grid+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px">'+
-    '<button onclick="rqSwitchTab(\'pretake\')" style="'+_b+';'+_red+'">📥 전취건 반납</button>'+
-    '<button onclick="rqSwitchTab(\'lostret\')" style="'+_b+';'+_red+'">🔎 분실건 반납</button>'+
+    '<button onclick="rqSwitchTab(\'pretake\')" style="'+_b+';'+_red+'">📥 전취건 반납 확인 요청</button>'+
+    '<button onclick="rqSwitchTab(\'lostret\')" style="'+_b+';'+_red+'">🔎 분실건 반납 확인 요청</button>'+
   '</div>';
   return '<div style="background:#f8f9ff;border:1px solid #d7dbf0;border-radius:12px;padding:18px 14px;margin-bottom:12px;text-align:center">'+
     '<div style="font-size:30px;margin-bottom:6px">🖐</div>'+
@@ -8620,7 +8620,7 @@ function rqNoticeCard(type){
         '<button onclick="rqNoticeOk(\'damage\')" style="margin-top:14px;width:100%;padding:12px;background:#e53935;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">\uD655\uC778</button>'+
       '</div>';
   } else if(type==='pretake' || type==='lostret'){
-    var _rt=(type==='pretake')?'📥 전취건 반납':'🔎 분실건 반납';
+    var _rt=(type==='pretake')?'📥 전취건 반납 확인 요청':'🔎 분실건 반납 확인 요청';
     inner='<div style="background:#e07a6f;color:#fff;padding:13px 16px;font-size:15px;font-weight:700;text-align:center">'+_rt+'</div>'+
       '<div style="padding:16px">'+
         '<div style="background:#fff5f5;border:1px solid #f1c4c0;border-radius:9px;padding:12px 13px;font-size:12.5px;color:#5a2a26;line-height:1.7">반납 누락이 자주 발생하고 있기 때문에<br><b>팀즈에 기록을 남기기 위함</b>입니다.<br><br>캠프 반납 시 <b>사진 촬영</b>까지 해주시면<br>가장 정확한 반납 처리가 진행됩니다.</div>'+
@@ -9599,7 +9599,7 @@ async function rqSendToTeams(text, photos, requestId){
 function rqNotifyApprovers(type, text){
   if(!sbClient) return;
   // send-push Edge Function 호출 (관리자/팀장에게)
-  var typeLabels={damage:'파손요청',route:'라우트변경',return:'반품이관',dup:'이중출고건',scan:'스캔삭제',lost:'분실처리',pretake:'전취건반납',lostret:'분실건반납',work:'업무신청'};
+  var typeLabels={damage:'파손요청',route:'라우트변경',return:'반품이관',dup:'이중출고건',scan:'스캔삭제',lost:'분실처리',pretake:'전취건 반납 확인 요청',lostret:'분실건 반납 확인 요청',work:'업무신청'};
   var lbl = typeLabels[type]||'각종요청';
   try{
     fetch(SB_URL+'/functions/v1/send-push',{
@@ -9649,7 +9649,7 @@ function mdStopRqRefresh(){
 function rqCloseResponsePopup(){ var ov=document.getElementById('rq-resp-popup'); if(ov) ov.remove(); }
 function rqShowResponsePopup(r){
   if(document.getElementById('rq-resp-popup')) return; // 중복 방지
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납',lostret:'🔎 분실건 반납',work:'🧑‍💼 업무 신청'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청'};
   var typeLbl=typeMap[r.type]||r.type;
   var camp=(r.payload&&r.payload.camp)?r.payload.camp:'';
   var txt=r.teams_response_text||'';
@@ -9716,7 +9716,7 @@ function rqSetCamp(v){
 // ── 요청 카드 HTML (간소화 리스트 행) ─────────────────────────────
 function rqBuildCard(r){
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납',lostret:'🔎 분실건 반납',work:'🧑‍💼 업무 신청'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
@@ -9745,7 +9745,7 @@ function rqShowPopup(id){
   var r = (_rqCases||[]).find(function(c){return c.id===id;});
   if(!r) return;
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납',lostret:'🔎 분실건 반납',work:'🧑‍💼 업무 신청'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
