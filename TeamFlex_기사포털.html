@@ -8498,7 +8498,7 @@ function pgRequest(){
     {k:'return', lbl:'&#x21A9;&#xFE0F; 반품 이관'},
     {k:'dup',    lbl:'&#x1F501; 이중 출고'},
     {k:'scan',   lbl:'&#x1F5D1;&#xFE0F; 스캔대기 삭제'},
-    {k:'lost',   lbl:'&#x1F50D; 분실 처리'},
+    {k:'lost',   lbl:'&#x1F50D; 분실건 처리요청'},
     {k:'pretake',lbl:'&#x1F4E5; 전취건 반납'},
     {k:'lostret',lbl:'&#x1F50E; 분실건 반납'},
     {k:'work',   lbl:'&#x1F9D1;&#x200D;&#x1F4BC; 업무신청'}
@@ -8554,7 +8554,7 @@ async function rqLoadSettings(){
 // 요청 종류 선택 게이트: 파손·라우트변경은 '안내 팝업 1회' 후 진입, 나머지는 바로 진입.
 function rqSwitchTab(k){
   if(k === _rqTab) return;
-  if(k === 'damage' || k === 'route'){ rqShowNotice(k); return; }
+  if(k === 'damage' || k === 'route' || k === 'pretake' || k === 'lostret'){ rqShowNotice(k); return; }
   _rqSelectTab(k);
 }
 function _rqSelectTab(k){
@@ -8573,21 +8573,26 @@ function rqBackToLanding(){
   if(mc){ mc.innerHTML=pgRequest(); rqRenderBody(); }
 }
 function rqLandingHtml(){
-  var types=[{k:'damage',e:'\u{1F4E6}',l:'\uD30C\uC190'},{k:'route',e:'\u{1F504}',l:'\uB77C\uC6B0\uD2B8 \uBCC0\uACBD'},
-             {k:'return',e:'\u21A9\uFE0F',l:'\uBC18\uD488 \uC774\uAD00'},{k:'dup',e:'\u{1F501}',l:'\uC774\uC911 \uCD9C\uACE0'},
-             {k:'scan',e:'\u{1F5D1}\uFE0F',l:'\uC2A4\uCE94\uB300\uAE30 \uC0AD\uC81C'},{k:'lost',e:'\u{1F50D}',l:'\uBD84\uC2E4 \uCC98\uB9AC'},
-             {k:'pretake',e:'\u{1F4E5}',l:'전취건 반납'},{k:'lostret',e:'\u{1F50E}',l:'분실건 반납'},
-             {k:'work',e:'\u{1F9D1}\u200D\u{1F4BC}',l:'\uC5C5\uBB34\uC2E0\uCCAD'}];
+  var _b='border-radius:10px;font-size:13px;font-weight:700;padding:13px 4px;text-align:center;cursor:pointer';
+  var _blue='border:2px solid #b3d4f5;background:#eaf2fd;color:#1565c0';
+  var _green='border:2px solid #c5e1a5;background:#eef7e8;color:#558b2f';
+  var _red='border:2px solid #f1a9a9;background:#fff0f0;color:#c0392b';
+  var main=[{k:'damage',e:'📦',l:'파손'},{k:'route',e:'🔄',l:'라우트 변경'},
+            {k:'return',e:'↩️',l:'반품 이관'},{k:'dup',e:'🔁',l:'이중 출고'},
+            {k:'scan',e:'🗑️',l:'스캔대기 삭제'},{k:'lost',e:'🔍',l:'분실건 처리요청'}];
   var grid='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px">';
-  types.forEach(function(t){
-    var span=(t.k==='work')?';grid-column:span 2':'';
-    grid+='<button onclick="rqSwitchTab(\''+t.k+'\')" style="border:2px solid #c5cae9;border-radius:10px;background:#fff;color:#3949ab;font-size:13px;font-weight:700;padding:13px 4px;text-align:center;cursor:pointer'+span+'">'+t.e+' '+t.l+'</button>';
-  });
+  main.forEach(function(t){ grid+='<button onclick="rqSwitchTab(\''+t.k+'\')" style="'+_b+';'+_blue+'">'+t.e+' '+t.l+'</button>'; });
+  grid+='<button onclick="rqSwitchTab(\'work\')" style="'+_b+';'+_green+';grid-column:span 2">🧑‍💼 업무신청</button>';
   grid+='</div>';
+  grid+='<div style="display:flex;align-items:center;gap:8px;margin:13px 2px 10px"><div style="flex:1;height:1px;background:#f1c4c0"></div><span style="font-size:11px;font-weight:800;color:#c0392b;background:#fff0f0;border:1px solid #f1a9a9;padding:3px 12px;border-radius:11px;white-space:nowrap">📥 반납 처리 요청</span><div style="flex:1;height:1px;background:#f1c4c0"></div></div>';
+  grid+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px">'+
+    '<button onclick="rqSwitchTab(\'pretake\')" style="'+_b+';'+_red+'">📥 전취건 반납</button>'+
+    '<button onclick="rqSwitchTab(\'lostret\')" style="'+_b+';'+_red+'">🔎 분실건 반납</button>'+
+  '</div>';
   return '<div style="background:#f8f9ff;border:1px solid #d7dbf0;border-radius:12px;padding:18px 14px;margin-bottom:12px;text-align:center">'+
-    '<div style="font-size:30px;margin-bottom:6px">\uD83D\uDD90</div>'+
-    '<div style="font-size:14px;font-weight:700;color:#283593;line-height:1.55">\uD76C\uB9DD\uD558\uC2DC\uB294 \uC5C5\uBB34 \uC694\uCCAD\uC744 \uB20C\uB7EC\uC8FC\uC2DC\uBA74<br>\uC9C4\uD589\uC744 \uB3C4\uC640\uB4DC\uB9AC\uACA0\uC2B5\uB2C8\uB2E4.</div>'+
-    '<div style="font-size:11.5px;color:#5c6bc0;line-height:1.6;border-top:1px dashed #c5cae9;padding-top:9px;margin-top:10px">\uD83D\uDCE6 <b>\uD30C\uC190\uAC74</b>\uC740 \uC6B4\uC1A1\uC7A5 / \uC0C1\uD488 \uC804\uCCB4 / \uD30C\uC190 \uBD80\uC704 \uC0AC\uC9C4\uC744 \uAF2D \uCCA8\uBD80\uD574\uC8FC\uC138\uC694.</div>'+
+    '<div style="font-size:30px;margin-bottom:6px">🖐</div>'+
+    '<div style="font-size:14px;font-weight:700;color:#283593;line-height:1.55">희망하시는 업무 요청을 눌러주시면<br>진행을 도와드리겠습니다.</div>'+
+    '<div style="font-size:11.5px;color:#5c6bc0;line-height:1.6;border-top:1px dashed #c5cae9;padding-top:9px;margin-top:10px">📦 <b>파손건</b>은 운송장 / 상품 전체 / 파손 부위 사진을 꼭 첨부해주세요.</div>'+
   '</div>'+grid;
 }
 function rqShowNotice(type){
@@ -8613,6 +8618,14 @@ function rqNoticeCard(type){
         '</div>'+
         '<div style="background:#fffde7;border:1px solid #fff59d;border-radius:9px;padding:10px 12px;font-size:12px;color:#7a6500;line-height:1.6">\u26A0\uFE0F \uC704 \uC0AC\uC9C4\uC774 <b>\uD544\uC218</b>\uC785\uB2C8\uB2E4. \uC870\uAC74\uC5D0 \uB9DE\uCD94\uC5B4 \uCD2C\uC601\uD558\uC9C0 \uC54A\uC73C\uBA74 <b>\uD30C\uC190 \uCC98\uB9AC\uAC00 \uBD88\uAC00</b>\uD558\uBA70, \uC7AC\uCD2C\uC601\uC758 \uBC88\uAC70\uB85C\uC6C0\uC774 \uC788\uC73C\uB2C8 \uAF2D \uC870\uAC74\uB300\uB85C \uCD2C\uC601\uD574\uC8FC\uC138\uC694.</div>'+
         '<button onclick="rqNoticeOk(\'damage\')" style="margin-top:14px;width:100%;padding:12px;background:#e53935;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">\uD655\uC778</button>'+
+      '</div>';
+  } else if(type==='pretake' || type==='lostret'){
+    var _rt=(type==='pretake')?'📥 전취건 반납':'🔎 분실건 반납';
+    inner='<div style="background:#e07a6f;color:#fff;padding:13px 16px;font-size:15px;font-weight:700;text-align:center">'+_rt+'</div>'+
+      '<div style="padding:16px">'+
+        '<div style="background:#fff5f5;border:1px solid #f1c4c0;border-radius:9px;padding:12px 13px;font-size:12.5px;color:#5a2a26;line-height:1.7">반납 누락이 자주 발생하고 있기 때문에<br><b>팀즈에 기록을 남기기 위함</b>입니다.<br><br>캠프 반납 시 <b>사진 촬영</b>까지 해주시면<br>가장 정확한 반납 처리가 진행됩니다.</div>'+
+        '<div style="background:#fffde7;border:1px solid #fff59d;border-radius:9px;padding:10px 12px;font-size:12px;color:#7a6500;line-height:1.6;margin-top:10px">※ 피해를 막기 위함이니 <b>꼭 기록을 남겨주시기</b> 바랍니다.</div>'+
+        '<button onclick="rqNoticeOk(\''+type+'\')" style="margin-top:14px;width:100%;padding:12px;background:#e07a6f;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">확인</button>'+
       '</div>';
   } else {
     inner='<div style="background:#3949ab;color:#fff;padding:13px 16px;font-size:15px;font-weight:700;text-align:center">\uD83D\uDD04 \uB77C\uC6B0\uD2B8(\uC11C\uBE0C) \uBCC0\uACBD \uC548\uB0B4</div>'+
