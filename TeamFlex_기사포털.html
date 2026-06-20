@@ -1278,8 +1278,8 @@ function canEditSched(){if(!CU)return false;var cfg=getCfg();var p=cfg.schedPerm
 function canWriteAnn(){if(!CU)return false;var cfg=getCfg();var p=cfg.annPerm||['admin','leader'];if(p.indexOf('admin')>=0&&CU.role==='admin')return true;if(p.indexOf('leader')>=0&&CU.role==='leader')return true;if(p.indexOf('sub')>=0&&CU.role==='sub')return true;return false;}
 function canEdit(){return canEditSched();}
 function canAnn(){return canWriteAnn();}
-function todStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
-function tomStr(){var d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function todStr(){return kstToday();}
+function tomStr(){var d=new Date(kstToday()+'T12:00:00+09:00');d.setDate(d.getDate()+1);return kstDateStr(d);}
 
 // ── WEEK HELPERS ──────────────────────────────────────────────────────
 function findCurWeek(){
@@ -3470,7 +3470,7 @@ function pgHome(){
       return '<div style="padding:9px 0;border-bottom:1px solid #f5f5f5;cursor:pointer" onclick="go(\'ab\')">'+
         (a.important?'<span class="imp-badge" style="margin-right:6px;vertical-align:middle">&#x2757; 중요</span>':'')+
         '<span style="font-size:13px;font-weight:600;color:#1a237e">'+a.title+'</span>'+
-        '<div style="font-size:11px;color:#aaa;margin-top:3px">'+a.author+' &middot; '+a.at.slice(0,10)+'</div></div>';
+        '<div style="font-size:11px;color:#aaa;margin-top:3px">'+a.author+' &middot; '+kstDateStr(a.at)+'</div></div>';
     }).join('');
     var annSection2='';
     if(recentAnns.length>0){
@@ -3615,7 +3615,7 @@ function pgHome(){
         (a.important?'<span class="imp-badge" style="margin-right:6px;vertical-align:middle">&#x2757; 중요</span>':'')+
         (isUnread?'<span style="display:inline-block;width:7px;height:7px;background:#e53935;border-radius:50%;margin-right:5px;vertical-align:middle"></span>':'')+
         '<span style="font-size:13px;font-weight:'+(isUnread?700:500)+';color:'+(isUnread?'#1a237e':'#333')+'">'+a.title+'</span>'+expStr+
-        '<div style="font-size:11px;color:#aaa;margin-top:3px">'+a.author+' &middot; '+a.at.slice(0,10)+'</div></div>';
+        '<div style="font-size:11px;color:#aaa;margin-top:3px">'+a.author+' &middot; '+kstDateStr(a.at)+'</div></div>';
     }).join('');
     annSection='<div class="card"><div class="ctit" style="display:flex;align-items:center;justify-content:space-between"><span>&#x1F4E2; 최근 공지사항</span><span style="font-size:11px;color:#aaa;cursor:pointer" onclick="go(\'nc\')">전체보기 &#x276F;</span></div>'+annItems+'</div>';
   }
@@ -3925,9 +3925,9 @@ function pgAnn(isAdmin){
     var expStr=a.expireAt?'<span style="font-size:11px;font-weight:800;color:#e65100;background:#fff3e0;border:1px solid #ffb74d;border-radius:5px;padding:1px 6px;margin-left:6px">&#x1F4C5;~'+new Date(a.expireAt).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'})+'</span>':'';
     return '<div class="ann-card'+(a.important?' imp':'')+'" onclick="openAnnView('+a.id+')">'+
       '<div class="ann-hdr">'+(a.important?'<span class="imp-badge">&#x2757; 중요</span>':'')+
-      '<div class="ann-title">'+(isUnread?'<b>':'<span style="color:#888">')+'['+a.at.slice(0,10)+'] '+a.title+(isUnread?'</b>':'</span>')+'</div>'+
+      '<div class="ann-title">'+(isUnread?'<b>':'<span style="color:#888">')+'['+kstDateStr(a.at)+'] '+a.title+(isUnread?'</b>':'</span>')+'</div>'+
       statBtn+cardBtns+'</div>'+
-      '<div class="ann-meta">'+a.author+' &middot; '+a.at.slice(0,10)+
+      '<div class="ann-meta">'+a.author+' &middot; '+kstDateStr(a.at)+
         '<span style="margin-left:10px;font-size:11px;color:'+(isUnread?'#e53935':'#aaa')+'">'+(isUnread?'● 미확인':'✓ 확인')+'</span>'+expStr+
       '</div></div>';
   }
@@ -3964,10 +3964,10 @@ function pgAnn(isAdmin){
       return '<div class="ann-card" style="opacity:0.45;filter:grayscale(0.5);border-left-color:#bdbdbd;cursor:default">'+
         '<div class="ann-hdr">'+
           (a.important?'<span class="imp-badge" style="opacity:0.5">⚠ 중요</span>':'')+
-          '<div class="ann-title"><span style="color:#aaa">['+a.at.slice(0,10)+'] '+a.title+'</span></div>'+
+          '<div class="ann-title"><span style="color:#aaa">['+kstDateStr(a.at)+'] '+a.title+'</span></div>'+
           cardBtns2+
         '</div>'+
-        '<div class="ann-meta" style="color:#bbb">'+a.author+' · '+a.at.slice(0,10)+
+        '<div class="ann-meta" style="color:#bbb">'+a.author+' · '+kstDateStr(a.at)+
           (isExp&&expDateStr?'<span style="margin-left:8px;font-size:11px;background:#eeeeee;color:#9e9e9e;padding:1px 7px;border-radius:8px">⏸ 만료 ('+expDateStr+')</span>':'<span style="margin-left:8px;font-size:11px;background:#fbe9e7;color:#e65100;padding:1px 7px;border-radius:8px">⛔비활성</span>')+
         '</div></div>';
     }).join('');
@@ -6740,7 +6740,7 @@ function mdSearchCases(val){
         var stC=stColor[st]||'#888';
         var cat=r.category||'오배송';
         var catC=catColor[cat]||'#888';
-        var dt=(r.occurred_at||r.created_at||'').slice(0,10);
+        var dt=kstDateStr(r.occurred_at||r.created_at);
         html+=
           '<div style="border:1px solid #e8e8e8;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:box-shadow .15s" '+
                'onmouseover="this.style.boxShadow=\'0 2px 8px rgba(0,0,0,.08)\'" '+
@@ -6995,11 +6995,37 @@ function mdRenderList(cases){
   var _reqDoneItems=[];
   if(_visReqs.length > 0){
     var todayStr2=kstToday();
+    // ── 예약 전송 대기: scheduled_at(한국시간)이 미래 + 아직 미발송 → 별도 초록 섹션(항상 표시) ──
+    var _reqReserved=_visReqs.filter(function(r){return r.teams_sent===false && r.payload && r.payload.scheduled_at && new Date(r.payload.scheduled_at).getTime()>Date.now();});
+    var _resvId={}; _reqReserved.forEach(function(r){_resvId[r.id]=true;});
     var todayReqs = _mdDateFilter==='today'
-      ? _visReqs.filter(function(r){return kstDateStr(r.created_at)===todayStr2 || r.status==='pending';})
-      : _visReqs;
+      ? _visReqs.filter(function(r){return !_resvId[r.id] && (kstDateStr(r.created_at)===todayStr2 || r.status==='pending');})
+      : _visReqs.filter(function(r){return !_resvId[r.id];});
     var _reqPend=todayReqs.filter(function(r){return r.status==='pending';});
     _reqDoneItems=todayReqs.filter(function(r){return r.status!=='pending';});   // 완료/반려 → 처리완료 섹션으로
+    if(_reqReserved.length>0){
+      html += '<div style="margin-bottom:12px;background:#e3f6ea;border:1px solid #9fdfb8;border-radius:12px;overflow:hidden">'+
+        '<div style="display:flex;align-items:center;gap:8px;padding:9px 14px">'+
+          '<span style="font-size:13px;font-weight:800;color:#1b7a43">&#x1F5D3;&#xFE0F; 예약 전송 대기</span>'+
+          '<span style="font-size:11px;background:#c4ecd2;color:#0f5e32;padding:2px 8px;border-radius:8px;font-weight:700">'+_reqReserved.length+'건</span>'+
+          '<span style="font-size:10px;color:#2e9e5b;margin-left:auto;font-weight:700">한국시간 예약</span></div>'+
+        '<div style="padding:0 10px 10px">'+
+        _reqReserved.slice().sort(function(a,b){return new Date(a.payload.scheduled_at)-new Date(b.payload.scheduled_at);}).map(function(r){
+          var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실',work:'🧑‍💼 업무신청'};
+          var _tl=_tm[r.type]||r.type;
+          var _cp=(r.payload&&r.payload.camp)?' ['+mdEsc(r.payload.camp)+']':'';
+          var _sdK=new Date(r.payload.scheduled_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+          var _desc=((r.requester_name||'')+' · '+(((r.payload&&r.payload.text)||'').replace(/\n/g,' '))).slice(0,40);
+          return '<div onclick="rqShowPopup('+r.id+')" style="background:#fff;border:1px solid #d5efdd;border-radius:8px;padding:9px 12px;margin-bottom:5px;cursor:pointer">'+
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+              '<span style="font-size:11px;font-weight:700;color:#1b7a43">'+_tl+'</span>'+
+              '<span style="font-size:11px;color:#2e7d57;font-weight:600">'+_cp+'</span>'+
+              '<span style="font-size:10px;font-weight:700;color:#1b7a43;background:#e3f6ea;padding:1px 7px;border-radius:8px">&#x23F3; '+mdEsc(_sdK)+' 예약</span></div>'+
+            '<div style="font-size:11px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+mdEsc(_desc)+'</div>'+
+          '</div>';
+        }).join('')+
+        '</div></div>';
+    }
     if(_reqPend.length > 0){
       html += '<div style="border-bottom:2px dashed #e8eaf6;margin-bottom:12px;padding-bottom:2px">'+
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'+
@@ -7036,11 +7062,11 @@ function mdRenderList(cases){
     // 날짜별 그룹핑 (오배송: occurred_at/created_at, 각종요청: created_at)
     var byDate={};
     completed.forEach(function(c){
-      var d=(c.occurred_at||c.created_at||'').slice(0,10)||'날짜 미상';
+      var d=kstDateStr(c.occurred_at||c.created_at)||'날짜 미상';
       (byDate[d]=byDate[d]||[]).push({k:'case',c:c});
     });
     _reqDoneItems.forEach(function(r){
-      var d=(r.created_at||'').slice(0,10)||'날짜 미상';
+      var d=kstDateStr(r.created_at)||'날짜 미상';
       (byDate[d]=byDate[d]||[]).push({k:'req',c:r});
     });
     var dates=Object.keys(byDate).sort().reverse(); // 최신 날짜 먼저
@@ -7157,7 +7183,7 @@ function mdMibaenaepGroupCard(drvName,groupCases,isAdmin,isLeader){
   var badgeCls={pending:'mb-red',rejected:'mb-blue',replied:'mb-orange',approved:'mb-green'}[topStatus]||'mb-red';
   var badgeTxt={pending:'미답변',rejected:'재요청',replied:'승인요청'}[topStatus]||'미답변';
   var driverTag=(isAdmin||isLeader)?'<span class="md-driver-tag">'+mdEsc(drvName)+'</span>':'';
-  var dateStr=mdEsc((groupCases[0].occurred_at||groupCases[0].created_at||'').slice(0,10));
+  var dateStr=mdEsc(kstDateStr(groupCases[0].occurred_at||groupCases[0].created_at));
   var waybillTags=groupCases.map(function(c){
     return '<span onclick="event.stopPropagation();mdOpenDetail('+c.id+')" style="display:inline-flex;align-items:center;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;padding:3px 10px;cursor:pointer;font-weight:600;margin:2px">'+mdWbShort(c.waybill_no)+'</span>';
   }).join('');
@@ -7194,7 +7220,7 @@ function mdCardHtml(c,isAdmin,isLeader){
     if(driverRead)rLines.push('<span style="font-size:10px;color:#43a047">✓ 기사확인</span>');
     if(rLines.length)readsHtml='<div style="margin-top:3px">'+rLines.join(' ')+'</div>';
   }
-  var dateStr=mdEsc(c.occurred_at||c.created_at.slice(0,10));
+  var dateStr=mdEsc(kstDateStr(c.occurred_at||c.created_at));
   return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'">'+
     '<div onclick="mdOpenDetail('+c.id+')" style="cursor:pointer">'+
       '<div class="md-top">'+
@@ -7653,7 +7679,7 @@ function mdOpenDetail(caseId){
   }
   if(!drvName)drvName=c.driver_id||'-';
   var dateStr='';
-  try{dateStr=(c.occurred_at||c.created_at||'').slice(0,10);}catch(e){dateStr='-';}
+  try{dateStr=kstDateStr(c.occurred_at||c.created_at);}catch(e){dateStr='-';}
   // 사진: Supabase URL + Teams 인라인 이미지 (Graph API 인증 포함)
   var photoSrcs=mdBuildImgSources(c);
   var photoHtml='';
@@ -7772,7 +7798,7 @@ function mdOpenDetail(caseId){
           if(!el2)return;
           var r=(res.data&&res.data[0]);
           if(r){
-            var dateStr=r.rejected_at?(' ('+r.rejected_at.slice(0,10)+')'):'';
+            var dateStr=r.rejected_at?(' ('+kstDateStr(r.rejected_at)+')'):'';
             el2.innerHTML=
               '<div style="font-weight:700;color:#e65100;margin-bottom:2px">'+(r.rejected_by?mdEsc(r.rejected_by)+' 팀장'+dateStr:'팀장')+' 재요청</div>'+
               '<div style="color:#555">'+mdEsc(r.rejection_reason||'재답변을 요청했습니다.')+'</div>';
@@ -7835,7 +7861,7 @@ async function mdLoadModalReply(caseId,isAdmin,isLeader){
   if(r.approved_by)actionHist+='<div style="font-size:10px;color:#43a047;margin-top:3px">✅ 승인: '+mdEsc(r.approved_by)+'</div>';
   if(r.rejected_by)actionHist+=
     '<div style="background:#fff3e0;border-left:3px solid #e65100;border-radius:6px;padding:6px 8px;margin-top:6px">'+
-      '<div style="font-size:10px;font-weight:700;color:#e65100">↩ 재요청: '+mdEsc(r.rejected_by)+(r.rejected_at?' ('+r.rejected_at.slice(0,10)+')':'')+'</div>'+
+      '<div style="font-size:10px;font-weight:700;color:#e65100">↩ 재요청: '+mdEsc(r.rejected_by)+(r.rejected_at?' ('+kstDateStr(r.rejected_at)+')':'')+'</div>'+
       (r.rejection_reason?'<div style="font-size:11px;color:#555;margin-top:2px">'+mdEsc(r.rejection_reason)+'</div>':'')+
     '</div>';
   if(r.edited_by)actionHist+='<div style="font-size:10px;color:#1565c0;margin-top:2px">✏️ 수정: '+mdEsc(r.edited_by)+'</div>';
@@ -9904,7 +9930,7 @@ async function loadFreshStatus(){
     var snapDate=(snap.snapshot_at||'').slice(0,10);
 
     // ── 00시 기준 초기화 ──────────────────────────────────────────
-    var _todayStr=(function(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
+    var _todayStr=kstToday();
     if(snapDate&&snapDate!==_todayStr){
       html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>오늘 신선 현황 없음<br><span style="font-size:11px;color:#999">수량 체크 실행 후 자동으로 업데이트됩니다<br>(매일 00시 기준으로 초기화됩니다)</span></p></div>';
       mc.innerHTML=html.replace('__ADMIN_BAR__','');
