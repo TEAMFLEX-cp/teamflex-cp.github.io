@@ -6996,7 +6996,7 @@ function mdRenderList(cases){
   if(_visReqs.length > 0){
     var todayStr2=kstToday();
     // ── 예약 전송 대기: scheduled_at(한국시간)이 미래 + 아직 미발송 → 별도 초록 섹션(항상 표시) ──
-    var _reqReserved=_visReqs.filter(function(r){return r.teams_sent===false && r.payload && r.payload.scheduled_at && new Date(r.payload.scheduled_at).getTime()>Date.now();});
+    var _reqReserved=_visReqs.filter(function(r){return r.teams_sent===false && _rqReserveReleaseMs(r)>Date.now();});
     var _resvId={}; _reqReserved.forEach(function(r){_resvId[r.id]=true;});
     var todayReqs = _mdDateFilter==='today'
       ? _visReqs.filter(function(r){return !_resvId[r.id] && (kstDateStr(r.created_at)===todayStr2 || r.status==='pending');})
@@ -7010,11 +7010,11 @@ function mdRenderList(cases){
           '<span style="font-size:11px;background:#c4ecd2;color:#0f5e32;padding:2px 8px;border-radius:8px;font-weight:700">'+_reqReserved.length+'건</span>'+
           '<span style="font-size:10px;color:#2e9e5b;margin-left:auto;font-weight:700">한국시간 예약</span></div>'+
         '<div style="padding:0 10px 10px">'+
-        _reqReserved.slice().sort(function(a,b){return new Date(a.payload.scheduled_at)-new Date(b.payload.scheduled_at);}).map(function(r){
+        _reqReserved.slice().sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at);}).map(function(r){
           var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실',work:'🧑‍💼 업무신청'};
           var _tl=_tm[r.type]||r.type;
           var _cp=(r.payload&&r.payload.camp)?' ['+mdEsc(r.payload.camp)+']':'';
-          var _sdK=new Date(r.payload.scheduled_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+          var _sdK=new Date(_rqReserveReleaseMs(r)).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
           var _desc=((r.requester_name||'')+' · '+(((r.payload&&r.payload.text)||'').replace(/\n/g,' '))).slice(0,40);
           return '<div onclick="rqShowPopup('+r.id+')" style="background:#fff;border:1px solid #d5efdd;border-radius:8px;padding:9px 12px;margin-bottom:5px;cursor:pointer">'+
             '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
@@ -8295,6 +8295,7 @@ function _kstParts(){var d=new Date(Date.now()+(new Date().getTimezoneOffset()*6
 function _gm(t){var p=(t||'00:00').split(':');return (+p[0])*60+(+p[1]);}
 function _inGate(){var s=_gm(_rqRouteGate.start),e=_gm(_rqRouteGate.end),n=_kstParts().min;return s===e?false:(s<e?(n>=s&&n<e):(n>=s||n<e));}
 function _fmtAmPm(t){var p=(t||'00:00').split(':');var h=+p[0];return (h<12?'오전 ':'오후 ')+((h%12)||12)+':'+(p[1]||'00');}
+function _rqReserveReleaseMs(r){if(!r||!r.payload||!r.payload.scheduled_at)return 0;var g=_rqRouteGate||{mode:'off'};if(g.mode!=='reserve')return 0;var dp=String(r.payload.scheduled_at).slice(0,10);var t=new Date(dp+'T'+(g.end||'07:55')+':00+09:00').getTime();return isNaN(t)?0:t;}
 function rqSetGateMode(m){var s=document.getElementById('rqg-start'),e=document.getElementById('rqg-end');if(s)_rqRouteGate.start=s.value||_rqRouteGate.start;if(e)_rqRouteGate.end=e.value||_rqRouteGate.end;_rqRouteGate.mode=m;if(typeof rqRenderBody==='function')rqRenderBody();}
 async function rqSaveGate(){var s=document.getElementById('rqg-start'),e=document.getElementById('rqg-end');if(s)_rqRouteGate.start=s.value||'00:00';if(e)_rqRouteGate.end=e.value||'07:55';if(sbClient){try{await sbClient.from('app_settings').upsert({key:'route_req_gate',value:JSON.stringify({mode:_rqRouteGate.mode,start:_rqRouteGate.start,end:_rqRouteGate.end})},{onConflict:'key'});if(typeof showToast==='function')showToast('🔄 라우트 요청 제어 저장됨',true);}catch(e2){if(typeof showToast==='function')showToast('저장 실패',false);}}}
 var _rqDmPhotos = [null, null, null];
@@ -8958,7 +8959,7 @@ function rqRouteForm(){
   var _gateAdmin=(CU&&CU.role==='admin')?('<div style="background:#f3f4ff;border:1.5px solid #c5cae9;border-radius:10px;padding:11px 12px;margin-bottom:12px"><div style="font-size:12px;font-weight:800;color:#283593;margin-bottom:8px">🔐 관리자 — 라우트 신청 시간제한 <span style="font-size:10px;color:#888;font-weight:400">(한국시간)</span></div><div style="display:flex;gap:6px;margin-bottom:9px">'+['off|끄기','time|시간제한','reserve|예약전송'].map(function(x){var k=x.split('|')[0],l=x.split('|')[1];var on=(_g.mode||'off')===k;return '<div onclick="rqSetGateMode(\''+k+'\')" style="flex:1;padding:7px 4px;border:2px solid '+(on?'#3949ab':'#c5cae9')+';border-radius:8px;background:'+(on?'#3949ab':'#fff')+';color:'+(on?'#fff':'#3949ab')+';font-size:11.5px;font-weight:700;text-align:center;cursor:pointer">'+l+'</div>';}).join('')+'</div><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#333;flex-wrap:wrap"><span style="font-weight:700">제한</span><input id="rqg-start" type="time" value="'+(_g.start||'00:00')+'" style="padding:4px 6px;border:1.5px solid #c5cae9;border-radius:6px;font-weight:700;color:#3949ab"><span>~</span><input id="rqg-end" type="time" value="'+(_g.end||'07:55')+'" style="padding:4px 6px;border:1.5px solid #c5cae9;border-radius:6px;font-weight:700;color:#3949ab"><span style="font-size:10px;color:#888">사이 신청 차단</span></div><button onclick="rqSaveGate()" style="margin-top:9px;width:100%;padding:8px;background:#3949ab;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">&#x1F4BE; 저장 (즉시 적용)</button></div>'):'';
   var btnClass = (ok&&!_blocked) ? (_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req') : '';
   var btnTxt = _rqAutoApprove ? '&#x26A1; 팀즈 전송' : '&#x1F4E4; 팀즈 전송 요청';
-  if(_g.mode==='reserve') btnTxt = '🗓 예약 신청';
+  if(_g.mode==='reserve' && _inG) btnTxt = '🗓 예약 신청';
   if(_blocked) btnTxt = '⏳ '+_fmtAmPm(_g.end)+' 이후 신청';
 
   return '<div class="rq-card">'+
