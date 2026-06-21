@@ -1071,7 +1071,7 @@ function sbSaveAnn(ann){
           if(idx>=0){anns[idx].sb_id=sid;localStorage.setItem('tfann',JSON.stringify(anns));}
           console.log('[sbSaveAnn] 저장완료 sb_id=',sid);
           // ★ 백그라운드 Push 알림 발송 (앱 꺼져있어도 울림)
-          sendPushToAll('📢 팀플 - '+(ann.title||'새 공지사항'), ann.content||ann.body||'새 공지가 등록됐습니다.', sid);
+          if(!isQuietHour())sendPushToAll('📢 팀플 - '+(ann.title||'새 공지사항'), ann.content||ann.body||'새 공지가 등록됐습니다.', sid);
         }
       }).catch(function(e){console.warn('sbSaveAnn insert',e);});
   }
@@ -1693,6 +1693,7 @@ function _nextPopup(){
 function kstToday(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
 function kstDateStr(d){var x=new Date(d);return isNaN(x.getTime())?'':x.toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
 function isQuietHour(){
+  try{ if(_featureControls&&_featureControls.pushHours){var _ph=_featureControls.pushHours;var _ps=parseInt(String(_ph.start||'07:00').slice(0,2));var _pe=parseInt(String(_ph.end||'22:00').slice(0,2));var _hh=new Date().getHours();var _al=(_ps<=_pe)?(_hh>=_ps&&_hh<_pe):(_hh>=_ps||_hh<_pe);return !_al;} }catch(e){}
   var cfg=getCfg();
   var qs=cfg.quietStart!==undefined?Number(cfg.quietStart):22;
   var qe=cfg.quietEnd!==undefined?Number(cfg.quietEnd):7;
@@ -4015,7 +4016,7 @@ function pgAnn(isAdmin){
     if(canEditAnn(a))cb+='<button onclick="event.stopPropagation();openAnnEdit('+a.id+')" style="background:none;border:none;color:#3949ab;font-size:12px;cursor:pointer;padding:2px 6px">&#x270F;</button>';
     var sb=canWriteAnn()?'<button onclick="event.stopPropagation();_openAnnUnreadWithLoader('+a.id+')" style="background:none;border:none;color:#1565c0;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">\uD83D\uDCCA\uD604\uD669</button>':'';
     var bodyHtml=(a.body||a.content||'').replace(/\n/g,'<br>');
-    return '<div onclick="toggleAnnExp('+a.id+')" style="background:#fafbfc;border:1px solid #e6eaee;border-radius:9px;padding:9px 11px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:7px">'+
+    return '<div onclick="openAnnView('+a.id+')" style="background:#fafbfc;border:1px solid #e6eaee;border-radius:9px;padding:9px 11px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:7px">'+
       '<span style="font-size:9px;font-weight:900;color:#2e5e0e;background:#9ccc65;border-radius:6px;padding:2px 6px;white-space:nowrap">\u2713 \uD655\uC778</span>'+
       '<span style="flex:1;font-size:12px;font-weight:700;color:#8a929a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">['+kstDateStr(a.at)+'] '+a.title+'</span>'+
       (rat?'<span style="font-size:9px;color:#b6bdc4;white-space:nowrap">'+rat+'</span>':'')+
@@ -4335,7 +4336,7 @@ function submitAnn(){
   var notifTitle='📢 팀플 - '+(imp?'[중요] ':'')+title;
   var notifBody=body.slice(0,80);
   playTpalm();
-  sendPushToAll(notifTitle,notifBody,a.id);
+  // (중복 제거) 푸시는 sbSaveAnn에서 1회만 발송
   // 미확인 공지 등록 + 10분 재알림
   _unreadAnnIds.push(a.id);
   startReminderTimer(notifTitle,notifBody);
@@ -6576,6 +6577,7 @@ function saveQuietHours(){
   var qs=parseInt(document.getElementById('quiet-start-sel').value);
   var qe=parseInt(document.getElementById('quiet-end-sel').value);
   var cfg=getCfg();cfg.quietStart=qs;cfg.quietEnd=qe;saveCfg(cfg);
+  try{if(sbClient){_featureControls=_featureControls||{};var _p2=function(n){return ('0'+n).slice(-2)+':00';};_featureControls.pushHours={start:_p2(qe),end:_p2(qs)};sbClient.from('app_settings').upsert({key:'feature_controls',value:JSON.stringify(_featureControls)},{onConflict:'key'}).then(function(){}).catch(function(){});}}catch(e){}
   var st=document.getElementById('quiet-status');
   if(st)st.textContent=isQuietHour()?'🔕 현재 알림 금지 시간 중':'🔔 현재 알림 허용 시간';
   showToast('✅ 알림 금지 시간 저장: '+String(qs).padStart(2,'0')+':00 ~ '+String(qe).padStart(2,'0')+':00',true);
