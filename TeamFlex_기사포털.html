@@ -252,6 +252,20 @@ table.dt td.r0{color:#888;white-space:nowrap}
 .ann-title{font-size:15px;font-weight:700;color:#1a1a1a;flex:1}
 .imp-badge{background:#ffebee;color:#e53935;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap}
 .ann-meta{font-size:11px;color:#aaa}
+/* ── 공지 효과 ── */
+@keyframes anfxY{0%,100%{box-shadow:0 0 2px 0 rgba(255,220,0,.55);transform:scale(1)}50%{box-shadow:0 0 13px 4px rgba(255,220,0,.95);transform:scale(1.05)}}
+@keyframes anfxO{0%,100%{box-shadow:0 0 2px 0 rgba(239,108,0,.5);transform:scale(1)}50%{box-shadow:0 0 12px 4px rgba(239,108,0,.9);transform:scale(1.05)}}
+@keyframes anfxP{0%,100%{box-shadow:0 0 2px 0 rgba(126,87,194,.5);transform:scale(1)}50%{box-shadow:0 0 12px 4px rgba(126,87,194,.9);transform:scale(1.05)}}
+@keyframes anfxG{0%,100%{box-shadow:0 0 2px 0 rgba(46,158,91,.5);transform:scale(1)}50%{box-shadow:0 0 12px 4px rgba(46,158,91,.9);transform:scale(1.05)}}
+@keyframes anfxB{0%,100%{box-shadow:0 0 2px 0 rgba(21,101,192,.45);transform:scale(1)}50%{box-shadow:0 0 12px 4px rgba(21,101,192,.85);transform:scale(1.05)}}
+@keyframes anfxT{0%,100%{box-shadow:0 0 2px 0 rgba(0,137,123,.5);transform:scale(1)}50%{box-shadow:0 0 12px 4px rgba(0,137,123,.85);transform:scale(1.05)}}
+@keyframes anfxSiren{0%,100%{background:#e53935;box-shadow:0 0 12px 4px rgba(229,57,53,.85)}50%{background:#1565c0;box-shadow:0 0 12px 4px rgba(21,101,192,.85)}}
+@keyframes anchBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes anchBub{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-3px) scale(1.03)}}
+@keyframes anchPt{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+.anfx-badge{display:inline-block;font-size:11px;font-weight:900;color:#fff;border-radius:7px;padding:3px 10px;margin-bottom:7px;transform-origin:left center}
+.ann-chip{font-size:12px;border:1.5px solid #cfd8dc;border-radius:15px;padding:5px 11px;color:#607d8b;cursor:pointer;font-weight:700;white-space:nowrap}
+.ann-chip.on{color:#fff;border-color:transparent}
 .ann-body{font-size:13px;color:#555;line-height:1.6;margin-top:8px;display:none}
 .ann-popup{background:#fff;border-radius:20px;padding:24px;max-width:400px;width:100%}
 /* ADMIN */
@@ -451,7 +465,7 @@ textarea.ann-input:focus{border-color:#1565c0}
     <div class="ann-popup" style="margin:auto">
       <div id="ann-popup-content"></div>
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button class="btn-p" style="flex:1.6" onclick="annConfirmRead()">&#x1F4D6; 읽고 숙지함</button>
+        <button class="btn-p" style="flex:1.6" onclick="annGoBoard()">&#x1F4D6; 보러가기</button>
         <button style="flex:1;background:#fff;color:#666;border:1.5px solid #ddd;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer" onclick="annJustClose()">닫기</button>
       </div>
     </div>
@@ -570,7 +584,7 @@ textarea.ann-input:focus{border-color:#1565c0}
       <div class="mt">&#x1F4E2; 공지사항 작성</div>
       <div class="fg"><label>제목</label><input type="text" id="ann-title-inp" placeholder="공지 제목"></div>
       <div class="fg"><label>내용</label><textarea class="ann-input" id="ann-body-inp" placeholder="공지 내용을 입력하세요..."></textarea></div>
-      <div class="checkbox-row" id="ann-imp-row" style="display:none"><input type="checkbox" id="ann-imp"><label for="ann-imp">&#x2757; 중요 공지 — 최상단 고정 (팀장·관리자 전용)</label></div>
+      <div class="checkbox-row" id="ann-imp-row" style="display:none"><input type="checkbox" id="ann-imp"><label for="ann-imp">&#x2757; 중요 공지 — 최상단 고정 (팀장·관리자 전용)</label></div><div class="fg" style="margin-top:10px"><label style="font-size:13px;font-weight:700;color:#333;margin-bottom:7px;display:block">✨ 효과 <span style="font-size:11px;color:#888;font-weight:400">(접속 팝업·목록에서 강조)</span></label><div id="ann-fx-chips" style="display:flex;flex-wrap:wrap;gap:6px"><span class="ann-chip on" data-fx="" data-col="#607d8b" data-on="#607d8b" data-tx="#fff" onclick="annPickFx(this)" style="background:#607d8b;color:#fff">없음</span><span class="ann-chip" data-fx="siren" data-col="#e53935" data-on="#e53935" data-tx="#fff" onclick="annPickFx(this)" style="color:#e53935;border-color:#e53935">🚨 경광등</span><span class="ann-chip" data-fx="important" data-col="#caa200" data-on="#ffe600" data-tx="#d50000" onclick="annPickFx(this)" style="color:#caa200;border-color:#caa200">❗ 중요!</span><span class="ann-chip" data-fx="urgent" data-col="#ef6c00" data-on="#ef6c00" data-tx="#fff" onclick="annPickFx(this)" style="color:#ef6c00;border-color:#ef6c00">⚠️ 긴급</span><span class="ann-chip" data-fx="mustread" data-col="#7e57c2" data-on="#7e57c2" data-tx="#fff" onclick="annPickFx(this)" style="color:#7e57c2;border-color:#7e57c2">📌 필독</span><span class="ann-chip" data-fx="nw" data-col="#2e9e5b" data-on="#2e9e5b" data-tx="#fff" onclick="annPickFx(this)" style="color:#2e9e5b;border-color:#2e9e5b">✨ NEW</span><span class="ann-chip" data-fx="update" data-col="#1565c0" data-on="#1565c0" data-tx="#fff" onclick="annPickFx(this)" style="color:#1565c0;border-color:#1565c0">💫 앱업데이트</span><span class="ann-chip" data-fx="bar" data-col="#00897b" data-on="#00897b" data-tx="#fff" onclick="annPickFx(this)" style="color:#00897b;border-color:#00897b">📋 컬러바</span></div><input type="hidden" id="ann-effect" value=""></div>
       <div class="fg" style="margin-top:10px">
         <label style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px;display:block">📅 노출 기간 <span style="color:#e53935">*</span> <span style="font-size:11px;color:#888;font-weight:400">(기간 만료 후 자동 숨김)</span></label>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -846,6 +860,7 @@ async function syncFromSupabase(){
             content:a.body||a.content||'',
             author:a.author||'관리자',
             important:a.pinned||false,
+            effect:a.effect||'',
             at:a.created_at,
             expireAt:resolvedExpire,
             expireDays:(ex?ex.expireDays:null)||null,
@@ -857,10 +872,10 @@ async function syncFromSupabase(){
         // [공지 읽음 v2] 내가 읽은 공지 목록을 announcement_reads에서 로드 → 카드 미확인 판정 정확화
         if(CU&&(CU.id||CU.name)){
           try{
-            var _mr=await sbClient.from('announcement_reads').select('announcement_id').eq('reader_id',String(CU.id||CU.name));
+            var _mr=await sbClient.from('announcement_reads').select('announcement_id,read_at').eq('reader_id',String(CU.id||CU.name));
             if(_mr&&!_mr.error&&_mr.data){
               window._annReadMine=window._annReadMine||{};
-              _mr.data.forEach(function(x){window._annReadMine[String(x.announcement_id)]=true;});
+              _mr.data.forEach(function(x){var _k=String(x.announcement_id);window._annReadMine[_k]=true;if(x.read_at){var _dt=new Date(x.read_at);window._annReadAtMine[_k]=(_dt.getMonth()+1)+'/'+_dt.getDate()+' '+('0'+_dt.getHours()).slice(-2)+':'+('0'+_dt.getMinutes()).slice(-2);}});
             }
           }catch(_eMR){ }
         }
@@ -1039,7 +1054,7 @@ function sbSaveDriver(d){
 function sbSaveAnn(ann){
   if(!sbClient||!ann)return;
   var obj={title:ann.title||'',body:ann.content||ann.body||'',
-           author:ann.author||'관리자',pinned:ann.important||false,
+           author:ann.author||'관리자',pinned:ann.important||false,effect:ann.effect||null,
            expire_at:ann.expireAt||null};
   if(ann.sb_id){
     // 기존 Supabase 레코드 업데이트
@@ -3369,23 +3384,80 @@ function go(tab){
 
 // ── ANNOUNCE POPUP ────────────────────────────────────────────────────
 var ANN_QUEUE=[];var ANN_IDX=0;
+// ── [공지 효과] 설정 + 헬퍼 ──────────────────────────────────────────
+var ANN_FX={
+  siren:{e:'\uD83D\uDEA8',l:'\uAE34\uAE09\uACF5\uC9C0',bg:'#ffe9ec',bd:'#f1a0aa',tc:'#c0392b',col:'#e53935',siren:true},
+  important:{e:'\u2757',l:'\uC911\uC694!',bg:'#fffde0',bd:'#ffd600',tc:'#9a6b00',col:'#ffe600',bt:'#d50000',anim:'anfxY'},
+  urgent:{e:'\u26A0\uFE0F',l:'\uAE34\uAE09',bg:'#fff3e6',bd:'#ffb074',tc:'#bf4d00',col:'#ef6c00',anim:'anfxO'},
+  mustread:{e:'\uD83D\uDCCC',l:'\uD544\uB3C5',bg:'#f4eefc',bd:'#cebbe9',tc:'#6a1b9a',col:'#7e57c2',anim:'anfxP'},
+  nw:{e:'\u2728',l:'NEW',bg:'#eafaf2',bd:'#a5d6c0',tc:'#2e7d32',col:'#2e9e5b',anim:'anfxG'},
+  update:{e:'\uD83D\uDCAB',l:'\uC571 \uC5C5\uB370\uC774\uD2B8',bg:'#eef5ff',bd:'#a9c7f5',tc:'#1565c0',col:'#1565c0',anim:'anfxB'},
+  bar:{e:'\uD83D\uDCCB',l:'\uC548\uB0B4',bg:'#e0f2f1',bd:'#80cbc4',tc:'#00796b',col:'#00897b',anim:'anfxT'}
+};
+var ANN_FX_ORDER=['siren','important','urgent','mustread','nw','update','bar'];
+var ANN_CHARS=['\uD83D\uDC3B','\uD83D\uDC27','\uD83D\uDC30','\uD83D\uDC31','\uD83D\uDC36','\uD83E\uDD8A','\uD83D\uDC3C','\uD83D\uDC28','\uD83E\uDDD1','\uD83D\uDC69','\uD83D\uDC76','\uD83E\uDDD2','\uD83D\uDC2F','\uD83E\uDD81'];
+function annChar(){return ANN_CHARS[Math.floor(Math.random()*ANN_CHARS.length)];}
+function annFxBadge(fx){
+  if(!fx) return '';
+  if(fx.siren) return '<span class="anfx-badge" style="animation:anfxSiren .9s infinite">\uD83D\uDEA8 \uAE34\uAE09\uACF5\uC9C0</span>';
+  var bd=(fx.bt?'border:1px solid #ffd000;text-shadow:0 1px 0 rgba(255,255,255,.5);':'');
+  return '<span class="anfx-badge" style="background:'+fx.col+';color:'+(fx.bt||'#fff')+';'+bd+'animation:'+fx.anim+' 1.3s infinite">'+fx.e+' '+fx.l+'</span>';
+}
+window._annReadAtMine = window._annReadAtMine || {};
+function annReadAt(a){ var k=String((a&&(a.sb_id||a.id))||''); return window._annReadAtMine[k]||''; }
+function annPickFx(el){
+  var box=document.getElementById('ann-fx-chips'); if(!box)return;
+  [].forEach.call(box.children,function(c){c.classList.remove('on');c.style.background='';c.style.color=(c.getAttribute('data-col')||'#607d8b');});
+  el.classList.add('on'); el.style.background=(el.getAttribute('data-on')||'#37474f'); el.style.color=(el.getAttribute('data-tx')||'#fff');
+  var inp=document.getElementById('ann-effect'); if(inp)inp.value=(el.getAttribute('data-fx')||'');
+}
+function annResetFx(){
+  var box=document.getElementById('ann-fx-chips'); if(!box)return;
+  [].forEach.call(box.children,function(c,i){var on=(i===0);c.classList.toggle('on',on);c.style.background=(on?'#607d8b':'');c.style.color=(on?'#fff':(c.getAttribute('data-col')||'#607d8b'));});
+  var inp=document.getElementById('ann-effect'); if(inp)inp.value='';
+}
 function checkUnreadAnns(impOnly, chainCb){
   // If popup already open, don't interrupt
   if(document.getElementById('ann-popup').style.display!=='none')return;
   // chainCb가 명시적으로 전달된 경우에만 덮어씀 (탭 이동 등의 자동 호출로 콜백이 사라지는 버그 방지)
   if(chainCb !== undefined) _annChainCb=chainCb;
+  if(window._annPopupDismissed){ if(_annChainCb){var _cbx=_annChainCb;_annChainCb=null;setTimeout(_cbx,50);} return; }
   var anns=getAnns().filter(function(a){return !isAnnExpired(a)&&!a.disabled;});
   ANN_QUEUE=anns.filter(function(a){
-    var unread=(!a.readBy||a.readBy.indexOf(CU.name)<0);
+    var unread=!_annIsReadByMe(a);
     return impOnly?(unread&&a.important):unread;
   });
   ANN_IDX=0;
   if(ANN_QUEUE.length>0){
-    showNextAnn();
+    annShowUnreadList();
   } else {
     // 공지 없으면 바로 다음 단계로
     if(_annChainCb){var cb=_annChainCb;_annChainCb=null;setTimeout(cb,100);}
   }
+}
+function annShowUnreadList(){
+  var un=ANN_QUEUE, ch=annChar();
+  var rows=un.map(function(a){
+    var fx=(a.effect&&ANN_FX[a.effect])?ANN_FX[a.effect]:null;
+    var col=fx?fx.col:'#90a4ae', emo=fx?fx.e:'\uD83D\uDCE2';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f7f9fa;border:1px solid #eceff1;border-left:4px solid '+col+';border-radius:9px;margin-bottom:6px"><span style="font-size:14px">'+emo+'</span><span style="font-size:13px;font-weight:800;color:#37474f">'+a.title+'</span></div>';
+  }).join('');
+  document.getElementById('ann-popup-content').innerHTML=
+    '<div style="text-align:center">'+
+      '<div style="display:inline-block;position:relative;background:#fff3c4;border:2px solid #ffd54f;border-radius:14px;padding:6px 14px;font-size:13.5px;font-weight:900;color:#e65100;animation:anchBub 1.9s ease-in-out infinite">\uD83D\uDCE2 \uACF5\uC9C0 \uC77D\uC5B4!!<span style="position:absolute;left:30%;bottom:-8px;width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:8px solid #ffd54f"></span></div>'+
+      '<div style="display:flex;align-items:flex-end;justify-content:center;gap:2px;margin-top:6px"><span style="font-size:50px;line-height:1;animation:anchBob 2s ease-in-out infinite">'+ch+'</span><span style="font-size:27px;margin-bottom:8px;animation:anchPt 1s ease-in-out infinite">\uD83D\uDC49</span><div style="text-align:center;margin-bottom:5px"><div style="background:#fff;border:2px solid #8d6e63;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:900;color:#5d4037">\uD83D\uDCCB \uACF5\uC9C0</div><div style="width:4px;height:15px;background:#8d6e63;margin:0 auto;border-radius:0 0 2px 2px"></div></div></div>'+
+      '<div style="font-size:16px;font-weight:800;color:#263238;margin-top:7px">\uD655\uC778 \uC548 \uD55C \uACF5\uC9C0 <span style="color:#e53935">'+un.length+'</span>\uAC1C</div>'+
+      '<div style="font-size:11px;color:#90a4ae;margin:2px 0 11px">\uC81C\uBAA9\uB9CC \uBA3C\uC800 \uD655\uC778\uD558\uC138\uC694</div>'+
+    '</div>'+
+    '<div style="text-align:left;max-height:38vh;overflow-y:auto">'+rows+'</div>';
+  document.getElementById('ann-popup').style.display='';
+}
+function annGoBoard(){
+  window._annPopupDismissed=true;
+  var p=document.getElementById('ann-popup'); if(p)p.style.display='none';
+  ANN_QUEUE=[]; ANN_IDX=0;
+  try{ go('nc'); }catch(e){}
+  if(_annChainCb){var cb=_annChainCb;_annChainCb=null;setTimeout(cb,150);}
 }
 function showNextAnn(){
   if(ANN_IDX>=ANN_QUEUE.length){closeAnnPopup();return;}
@@ -3434,6 +3506,7 @@ function annConfirmRead(){
   if(_annChainCb){var cb=_annChainCb;_annChainCb=null;setTimeout(cb,200);}
 }
 function annJustClose(){
+  window._annPopupDismissed=true;
   var p=document.getElementById('ann-popup'); if(p)p.style.display='none';
   ANN_QUEUE=[]; ANN_IDX=0;
   if(_annChainCb){var cb=_annChainCb;_annChainCb=null;setTimeout(cb,150);}
@@ -3923,12 +3996,13 @@ function pgAnn(isAdmin){
     // 관리자/팀장: 확인 현황 버튼
     var statBtn=canWriteAnn()?'<button onclick="event.stopPropagation();_openAnnUnreadWithLoader('+a.id+')" style="background:none;border:none;color:#1565c0;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">📊현황</button>':'';
     var expStr=a.expireAt?'<span style="font-size:11px;font-weight:800;color:#e65100;background:#fff3e0;border:1px solid #ffb74d;border-radius:5px;padding:1px 6px;margin-left:6px">&#x1F4C5;~'+new Date(a.expireAt).toLocaleDateString('ko-KR',{month:'2-digit',day:'2-digit'})+'</span>':'';
-    return '<div class="ann-card'+(a.important?' imp':'')+'" onclick="openAnnView('+a.id+')">'+
-      '<div class="ann-hdr">'+(a.important?'<span class="imp-badge">&#x2757; 중요</span>':'')+
-      '<div class="ann-title">'+(isUnread?'<b>':'<span style="color:#888">')+'['+kstDateStr(a.at)+'] '+a.title+(isUnread?'</b>':'</span>')+'</div>'+
+    var _fx=(a.effect&&ANN_FX[a.effect])?ANN_FX[a.effect]:null; var _cs='',_bt='',_tcol=''; if(!isUnread){_cs='background:#fafbfc;border:1px solid #e6eaee;border-left:4px solid #cfd8dc';var _rat=annReadAt(a);_bt='<span class="anfx-badge" style="background:#9ccc65;color:#2e5e0e">✓ 확인'+(_rat?' · '+_rat:'')+'</span>';_tcol='#9aa3ab';} else if(_fx){_cs='background:'+_fx.bg+';border:2px solid '+_fx.bd+';border-left:'+(a.effect==='bar'?'6px solid #00897b':('2px solid '+_fx.bd));_bt=annFxBadge(_fx);_tcol=_fx.tc;}
+    return '<div class="ann-card'+(a.important?' imp':'')+'" style="'+_cs+'" onclick="openAnnView('+a.id+')">'+_bt+
+      '<div class="ann-hdr">'+((!_bt&&a.important)?'<span class="imp-badge">&#x2757; 중요</span>':'')+
+      '<div class="ann-title" style="'+(_tcol?'color:'+_tcol+';font-weight:800':'')+'">'+'['+kstDateStr(a.at)+'] '+a.title+'</div>'+
       statBtn+cardBtns+'</div>'+
       '<div class="ann-meta">'+a.author+' &middot; '+kstDateStr(a.at)+
-        '<span style="margin-left:10px;font-size:11px;color:'+(isUnread?'#e53935':'#aaa')+'">'+(isUnread?'● 미확인':'✓ 확인')+'</span>'+expStr+
+        (isUnread?'<span style="margin-left:10px;font-size:11px;color:#e53935">● 미확인</span>':'')+expStr+
       '</div></div>';
   }
 
@@ -4230,7 +4304,8 @@ function submitAnn(){
   var btn=document.querySelector('#ann-write-modal .btn-p');
   if(btn){btn.disabled=true;btn.textContent='저장 중...';}
   var anns=getAnns();
-  var a={id:Date.now(),title:title,body:body,important:imp,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name],expireAt:expireAt,expireDays:expireDays};
+  var _eff=(document.getElementById('ann-effect')||{}).value||'';
+  var a={id:Date.now(),title:title,body:body,important:imp,effect:_eff,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name],expireAt:expireAt,expireDays:expireDays};
   anns.push(a);saveAnns(anns);
   // 로컬 알림 + 전체 Push 발송
   var notifTitle='📢 팀플 - '+(imp?'[중요] ':'')+title;
@@ -4241,7 +4316,7 @@ function submitAnn(){
   _unreadAnnIds.push(a.id);
   startReminderTimer(notifTitle,notifBody);
   document.getElementById('ann-title-inp').value='';document.getElementById('ann-body-inp').value='';
-  document.getElementById('ann-imp').checked=false;
+  document.getElementById('ann-imp').checked=false;try{annResetFx();}catch(e){}
   setTimeout(function(){_annSubmitting=false;if(btn){btn.disabled=false;btn.textContent='공지 올리기';}},3000);
   closeAnnWrite();go(CU.role==='admin'?'ab':'nc');updateNavDots();
 }
