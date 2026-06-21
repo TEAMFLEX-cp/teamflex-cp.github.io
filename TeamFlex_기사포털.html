@@ -4199,14 +4199,16 @@ async function showAnnUnread(annId, view){
   // [v2] 실시간 조회: announcement_reads(1인1행, ID) + 구버전 read_by(이름) 둘 다 합쳐 판정
   var sbReadBy=[];     // 읽은 사람 '이름'들 (v2 reader_name + 구버전 read_by)
   var readerIds=[];    // 읽은 사람 'ID'들 (v2)
+  var readAtMap={};    // 확인 시각: 'id:<id>' / 'nm:<name>' → 'M/D HH:MM'
   var sbId=a.sb_id||a.id;
   if(sbClient){
     try{
-      var rr=await sbClient.from('announcement_reads').select('reader_id,reader_name').eq('announcement_id', isNaN(Number(sbId))?sbId:Number(sbId));
+      var rr=await sbClient.from('announcement_reads').select('reader_id,reader_name,read_at').eq('announcement_id', isNaN(Number(sbId))?sbId:Number(sbId));
       if(rr&&!rr.error&&rr.data){
         rr.data.forEach(function(x){
           if(x.reader_id)readerIds.push(String(x.reader_id));
           if(x.reader_name&&sbReadBy.indexOf(x.reader_name)<0)sbReadBy.push(x.reader_name);
+          if(x.read_at){var _d=new Date(x.read_at);var _s=(_d.getMonth()+1)+'/'+_d.getDate()+' '+('0'+_d.getHours()).slice(-2)+':'+('0'+_d.getMinutes()).slice(-2);if(x.reader_id)readAtMap['id:'+String(x.reader_id)]=_s;if(x.reader_name)readAtMap['nm:'+x.reader_name]=_s;}
         });
       }
     }catch(eR){}
@@ -4271,8 +4273,9 @@ async function showAnnUnread(annId, view){
     }else{
       html+='<div style="overflow-y:auto;max-height:calc(60vh - 240px);border:1px solid #c8e6c9;border-radius:10px">';
       read.forEach(function(d,i){
+        var _rat=readAtMap['id:'+String(d.id)]||readAtMap['nm:'+d.name]||'';
         html+='<div style="padding:9px 13px;font-size:13px;background:'+(i%2===0?'#fff':'#f9fff9')+';border-bottom:1px solid #e8f5e9;display:flex;align-items:center;justify-content:space-between">'+
-          '<span style="color:#555">'+d.name+'</span>'+
+          '<span style="color:#555">'+d.name+(_rat?' <span style="font-size:10px;color:#9e9e9e;font-weight:500">'+_rat+'</span>':'')+'</span>'+
           '<span style="font-size:11px;color:#fff;background:#81c784;padding:2px 8px;border-radius:8px">'+(roleMap[d.role]||'기사')+'</span></div>';
       });
       html+='</div>';
@@ -9857,21 +9860,33 @@ function rqShowResponsePopup(r){
   ov.onclick=function(e){ if(e.target===ov) rqCloseResponsePopup(); };
   document.body.appendChild(ov);
 }
+// 요청자가 답글 팝업을 '본' 것을 서버(payload.resp_seen_at)에도 기록 → 기기/저장소와 무관하게 1회만 표시.
+function _rqMarkRespSeen(r){
+  try{
+    if(!r||r.id==null) return;
+    if(!r.payload||typeof r.payload!=='object') r.payload={};
+    if(!r.payload.resp_seen_at){
+      r.payload.resp_seen_at=new Date().toISOString();   // 로컬 즉시 반영
+      if(sbClient){ sbClient.from('requests').update({payload:r.payload}).eq('id',r.id).then(function(){}).catch(function(){}); }
+    }
+  }catch(e){}
+}
 function rqCheckNewResponses(){
   if(!CU||!CU.name) return;
-  var seen=[]; try{ seen=JSON.parse(localStorage.getItem('rqRespSeen')||'[]'); }catch(e){ seen=[]; }
+  var seen=[]; try{ seen=JSON.parse(localStorage.getItem('rqRespSeen')||'[]').map(String); }catch(e){ seen=[]; }
   var now=Date.now();
   var mine=(_rqCases||[]).filter(function(r){
     if(r.requester_name!==CU.name) return false;
     if(r.teams_response_status!=='responded'||!r.teams_response_text) return false;
-    if(seen.indexOf(r.id)>=0) return false;
+    if(r.payload && r.payload.resp_seen_at) return false;   // [서버 확인기록] 이미 본 응답 → 제외(기기 무관)
+    if(seen.indexOf(String(r.id))>=0) return false;          // [로컬 확인기록] 문자열 정규화 비교(숫자/문자 불일치 방지)
     var t=r.teams_responded_at?new Date(r.teams_responded_at).getTime():0;
-    return (now-t) < 10*60*1000; // 최근 10분 이내 응답만 팝업 (오래된 건 제외)
+    return (now-t) < 10*60*1000; // 최근 10분 이내 응답만 팝업 (반복은 위 확인기록으로 차단)
   });
   if(!mine.length) return;
   mine.sort(function(a,b){ return new Date(b.teams_responded_at||0)-new Date(a.teams_responded_at||0); });
   rqShowResponsePopup(mine[0]);
-  mine.forEach(function(r){ if(seen.indexOf(r.id)<0) seen.push(r.id); });
+  mine.forEach(function(r){ if(seen.indexOf(String(r.id))<0) seen.push(String(r.id)); _rqMarkRespSeen(r); });
   try{ localStorage.setItem('rqRespSeen', JSON.stringify(seen.slice(-300))); }catch(e){}
 }
 
