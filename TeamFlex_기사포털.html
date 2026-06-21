@@ -877,6 +877,7 @@ async function syncFromSupabase(){
               window._annReadMine=window._annReadMine||{};
               _mr.data.forEach(function(x){var _k=String(x.announcement_id);window._annReadMine[_k]=true;if(x.read_at){var _dt=new Date(x.read_at);window._annReadAtMine[_k]=(_dt.getMonth()+1)+'/'+_dt.getDate()+' '+('0'+_dt.getHours()).slice(-2)+':'+('0'+_dt.getMinutes()).slice(-2);}});
             }
+            window._annReadsLoaded=true;
           }catch(_eMR){ }
         }
       } else {
@@ -3413,6 +3414,21 @@ function annFxBadge(fx){
 }
 window._annReadAtMine = window._annReadAtMine || {};
 function annReadAt(a){ var k=String((a&&(a.sb_id||a.id))||''); return window._annReadAtMine[k]||''; }
+// [읽음 v2] 서버 announcement_reads(1인1행 읽음기록)를 _annReadMine/_annReadAtMine로 로드.
+//   성공·실패 무관하게 _annReadsLoaded=true (실패 시 기존 동작으로 degrade, 무한루프 방지).
+async function _annLoadMyReads(){
+  try{
+    if(sbClient&&CU&&(CU.id||CU.name)){
+      var _mr=await sbClient.from('announcement_reads').select('announcement_id,read_at').eq('reader_id',String(CU.id||CU.name));
+      if(_mr&&!_mr.error&&_mr.data){
+        window._annReadMine=window._annReadMine||{};
+        window._annReadAtMine=window._annReadAtMine||{};
+        _mr.data.forEach(function(x){var _k=String(x.announcement_id);window._annReadMine[_k]=true;if(x.read_at){var _dt=new Date(x.read_at);window._annReadAtMine[_k]=(_dt.getMonth()+1)+'/'+_dt.getDate()+' '+('0'+_dt.getHours()).slice(-2)+':'+('0'+_dt.getMinutes()).slice(-2);}});
+      }
+    }
+  }catch(e){ }
+  window._annReadsLoaded=true;
+}
 function annPickFx(el){
   var box=document.getElementById('ann-fx-chips'); if(!box)return;
   [].forEach.call(box.children,function(c){c.classList.remove('on');c.style.background='';c.style.color=(c.getAttribute('data-col')||'#607d8b');});
@@ -3430,6 +3446,12 @@ function checkUnreadAnns(impOnly, chainCb){
   // chainCb가 명시적으로 전달된 경우에만 덮어씀 (탭 이동 등의 자동 호출로 콜백이 사라지는 버그 방지)
   if(chainCb !== undefined) _annChainCb=chainCb;
   if(window._annPopupDismissed){ if(_annChainCb){var _cbx=_annChainCb;_annChainCb=null;setTimeout(_cbx,50);} return; }
+  // [버그수정] 서버 읽음기록(announcement_reads)이 아직 로딩 전이면 먼저 로드 후 재평가.
+  //   팝업이 로딩 전에 떠서 '이미 읽은 공지'를 안읽음으로 잘못 띄우던 타이밍 문제 차단.
+  if(!window._annReadsLoaded && sbClient && CU && (CU.id||CU.name)){
+    _annLoadMyReads().then(function(){ checkUnreadAnns(impOnly); });
+    return;
+  }
   var anns=getAnns().filter(function(a){return !isAnnExpired(a)&&!a.disabled;});
   ANN_QUEUE=anns.filter(function(a){
     var unread=!_annIsReadByMe(a);
