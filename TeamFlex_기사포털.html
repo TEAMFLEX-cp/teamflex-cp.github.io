@@ -2201,8 +2201,15 @@ window.addEventListener('popstate',function(e){
   if(CUR_TAB==='rq'&&typeof _rqTab!=='undefined'&&_rqTab){
     rqBackToLanding();window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;
   }
-  // 팝업들 닫기
-  var popups=['ann-popup','kw-popup','fr-kw-popup','md-kw-popup'];
+  // 공지 팝업은 표시값이 ''(빈문자열)이라 아래 일반 루프 조건(display!=='')에서 누락됨.
+  //   → '닫기' 버튼과 동일하게(annJustClose) 먼저 처리: 닫고 _annPopupDismissed 설정 + 체인 진행.
+  var _annP=document.getElementById('ann-popup');
+  if(_annP && _annP.style.display!=='none'){
+    if(typeof annJustClose==='function'){annJustClose();}else{_annP.style.display='none';}
+    window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;
+  }
+  // 나머지 팝업들 닫기 (이들은 display='flex'로 표시되어 아래 조건으로 정상 감지)
+  var popups=['kw-popup','fr-kw-popup','md-kw-popup'];
   for(var pi=0;pi<popups.length;pi++){
     var pop=document.getElementById(popups[pi]);
     if(pop&&pop.style.display!=='none'&&pop.style.display!==''){
