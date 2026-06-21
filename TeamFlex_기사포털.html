@@ -1071,7 +1071,14 @@ function sbSaveAnn(ann){
           if(idx>=0){anns[idx].sb_id=sid;localStorage.setItem('tfann',JSON.stringify(anns));}
           console.log('[sbSaveAnn] 저장완료 sb_id=',sid);
           // ★ 백그라운드 Push 알림 발송 (앱 꺼져있어도 울림)
-          if(!isQuietHour())sendPushToAll('📢 팀플 - '+(ann.title||'새 공지사항'), ann.content||ann.body||'새 공지가 등록됐습니다.', sid);
+          // 야간(KST 알림금지)엔 즉시 발송 대신 night_queue 적재 → 폴러가 07시에 묶어 발송
+          var _annTitle='📢 팀플 - '+(ann.title||'새 공지사항');
+          var _annBody=ann.content||ann.body||'새 공지가 등록됐습니다.';
+          if(!isQuietHour()){
+            sendPushToAll(_annTitle, _annBody, sid);
+          }else{
+            try{sbClient.from('night_queue').insert({recipient_name:null,recipient_role:null,category:'공지',title:_annTitle,body:String(_annBody).slice(0,300),data:{ann_id:sid}}).then(function(){}).catch(function(e){console.warn('night_queue 공지 적재 실패',e);});}catch(_nq){}
+          }
         }
       }).catch(function(e){console.warn('sbSaveAnn insert',e);});
   }
@@ -1693,11 +1700,11 @@ function _nextPopup(){
 function kstToday(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
 function kstDateStr(d){var x=new Date(d);return isNaN(x.getTime())?'':x.toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
 function isQuietHour(){
-  try{ if(_featureControls&&_featureControls.pushHours){var _ph=_featureControls.pushHours;var _ps=parseInt(String(_ph.start||'07:00').slice(0,2));var _pe=parseInt(String(_ph.end||'22:00').slice(0,2));var _hh=new Date().getHours();var _al=(_ps<=_pe)?(_hh>=_ps&&_hh<_pe):(_hh>=_ps||_hh<_pe);return !_al;} }catch(e){}
+  try{ if(_featureControls&&_featureControls.pushHours){var _ph=_featureControls.pushHours;var _ps=parseInt(String(_ph.start||'07:00').slice(0,2));var _pe=parseInt(String(_ph.end||'22:00').slice(0,2));var _hh=Math.floor(_kstParts().min/60);var _al=(_ps<=_pe)?(_hh>=_ps&&_hh<_pe):(_hh>=_ps||_hh<_pe);return !_al;} }catch(e){}
   var cfg=getCfg();
   var qs=cfg.quietStart!==undefined?Number(cfg.quietStart):22;
   var qe=cfg.quietEnd!==undefined?Number(cfg.quietEnd):7;
-  var h=new Date().getHours();
+  var h=Math.floor(_kstParts().min/60);
   if(qs>qe){return h>=qs||h<qe;}
   return h>=qs&&h<qe;
 }
@@ -8423,7 +8430,7 @@ function _kstParts(){var d=new Date(Date.now()+(new Date().getTimezoneOffset()*6
 function _gm(t){var p=(t||'00:00').split(':');return (+p[0])*60+(+p[1]);}
 function _inGate(){var s=_gm(_rqRouteGate.start),e=_gm(_rqRouteGate.end),n=_kstParts().min;return s===e?false:(s<e?(n>=s&&n<e):(n>=s||n<e));}
 function _fmtAmPm(t){var p=(t||'00:00').split(':');var h=+p[0];return (h<12?'오전 ':'오후 ')+((h%12)||12)+':'+(p[1]||'00');}
-function _rqReserveReleaseMs(r){if(!r||!r.payload||!r.payload.scheduled_at)return 0;var g=_rqRouteGate||{mode:'off'};if(g.mode!=='reserve')return 0;var dp=String(r.payload.scheduled_at).slice(0,10);var t=new Date(dp+'T'+(g.end||'07:55')+':00+09:00').getTime();return isNaN(t)?0:t;}
+function _rqReserveReleaseMs(r){if(!r||!r.payload||!r.payload.scheduled_at)return 0;var s=String(r.payload.scheduled_at);var t=new Date(s).getTime();if(isNaN(t)){var g=_rqRouteGate||{};t=new Date(s.slice(0,10)+'T'+(g.end||'07:55')+':00+09:00').getTime();}return isNaN(t)?0:t;}
 function rqSetGateMode(m){var s=document.getElementById('rqg-start'),e=document.getElementById('rqg-end');if(s)_rqRouteGate.start=s.value||_rqRouteGate.start;if(e)_rqRouteGate.end=e.value||_rqRouteGate.end;_rqRouteGate.mode=m;if(typeof rqRenderBody==='function')rqRenderBody();}
 async function rqSaveGate(){var s=document.getElementById('rqg-start'),e=document.getElementById('rqg-end');if(s)_rqRouteGate.start=s.value||'00:00';if(e)_rqRouteGate.end=e.value||'07:55';if(sbClient){try{await sbClient.from('app_settings').upsert({key:'route_req_gate',value:JSON.stringify({mode:_rqRouteGate.mode,start:_rqRouteGate.start,end:_rqRouteGate.end})},{onConflict:'key'});if(typeof showToast==='function')showToast('🔄 라우트 요청 제어 저장됨',true);}catch(e2){if(typeof showToast==='function')showToast('저장 실패',false);}}}
 var _rqDmPhotos = [null, null, null];
