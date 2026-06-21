@@ -7294,6 +7294,32 @@ async function mdOpenCase(caseId){
   }catch(e){alert('오류: '+e.message);}
 }
 
+// ── 사진 핀치줌(팝업 전용) — 뷰포트 안 건드리고 사진만 확대/이동 ──────────
+function attachPinchZoom(img){
+  if(!img)return;
+  function apply(){img.style.transform='translate('+img._tx+'px,'+img._ty+'px) scale('+img._s+')';}
+  img._s=1;img._tx=0;img._ty=0;apply();              // 열 때마다 초기화
+  if(img._pz)return;                                  // 핸들러는 1회만 부착
+  img._pz=true;
+  img.style.touchAction='none';img.style.transformOrigin='center center';img.style.willChange='transform';
+  var d0=0,s0=1,mode=0,st=[0,0],lastTap=0;
+  function dist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
+  img.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){mode=2;d0=dist(e.touches);s0=img._s;e.preventDefault();}
+    else if(e.touches.length===1){
+      var now=Date.now();
+      if(now-lastTap<300){if(img._s>1){img._s=1;img._tx=0;img._ty=0;}else{img._s=2.5;}apply();e.preventDefault();}
+      lastTap=now;
+      if(img._s>1){mode=1;st=[e.touches[0].clientX-img._tx,e.touches[0].clientY-img._ty];e.preventDefault();}
+    }
+  },{passive:false});
+  img.addEventListener('touchmove',function(e){
+    if(mode===2&&e.touches.length===2){var d=dist(e.touches);img._s=Math.min(5,Math.max(1,s0*(d/d0)));if(img._s<=1){img._tx=0;img._ty=0;}apply();e.preventDefault();}
+    else if(mode===1&&e.touches.length===1&&img._s>1){img._tx=e.touches[0].clientX-st[0];img._ty=e.touches[0].clientY-st[1];apply();e.preventDefault();}
+  },{passive:false});
+  img.addEventListener('touchend',function(e){if(e.touches.length===0){if(img._s<=1){img._tx=0;img._ty=0;apply();}mode=0;}else if(e.touches.length===1){mode=1;st=[e.touches[0].clientX-img._tx,e.touches[0].clientY-img._ty];}},{passive:false});
+}
+
 // ── 사진 확대 뷰어 ────────────────────────────────────────────────────
 function mdViewPhoto(url){
   var existing=document.getElementById('md-photo-viewer');
@@ -7305,8 +7331,9 @@ function mdViewPhoto(url){
   div.innerHTML=
     '<button onclick="document.getElementById(\'md-photo-viewer\').remove()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:24px;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">✕</button>'+
     '<img src="'+url+'" style="max-width:96vw;max-height:88vh;border-radius:10px;object-fit:contain;box-shadow:0 4px 32px rgba(0,0,0,.5)" onclick="event.stopPropagation()" onerror="this.style.display=\'none\'">'+
-    '<div style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:12px">화면을 탭하면 닫힙니다</div>';
+    '<div style="color:rgba(255,255,255,0.5);font-size:12px;margin-top:12px">두 손가락으로 확대 · 탭하면 닫힘</div>';
   document.body.appendChild(div);
+  var _pzi=div.querySelector('img');if(_pzi)attachPinchZoom(_pzi);
 }
 
 // ── 오배송 상세 모달 ──────────────────────────────────────────────────
@@ -7995,7 +8022,7 @@ function pbToggle(key){var cur=getFeatureCtrl('pback',key);saveFeatureCtrl('pbac
 function pbSetMode(m){PB_CFG.mode=m;pbSaveCfg();pbRender();}
 async function pbSaveCfg(){try{await sbClient.from('app_settings').upsert({key:'pback_config',value:JSON.stringify(PB_CFG)},{onConflict:'key'});}catch(e){}}
 function pbSaveUrl(){var el=document.getElementById('pb-url');if(!el)return;PB_CFG.form_url=el.value.trim();PB_CFG.period=pbPeriod();pbSaveCfg();if(typeof showToast==='function')showToast('✔ 폼 URL 저장됨',true);pbRender();}
-function pbZoom(u){if(!u)return;document.getElementById('pb-zimg').src=u;document.getElementById('pb-zoom').classList.add('show');}
+function pbZoom(u){if(!u)return;var _im=document.getElementById('pb-zimg');_im.src=u;document.getElementById('pb-zoom').classList.add('show');attachPinchZoom(_im);}
 function pbCloseOv(){var o=document.getElementById('pb-ov');if(o)o.classList.remove('show');}
 function pbPicsHtml(it){
   var p1=it.photo_miss_url,p2=it.photo_deliver_url;
