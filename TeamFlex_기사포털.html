@@ -4006,6 +4006,26 @@ function pgAnn(isAdmin){
       '</div></div>';
   }
 
+  // 확인된 공지: 접힌 한 줄(제목만) — 탭하면 펼침
+  function renderCardRead(a){
+    var rat=annReadAt(a);
+    var cb='';
+    if(isAdm)cb+='<button onclick="event.stopPropagation();disableAnn('+a.id+')" style="background:none;border:none;color:#e65100;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">\u26D4\uBE44\uD65C\uC131</button>';
+    if(canDeleteAnn(a))cb+='<button onclick="event.stopPropagation();deleteAnn('+a.id+')" style="background:none;border:none;color:#c62828;font-size:12px;cursor:pointer;padding:2px 6px">&#x1F5D1;</button>';
+    if(canEditAnn(a))cb+='<button onclick="event.stopPropagation();openAnnEdit('+a.id+')" style="background:none;border:none;color:#3949ab;font-size:12px;cursor:pointer;padding:2px 6px">&#x270F;</button>';
+    var sb=canWriteAnn()?'<button onclick="event.stopPropagation();_openAnnUnreadWithLoader('+a.id+')" style="background:none;border:none;color:#1565c0;font-size:11px;cursor:pointer;padding:2px 5px;white-space:nowrap">\uD83D\uDCCA\uD604\uD669</button>':'';
+    var bodyHtml=(a.body||a.content||'').replace(/\n/g,'<br>');
+    return '<div onclick="toggleAnnExp('+a.id+')" style="background:#fafbfc;border:1px solid #e6eaee;border-radius:9px;padding:9px 11px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:7px">'+
+      '<span style="font-size:9px;font-weight:900;color:#2e5e0e;background:#9ccc65;border-radius:6px;padding:2px 6px;white-space:nowrap">\u2713 \uD655\uC778</span>'+
+      '<span style="flex:1;font-size:12px;font-weight:700;color:#8a929a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">['+kstDateStr(a.at)+'] '+a.title+'</span>'+
+      (rat?'<span style="font-size:9px;color:#b6bdc4;white-space:nowrap">'+rat+'</span>':'')+
+      '<span id="anncrt'+a.id+'" style="font-size:11px;color:#c0c7cd">&#x25B8;</span>'+
+    '</div>'+
+    '<div id="annexp'+a.id+'" style="display:none;background:#fafbfc;border:1px solid #e6eaee;border-top:none;border-radius:0 0 9px 9px;margin:-7px 0 6px;padding:9px 11px;font-size:11.5px;color:#7a838b;line-height:1.6">'+
+      bodyHtml+
+      ((sb||cb)?'<div style="margin-top:8px;display:flex;gap:4px;justify-content:flex-end;align-items:center">'+sb+cb+'</div>':'')+
+    '</div>';
+  }
   // 미확인/확인 분리 (활성 공지만)
   var unreadAnns=activeAnns.filter(function(a){return !_annIsReadByMe(a);});
   var readAnns=activeAnns.filter(function(a){return _annIsReadByMe(a);});
@@ -4020,7 +4040,7 @@ function pgAnn(isAdmin){
     }
     if(readAnns.length>0){
       sections+='<div style="display:flex;align-items:center;gap:8px;margin:16px 0 6px"><div style="flex:1;height:1px;background:#c8e6c9"></div><span style="font-size:11px;font-weight:700;color:#388e3c;background:#e8f5e9;padding:2px 10px;border-radius:10px;white-space:nowrap">&#x2705; 확인 '+readAnns.length+'건</span><div style="flex:1;height:1px;background:#c8e6c9"></div></div>';
-      sections+=readAnns.map(renderCard).join('');
+      sections+=readAnns.map(renderCardRead).join('');
     }
   }
 
@@ -4051,6 +4071,10 @@ function pgAnn(isAdmin){
   return (isAdmin?_featureBar('ann'):'')+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="stit" style="margin-bottom:0">공지사항</div>'+writeBtn+'</div>'+
     sections;
+}
+function toggleAnnExp(id){
+  var b=document.getElementById('annexp'+id), c=document.getElementById('anncrt'+id);
+  if(!b)return; var o=b.style.display!=='none'; b.style.display=o?'none':'block'; if(c)c.innerHTML=o?'\u25B8':'\u25BE';
 }
 function toggleExpiredAnns(){
   var w=document.getElementById('expiredAnnWrap'),c=document.getElementById('expAnnCaret');
