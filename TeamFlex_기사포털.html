@@ -7348,34 +7348,18 @@ function mdCardHtml(c,isAdmin,isLeader){
   var badgeCls={pending:'mb-red',rejected:'mb-blue',replied:'mb-orange',approved:'mb-green'}[c.status]||'mb-red';
   var badgeTxt={pending:'미답변',rejected:'재요청',replied:'승인요청',approved:'처리완료'}[c.status]||'미답변';
   var cat=c.category||(c.issue_content&&c.issue_content.indexOf('미반납')>=0?'미반납':c.issue_content&&c.issue_content.indexOf('오회수')>=0?'오회수':'오배송');
-  var catColor={'오배송':'#c62828','미반납':'#e65100','오회수':'#4527a0','기타':'#546e7a'}[cat]||'#c62828';
-  var catBadge='<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:12px;background:'+catColor+';color:#fff;letter-spacing:0.2px">'+cat+'</span>';
-  var driverTag=(isAdmin||isLeader)?'<span class="md-driver-tag">'+mdEsc(c.driver_name||c.driver_id)+'</span>':'';
-  var readsHtml='';
-  if((isAdmin||isLeader)&&c._reads&&c._reads.length>0){
-    var leaderReads=c._reads.filter(function(r){return r.reader_role==='leader'||r.reader_role==='admin';});
-    var driverRead=c._reads.find(function(r){return r.reader_name===(c.driver_name||'');});
-    var rLines=[];
-    if(leaderReads.length>0)rLines.push('<span style="font-size:10px;color:#7986cb">👁 '+leaderReads.map(function(r){return r.reader_name;}).join(', ')+'</span>');
-    if(driverRead)rLines.push('<span style="font-size:10px;color:#43a047">✓ 기사확인</span>');
-    if(rLines.length)readsHtml='<div style="margin-top:3px">'+rLines.join(' ')+'</div>';
-  }
-  var dateStr=mdEsc(kstDateStr(c.occurred_at||c.created_at));
-  return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'">'+
-    '<div onclick="mdOpenDetail('+c.id+')" style="cursor:pointer">'+
-      '<div class="md-top">'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
-            '<span class="md-badge '+badgeCls+'" id="md-badge-'+c.id+'">'+badgeTxt+'</span>'+
-            catBadge+
-            '<span style="font-size:11px;color:#bbb">'+dateStr+'</span>'+
-          '</div>'+
-          readsHtml+
-        '</div>'+
-        driverTag+
-        '<span style="font-size:11px;color:#bbb;margin-left:6px;flex-shrink:0">▶</span>'+
-      '</div>'+
-      '<div class="md-title">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
+  var catSty={'오배송':'background:#ffebee;color:#c62828','미반납':'background:#fff3e0;color:#e65100','오회수':'background:#ede7f6;color:#4527a0','기타':'background:#eceff1;color:#546e7a'}[cat]||'background:#ffebee;color:#c62828';
+  var drvName=mdEsc(c.driver_name||c.driver_id||'미지정');
+  var _ts=c.created_at||c.occurred_at, dtStr='';
+  if(_ts){var _d=new Date(_ts);if(!isNaN(_d.getTime())){var _k=new Date(_d.getTime()+(_d.getTimezoneOffset()*60000)+9*3600000);dtStr=(_k.getMonth()+1)+'.'+_k.getDate()+' · '+_k.getHours()+':'+('0'+_k.getMinutes()).slice(-2);}}
+  // [가로 한 줄 카드] 상태 · 기사명(큼직) · 날짜+시간 ····· 종류 · ▸ (클릭하면 mdOpenDetail 팝업에 전체)
+  return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'" onclick="mdOpenDetail('+c.id+')" style="cursor:pointer">'+
+    '<div style="display:flex;align-items:center;gap:8px;padding:10px 13px">'+
+      '<span class="md-badge '+badgeCls+'" id="md-badge-'+c.id+'" style="font-size:11px;padding:3px 9px;flex-shrink:0;line-height:1.3">'+badgeTxt+'</span>'+
+      '<span style="font-size:15px;font-weight:800;color:#1a237e;flex-shrink:0;white-space:nowrap">'+drvName+'</span>'+
+      '<span style="font-size:11px;color:#9e9e9e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+dtStr+'</span>'+
+      '<span style="flex-shrink:0;margin-left:auto;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;'+catSty+'">'+cat+'</span>'+
+      '<span style="flex-shrink:0;font-size:16px;color:#c5cae9;font-weight:700">›</span>'+
     '</div>'+
   '</div>';
 }
