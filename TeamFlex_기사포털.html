@@ -1711,13 +1711,14 @@ function _nextPopup(){
 function kstToday(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
 function kstDateStr(d){var x=new Date(d);return isNaN(x.getTime())?'':x.toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
 function isQuietHour(){
-  try{ if(_featureControls&&_featureControls.pushHours){var _ph=_featureControls.pushHours;var _ps=parseInt(String(_ph.start||'07:00').slice(0,2));var _pe=parseInt(String(_ph.end||'22:00').slice(0,2));var _hh=Math.floor(_kstParts().min/60);var _al=(_ps<=_pe)?(_hh>=_ps&&_hh<_pe):(_hh>=_ps||_hh<_pe);return !_al;} }catch(e){}
+  // 차단창 = [시작, 종료). 기본 22:00~06:59 차단(=07:00부터 허용). 관리자 설정(시작/종료)으로 조정 가능.
+  // 설정값(cfg) 단일소스 — 클라우드 허용창 의존 제거(야간 누수 방지). 폴러는 pushHours를 별도로 읽음(saveQuietHours가 동기화).
   var cfg=getCfg();
   var qs=cfg.quietStart!==undefined?Number(cfg.quietStart):22;
   var qe=cfg.quietEnd!==undefined?Number(cfg.quietEnd):7;
   var h=Math.floor(_kstParts().min/60);
-  if(qs>qe){return h>=qs||h<qe;}
-  return h>=qs&&h<qe;
+  if(qs===qe)return false;
+  return (qs>qe)?(h>=qs||h<qe):(h>=qs&&h<qe);
 }
 function sendNotif(title,body){
   var cfg=getCfg();
@@ -4369,6 +4370,7 @@ async function showAnnUnread(annId, view){
 // ── 미확인 인원에게만 알림 보내기 ────────────────────────────────────
 async function _pushToUnread(annId){
   if(!canWriteAnn()||!PUSH_EDGE_URL)return;
+  if(isQuietHour()){showToast('🔕 야간 알림 금지 시간입니다. 허용 시간(기본 07:00~22:00)에 발송하세요.',false);return;}
   var anns=getAnns();
   var a=anns.find(function(x){return String(x.id)===String(annId);});
   if(!a){showToast('공지를 찾을 수 없습니다.',false);return;}
@@ -5771,6 +5773,7 @@ async function sendSettleNotif(){
     if(btn){btn.disabled=false;btn.textContent='📲 정산 내역 알림 발송';btn.style.background='#f57c00';}
     return;
   }
+  if(isQuietHour()){if(statusEl)statusEl.textContent='🔕 야간 알림 금지 시간입니다(허용 시간에 발송).';if(btn){btn.disabled=false;btn.textContent='📲 정산 내역 알림 발송';btn.style.background='#f57c00';}return;}
   var sent=0;var noSub=0;var failed=0;
   for(var i=0;i<drivers.length;i++){
     var driverName=drivers[i];
@@ -8613,6 +8616,7 @@ function pbUnsubToggle(di){var el=document.getElementById('pb-unsub-d'+di);if(el
 async function pbNotifyPending(){
   if(!sbClient){alert('서버 연결이 필요합니다.');return;}
   if(!(CU&&CU.role==='admin')){alert('관리자만 가능합니다.');return;}
+  if(isQuietHour()){alert('🔕 야간 알림 금지 시간(기본 22:00~07:00)입니다.\n허용 시간에 발송해주세요.');return;}
   var btn=document.getElementById('pb-notify-btn');
   var byDrv={};
   (PB_ITEMS||[]).forEach(function(i){if(i.status==='pending'){var n=(i.driver_name||'').trim();if(n)byDrv[n]=(byDrv[n]||0)+1;}});
