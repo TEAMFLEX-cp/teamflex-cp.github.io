@@ -822,6 +822,7 @@ async function syncFromSupabase(){
         if(d.coupang_id)db[d.name].coupang_id=d.coupang_id;
         if(d.car_type)db[d.name].car_type=d.car_type;
         if(d.fuel_type)db[d.name].fuel_type=d.fuel_type;
+        if(d.birth_date)db[d.name].birth_date=d.birth_date;
         db[d.name].notif_ok=d.notif_ok||false;
         db[d.name].home_ok=d.home_ok||false;
         // pending 기사 수집 → 관리자 승인 목록에 반영
