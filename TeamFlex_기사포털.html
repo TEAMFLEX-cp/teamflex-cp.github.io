@@ -3621,11 +3621,11 @@ function _ftCard(){
   if(b.length===6){var yy=parseInt(b.slice(0,2)),yr=yy>30?1900+yy:2000+yy,mm=parseInt(b.slice(2,4)),dd=parseInt(b.slice(4,6)),ti=_FT_TTI[yr%12];sub=ti[1]+' '+ti[0]+'띠  ·  '+_ftSign(mm,dd);}
   else sub='오늘도 안전운전 화이팅 🚚';
   var seed=_ftHash(b+'|'+dkey+'|'+nm), wseed=_ftHash('wx|'+dkey);
-  var wx=_ftWeather(wseed), tt=_FT_TIMES[(seed>>14)%_FT_TIMES.length];
-  var haul=wx[0]+' '+wx[1]+(wx[2]?' '+wx[2]:'')+' — '+wx[3]+'! '+_FT_VOL[(seed>>2)%_FT_VOL.length]+' '+_FT_FIN[(seed>>5)%_FT_FIN.length].replace('{t}',tt);
-  var sc=3+(seed%3),fz=_FT_FORT[(seed>>3)%_FT_FORT.length],ln=(seed>>6)%45+1,co=_FT_COL[(seed>>9)%_FT_COL.length],di=_FT_DIR[(seed>>12)%_FT_DIR.length],ad=_FT_ADV[(seed>>15)%_FT_ADV.length];
-  var bz=2+((seed>>4)%4),lv=2+((seed>>17)%4),mn=2+((seed>>20)%4),ht=2+((seed>>23)%4);
-  var lvT=_FT_LOVE[(seed>>7)%_FT_LOVE.length],mnT=_FT_MONEY[(seed>>10)%_FT_MONEY.length],htT=_FT_HEALTH[(seed>>13)%_FT_HEALTH.length];
+  var wx=_ftWeather(wseed), tt=_FT_TIMES[(seed>>>14)%_FT_TIMES.length];
+  var haul=wx[0]+' '+wx[1]+(wx[2]?' '+wx[2]:'')+' — '+wx[3]+'! '+_FT_VOL[(seed>>>2)%_FT_VOL.length]+' '+_FT_FIN[(seed>>>5)%_FT_FIN.length].replace('{t}',tt);
+  var sc=3+(seed%3),fz=_FT_FORT[(seed>>>3)%_FT_FORT.length],ln=(seed>>>6)%45+1,co=_FT_COL[(seed>>>9)%_FT_COL.length],di=_FT_DIR[(seed>>>12)%_FT_DIR.length],ad=_FT_ADV[(seed>>>15)%_FT_ADV.length];
+  var bz=2+((seed>>>4)%4),lv=2+((seed>>>17)%4),mn=2+((seed>>>20)%4),ht=2+((seed>>>23)%4);
+  var lvT=_FT_LOVE[(seed>>>7)%_FT_LOVE.length],mnT=_FT_MONEY[(seed>>>10)%_FT_MONEY.length],htT=_FT_HEALTH[(seed>>>13)%_FT_HEALTH.length];
   function cr(e,l,so,tx){return '<div style="padding:8px 0;border-top:1px solid #f0f0f0"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#333">'+e+' '+l+'</span>'+_ftStars(so,12)+'</div><div style="font-size:12px;color:#777;line-height:1.45;margin-top:2px">'+tx+'</div></div>';}
   function cp(t,v){return '<div style="flex:1;text-align:center;background:#f5f5f7;border-radius:11px;padding:8px 4px"><div style="font-size:10px;color:#aaa">'+t+'</div><div style="font-size:14px;font-weight:800;color:#333;margin-top:2px">'+v+'</div></div>';}
   function cpc(t,v,x){return '<div style="flex:1;text-align:center;background:#f5f5f7;border-radius:11px;padding:8px 4px"><div style="font-size:10px;color:#aaa">'+t+'</div><div style="font-size:13px;font-weight:800;color:#333;margin-top:3px;display:flex;align-items:center;justify-content:center;gap:5px"><span style="width:11px;height:11px;border-radius:50%;background:'+x+'"></span>'+v+'</div></div>';}
@@ -3640,7 +3640,8 @@ function _ftCard(){
     '</div>';
 }
 function _ftBtnHTML(){return '<div class="ft-btn" onclick="openFortune()"><span class="ft-shine"></span><span class="ft-spark" style="top:8px;right:46px">✨</span><span class="ft-spark" style="bottom:10px;right:18px;animation-delay:.5s">⭐</span><span class="ft-spark" style="top:13px;right:92px;animation-delay:1s">✨</span><span class="ft-crys">🔮</span><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:800;line-height:1.2">오늘의 운세 보러가기</div><div style="font-size:12px;opacity:.92;margin-top:3px">탭! 물량·연애·금전·건강운까지 한 방에 ✨</div></div><span style="font-size:22px">›</span></div>';}
-function openFortune(){ if(document.getElementById('ft-pop'))return; var ov=document.createElement('div'); ov.id='ft-pop'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10400;display:flex;align-items:flex-start;justify-content:center;padding:12px;box-sizing:border-box;overflow-y:auto'; ov.onclick=function(e){if(e.target===ov)closeFortune();}; ov.innerHTML='<div style="width:100%;max-width:380px;margin:auto 0"><div style="border-radius:18px;overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.4)">'+_ftCard()+'</div><div onclick="closeFortune()" style="margin:11px auto 6px;width:120px;text-align:center;background:#fff;color:#333;border-radius:22px;padding:11px;font-size:14px;font-weight:700;cursor:pointer">닫기</div></div>'; document.body.appendChild(ov); try{if(typeof loadWeather==='function')loadWeather();}catch(e){} }
+function _ftSafe(){try{return _ftCard();}catch(e){return '<div style="background:#fff;padding:30px 18px;text-align:center;color:#888;font-size:13px">운세를 불러오지 못했어요 ㅠ 새로고침 후 다시 시도해주세요</div>';}}
+function openFortune(){ if(document.getElementById('ft-pop'))return; var ov=document.createElement('div'); ov.id='ft-pop'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10400;display:flex;align-items:flex-start;justify-content:center;padding:12px;box-sizing:border-box;overflow-y:auto'; ov.onclick=function(e){if(e.target===ov)closeFortune();}; ov.innerHTML='<div style="width:100%;max-width:380px;margin:auto 0"><div style="border-radius:18px;overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.4)">'+_ftSafe()+'</div><div onclick="closeFortune()" style="margin:11px auto 6px;width:120px;text-align:center;background:#fff;color:#333;border-radius:22px;padding:11px;font-size:14px;font-weight:700;cursor:pointer">닫기</div></div>'; document.body.appendChild(ov); try{if(typeof loadWeather==='function')loadWeather();}catch(e){} }
 function closeFortune(){var e=document.getElementById('ft-pop');if(e)e.remove();}
 
 function pgHome(){
