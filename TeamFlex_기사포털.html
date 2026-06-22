@@ -3620,7 +3620,7 @@ function _ftCard(){
   var sub;
   if(b.length===6){var yy=parseInt(b.slice(0,2)),yr=yy>30?1900+yy:2000+yy,mm=parseInt(b.slice(2,4)),dd=parseInt(b.slice(4,6)),ti=_FT_TTI[yr%12];sub=ti[1]+' '+ti[0]+'띠  ·  '+_ftSign(mm,dd);}
   else sub='오늘도 안전운전 화이팅 🚚';
-  var birthPrompt=(b.length!==6)?'<div style="margin:9px 0 2px;background:#f0f4ff;border:1px dashed #9fa8da;border-radius:11px;padding:10px 12px"><div style="font-size:12px;color:#3949ab;margin-bottom:6px">🎂 생년월일 넣으면 띠·별자리 운세까지 나와요!</div><div style="display:flex;gap:6px"><input id="ft-birth-in" maxlength="6" inputmode="numeric" placeholder="예: 850315" style="flex:1;padding:9px;border:1px solid #c5cae9;border-radius:8px;font-size:13px;min-width:0;box-sizing:border-box"><button onclick="saveFtBirth()" style="background:#3949ab;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">저장</button></div></div>':'';
+  var birthPrompt=(b.length!==6 && CU && CU.role==='admin')?'<div style="margin:9px 0 2px;background:#f0f4ff;border:1px dashed #9fa8da;border-radius:11px;padding:10px 12px"><div style="font-size:12px;color:#3949ab;margin-bottom:6px">🎂 생년월일 넣으면 띠·별자리 운세까지 나와요!</div><div style="display:flex;gap:6px"><input id="ft-birth-in" maxlength="6" inputmode="numeric" placeholder="예: 850315" style="flex:1;padding:9px;border:1px solid #c5cae9;border-radius:8px;font-size:13px;min-width:0;box-sizing:border-box"><button onclick="saveFtBirth()" style="background:#3949ab;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">저장</button></div></div>':'';
   var seed=_ftHash(b+'|'+dkey+'|'+nm), wseed=_ftHash('wx|'+dkey);
   var wx=_ftWeather(wseed), tt=_FT_TIMES[(seed>>>14)%_FT_TIMES.length];
   var haul=wx[0]+' '+wx[1]+(wx[2]?' '+wx[2]:'')+' — '+wx[3]+'! '+_FT_VOL[(seed>>>2)%_FT_VOL.length]+' '+_FT_FIN[(seed>>>5)%_FT_FIN.length].replace('{t}',tt);
@@ -3687,7 +3687,7 @@ function pgHome(){
         '<span style="font-size:17px;font-weight:800">&#x1F451; 관리자 님 &#x1F44F;&#x1F44F;</span>'+
       '</div>'+
       '</div>'+
-      adminWeatherCard+_ftBtnHTML()+adminSummary+annSection2;
+      adminWeatherCard+_ftBtnHTML()+adminSummary;
   }
 
   var today=todStr();var tom=tomStr();
@@ -3847,7 +3847,7 @@ function pgHome(){
       '</div>'+
     '</div>'+
     '</div>'+
-    weatherCard+_ftBtnHTML()+mdSection;
+    weatherCard+_ftBtnHTML();
 }
 // ── WEATHER ──────────────────────────────────────────────────────────
 var _weatherCache=null;var _weatherCacheDate='';var _hourlyOpen=[false,false];
@@ -6409,7 +6409,7 @@ function pgEmergencyContact(){
 }
 function _drvInfoChips(d){
   var chips='';
-  if(d.birth_date && (typeof canWriteAnn==='function'?canWriteAnn():false)){var _bd=String(d.birth_date).replace(/[^0-9]/g,'').slice(0,6);if(_bd.length===6)_bd=_bd.slice(0,2)+'.'+_bd.slice(2,4)+'.'+_bd.slice(4,6);chips+='<span style="font-size:10px;background:#f0f4ff;color:#3949ab;border:1px solid #c5cae9;border-radius:6px;padding:2px 7px;white-space:nowrap">🎂 '+_bd+'</span>';}
+  if(d.birth_date && (CU&&CU.role==='admin')){var _bd=String(d.birth_date).replace(/[^0-9]/g,'').slice(0,6);if(_bd.length===6)_bd=_bd.slice(0,2)+'.'+_bd.slice(2,4)+'.'+_bd.slice(4,6);chips+='<span style="font-size:10px;background:#f0f4ff;color:#3949ab;border:1px solid #c5cae9;border-radius:6px;padding:2px 7px;white-space:nowrap">🎂 '+_bd+'</span>';}
   if(d.car_type){var ct=String(d.car_type).trim();chips+='<span style="font-size:10px;background:#fce4ec;color:#880e4f;border:1px solid #f48fb1;border-radius:6px;padding:2px 7px;white-space:nowrap">🚐 '+ct+'</span>';}
   if(d.fuel_type){var ft=String(d.fuel_type).trim();var fc=ft==='EV'?'background:#e8f5e9;border:1px solid #81c784;color:#1b5e20':ft==='LPG'?'background:#fff3e0;border:1px solid #ffb74d;color:#e65100':'background:#e3f2fd;border:1px solid #64b5f6;color:#0d47a1';chips+='<span style="font-size:10px;'+fc+';border-radius:6px;padding:2px 7px;white-space:nowrap">⛽ '+ft+'</span>';}
   return chips?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 6px">'+chips+'</div>':'';
