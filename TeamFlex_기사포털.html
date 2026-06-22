@@ -3356,7 +3356,7 @@ async function refreshNavBadges(){
     try{ var pq; if(CU.role==='admin'){ pq=sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',pbPeriod()).eq('status','answered'); } else { pq=sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',pbPeriod()).eq('status','pending').eq('driver_name',CU.name); } var pr=await pq; if(pr&&typeof pr.count==='number')_nav.pb=pr.count; }catch(e){}
     var _td=(typeof kstToday==='function')?kstToday():_nowIso.slice(0,10);
     try{ var rr=await sbClient.from('round2_expected').select('shared_at').eq('shared_date',_td).order('shared_at',{ascending:false}).limit(1); if(rr&&rr.data&&rr.data.length){_nav.frLatest=rr.data[0].shared_at||'';if(_navSeen.fr2===undefined)_navSeen.fr2=_nav.frLatest;_nav.frNew=(_nav.frLatest>(_navSeen.fr2||''));}else{_nav.frNew=false;_nav.frLatest='';} }catch(e){}
-    try{ var fq=await sbClient.from('app_settings').select('value').eq('key','fresh_snapshot').limit(1); var rem=0; if(fq&&fq.data&&fq.data.length){var v=fq.data[0].value;var snap=(typeof v==='string')?JSON.parse(v):v;if(snap&&(snap.snapshot_at||'').slice(0,10)===_td&&snap.routes){var _mine=(CU.role!=='admin'&&CU.role!=='leader');var _mn=_mine?norm_name_js(CU.name||''):'';snap.routes.forEach(function(rt){if(_mine&&norm_name_js(rt.worker||'')!==_mn)return;rem+=(rt.scan||0)+Math.max(0,(rt.consignment||0)-(rt.scan||0)-(rt.completed||0)-(rt.undelivered||0));});}} _nav.frRemain=rem; }catch(e){}
+    try{ var fq=await sbClient.from('app_settings').select('value').eq('key','fresh_snapshot').limit(1); var rem=0; if(fq&&fq.data&&fq.data.length){var v=fq.data[0].value;var snap=(typeof v==='string')?JSON.parse(v):v;if(snap&&(snap.snapshot_at||'').slice(0,10)===_td&&snap.routes){var _mine=(CU.role!=='admin'&&CU.role!=='leader');var _mn=_mine?norm_name_js(CU.name||''):'';snap.routes.forEach(function(rt){if(_mine&&norm_name_js(rt.worker||'')!==_mn)return;rem+=(rt.scan||0);});}} _nav.frRemain=rem; }catch(e){}
     try{ var ms=await sbClient.from('monthly_stats').select('year,month'); if(ms&&ms.data&&ms.data.length){var mx=ms.data.reduce(function(m,r){var y=((r.year||0)*12+(r.month||0));return y>m?y:m;},0);_nav.stYm=String(mx);if(_navSeen.st_ym===undefined)_navSeen.st_ym=_nav.stYm;_nav.stNew=(mx>0&&_nav.stYm!==(_navSeen.st_ym||''));} }catch(e){}
   }
   _navSaveSeen();
@@ -10346,7 +10346,7 @@ async function loadFreshStatus(){
       var csg=0,scn=0,cmp=0,und=0,pdd=0;
       wRoutes.forEach(function(rt){csg+=rt.consignment||0;scn+=rt.scan||0;cmp+=rt.completed||0;und+=rt.undelivered||0;pdd+=rt.pdd_miss||0;});
       // 완료율: 완료/(완료+스캔) — 스캔=아직 배달 전 물량, fly.coupang.com 기준
-      var _totC=Math.max(csg,cmp+scn+und);var rate=_totC>0?Math.round((cmp+und)/_totC*1000)/10:0;
+      var _totC=cmp+scn+und;var rate=_totC>0?Math.round((cmp+und)/_totC*1000)/10:0;
       var hasMiss=wRoutes.some(_isPddMiss);
       // ✅ 신선완료 / 진행중 / PDD MISS 판정
       // 완료: 미배송=0 (위탁/스캔 수량 무관 — 위탁은 스캔되면 0으로 줄어들므로)
@@ -10354,7 +10354,7 @@ async function loadFreshStatus(){
       // 미스: 20시 이후 AND 미배송 < PDD miss  (미배송==PDD miss는 정상완료)
       // 완료: 미스 아님 AND 스캔=0 AND (미배송=0 OR 20시 이후 최종)
       var isPddMissCard=_isAfter20&&pdd>0&&und<pdd;
-      var _wtC=Math.max(0,csg-scn-cmp-und);var isCompleteCard=!isPddMissCard&&_wtC===0&&scn===0;
+      var isCompleteCard=!isPddMissCard&&scn===0;  // 완료=스캔0(반품 혼입 위탁 제외) — 20시前 검증된 방식
       var pfxAll=[],ps={};
       wRoutes.forEach(function(rt){(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!ps[pf]){ps[pf]=1;pfxAll.push(pf);}});});
       var routeLabel=pfxAll.join(', ')||'-';
@@ -10400,9 +10400,9 @@ async function loadFreshStatus(){
         '</tr></thead><tbody>';
       wRoutes.forEach(function(rt){
         var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0,sc=rt.scan||0;
-        var tot=Math.max(c,sc+cp+u);  // 총수량 = 버킷합(위탁+스캔+완료+미배송), consignment 오차 보정
-        var cRemain=Math.max(0,tot-sc-cp-u);  // 위탁 = 총수량 - 스캔 - 완료 - 미배송
-        var r=tot>0?Math.round((cp+u)/tot*1000)/10:0;  // 완료율: (완료+미배송)/총수량, 미배송=배송완료 동일취급
+        var tot=sc+cp+u;  // 총수량 = 배송 버킷만(스캔+완료+미배송) — consignment(반품/회수 혼입) 제외
+        var cRemain=0;  // 배송 위탁: consignment에 반품 섞여 신뢰불가 → 0 (완료판정은 스캔 기준)
+        var r=tot>0?Math.round((cp+u)/tot*1000)/10:0;  // 완료율: (완료+미배송)/총수량
         var miss=_isPddMiss(rt);
         var pfx2=[],ps2={};(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
         s+='<tr style="border-bottom:1px solid #f0f0f0'+(miss?';background:#fff3e0':'')+'">'  +
@@ -10417,8 +10417,8 @@ async function loadFreshStatus(){
         '</tr>';
       });
       s+='</tbody></table></div>';
-      var totCard=Math.max(csg,scn+cmp+und);  // 총수량 = 버킷합(consignment 오차 보정)
-      var csgRemain=Math.max(0,totCard-scn-cmp-und);  // 위탁 잔여 합계
+      var totCard=scn+cmp+und;  // 총수량 = 배송 버킷만(consignment/반품 제외)
+      var csgRemain=0;  // 배송 위탁 신뢰불가(반품 혼입) → 0
       s+='<div style="display:flex;border-top:1.5px solid #e8f5e9;padding:8px 0 10px 0">'+
         _fStat(totCard,'총수량','#1a237e')+_fStat(csgRemain,'위탁','#1b5e20')+_fStat(scn,'스캔','#555')+_fStat(cmp,'완료','#2e7d32')+
         _fStat(und,'미배송',und>0?'#e65100':'#888')+_fStat(pdd,'PDD Miss',pdd>0?'#c62828':'#888')+
@@ -10449,11 +10449,9 @@ async function loadFreshStatus(){
     // 진행중 기사 = 신선완료 조건에 해당하지 않는 기사
     // 완료: 스캔=0 AND 위탁=0 AND (미배송=0 OR 미배송=PDD miss) — 20시 전/후 모두 적용
     var incompleteW=allWorkers.filter(function(w){
-      var u=_wUnd(w),p=_wPdd(w),s=_wScn(w),cg=_wCsg(w);
-      var cm=workerGroups[w].reduce(function(a,rt){return a+(rt.completed||0);},0);
-      var wtR=Math.max(0,cg-s-cm-u);
+      var u=_wUnd(w),p=_wPdd(w),s=_wScn(w);
       var miss=_isAfter20&&p>0&&u<p;                 // 20시 이후 PDD miss>미배송 → 미스
-      var complete=!miss&&wtR===0&&s===0;            // 완료=위탁0&스캔0(시간/미배송 무관)
+      var complete=!miss&&s===0;                     // 완료=스캔0(반품 혼입 위탁 제외)
       return !complete;                              // 미완료(진행중/미스)만
     });
 
@@ -10475,7 +10473,7 @@ async function loadFreshStatus(){
       // 완료: 미배송=0 (위탁/스캔 수량 무관)
       // PDD Miss: 20시 이후 AND 미배송>0 AND 일부만 PDD miss
       var isPddMissFlag=_isAfter20&&pdd>0&&und<pdd;
-      var _wtR=Math.max(0,csg-scn-cmp-und);var isComplete=!isPddMissFlag&&_wtR===0&&scn===0;
+      var isComplete=!isPddMissFlag&&scn===0;  // 완료=스캔0(반품 혼입 위탁 제외)
       var routeLabel=_wRouteLabel(w);
       var detId='frdet_'+suffix+'_'+wi2;
       var statusBadge=isComplete
@@ -10485,7 +10483,7 @@ async function loadFreshStatus(){
           :(scn>0||csg>0)
             ?'<span style="color:#2e7d32;font-size:11px;font-weight:700;white-space:nowrap">&#x1F33F; 신선 배송중</span>'
             :'<span style="color:#2e7d32;font-size:11px;font-weight:700;white-space:nowrap">&#x1F33F; 신선 배송중</span>';
-      var _remain=Math.max(0,csg-scn-cmp-und)+scn;
+      var _remain=scn;  // 남은 = 스캔(손에 든 미배송분) — 위탁(반품혼입) 제외
       var undBadge=!isComplete
         ?'<span style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;padding:2px 8px;font-weight:700;white-space:nowrap;margin-right:6px">남은 '+_remain+'개</span>'
         :'';
@@ -10504,9 +10502,9 @@ async function loadFreshStatus(){
         '</tr></thead><tbody>';
       wR.forEach(function(rt){
         var c=rt.consignment||0,cp=rt.completed||0,u=rt.undelivered||0,p=rt.pdd_miss||0,sc=rt.scan||0;
-        var tot=Math.max(c,sc+cp+u);  // 총수량 = 버킷합(위탁+스캔+완료+미배송), consignment 오차 보정
-        var cRemain=Math.max(0,tot-sc-cp-u);  // 위탁 = 총수량 - 스캔 - 완료 - 미배송
-        var r=tot>0?Math.round((cp+u)/tot*1000)/10:0;  // 완료율: (완료+미배송)/총수량, 미배송=배송완료 동일취급
+        var tot=sc+cp+u;  // 총수량 = 배송 버킷만(스캔+완료+미배송) — consignment(반품/회수 혼입) 제외
+        var cRemain=0;  // 배송 위탁: consignment에 반품 섞여 신뢰불가 → 0 (완료판정은 스캔 기준)
+        var r=tot>0?Math.round((cp+u)/tot*1000)/10:0;  // 완료율: (완료+미배송)/총수량
         var miss=_isPddMiss(rt);
         var pfx2=[],ps2={};
         (rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(x){var pf=x.slice(0,4);if(!ps2[pf]){ps2[pf]=1;pfx2.push(pf);}});
