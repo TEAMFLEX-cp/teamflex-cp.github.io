@@ -310,6 +310,15 @@ textarea.ann-input:focus{border-color:#1565c0}
 .mb-orange{background:#fff3e0;color:#e65100}.mb-green{background:#e8f5e9;color:#2e7d32}
 .md-driver-tag{font-size:11px;font-weight:800;color:#1565c0}
 .md-title{font-size:14px;font-weight:800;color:#1a237e;padding:0 14px 5px}
+@keyframes ftBounce{0%,100%{transform:translateY(0) rotate(-7deg)}50%{transform:translateY(-6px) rotate(7deg)}}
+@keyframes ftPulse{0%,100%{box-shadow:0 5px 16px rgba(124,77,255,.30)}50%{box-shadow:0 11px 28px rgba(124,77,255,.6)}}
+@keyframes ftSpark{0%,100%{opacity:.25;transform:scale(.7)}50%{opacity:1;transform:scale(1.25)}}
+@keyframes ftShine{0%{transform:translateX(-150%) skewX(-20deg)}55%,100%{transform:translateX(360%) skewX(-20deg)}}
+.ft-btn{position:relative;overflow:hidden;border-radius:18px;background:#7c4dff;color:#fff;padding:16px;display:flex;align-items:center;gap:12px;cursor:pointer;animation:ftPulse 2.3s ease-in-out infinite;margin-bottom:12px;user-select:none}
+.ft-btn:active{transform:scale(.975)}
+.ft-crys{font-size:32px;display:inline-block;animation:ftBounce 1.6s ease-in-out infinite}
+.ft-spark{position:absolute;pointer-events:none;font-size:12px;animation:ftSpark 1.9s ease-in-out infinite}
+.ft-shine{position:absolute;top:0;left:0;height:100%;width:34%;background:rgba(255,255,255,.22);animation:ftShine 3.4s ease-in-out infinite}
 .md-row{display:flex;padding:2px 14px;font-size:11px;gap:6px}
 .md-key{color:#bbb;min-width:52px;flex-shrink:0}.md-val{color:#333;font-weight:600;flex:1;line-height:1.5}
 .md-photos{display:flex;gap:6px;padding:6px 14px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -3566,6 +3575,74 @@ function annMarkReadServer(a){
 }
 
 // ── HOME ──────────────────────────────────────────────────────────────
+
+// ── 오늘의 운세 (홈 카드 버튼 + 팝업) ─────────────────────────────
+var _FT_TTI=[['원숭이','🐵'],['닭','🐔'],['개','🐶'],['돼지','🐷'],['쥐','🐭'],['소','🐮'],['호랑이','🐯'],['토끼','🐰'],['용','🐲'],['뱀','🐍'],['말','🐴'],['양','🐑']];
+function _ftSign(m,d){var t=[[1,20,'물병'],[2,19,'물고기'],[3,21,'양'],[4,20,'황소'],[5,21,'쌍둥이'],[6,22,'게'],[7,23,'사자'],[8,23,'처녀'],[9,23,'천칭'],[10,23,'전갈'],[11,23,'사수'],[12,22,'염소']];var x=11;for(var j=0;j<12;j++){var cm=t[j][0],cd=t[j][1],nm=t[(j+1)%12][0],nd=t[(j+1)%12][1];if((m===cm&&d>=cd)||(m===nm&&d<nd)){x=j;break;}}return t[x][2]+'자리';}
+var _FT_VOL=['물량은 평타라','물량 좀 터질 각이라','물량 의외로 가벼워서','물량 꾸준해서','물량 은근 많아서','반품·회수 적어서','가벼운 박스 위주라','오전에 좀 몰려서','동선이 좋아서','물량 들쭉날쭉이라','오늘 물량 순해서','막판 스퍼트만 잘하면'];
+var _FT_FIN=['능력자 모드면 {t}쯤 칼퇴각 ㄷㄷ','평타치면 {t}쯤 마무리될 듯?','{t}는 봐야할 듯 ㅋㅋ 화이팅','{t}에 끝내고 치맥 ㄱㄱ 🍗','손 빠르면 {t}, 아니면 +1시간 ㅋㅋ','오늘은 {t}까지 달리면 굿 ㅇㅈ','{t}엔 집 갈 수 있을 듯? 가보자고','컨디션만 받쳐주면 {t} 칼퇴 가능','{t}쯤 마지막 박스 찍을 각','{t} 목표로 가즈아 🔥'];
+var _FT_TIMES=['6시','6시 반','7시','7시 반','8시','8시 반','9시'];
+var _FT_FORT=['오늘 흐름 ㄹㅇ 술술~ 페이스만 유지하면 갓벽 ✨','작은 친절이 복으로 ㄷㄷ 좋은 일 생길 각','서두르지 마라~ 천천히 가도 다 풀림 ㅇㅈ','예상 못한 굿뉴스 들려올 수도? 기대 ㄱㄱ','꼼꼼함이 빛 발하는 날, 한 번 더 체크하면 만점 💯','에너지 풀충전! 컨디션만 잡으면 오늘 갓비스','막혔던 거 풀리는 전환점! 오늘부터 상승각 📈','주변이랑 호흡 굿~ 일이 가볍게 느껴질 듯','오늘 노력=내일 보너스, 차곡차곡 적립 중 💰','마음에 여유 챙기면 행운도 따라옴 ㄱㄱ','오늘은 운빨 살아있는 날! 가보자고 ㅋㅋ','웃으면 복이 와요~ 오늘 미소가 무기','작은 행운들이 졸졸 따라오는 하루','자신감 +10! 오늘 결정은 믿고 가도 됨','괜한 걱정 ㄴㄴ 생각보다 다 잘 됨','오늘의 키워드는 순항! 무리 없이 굿'];
+var _FT_LOVE=['솔로 주목! 오늘 설레는 인연 스칠 각 👀','커플은 사소한 배려가 ㄹㅇ 큰 점수 ㄱㄱ','연락 한 통이면 분위기 급상승 ㅎㅎ','무심한 말보다 다정 모드가 통하는 날 💕','들이대기보다 기다림이 매력 포인트 ㅇㅈ','오늘 미소 한 방이면 호감도 +100','가까운 사이일수록 표현 아끼지 말기!','썸 타는 중이면 오늘 한 발짝 더 ㄱㄱ','오랜 친구한테서 연락 올 수도? 👀','오늘은 내가 더 챙기면 관계 떡상','괜한 오해는 대화로 스르륵 풀림','상대 얘기 잘 들어주면 점수 +50','연애세포 살아나는 날~ 자신감 ㄱㄱ','솔직함이 매력으로 통하는 날'];
+var _FT_MONEY=['예상 밖 용돈 들어올 각?! ㄷㄷ','충동구매만 참으면 통장이 씩 웃음 ㅋㅋ','아낀 만큼 적립! 오늘 절약하면 주말 개꿀','커피 한 잔 줄이면 주말이 든든 ☕','들어올 돈은 들어옴~ 조급 ㄴㄴ','오늘의 절약이 이번달 보너스됨 💸','영수증 챙기면 새는 돈 컷 ✂️','지름신 강림 주의… 장바구니 잠깐 닫기 ㅋㅋ','오늘 결제 전에 3초만 고민 ㄱㄱ','뜻밖의 페이백·포인트 생길 수도 👀','밥값은 아껴도 기름값은 챙기기 ⛽','티끌 모아 태산~ 오늘부터 적립각','돈 나갈 일은 미리 메모하면 굿','작은 지출 점검하면 통장 방어 성공'];
+var _FT_HEALTH=['물 자주+스트레칭 한 번이면 컨디션 UP 💪','어깨·허리 풀어주면 오후가 ㄹㅇ 편함','점심 든든히, 카페인은 적당히가 국룰','졸리면 5분 눈 붙이기 = 보약 ㅇㅈ','무리한 동작 ㄴㄴ 바른 자세가 갓','따뜻한 물 한 잔이 속 편하게 ㄱㄱ','오늘 컨디션 굿! 과식만 조심 ㅋㅋ','무거운 박스는 다리 힘으로~ 허리 보호','수분 보충 잊지 말기! 오늘 좀 건조','손목·허리 보호대 챙기면 든든','당 떨어질 때 초콜릿 한 조각 굿','저녁엔 종아리 풀어주기 추천','심호흡 한 번이면 스트레스 -30','잠깐의 햇빛도 비타민 ㅇㅈ'];
+var _FT_ADV=['출발 전 타이어·연료 체크 한 번이면 든든 ㄱㄱ','급할수록 한 박자 천천히~ 안전이 갓효율','오늘도 무사고 가자! 방어운전 ㅇㅈ','점심 든든히, 졸음운전은 ㄹㅇ 노노','골목·후진은 좌우 한 번 더 확인 👀','졸리면 잠깐 쉬기, 무리 ㄴㄴ','빗길엔 속도 줄이고 거리 두기 ☔','무거운 박스는 허리 말고 다리 힘으로','횡단보도·이면도로 서행 필수','안전벨트는 기본 중의 기본 ㅇㅈ','오늘 하루도 안전하게 집까지 무사복귀 🏠','계단·엘베 이동 시 발밑 조심'];
+var _FT_COL=[['파랑','#1e88e5'],['초록','#2e9e5b'],['노랑','#f4b400'],['빨강','#e53935'],['보라','#7c4dff'],['주황','#fb8c00'],['하늘','#29b6f6'],['분홍','#ec407a']];
+var _FT_DIR=['동쪽','서쪽','남쪽','북쪽','동남쪽','서남쪽','동북쪽','서북쪽'];
+function _ftHash(s){var x=2166136261;for(var i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619);}return x>>>0;}
+function _ftStars(n,z){var s='';for(var i=0;i<5;i++)s+=(i<n?'★':'☆');return '<span style="color:#f4b400;letter-spacing:.5px;font-size:'+z+'px">'+s+'</span>';}
+function _ftWeather(seed){
+  try{ if(typeof _weatherCache!=='undefined' && _weatherCache){
+    var cw=_weatherCache.current_weather||{};
+    var code=(cw.weathercode!==undefined)?parseInt(cw.weathercode):(_weatherCache.daily&&_weatherCache.daily.weathercode?parseInt(_weatherCache.daily.weathercode[0]):0);
+    var tn=(cw.temperature!==undefined)?Math.round(cw.temperature):null;
+    var w=(typeof _wCode==='function')?_wCode(code):{icon:'🌤️',label:'날씨'};
+    var ph;
+    if(code<=2)ph='오늘 쨍하고 따뜻해서 일하기 딱';
+    else if(code===3||code===45||code===48)ph='흐리지만 안 더워서 오히려 꿀';
+    else if(code>=51&&code<=67)ph='비 와서 살짝 빡셀 각… 미끄럼 주의 ㅠ';
+    else if(code>=71&&code<=86)ph='눈 와서 조심조심~ 안전 최우선 ❄️';
+    else ph='날씨 변덕 주의~ 컨디션 관리 ㄱㄱ';
+    if(tn!==null){ if(tn>=30)ph='오늘 좀 덥다 ㄷㄷ 물 챙기면서 ㄱㄱ'; else if(tn<=1)ph='쌀쌀하니까 따뜻하게 입고 ㄱㄱ'; }
+    return [w.icon||'🌤️', w.label||'', (tn!==null?tn+'°':''), ph];
+  }}catch(e){}
+  var F=[['☀️','맑음','','오늘 무난한 날씨~ 일하기 좋아요'],['🌤️','구름조금','','선선해서 컨디션 갓'],['☁️','흐림','','안 더워서 오히려 꿀']];
+  return F[seed%F.length];
+}
+function _ftCard(){
+  var bd='';try{bd=String(((typeof getDB==='function'?getDB():{})[CU.name]||{}).birth_date||CU.birth_date||'');}catch(e){}
+  var b=bd.replace(/[^0-9]/g,'').slice(0,6);
+  var nm=(CU&&CU.name)||'기사';
+  var n=new Date(),k=new Date(n.getTime()+n.getTimezoneOffset()*60000+9*3600000);
+  var wd=['일','월','화','수','목','금','토'][k.getDay()];
+  var dstr=k.getFullYear()+'년 '+(k.getMonth()+1)+'월 '+k.getDate()+'일 ('+wd+')';
+  var dkey=k.getFullYear()+'-'+(k.getMonth()+1)+'-'+k.getDate();
+  var sub;
+  if(b.length===6){var yy=parseInt(b.slice(0,2)),yr=yy>30?1900+yy:2000+yy,mm=parseInt(b.slice(2,4)),dd=parseInt(b.slice(4,6)),ti=_FT_TTI[yr%12];sub=ti[1]+' '+ti[0]+'띠  ·  '+_ftSign(mm,dd);}
+  else sub='오늘도 안전운전 화이팅 🚚';
+  var seed=_ftHash(b+'|'+dkey+'|'+nm), wseed=_ftHash('wx|'+dkey);
+  var wx=_ftWeather(wseed), tt=_FT_TIMES[(seed>>14)%_FT_TIMES.length];
+  var haul=wx[0]+' '+wx[1]+(wx[2]?' '+wx[2]:'')+' — '+wx[3]+'! '+_FT_VOL[(seed>>2)%_FT_VOL.length]+' '+_FT_FIN[(seed>>5)%_FT_FIN.length].replace('{t}',tt);
+  var sc=3+(seed%3),fz=_FT_FORT[(seed>>3)%_FT_FORT.length],ln=(seed>>6)%45+1,co=_FT_COL[(seed>>9)%_FT_COL.length],di=_FT_DIR[(seed>>12)%_FT_DIR.length],ad=_FT_ADV[(seed>>15)%_FT_ADV.length];
+  var bz=2+((seed>>4)%4),lv=2+((seed>>17)%4),mn=2+((seed>>20)%4),ht=2+((seed>>23)%4);
+  var lvT=_FT_LOVE[(seed>>7)%_FT_LOVE.length],mnT=_FT_MONEY[(seed>>10)%_FT_MONEY.length],htT=_FT_HEALTH[(seed>>13)%_FT_HEALTH.length];
+  function cr(e,l,so,tx){return '<div style="padding:8px 0;border-top:1px solid #f0f0f0"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:13px;font-weight:700;color:#333">'+e+' '+l+'</span>'+_ftStars(so,12)+'</div><div style="font-size:12px;color:#777;line-height:1.45;margin-top:2px">'+tx+'</div></div>';}
+  function cp(t,v){return '<div style="flex:1;text-align:center;background:#f5f5f7;border-radius:11px;padding:8px 4px"><div style="font-size:10px;color:#aaa">'+t+'</div><div style="font-size:14px;font-weight:800;color:#333;margin-top:2px">'+v+'</div></div>';}
+  function cpc(t,v,x){return '<div style="flex:1;text-align:center;background:#f5f5f7;border-radius:11px;padding:8px 4px"><div style="font-size:10px;color:#aaa">'+t+'</div><div style="font-size:13px;font-weight:800;color:#333;margin-top:3px;display:flex;align-items:center;justify-content:center;gap:5px"><span style="width:11px;height:11px;border-radius:50%;background:'+x+'"></span>'+v+'</div></div>';}
+  return '<div style="background:#3C3489;color:#fff;padding:14px 16px"><div style="font-size:15px;font-weight:800">🔮 '+nm+' 기사님 오늘의 운세</div><div style="font-size:11px;opacity:.85;margin-top:2px">'+dstr+'</div></div>'+
+    '<div style="background:#fff;padding:15px 16px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px"><span style="font-size:13px;color:#777">'+sub+'</span>'+_ftStars(sc,16)+'</div>'+
+      '<div style="font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.5;background:#f5f7fb;border-radius:12px;padding:12px 14px">'+fz+'</div>'+
+      '<div style="margin-top:10px;background:#EEEDFE;border-radius:13px;padding:11px 13px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:800;color:#3C3489">📦 오늘의 물량운</span>'+_ftStars(bz,12)+'</div><div style="font-size:13px;color:#26215C;line-height:1.55">'+haul+'</div></div>'+
+      '<div style="margin-top:4px">'+cr('💕','연애운',lv,lvT)+cr('💰','금전운',mn,mnT)+cr('💪','건강운',ht,htT)+'</div>'+
+      '<div style="display:flex;gap:8px;margin-top:12px">'+cp('행운의 숫자',String(ln))+cpc('행운의 색',co[0],co[1])+cp('행운의 방향',di)+'</div>'+
+      '<div style="margin-top:11px;display:flex;gap:8px;align-items:flex-start;background:#FAEEDA;border-radius:12px;padding:10px 12px"><span style="font-size:15px">💡</span><span style="font-size:12px;color:#633806;line-height:1.5">'+ad+'</span></div>'+
+    '</div>';
+}
+function _ftBtnHTML(){return '<div class="ft-btn" onclick="openFortune()"><span class="ft-shine"></span><span class="ft-spark" style="top:8px;right:46px">✨</span><span class="ft-spark" style="bottom:10px;right:18px;animation-delay:.5s">⭐</span><span class="ft-spark" style="top:13px;right:92px;animation-delay:1s">✨</span><span class="ft-crys">🔮</span><div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:800;line-height:1.2">오늘의 운세 보러가기</div><div style="font-size:12px;opacity:.92;margin-top:3px">탭! 물량·연애·금전·건강운까지 한 방에 ✨</div></div><span style="font-size:22px">›</span></div>';}
+function openFortune(){ if(document.getElementById('ft-pop'))return; var ov=document.createElement('div'); ov.id='ft-pop'; ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10400;display:flex;align-items:flex-start;justify-content:center;padding:12px;box-sizing:border-box;overflow-y:auto'; ov.onclick=function(e){if(e.target===ov)closeFortune();}; ov.innerHTML='<div style="width:100%;max-width:380px;margin:auto 0"><div style="border-radius:18px;overflow:hidden;box-shadow:0 14px 44px rgba(0,0,0,.4)">'+_ftCard()+'</div><div onclick="closeFortune()" style="margin:11px auto 6px;width:120px;text-align:center;background:#fff;color:#333;border-radius:22px;padding:11px;font-size:14px;font-weight:700;cursor:pointer">닫기</div></div>'; document.body.appendChild(ov); try{if(typeof loadWeather==='function')loadWeather();}catch(e){} }
+function closeFortune(){var e=document.getElementById('ft-pop');if(e)e.remove();}
+
 function pgHome(){
   // ── 관리자 전용 홈 (날씨 + 운영 요약) ──
   if(CU&&CU.role==='admin'){
@@ -3767,7 +3844,7 @@ function pgHome(){
       '</div>'+
     '</div>'+
     '</div>'+
-    weatherCard+annSection+mdSection;
+    weatherCard+_ftBtnHTML()+mdSection;
 }
 // ── WEATHER ──────────────────────────────────────────────────────────
 var _weatherCache=null;var _weatherCacheDate='';var _hourlyOpen=[false,false];
