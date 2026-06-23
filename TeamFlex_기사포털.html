@@ -474,7 +474,7 @@ textarea.ann-input:focus{border-color:#1565c0}
     <div class="ann-popup" style="margin:auto">
       <div id="ann-popup-content"></div>
       <div style="display:flex;gap:8px;margin-top:16px">
-        <button class="btn-p" style="flex:1.6" onclick="annGoBoard()">&#x1F4D6; 보러가기</button>
+        <button id="ann-pbtn" class="btn-p" style="flex:1.6" onclick="annConfirmRead()">&#x1F4D6; 읽고 확인 함</button>
         <button style="flex:1;background:#fff;color:#666;border:1.5px solid #ddd;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer" onclick="annJustClose()">닫기</button>
       </div>
     </div>
@@ -3499,6 +3499,7 @@ function annShowUnreadList(){
     '</div>'+
     '<div style="text-align:left;max-height:38vh;overflow-y:auto">'+rows+'</div>';
   document.getElementById('ann-popup').style.display='';
+  _annPBtn('board');
 }
 function annGoBoard(){
   window._annPopupDismissed=true;
@@ -3520,6 +3521,7 @@ function showNextAnn(){
     '<div style="font-size:14px;color:#555;line-height:1.7">'+a.body.replace(/\n/g,'<br>')+'</div>'+
     (ANN_QUEUE.length>1?'<div style="font-size:12px;color:#aaa;text-align:center;margin-top:10px">'+(ANN_IDX+1)+' / '+ANN_QUEUE.length+'</div>':'');
   document.getElementById('ann-popup').style.display='';
+  _annPBtn('confirm');
 }
 function closeAnnPopup(){
   // Mark only the CURRENT announcement as read
@@ -4211,6 +4213,18 @@ function _annIsReadByMe(a){
   if(window._annReadMine && window._annReadMine[k]) return true;
   return !!(a.readBy && a.readBy.indexOf(CU.name)>=0);   // 구버전(로컬/read_by) 호환
 }
+function _annMgmtHTML(a){
+  if(!(CU&&(CU.role==='admin'||CU.role==='leader')))return '';
+  var _id=a.id;
+  return '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e0e0e0">'+
+    '<div style="font-size:10px;color:#9e9e9e;font-weight:700;margin-bottom:7px">⚙️ 관리자 전용</div>'+
+    '<div style="display:flex;gap:7px">'+
+      '<button onclick="annJustClose();openAnnEdit('+_id+')" style="flex:1;padding:9px;border:1px solid #c5cae9;border-radius:9px;background:#fff;color:#3949ab;font-size:12px;font-weight:700;cursor:pointer">✏ 수정</button>'+
+      '<button onclick="if(confirm(\'이 공지를 비활성화할까요?\'))disableAnn('+_id+')" style="flex:1;padding:9px;border:1px solid #ffcc80;border-radius:9px;background:#fff;color:#e65100;font-size:12px;font-weight:700;cursor:pointer">⛔ 비활성</button>'+
+      '<button onclick="deleteAnn('+_id+')" style="flex:1;padding:9px;border:1px solid #ef9a9a;border-radius:9px;background:#fff;color:#c62828;font-size:12px;font-weight:700;cursor:pointer">🗑 삭제</button>'+
+    '</div></div>';
+}
+function _annPBtn(mode){var b=document.getElementById('ann-pbtn');if(!b)return;if(mode==='board'){b.innerHTML='📖 보러가기';b.onclick=annGoBoard;}else{b.innerHTML='📖 읽고 확인 함';b.onclick=annConfirmRead;}}
 function openAnnView(annId){
   var anns=getAnns();
   var a=anns.find(function(x){return String(x.id)===String(annId);});
@@ -4258,8 +4272,9 @@ function openAnnView(annId){
     '<div style="font-size:11px;color:#aaa">'+a.author+' &middot; '+a.at+'</div></div></div>'+
     '<div style="font-size:17px;font-weight:800;margin-bottom:14px;color:#1a1a1a">'+a.title+'</div>'+
     '<div style="font-size:14px;color:#444;line-height:1.8;background:#f8f9ff;border-radius:10px;padding:14px">'+a.body.replace(/\n/g,'<br>')+'</div>'+
-    checkBtn;
+    checkBtn+_annMgmtHTML(a);
   document.getElementById('ann-popup').style.display='';
+  _annPBtn('confirm');
 }
 
 // ── 공지 확인 현황 팝업 (로딩 → showAnnUnread) ──────────────────────
@@ -7169,6 +7184,12 @@ function mdToggleReqFilter(){
   }
 }
 
+function _mdNoAction(c){
+  if(!c||(c.status!=='pending'&&c.status!=='rejected'))return false;
+  var _t=new Date(c.created_at||c.occurred_at).getTime();
+  if(isNaN(_t))return false;
+  return (Date.now()-_t)>=3*86400000;  // 최초공유 후 3일 경과 + 기사 미조치
+}
 function mdRenderList(cases){
   if(cases===undefined||cases===null) cases=_mdCases||[];
   var el=document.getElementById('md-list');
@@ -7198,8 +7219,9 @@ function mdRenderList(cases){
   // 활성 건 (미처리/승인대기/재요청) vs 완료 건 분리
   var active=[];var completed=[];
   (cases||[]).forEach(function(c){
-    if(c.status==='approved')completed.push(c);
-    else active.push(c);
+    if(c.status==='approved'){c._noAction=false;completed.push(c);}
+    else if(_mdNoAction(c)){c._noAction=true;completed.push(c);}
+    else{c._noAction=false;active.push(c);}
   });
 
   // 표시 대상 요청: 관리자/팀장 = 전체, 그 외(조장·기사) = 본인 요청만
@@ -7337,6 +7359,7 @@ function mdRenderList(cases){
               return '<div style="background:#fff;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #f0f4c3;display:flex;align-items:center;justify-content:space-between;gap:8px">'+
                 '<div onclick="mdOpenDetail('+c.id+')" style="flex:1;cursor:pointer;min-width:0">'+
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+                    (c._noAction?'<span style="font-size:10px;font-weight:800;color:#455a64;background:#eceff1;border:1px solid #cfd8dc;padding:1px 7px;border-radius:7px">⛔ 담당 미조치</span>':'')+
                     (canDelete?'<span style="font-size:11px;font-weight:700;color:#558b2f">'+mdEsc(c.driver_name||c.driver_id||'-')+'</span>':'')+''+
                     '<span style="font-size:11px;color:#aaa">'+mdWbShort(c.waybill_no)+'</span>'+
                   '</div>'+
@@ -7437,12 +7460,14 @@ function mdCardHtml(c,isAdmin,isLeader){
   var drvName=mdEsc(c.driver_name||c.driver_id||'미지정');
   var _ts=c.created_at||c.occurred_at, dtStr='';
   if(_ts){var _d=new Date(_ts);if(!isNaN(_d.getTime())){var _k=new Date(_d.getTime()+(_d.getTimezoneOffset()*60000)+9*3600000);dtStr=(_k.getMonth()+1)+'.'+_k.getDate()+' · '+_k.getHours()+':'+('0'+_k.getMinutes()).slice(-2);}}
+  var ddBadge='';
+  if(c.status==='pending'||c.status==='rejected'){var _ct=new Date(c.created_at||c.occurred_at).getTime();if(!isNaN(_ct)){var _dl=3-Math.floor((Date.now()-_ct)/86400000);if(_dl>=0){var _dtc=_dl>=2?'#2e7d32':(_dl===1?'#e65100':'#fff'),_dbg=_dl>=2?'#e8f5e9':(_dl===1?'#fff3e0':'#e53935'),_dbd=_dl>=2?'#a5d6a7':(_dl===1?'#ffcc80':'#e53935');ddBadge='<span style="font-size:11px;font-weight:800;color:'+_dtc+';background:'+_dbg+';border:1px solid '+_dbd+';padding:2px 7px;border-radius:7px;flex-shrink:0;white-space:nowrap">D-'+_dl+'일</span>';}}}
   // [가로 한 줄 카드] 상태 · 기사명(큼직) · 날짜+시간 ····· 종류 · ▸ (클릭하면 mdOpenDetail 팝업에 전체)
   return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'" onclick="mdOpenDetail('+c.id+')" style="cursor:pointer">'+
     '<div style="display:flex;align-items:center;gap:8px;padding:10px 13px">'+
       '<span class="md-badge '+badgeCls+'" id="md-badge-'+c.id+'" style="font-size:11px;padding:3px 9px;flex-shrink:0;line-height:1.3">'+badgeTxt+'</span>'+
       '<span style="font-size:15px;font-weight:800;color:#1a237e;flex-shrink:0;white-space:nowrap">'+drvName+'</span>'+
-      '<span style="font-size:11px;color:#9e9e9e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+dtStr+'</span>'+
+      '<span style="font-size:11px;color:#9e9e9e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+dtStr+'</span>'+ddBadge+
       '<span style="flex-shrink:0;margin-left:auto;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;'+catSty+'">'+cat+'</span>'+
       '<span style="flex-shrink:0;font-size:16px;color:#c5cae9;font-weight:700">›</span>'+
     '</div>'+
@@ -7943,7 +7968,7 @@ function mdOpenDetail(caseId){
   // 기사/조장 본인 케이스 여부 확인 (driver_name 또는 id 매칭)
   var isMyCase=CU&&(CU.name===c.driver_name||(c.driver_id&&(CU.id===c.driver_id||CU.id===c.driver_id.replace('@df','')||CU.id+'@df'===c.driver_id)));
   // 입력 가능: 기사(본인) 또는 조장(본인케이스), 미답변(pending) 또는 재요청(rejected) 상태일 때
-  var canReply=(isDriver||isSub)&&isMyCase&&(c.status==='pending'||c.status==='rejected');
+  var canReply=(isDriver||isSub)&&isMyCase&&(c.status==='pending'||c.status==='rejected')&&!_mdNoAction(c);
   if(canReply){
     var rejectNotice='';
     if(c.status==='rejected'){
