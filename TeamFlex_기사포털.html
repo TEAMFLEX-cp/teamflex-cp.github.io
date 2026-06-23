@@ -1402,7 +1402,6 @@ async function loadFeatureControls(){
   else if((CUR_TAB==='fs'||CUR_TAB==='as')&&!getFeatureCtrl('schedule','active')&&!isAdm){mc.innerHTML=pgFullSched();}
   else if((CUR_TAB==='st'||CUR_TAB==='az')&&!getFeatureCtrl('settle','active')&&!isAdm){mc.innerHTML=isAdm?pgAdminSettle():pgSettle();}
   else if(CUR_TAB==='er'&&!getFeatureCtrl('emergency','active')&&!isAdm){mc.innerHTML=pgEmergencyContact();}
-  else if(CUR_TAB==='rl'){mc.innerHTML=pgRoulette();setTimeout(rlInit,80);}
   else if(CUR_TAB==='pb'){mc.innerHTML=pgPback();setTimeout(pbInit,80);}
 }
 var _fcLoading=false;
@@ -2000,6 +1999,7 @@ function _reRenderCurTab(){
   if(!t)return;
   var m=t.match(/go\('(\w+)'\)/);
   if(!m)return;
+  if(m[1]==='rl')return;  // 룰렛 탭은 캔버스 애니메이션 보존 위해 자동 재렌더 제외
   // 스크롤 위치 저장 (재렌더 후 복원)
   var mc=document.getElementById('mc');
   var mcST=mc?mc.scrollTop:0;
