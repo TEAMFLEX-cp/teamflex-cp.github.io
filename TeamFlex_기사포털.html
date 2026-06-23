@@ -12011,4 +12011,28 @@ function _renderPddLogPopup(log,canDelete){
 
 async function deletePddLogSelected(){
   if(!sbClient)return;
-  var checked=Array.from(document.querySelectorAll('.pdd-log-chk:checked')).map(function(c){return c.value;}
+  var checked=Array.from(document.querySelectorAll('.pdd-log-chk:checked')).map(function(c){return c.value;});
+  if(checked.length===0){alert('삭제할 항목을 선택해주세요.');return;}
+  if(!confirm(checked.length+'건을 삭제하시겠습니까?'))return;
+  try{
+    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+    var log=[];
+    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
+    log=log.filter(function(e){return!checked.includes(String(e.id));});
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
+    showFreshPddLog();
+  }catch(e){alert('삭제 실패: '+e.message);}
+}
+
+async function deletePddLogAll(){
+  if(!sbClient)return;
+  if(!confirm('전체 PDD MISS 기록을 삭제하시겠습니까?'))return;
+  try{
+    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:'[]'},{onConflict:'key'});
+    showFreshPddLog();
+  }catch(e){alert('삭제 실패: '+e.message);}
+}
+
+
+</script>
+</body></html>
