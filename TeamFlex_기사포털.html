@@ -3406,7 +3406,7 @@ function go(tab){
   else if(tab==='rq'){_rqTab='';mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
   else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
   else if(tab==='pb'){mc.innerHTML=pgPback();setTimeout(pbInit,100);}
-  else if(tab==='rl'){ghEnterHub();}
+  else if(tab==='rl'){if(GH&&GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}if(GH){GH.gen=(GH.gen||0)+1;GH.view='roulette';}mc.innerHTML=pgRoulette();setTimeout(rlInit,80);}
   else if(tab==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;}}).catch(function(){});}
   // Re-show important unread announcements on each tab switch (except the announcement tab itself)
   if(CU&&tab!=='nc'&&tab!=='ab'){setTimeout(function(){checkUnreadAnns(true);},300);}
