@@ -1,5 +1,5 @@
 // TeamFlex Service Worker v47 — 백그라운드 스케줄 체크 + Push 알림 + 구독 자동 갱신
-const CACHE_NAME = 'teamflex-v250';
+const CACHE_NAME = 'teamflex-v251';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -19,9 +19,20 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = e.request.url;
   if (url.includes('supabase') || url.includes('googleapis')) return;
-  e.respondWith(
-    fetch(e.request, { cache: 'no-store' }).catch(() => caches.match(e.request))
-  );
+  // 캐시 우선(stale-while-revalidate): 캐시 즉시 응답 + 백그라운드 갱신 → 접속 즉시화
+  e.respondWith((async () => {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(e.request);
+      const netP = fetch(e.request).then(resp => {
+        if (resp && resp.ok && resp.type === 'basic') { try { cache.put(e.request, resp.clone()); } catch (_) {} }
+        return resp;
+      }).catch(() => null);
+      return cached || (await netP) || cached;
+    } catch (_) {
+      return fetch(e.request).catch(() => caches.match(e.request));
+    }
+  })());
 });
 
 // ── IndexedDB 헬퍼 ───────────────────────────────────────────────────────────
