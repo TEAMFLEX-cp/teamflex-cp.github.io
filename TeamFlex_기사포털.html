@@ -8741,7 +8741,7 @@ function pgGameHub(){
   GH_GAMES.forEach(function(c){
     var sel=(c.v===selG);
     var inner='<div style="font-size:30px">'+c.ic+'</div><div style="font-size:15px;font-weight:900;margin-top:5px">'+c.t+'</div>';
-    if(c.rank){var bd=GH.board[c.v]||[];if(bd.length){var medals=['🥈','🥉'];inner+='<div style="margin-top:6px;font-size:10px;line-height:1.55;opacity:.97">';for(var i=0;i<3&&i<bd.length;i++){if(i===0){inner+='<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px"><span class="ghgold" style="font-size:16px">🥇</span> <b style="color:#fff59d">'+bd[i].uname+'</b> <b>'+bd[i].score+'</b></div>';}else{inner+='<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+medals[i-1]+' '+bd[i].uname+' <b>'+bd[i].score+'</b></div>';}}inner+='</div>';}else{inner+='<div style="font-size:10px;opacity:.8;margin-top:6px">랭킹 대기중 · 1등 도전!</div>';}}
+    if(c.rank){var bd=GH.board[c.v]||[];if(bd.length){var medals=['🥈','🥉'];inner+='<div style="margin-top:6px;font-size:10px;line-height:1.55;opacity:.97">';for(var i=0;i<3&&i<bd.length;i++){if(i===0){inner+='<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px"><span class="ghgold" style="font-size:16px">🥇</span> <b style="color:#fff59d">'+bd[i].uname+'</b> <b>'+ghFmtScore(c.v,bd[i].score)+'</b></div>';}else{inner+='<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+medals[i-1]+' '+bd[i].uname+' <b>'+ghFmtScore(c.v,bd[i].score)+'</b></div>';}}inner+='</div>';}else{inner+='<div style="font-size:10px;opacity:.8;margin-top:6px">랭킹 대기중 · 1등 도전!</div>';}}
     else{inner+='<div style="font-size:10.5px;opacity:.92;margin-top:3px">'+c.d+'</div>';}
     h+='<div onclick="ghOpen(\''+c.v+'\')" class="'+(sel?'ghsel':'')+'" style="position:relative;cursor:pointer;background:'+c.g+';border-radius:15px;padding:15px 12px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.22);min-height:120px;display:flex;flex-direction:column;justify-content:flex-start">'+(sel?'<span class="ghbig">🌟</span>':'')+inner+'</div>';
   });
@@ -8810,6 +8810,7 @@ function ghGameShell(g){var m=ghGameMeta(g);
     +'<div id="g-board" style="margin:18px auto 0;max-width:460px;width:100%"></div>'
   +'</div>';
 }
+function ghFmtScore(game,score){if(game==='match'){return (100000/Math.max(1,score)).toFixed(1)+'초';}return score;}
 function ghRenderBoard(g){var el=document.getElementById('g-board');if(!el)return;var arr=GH.board[g];var me=String(ghUid());
   var html='<div style="font-weight:800;font-size:13px;margin-bottom:8px;color:#ffd54f">🏆 '+ghMonthLabel()+' 랭킹 TOP 20</div>';
   if(GH.loadingB)html+='<div style="color:#90a4ae;font-size:12px">불러오는 중…</div>';
@@ -8817,7 +8818,7 @@ function ghRenderBoard(g){var el=document.getElementById('g-board');if(!el)retur
   else if(!arr||!arr.length)html+='<div style="color:#90a4ae;font-size:12px">아직 기록이 없어요. 첫 주인공이 되어보세요! 🎉</div>';
   else{html+='<div style="display:flex;flex-direction:column;gap:3px">';
     arr.forEach(function(x,i){var mine=String(x.uid)===me;var rk=i===0?'<span class="ghgold" style="font-size:19px">🥇</span>':(['','🥈','🥉'][i]||('<span style="display:inline-block;width:20px;text-align:center;color:#78909c;font-weight:800">'+(i+1)+'</span>'));
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;background:'+(mine?'#4a3b00':'#ffffff10')+';border:1px solid '+(mine?'#ffd54f':'#ffffff14')+'"><span style="font-size:14px;min-width:22px;text-align:center">'+rk+'</span><span style="font-weight:'+(mine?'900':'600')+';font-size:13px;color:'+(mine?'#fff59d':'#eceff1')+'">'+x.uname+(mine?' (나)':'')+'</span><span style="margin-left:auto;font-weight:900;font-size:14px;color:#ffd54f">'+x.score+'</span></div>';});
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;background:'+(mine?'#4a3b00':'#ffffff10')+';border:1px solid '+(mine?'#ffd54f':'#ffffff14')+'"><span style="font-size:14px;min-width:22px;text-align:center">'+rk+'</span><span style="font-weight:'+(mine?'900':'600')+';font-size:13px;color:'+(mine?'#fff59d':'#eceff1')+'">'+x.uname+(mine?' (나)':'')+'</span><span style="margin-left:auto;font-weight:900;font-size:14px;color:#ffd54f">'+ghFmtScore(g,x.score)+'</span></div>';});
     html+='</div>';}
   el.innerHTML=html;
 }
