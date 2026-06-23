@@ -3458,6 +3458,38 @@ function annResetFx(){
   [].forEach.call(box.children,function(c,i){var on=(i===0);c.classList.toggle('on',on);c.style.background=(on?'#607d8b':'');c.style.color=(on?'#fff':(c.getAttribute('data-col')||'#607d8b'));});
   var inp=document.getElementById('ann-effect'); if(inp)inp.value='';
 }
+async function _annFetchBrief(){
+  try{
+    var aRes=await sbClient.from('announcements').select('*').order('created_at',{ascending:false}).limit(30);
+    if(aRes&&!aRes.error&&aRes.data){
+      var ex0=getAnns();
+      var anns=aRes.data.map(function(a){
+        var ex=ex0.find(function(e){return String(e.id)===String(a.id)||String(e.sb_id)===String(a.id);});
+        var sbRb=[];if(a.read_by){try{sbRb=JSON.parse(a.read_by);}catch(e){}}
+        var localRby=(ex?ex.readBy:[])||[];
+        var mergedRby=sbRb.slice();localRby.forEach(function(n){if(mergedRby.indexOf(n)<0)mergedRby.push(n);});
+        var resolvedExpire=a.expire_at||(ex?ex.expireAt:null)||null;
+        var autoExpired=resolvedExpire&&new Date(resolvedExpire).getTime()<=Date.now();
+        var localDisabled=ex?(!!(ex.disabled)):false;
+        return {id:a.id,sb_id:a.id,title:a.title,body:a.body||a.content||'',content:a.body||a.content||'',author:a.author||'관리자',important:a.pinned||false,effect:a.effect||'',at:a.created_at,expireAt:resolvedExpire,expireDays:(ex?ex.expireDays:null)||null,readBy:mergedRby,disabled:autoExpired||localDisabled};
+      });
+      localStorage.setItem('tfann',JSON.stringify(anns));
+    }
+  }catch(e){}
+  try{ await _annLoadMyReads(); }catch(e){}
+  window._brfMd=0; window._brfPb=0;
+  var _nm=(CU&&CU.name)||'';
+  try{ var mr=await sbClient.from('misdelivery_cases').select('id',{count:'exact',head:true}).eq('driver_name',_nm).in('status',['pending','rejected']); if(mr&&typeof mr.count==='number')window._brfMd=mr.count; }catch(e){}
+  try{ var pr=await sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('driver_name',_nm).eq('status','pending'); if(pr&&typeof pr.count==='number')window._brfPb=pr.count; }catch(e){}
+}
+function _brfBanners(){
+  var md=window._brfMd||0, pb=window._brfPb||0;
+  if(!md&&!pb)return '';
+  var h='<div style="display:flex;align-items:center;gap:8px;margin:14px 0 8px"><div style="flex:1;height:1px;background:#e0e0e0"></div><span style="font-size:11px;font-weight:800;color:#90a4ae">오늘 내 할 일</span><div style="flex:1;height:1px;background:#e0e0e0"></div></div>';
+  if(md>0)h+='<div onclick="annJustClose();go(\'md\')" style="display:flex;align-items:center;gap:11px;padding:14px 15px;background:#ffebee;border:2px solid #ef5350;border-radius:14px;margin-bottom:9px;box-shadow:0 3px 10px rgba(229,57,53,.22);cursor:pointer"><span style="font-size:30px">📦</span><div style="flex:1;text-align:left"><div style="font-size:16px;font-weight:900;color:#c62828">오배송 인입 <span style="background:#e53935;color:#fff;border-radius:8px;padding:1px 9px">'+md+'건</span></div><div style="font-size:12px;color:#e57373;font-weight:700;margin-top:2px">지금 바로 처리해주세요</div></div><span style="font-size:22px;color:#e53935;font-weight:900">›</span></div>';
+  if(pb>0)h+='<div onclick="annJustClose();go(\'pb\')" style="display:flex;align-items:center;gap:11px;padding:14px 15px;background:#f3e5f5;border:2px solid #ab47bc;border-radius:14px;box-shadow:0 3px 10px rgba(123,31,162,.2);cursor:pointer"><span style="font-size:30px">🧾</span><div style="flex:1;text-align:left"><div style="font-size:16px;font-weight:900;color:#6a1b9a">프백 소명 <span style="background:#8e24aa;color:#fff;border-radius:8px;padding:1px 9px">'+pb+'건</span></div><div style="font-size:12px;color:#ab47bc;font-weight:700;margin-top:2px">마감 전 작성 부탁드려요</div></div><span style="font-size:22px;color:#8e24aa;font-weight:900">›</span></div>';
+  return h;
+}
 function checkUnreadAnns(impOnly, chainCb){
   // If popup already open, don't interrupt
   if(document.getElementById('ann-popup').style.display!=='none')return;
@@ -3466,8 +3498,9 @@ function checkUnreadAnns(impOnly, chainCb){
   if(window._annPopupDismissed){ if(_annChainCb){var _cbx=_annChainCb;_annChainCb=null;setTimeout(_cbx,50);} return; }
   // [버그수정] 서버 읽음기록(announcement_reads)이 아직 로딩 전이면 먼저 로드 후 재평가.
   //   팝업이 로딩 전에 떠서 '이미 읽은 공지'를 안읽음으로 잘못 띄우던 타이밍 문제 차단.
-  if(!window._annReadsLoaded && sbClient && CU && (CU.id||CU.name)){
-    _annLoadMyReads().then(function(){ checkUnreadAnns(impOnly); });
+  if(!window._annBriefFetched && sbClient && CU && (CU.id||CU.name)){
+    window._annBriefFetched=true;
+    _annFetchBrief().then(function(){ checkUnreadAnns(impOnly); });
     return;
   }
   var anns=getAnns().filter(function(a){return !isAnnExpired(a)&&!a.disabled;});
@@ -3488,7 +3521,7 @@ function annShowUnreadList(){
   var rows=un.map(function(a){
     var fx=(a.effect&&ANN_FX[a.effect])?ANN_FX[a.effect]:null;
     var col=fx?fx.col:'#90a4ae', emo=fx?fx.e:'\uD83D\uDCE2';
-    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f7f9fa;border:1px solid #eceff1;border-left:4px solid '+col+';border-radius:9px;margin-bottom:6px"><span style="font-size:14px">'+emo+'</span><span style="font-size:13px;font-weight:800;color:#37474f">'+a.title+'</span></div>';
+    return '<div onclick="openAnnView('+a.id+')" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f7f9fa;border:1px solid #eceff1;border-left:4px solid '+col+';border-radius:9px;margin-bottom:6px;cursor:pointer"><span style="font-size:14px">'+emo+'</span><span style="font-size:13px;font-weight:800;color:#37474f;flex:1">'+a.title+'</span><span style="color:#bbb;font-weight:800">›</span></div>';
   }).join('');
   document.getElementById('ann-popup-content').innerHTML=
     '<div style="text-align:center">'+
@@ -3497,9 +3530,9 @@ function annShowUnreadList(){
       '<div style="font-size:16px;font-weight:800;color:#263238;margin-top:7px">\uD655\uC778 \uC548 \uD55C \uACF5\uC9C0 <span style="color:#e53935">'+un.length+'</span>\uAC1C</div>'+
       '<div style="font-size:11px;color:#90a4ae;margin:2px 0 11px">\uC81C\uBAA9\uB9CC \uBA3C\uC800 \uD655\uC778\uD558\uC138\uC694</div>'+
     '</div>'+
-    '<div style="text-align:left;max-height:38vh;overflow-y:auto">'+rows+'</div>';
+    '<div style="text-align:left;max-height:38vh;overflow-y:auto">'+rows+'</div>'+_brfBanners();
   document.getElementById('ann-popup').style.display='';
-  _annPBtn('board');
+  var _pb0=document.getElementById('ann-pbtn');if(_pb0)_pb0.style.display='none';
 }
 function annGoBoard(){
   window._annPopupDismissed=true;
@@ -4224,7 +4257,7 @@ function _annMgmtHTML(a){
       '<button onclick="deleteAnn('+_id+')" style="flex:1;padding:9px;border:1px solid #ef9a9a;border-radius:9px;background:#fff;color:#c62828;font-size:12px;font-weight:700;cursor:pointer">🗑 삭제</button>'+
     '</div></div>';
 }
-function _annPBtn(mode){var b=document.getElementById('ann-pbtn');if(!b)return;if(mode==='board'){b.innerHTML='📖 보러가기';b.onclick=annGoBoard;}else{b.innerHTML='📖 읽고 확인 함';b.onclick=annConfirmRead;}}
+function _annPBtn(mode){var b=document.getElementById('ann-pbtn');if(!b)return;b.style.display='';if(mode==='board'){b.innerHTML='📖 보러가기';b.onclick=annGoBoard;}else{b.innerHTML='📖 읽고 확인 함';b.onclick=annConfirmRead;}}
 function openAnnView(annId){
   var anns=getAnns();
   var a=anns.find(function(x){return String(x.id)===String(annId);});
