@@ -8878,9 +8878,9 @@ function gfTruck(c,x,y,vy){var rot=Math.max(-.38,Math.min(.6,vy*0.045));
  wh(-18);wh(20);
  c.restore();}
 function gFlapStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gfc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:84vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🚚</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gfc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🚚</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
-  var cv=document.getElementById('gfc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,440)),H=Math.max(440,Math.min((window.innerHeight||640)-180,860));cv.width=W;cv.height=H;
+  var cv=document.getElementById('gfc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,440)),H=Math.max(440,Math.min((window.innerHeight||640)-128,860));cv.width=W;cv.height=H;
   var GND=H-28,PW=58,gap=Math.max(125,Math.round(H*0.30)),bx=Math.round(W*0.30);
   var clouds=[],hills=[];for(var i=0;i<5;i++)clouds.push({x:Math.random()*W,y:26+Math.random()*(H*0.3),s:0.6+Math.random()*0.8});for(var i2=0;i2<8;i2++)hills.push({x:i2*70,h:40+Math.random()*46});
   GF={cv:cv,cx:cv.getContext('2d'),W:W,H:H,GND:GND,PW:PW,gap:gap,bx:bx,by:Math.round(H*0.4),vy:0,pipes:[{x:W+20,gy:54+Math.random()*Math.max(40,GND-gap-130)}],sc:0,over:false,started:false,t:0,clouds:clouds,hills:hills,puffs:[]};
@@ -8916,7 +8916,7 @@ var GS={};
 function gStackStart(){var st=document.getElementById('g-stage');if(!st)return;
   st.innerHTML='<div style="text-align:center"><canvas id="gsc" width="300" height="460" style="background:linear-gradient(#1a1a2e,#16213e);border-radius:12px;width:auto;height:auto;max-width:100%;max-height:88vh;display:block;margin:0 auto;touch-action:none;cursor:pointer"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭해서 블록 멈추기 · 칼같이 쌓아요!</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
-  var cv=document.getElementById('gsc');var bw=130;var W=Math.max(280,Math.min((window.innerWidth||360)-14,460)),H=Math.max(420,Math.min((window.innerHeight||640)-180,900));cv.width=W;cv.height=H;
+  var cv=document.getElementById('gsc');var bw=130;var W=Math.max(280,Math.min((window.innerWidth||360)-14,460)),H=Math.max(420,Math.min((window.innerHeight||640)-128,900));cv.width=W;cv.height=H;
   GS={cv:cv,cx:cv.getContext('2d'),W:W,H:H,bh:26,stack:[{x:(W-bw)/2,w:bw}],cur:null,dir:1,spd:2.2,sc:0,over:false};
   gStackSpawn();cv.onpointerdown=gStackDrop;document.removeEventListener('keydown',gStackKey);document.addEventListener('keydown',gStackKey);
   ghLoad('stack');
@@ -8967,7 +8967,7 @@ function gTetHold(){if(GT.over||GT.clearing||!GT.cur||GT.holdUsed)return;ghSfx('
 function gTetKey(e){if(GH.view!=='tetris')return;var k=e.key;if(k==='ArrowLeft'){e.preventDefault();gTetMove(-1);}else if(k==='ArrowRight'){e.preventDefault();gTetMove(1);}else if(k==='ArrowDown'){e.preventDefault();gTetSoft();}else if(k==='ArrowUp'||k==='x'){e.preventDefault();gTetRot();}else if(k===' '||k==='Spacebar'){e.preventDefault();gTetHard();}else if(k==='c'||k==='Shift'){e.preventDefault();gTetHold();}}
 function gTetCellDraw(c,x,y,s,col,al){c.globalAlpha=al||1;c.fillStyle=col;c.fillRect(x,y,s,s);c.fillStyle='rgba(255,255,255,.30)';c.fillRect(x,y,s,Math.max(2,s*0.16));c.fillRect(x,y,Math.max(2,s*0.16),s);c.fillStyle='rgba(0,0,0,.28)';c.fillRect(x,y+s-Math.max(2,s*0.16),s,Math.max(2,s*0.16));c.fillRect(x+s-Math.max(2,s*0.16),y,Math.max(2,s*0.16),s);c.globalAlpha=1;}
 function gTetMini(c,t,bx,by,ms){var cs=gTetCellsOf(t,0,0,0);var minc=9,maxc=0,minr=9,maxr=0;for(var i=0;i<4;i++){minc=Math.min(minc,cs[i][1]);maxc=Math.max(maxc,cs[i][1]);minr=Math.min(minr,cs[i][0]);maxr=Math.max(maxr,cs[i][0]);}var w=(maxc-minc+1),h=(maxr-minr+1);var ox=bx-(minc*ms)-(w*ms)/2,oy=by-(minr*ms)-(h*ms)/2;for(var j=0;j<4;j++)gTetCellDraw(c,ox+cs[j][1]*ms,oy+cs[j][0]*ms,ms-1,GT_P[t].c,1);}
-function gTetStart(){var st=document.getElementById('g-stage');if(!st)return;var cell=Math.max(13,Math.min(30,Math.floor((Math.min(window.innerWidth||360,480)-16)/15),Math.floor(((window.innerHeight||640)-220)/20)));var bw=cell*10,panelX=bw+10,pw=cell*4.6,W=Math.ceil(bw+12+pw),H=cell*20;
+function gTetStart(){var st=document.getElementById('g-stage');if(!st)return;var cell=Math.max(13,Math.min(30,Math.floor((Math.min(window.innerWidth||360,480)-16)/15),Math.floor(((window.innerHeight||640)-150)/20)));var bw=cell*10,panelX=bw+10,pw=cell*4.6,W=Math.ceil(bw+12+pw),H=cell*20;
   st.innerHTML='<div style="text-align:center"><canvas id="gtc" width="'+W+'" height="'+H+'" style="background:#0b0e1a;border-radius:10px;border:1px solid #ffffff22;width:auto;height:auto;max-width:100%;max-height:86vh;display:block;margin:0 auto"></canvas>'
    +'<div style="display:flex;justify-content:center;gap:7px;margin-top:12px;flex-wrap:wrap">'
    +'<button onclick="gTetHold()" style="'+gTetBtn('#455a64')+'">HOLD</button>'
@@ -9009,7 +9009,7 @@ var GU_NM=['🍒','🍓','🍇','🍊','🍑','🍏','🍎','🍐','🍍','🍉'
 function gSuikaStart(){var st=document.getElementById('g-stage');if(!st)return;
   st.innerHTML='<div style="text-align:center"><canvas id="guc" width="320" height="470" style="background:linear-gradient(#fff7e6,#ffe0b2);border-radius:14px;width:auto;height:auto;max-width:100%;max-height:88vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:inset 0 0 0 4px #d7a86e"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">움직여 위치 잡고 탭해서 떨어뜨리기 · 같은 과일끼리 합쳐요!</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
-  var cv=document.getElementById('guc'),W=Math.max(300,Math.min((window.innerWidth||360)-14,460)),H=Math.max(430,Math.min((window.innerHeight||640)-180,900));cv.width=W;cv.height=H;
+  var cv=document.getElementById('guc'),W=Math.max(300,Math.min((window.innerWidth||360)-14,460)),H=Math.max(430,Math.min((window.innerHeight||640)-128,900));cv.width=W;cv.height=H;
   GU={cv:cv,cx:cv.getContext('2d'),W:W,H:H,top:84,fruits:[],sc:0,over:false,cool:0,cx0:W/2,next:Math.floor(Math.random()*5),ovf:0,pops:[]};
   cv.onpointermove=function(e){var rect=cv.getBoundingClientRect();GU.cx0=Math.max(24,Math.min(W-24,(e.clientX-rect.left)/rect.width*W));};
   cv.onpointerdown=function(e){var rect=cv.getBoundingClientRect();GU.cx0=Math.max(24,Math.min(W-24,(e.clientX-rect.left)/rect.width*W));gSuikaDrop();};
@@ -9051,7 +9051,7 @@ function gOmBest(g,me){var opp=me===1?2:1,best=[7,7],bv=-1,cand=gOmCands(g);for(
 function gOmokStart(){var st=document.getElementById('g-stage');if(!st)return;var size=Math.max(280,Math.min((window.innerWidth||360)-16,(window.innerHeight||640)-215,470));
   var streak=0;try{streak=parseInt(localStorage.getItem('omok_streak')||'0',10)||0;}catch(e){}
   st.innerHTML='<div style="text-align:center"><div style="color:#fff;font-weight:800;font-size:14px;margin-bottom:8px">⚫ 나(흑) vs 🤖 AI(백) · 연승 <span id="gostk" style="color:#ffd54f">'+streak+'</span></div>'
-   +'<canvas id="goc" width="'+size+'" height="'+size+'" style="background:#e3b873;border-radius:10px;max-width:100%;max-height:80vh;touch-action:none;cursor:pointer;display:block;margin:0 auto"></canvas>'
+   +'<canvas id="goc" width="'+size+'" height="'+size+'" style="background:#e3b873;border-radius:10px;max-width:100%;max-height:92vh;touch-action:none;cursor:pointer;display:block;margin:0 auto"></canvas>'
    +'<div id="gomsg" style="color:#90a4ae;font-size:12px;margin-top:8px;height:18px">내 차례예요. 교차점을 탭하세요.</div>'
    +'<button onclick="gOmokStart()" style="margin-top:8px;background:#455a64;border:none;color:#fff;border-radius:9px;padding:8px 18px;font-weight:800;font-size:13px;cursor:pointer">새 게임</button></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
@@ -9104,9 +9104,9 @@ function gCloud(c,x,y,s){c.save();c.globalAlpha=.9;c.fillStyle='#fff';c.beginPat
 /* ════════ 게임: 팀플 러너 ════════ */
 var GR={};
 function gRunStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="grc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:84vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🏃</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="grc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🏃</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
-  var cv=document.getElementById('grc');var W=Math.max(320,Math.min((window.innerWidth||360)-14,460)),H=Math.max(300,Math.min((window.innerHeight||640)-200,520));cv.width=W;cv.height=H;
+  var cv=document.getElementById('grc');var W=Math.max(320,Math.min((window.innerWidth||360)-14,460)),H=Math.max(300,Math.min((window.innerHeight||640)-150,520));cv.width=W;cv.height=H;
   var GND=H-40,CX=Math.round(W*0.24);
   var clouds=[],bld=[];for(var i=0;i<4;i++)clouds.push({x:Math.random()*W,y:24+Math.random()*70,s:.6+Math.random()*.7});for(var i2=0;i2<8;i2++)bld.push({x:i2*64,w:40+Math.random()*22,h:50+Math.random()*70});
   GR={cv:cv,cx:cv.getContext('2d'),W:W,H:H,GND:GND,CX:CX,y:GND,vy:0,onG:true,things:[],t:0,dist:0,coins:0,over:false,spd:3.2,ph:0,clouds:clouds,bld:bld};
@@ -9137,9 +9137,9 @@ function gRunKey(e){if(GH.view!=='runner')return;if(e.code==='Space'||e.key===' 
 /* ════════ 게임: 팀플 무한점프 ════════ */
 var GJ={};
 function gJumpStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gjc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:84vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.28)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 좌/우 탭 또는 ←→ 로 이동 · 택배 상자 밟고 위로! 🏢</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gjc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.28)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 좌/우 탭 또는 ←→ 로 이동 · 택배 상자 밟고 위로! 🏢</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
-  var cv=document.getElementById('gjc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,420)),H=Math.max(440,Math.min((window.innerHeight||640)-180,840));cv.width=W;cv.height=H;
+  var cv=document.getElementById('gjc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,420)),H=Math.max(440,Math.min((window.innerHeight||640)-128,840));cv.width=W;cv.height=H;
   var gapY=Math.round(H/9),plats=[],pkgs=[];
   plats.push({x:W/2-38,y:H-58,w:76,spr:false});
   for(var i=1;i<9;i++)plats.push({x:Math.random()*(W-76),y:H-58-i*gapY,w:64+Math.random()*18,spr:Math.random()<0.13});
@@ -9188,7 +9188,7 @@ var GM={};
 var GM_IC=['📦','🚚','🧊','🍱','🅿️','🔔','🏢','📮','🛒','🎁','📋','🗺️'];
 function gMatchStart(){var st=document.getElementById('g-stage');if(!st)return;
   var W=Math.max(300,Math.min((window.innerWidth||360)-14,430));var pad=12,gap=8,cw=Math.floor((W-2*pad-3*gap)/4),chh=Math.round(cw*0.92),H=pad*2+6*chh+5*gap+34;
-  st.innerHTML='<div style="text-align:center"><canvas id="gmc" width="'+W+'" height="'+H+'" style="border-radius:16px;max-width:100%;max-height:84vh;display:block;margin:0 auto;touch-action:manipulation;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">카드를 뒤집어 같은 그림을 맞춰요 · 빠를수록 1등! 🎴</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gmc" width="'+W+'" height="'+H+'" style="border-radius:16px;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:manipulation;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">카드를 뒤집어 같은 그림을 맞춰요 · 빠를수록 1등! 🎴</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var arr=[];for(var i=0;i<12;i++){arr.push(i);arr.push(i);}for(var i2=arr.length-1;i2>0;i2--){var j=Math.floor(Math.random()*(i2+1));var x=arr[i2];arr[i2]=arr[j];arr[j]=x;}
   var cards=arr.map(function(v){return {v:v,a:0,ta:0,m:0};});
@@ -9224,9 +9224,9 @@ function gMatchKey(e){if(GH.view!=='match')return;if((e.code==='Space'||e.key===
 /* ════════ 게임: 택배 쌓기 타워 ════════ */
 var GW={};
 function gTowerStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gwc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:84vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭/스페이스로 상자 내려놓기 · 흔들리는 택배차에 정확히! 🧱</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gwc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭/스페이스로 상자 내려놓기 · 흔들리는 택배차에 정확히! 🧱</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
-  var cv=document.getElementById('gwc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,420)),H=Math.max(440,Math.min((window.innerHeight||640)-180,820));cv.width=W;cv.height=H;
+  var cv=document.getElementById('gwc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,420)),H=Math.max(440,Math.min((window.innerHeight||640)-128,820));cv.width=W;cv.height=H;
   var BH=24,bw=Math.round(W*0.34);
   GW={cv:cv,cx:cv.getContext('2d'),W:W,H:H,BH:BH,baseY:H-70,stack:[{x:(W-bw)/2,w:bw}],cur:{x:10,w:bw,dir:1},spd:2.4,sc:0,over:false,t:0,off:0};
   cv.onpointerdown=gTowerDrop;document.removeEventListener('keydown',gTowerKey);document.addEventListener('keydown',gTowerKey);
@@ -9290,18 +9290,19 @@ function gMarbleStart(){var st=document.getElementById('g-stage');if(!st)return;
    +'<button id="mb-roll" onclick="gMbRoll()" style="'+gMbBtn('#1565c0')+'">🎲 굴리기</button>'
    +'<button id="mb-buy" onclick="gMbBuy()" style="'+gMbBtn('#2e7d32')+'">구매</button>'
    +'<button id="mb-build" onclick="gMbBuild()" style="'+gMbBtn('#ef6c00')+'">캠프 건설</button>'
-   +'<button id="mb-next" onclick="gMbNext()" style="'+gMbBtn('#607d8b')+'">다음 ▶</button>'
+   
    +'<button onclick="gMarbleStart()" style="'+gMbBtn('#455a64')+'">↺</button></div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var owner=[],level=[];for(var i=0;i<32;i++){owner.push(0);level.push(0);}
   GMB={cv:document.getElementById('mbc'),cx:document.getElementById('mbc').getContext('2d'),W:W,BS:BS,T:gMbTiles(),owner:owner,level:level,
        me:{pos:0,money:4000,alive:true,disp:0,skip:false},ai:{pos:0,money:4000,alive:true,disp:0,skip:false},turnCount:0,
-       turn:1,phase:'roll',d1:1,d2:1,over:false,winner:0,start:Date.now(),moving:null,steps:0,movestep:0,aiTimer:0,canBuy:false,canBuild:false,msg:'주사위를 굴려 출발!'};
+       turn:1,phase:'roll',d1:1,d2:1,over:false,winner:0,start:Date.now(),moving:null,steps:0,movestep:0,aiTimer:0,meTimer:0,canBuy:false,canBuild:false,msg:'주사위를 굴려 출발!'};
   ghLoad('marble');gMbUI();
   (function loop(){if(my!==GH.gen||GH.view!=='marble'||!GMB.cx)return;var g=GMB;
     if(g.moving){g.movestep++;if(g.movestep>=5){g.movestep=0;var p=g.moving;p.pos=(p.pos+1)%32;if(p.pos===0)p.money+=300;g.steps--;if(g.steps<=0){g.moving=null;gMbLand(p);}}}
     else if(!g.over&&g.turn===2&&g.phase==='roll'){if(++g.aiTimer>38){g.aiTimer=0;gMbRoll();}}
     else if(!g.over&&g.turn===2&&g.phase==='action'){if(++g.aiTimer>38){g.aiTimer=0;gMbAI();}}
+    else if(!g.over&&g.turn===1&&g.phase==='action'){var _lim=(g.canBuy||g.canBuild)?210:110;if(++g.meTimer>_lim){gMbSwitch();}}
     g.me.disp+=(g.me.pos-g.me.disp)*0.3;g.ai.disp+=(g.ai.pos-g.ai.disp)*0.3;
     gMbDraw();GH.raf=requestAnimationFrame(loop);})();}
 function gMbDraw(){var g=GMB,c=g.cx,BS=g.BS;c.clearRect(0,0,BS,BS);
@@ -9328,12 +9329,12 @@ function gMbUI(){var g=GMB,me=document.getElementById('mb-me'),ai=document.getEl
   if(me)me.textContent=g.me.money;if(ai)ai.textContent=g.ai.money;if(msg)msg.textContent=g.msg;
   function en(id,on){var b=document.getElementById(id);if(b){b.style.opacity=on?'1':'.38';b.style.pointerEvents=on?'auto':'none';}}
   var mt=(g.turn===1&&!g.over&&!g.moving);
-  en('mb-roll',mt&&g.phase==='roll');en('mb-buy',mt&&g.phase==='action'&&g.canBuy);en('mb-build',mt&&g.phase==='action'&&g.canBuild);en('mb-next',mt&&g.phase==='action');}
+  en('mb-roll',mt&&g.phase==='roll');en('mb-buy',mt&&g.phase==='action'&&g.canBuy);en('mb-build',mt&&g.phase==='action'&&g.canBuild);}
 function gMbCur(){return GMB.turn===1?GMB.me:GMB.ai;}
 function gMbRoll(){var g=GMB;if(g.over||g.moving||g.phase!=='roll')return;var p=gMbCur();
   if(p.skip){p.skip=false;g.msg=(g.turn===1?'나':'컴퓨터')+' 간선차 이슈로 한 턴 쉼';gMbSwitch();return;}
   g.d1=1+Math.floor(Math.random()*6);g.d2=1+Math.floor(Math.random()*6);ghSfx('move');g.steps=g.d1+g.d2;g.moving=p;g.movestep=0;g.phase='moving';gMbUI();}
-function gMbLand(p){var g=GMB,t=g.T[p.pos],who=(p===g.me)?'나':'컴퓨터';g.canBuy=false;g.canBuild=false;
+function gMbLand(p){var g=GMB,t=g.T[p.pos],who=(p===g.me)?'나':'컴퓨터';g.canBuy=false;g.canBuild=false;g.meTimer=0;
   if(t.t==='prop'||t.t==='camp'){var o=g.owner[p.pos];
     if(o===0){g.msg=who+' → '+(t.n||'캠프')+' (구매 '+t.price+')';if(p.money>=t.price)g.canBuy=true;}
     else if(o!==(p===g.me?1:2)){var rent=gMbRent(g,p.pos);var owner=(o===1)?g.me:g.ai;gMbPay(p,rent,owner);ghSfx('drop');g.msg=who+' → '+(t.n||'캠프')+' 통행료 '+rent+' 지불';}
@@ -9348,8 +9349,8 @@ function gMbLand(p){var g=GMB,t=g.T[p.pos],who=(p===g.me)?'나':'컴퓨터';g.ca
   g.phase='action';
   if(!g.me.alive){gMbOver(2);return;}if(!g.ai.alive){gMbOver(1);return;}
   gMbUI();}
-function gMbBuy(){var g=GMB;if(g.turn!==1||g.phase!=='action'||!g.canBuy)return;var t=g.T[g.me.pos];if(g.me.money<t.price)return;g.me.money-=t.price;g.owner[g.me.pos]=1;g.canBuy=false;g.msg='나 → '+(t.n||'캠프')+' 구매!';ghSfx('score');gMbUI();}
-function gMbBuild(){var g=GMB;if(g.turn!==1||g.phase!=='action'||!g.canBuild)return;var t=g.T[g.me.pos],cost=Math.round(t.price*0.7);if(g.me.money<cost||g.level[g.me.pos]>=3)return;g.me.money-=cost;g.level[g.me.pos]++;g.canBuild=g.level[g.me.pos]<3&&g.me.money>=cost;g.msg='나 → '+t.n+' 캠프 Lv'+g.level[g.me.pos];ghSfx('drop');gMbUI();}
+function gMbBuy(){var g=GMB;if(g.turn!==1||g.phase!=='action'||!g.canBuy)return;var t=g.T[g.me.pos];if(g.me.money<t.price)return;g.me.money-=t.price;g.owner[g.me.pos]=1;g.canBuy=false;g.msg='나 → '+(t.n||'캠프')+' 구매!';ghSfx('score');g.meTimer=150;gMbUI();}
+function gMbBuild(){var g=GMB;if(g.turn!==1||g.phase!=='action'||!g.canBuild)return;var t=g.T[g.me.pos],cost=Math.round(t.price*0.7);if(g.me.money<cost||g.level[g.me.pos]>=3)return;g.me.money-=cost;g.level[g.me.pos]++;g.canBuild=g.level[g.me.pos]<3&&g.me.money>=cost;g.msg='나 → '+t.n+' 캠프 Lv'+g.level[g.me.pos];ghSfx('drop');g.meTimer=150;gMbUI();}
 function gMbNext(){var g=GMB;if(g.turn!==1||g.phase!=='action'||g.moving)return;gMbSwitch();}
 function gMbAI(){var g=GMB;
   if(g.canBuy){var t=g.T[g.ai.pos];if(g.ai.money-t.price>2500){g.ai.money-=t.price;g.owner[g.ai.pos]=2;g.msg='컴퓨터 → '+(t.n||'캠프')+' 구매';}}
