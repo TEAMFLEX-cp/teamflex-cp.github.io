@@ -1830,7 +1830,7 @@ function applyFeatureCtrlToUI(){
   var feat=feats[CUR_TAB];
   if(feat&&!isAdm&&!getFeatureCtrl(feat,'active'))needRefresh=true;
   if(feat&&!isAdm&&getFeatureCtrl(feat,'active'))needRefresh=true; // 재활성화됐을 때도 갱신
-  if(needRefresh){go(CUR_TAB);}
+  if(needRefresh&&CUR_TAB!=='rl'){go(CUR_TAB);}
 }
 // 날짜 포맷 헬퍼: "2026-05-04" → "5월 4일"
 function _fmtSchedDate(d){
