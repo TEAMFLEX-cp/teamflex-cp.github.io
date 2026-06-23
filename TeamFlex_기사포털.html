@@ -8957,17 +8957,17 @@ function gSuikaStart(){var st=document.getElementById('g-stage');if(!st)return;
   ghLoad('suika');
   (function loop(){if(my!==GH.gen||GH.view!=='suika'||!GU.cx)return;var g=GU,c=g.cx,W=g.W,H=g.H;
     if(g.cool>0)g.cool--;
-    if(!g.over){for(var i=0;i<g.fruits.length;i++){var f=g.fruits[i];f.vy+=0.42;f.x+=f.vx;f.y+=f.vy;f.vx*=0.99;
+    if(!g.over){for(var i=0;i<g.fruits.length;i++){var f=g.fruits[i];f.vy+=0.42;f.x+=f.vx;f.y+=f.vy;f.vx*=0.99;f.age=(f.age||0)+1;
       if(f.x<f.r+4){f.x=f.r+4;f.vx=-f.vx*0.4;}if(f.x>W-f.r-4){f.x=W-f.r-4;f.vx=-f.vx*0.4;}
       if(f.y>H-f.r-4){f.y=H-f.r-4;f.vy=-f.vy*0.2;f.vx*=0.88;}}
-      for(var it=0;it<4;it++){for(var a=0;a<g.fruits.length;a++){for(var b=a+1;b<g.fruits.length;b++){var p=g.fruits[a],q=g.fruits[b];if(!p||!q||p.dead||q.dead)continue;var dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||0.01,md=p.r+q.r;
-        if(d<md){if(p.t===q.t&&p.t<GU_R.length-1&&!p.m&&!q.m){p.m=q.m=p.dead=q.dead=true;var nt=p.t+1;var nx=(p.x+q.x)/2,ny=(p.y+q.y)/2;g.sc+=(nt+1)*2;g.fruits.push({x:nx,y:ny,vx:0,vy:-1,r:GU_R[nt],t:nt,m:false});g.pops.push({x:nx,y:ny,r:GU_R[nt],a:1});ghSfx('merge');}
+      for(var it=0;it<6;it++){for(var a=0;a<g.fruits.length;a++){for(var b=a+1;b<g.fruits.length;b++){var p=g.fruits[a],q=g.fruits[b];if(!p||!q||p.dead||q.dead)continue;var dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||0.01,md=p.r+q.r;
+        if(d<md){if(p.t===q.t&&p.t<GU_R.length-1&&!p.m&&!q.m){p.m=q.m=p.dead=q.dead=true;var nt=p.t+1;var nx=(p.x+q.x)/2,ny=(p.y+q.y)/2;g.sc+=(nt+1)*2;g.fruits.push({x:nx,y:ny,vx:0,vy:-1,r:GU_R[nt],t:nt,m:false,age:0});g.pops.push({x:nx,y:ny,r:GU_R[nt],a:1});ghSfx('merge');}
           else{var ov=(md-d)/2,nx2=dx/d,ny2=dy/d;p.x-=nx2*ov;p.y-=ny2*ov;q.x+=nx2*ov;q.y+=ny2*ov;}}}}}
       g.fruits=g.fruits.filter(function(f){return !f.dead;});
-      var hi=0;for(var k=0;k<g.fruits.length;k++){var ff=g.fruits[k];if(Math.abs(ff.vy)<0.6&&ff.y-ff.r<g.top)hi++;}
-      if(hi>0)g.ovf++;else g.ovf=Math.max(0,g.ovf-2);if(g.ovf>90){g.over=true;ghSfx('over');ghSave('suika',g.sc);ghLoad('suika');}}
+      var hi=0;for(var k=0;k<g.fruits.length;k++){var ff=g.fruits[k];if((ff.age||0)>40&&ff.y-ff.r<g.top)hi++;}
+      if(hi>0)g.ovf++;else g.ovf=Math.max(0,g.ovf-3);if(g.ovf>75){g.over=true;ghSfx('over');ghSave('suika',g.sc);ghLoad('suika');}}
     c.clearRect(0,0,W,H);
-    c.strokeStyle='#ff7043';c.setLineDash([7,6]);c.lineWidth=2;c.beginPath();c.moveTo(0,g.top);c.lineTo(W,g.top);c.stroke();c.setLineDash([]);
+    c.strokeStyle=(g.ovf>0?((Math.floor(g.ovf/5)%2)?'#ff1744':'#ffab00'):'#ff7043');c.setLineDash([7,6]);c.lineWidth=(g.ovf>0?3:2);c.beginPath();c.moveTo(0,g.top);c.lineTo(W,g.top);c.stroke();c.setLineDash([]);if(g.ovf>0&&!g.over){c.fillStyle='#ff1744';c.font='800 11px sans-serif';c.textAlign='center';c.fillText('위험!',W/2,g.top-6);}
     for(var d2=0;d2<g.fruits.length;d2++){var fr=g.fruits[d2];gSuikaFruit(c,fr.x,fr.y,fr.r,fr.t);}
     for(var pp=g.pops.length-1;pp>=0;pp--){var po=g.pops[pp];c.strokeStyle='rgba(255,255,255,'+po.a+')';c.lineWidth=3;c.beginPath();c.arc(po.x,po.y,po.r*(1.1+(1-po.a)*0.6),0,7);c.stroke();po.a-=0.08;if(po.a<=0)g.pops.splice(pp,1);}
     if(!g.over&&g.cool<=0){gSuikaFruit(c,g.cx0,46,GU_R[g.next],g.next);c.strokeStyle='rgba(120,130,150,.5)';c.setLineDash([3,5]);c.beginPath();c.moveTo(g.cx0,46);c.lineTo(g.cx0,H);c.stroke();c.setLineDash([]);}
@@ -8979,7 +8979,7 @@ function gSuikaFruit(c,x,y,r,t){c.save();c.beginPath();c.arc(x,y,r,0,7);var grd=
   if(r>=12){var er=Math.max(1.5,r*0.12);c.fillStyle='#3a2a2a';c.beginPath();c.arc(x-r*0.32,y-r*0.1,er,0,7);c.fill();c.beginPath();c.arc(x+r*0.32,y-r*0.1,er,0,7);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(x-r*0.32-er*0.3,y-r*0.1-er*0.3,er*0.4,0,7);c.fill();c.beginPath();c.arc(x+r*0.32-er*0.3,y-r*0.1-er*0.3,er*0.4,0,7);c.fill();
     c.strokeStyle='#3a2a2a';c.lineWidth=Math.max(1,r*0.05);c.beginPath();c.arc(x,y+r*0.12,r*0.28,0.15*Math.PI,0.85*Math.PI);c.stroke();}
   c.restore();}
-function gSuikaDrop(){var g=GU;if(g.over){gSuikaStart();return;}if(g.cool>0)return;g.fruits.push({x:g.cx0,y:48,vx:0,vy:0,r:GU_R[g.next],t:g.next,m:false});g.cool=24;g.next=Math.floor(Math.random()*5);ghSfx('drop');}
+function gSuikaDrop(){var g=GU;if(g.over){gSuikaStart();return;}if(g.cool>0)return;g.fruits.push({x:g.cx0,y:48,vx:0,vy:0,r:GU_R[g.next],t:g.next,m:false,age:0});g.cool=24;g.next=Math.floor(Math.random()*5);ghSfx('drop');}
 
 
 /* ═════════ 마블 룰렛 이벤트 추첨 (코인·이름·등수·풀스크린) ═════════ */
