@@ -6880,7 +6880,7 @@ function pgMisdelivery(){
         '</div>'+
         '<div style="flex:1;background:#fff;border-radius:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 3px">'+
           '<div style="font-size:19px;font-weight:800;color:#e65100;line-height:1" id="md-n-noaction">-</div>'+
-          '<div style="font-size:10px;color:#bf6000;margin-top:3px;font-weight:700">미처리</div>'+
+          '<div style="font-size:9px;color:#bf6000;margin-top:3px;font-weight:700;white-space:nowrap">미응답 완료</div>'+
         '</div>'+
         '<div style="flex:1;background:#fff;border-radius:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 3px">'+
           '<div style="font-size:19px;font-weight:800;color:#1565c0;line-height:1" id="md-n-waiting">-</div>'+
@@ -7418,7 +7418,7 @@ function mdRenderList(cases){
               return '<div style="background:#fff;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #f0f4c3;display:flex;align-items:center;justify-content:space-between;gap:8px">'+
                 '<div onclick="mdOpenDetail('+c.id+')" style="flex:1;cursor:pointer;min-width:0">'+
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
-                    (c._noAction?'<span style="font-size:10px;font-weight:800;color:#455a64;background:#eceff1;border:1px solid #cfd8dc;padding:1px 7px;border-radius:7px">⛔ 담당 미조치</span>':'')+
+                    (c._noAction?'<span style="font-size:10px;font-weight:800;color:#455a64;background:#eceff1;border:1px solid #cfd8dc;padding:1px 7px;border-radius:7px">⛔ 미응답 완료</span>':'')+
                     (canDelete?'<span style="font-size:11px;font-weight:700;color:#558b2f">'+mdEsc(c.driver_name||c.driver_id||'-')+'</span>':'')+''+
                     '<span style="font-size:11px;color:#aaa">'+mdWbShort(c.waybill_no)+'</span>'+
                   '</div>'+
