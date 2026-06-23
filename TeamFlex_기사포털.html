@@ -8694,7 +8694,7 @@ st.textContent='@keyframes ghTwk{0%,100%{opacity:.15;transform:scale(.5)}50%{opa
 +'@keyframes ghBorder{0%,100%{box-shadow:0 0 0 2px #ffd54f,0 0 16px 3px rgba(255,202,40,.8)}50%{box-shadow:0 0 0 3px #fff59d,0 0 30px 8px rgba(255,202,40,.95)}}'
 +'.ghsel{animation:ghBorder 1.4s infinite}'
 +'@keyframes ghBig{0%,100%{transform:scale(1) rotate(-10deg)}50%{transform:scale(1.35) rotate(14deg)}}'
-+'.ghbig{position:absolute;top:-12px;right:-6px;font-size:30px;animation:ghBig 1.2s infinite;filter:drop-shadow(0 0 7px #ffd54f);z-index:3}';
++'.ghbig{position:absolute;top:-12px;right:-6px;font-size:30px;animation:ghBig 1.2s infinite;filter:drop-shadow(0 0 7px #ffd54f);z-index:3}'+'#gh-pop,#gh-pop *{-webkit-tap-highlight-color:rgba(0,0,0,0);-webkit-touch-callout:none}#gh-pop canvas{outline:none;-webkit-user-select:none;user-select:none;display:block;margin:0 auto}#gh-pop button{outline:none}';
 document.head.appendChild(st);
 if(!document.getElementById('gh-pop')){var p=document.createElement('div');p.id='gh-pop';p.style.cssText='display:none;position:fixed;inset:0;z-index:99990;background:linear-gradient(#0d1117,#161b22);overflow:auto;-webkit-overflow-scrolling:touch';document.body.appendChild(p);}}
 
@@ -8833,7 +8833,7 @@ function g48Move(dir){var g=G48.g,moved=false,_sc0=G48.sc;
   for(var k=0;k<4;k++){var line=(dir<2)?gr(k):gc(k);var o=line.slice();if(dir===1||dir===3)line.reverse();line=g48Slide(line);if(dir===1||dir===3)line.reverse();if(dir<2)sr(k,line);else sc(k,line);if(line.join()!==o.join())moved=true;}
   if(moved){ghSfx(G48.sc>_sc0?'merge':'move');g48Add();g48Draw();if(g48Stuck()){G48.over=true;g48Draw();ghSfx('over');ghSave('2048',G48.sc);ghLoad('2048');}}}
 function g48Stuck(){var g=G48.g;for(var i=0;i<16;i++){if(!g[i])return false;var r=i%4,c=Math.floor(i/4);if(r<3&&g[i]===g[i+1])return false;if(c<3&&g[i]===g[i+4])return false;}return true;}
-function g48Draw(){var el=document.getElementById('g48');if(!el)return;var sz=Math.min(80,Math.floor((Math.min(window.innerWidth||360,440)-50)/4));var html='<div style="display:grid;grid-template-columns:repeat(4,'+sz+'px);gap:8px">';
+function g48Draw(){var el=document.getElementById('g48');if(!el)return;var sz=Math.min(96,Math.floor((Math.min(window.innerWidth||360,520)-40)/4));var html='<div style="display:grid;grid-template-columns:repeat(4,'+sz+'px);gap:8px">';
   for(var i=0;i<16;i++){var v=G48.g[i];var col=G48COL[v]||['#3c3a32','#fff'];var fs=v>=1024?Math.floor(sz*0.34):v>=128?Math.floor(sz*0.4):Math.floor(sz*0.46);
     html+='<div style="width:'+sz+'px;height:'+sz+'px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:'+fs+'px;background:'+(v?col[0]:'#cdc1b4')+';color:'+col[1]+'">'+(v||'')+'</div>';}
   html+='</div>';
@@ -8847,7 +8847,7 @@ function g48Swipe(el){if(!el)return;var sx=0,sy=0;
 /* ════════ 게임2: 택배차 점프(플래피) ════════ */
 var GF={};
 function gFlapStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gfc" width="300" height="460" style="background:linear-gradient(#7ec0ee,#bfe3ff);border-radius:12px;width:min(92vw,360px);touch-action:none;cursor:pointer"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🚚</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gfc" width="300" height="460" style="background:linear-gradient(#7ec0ee,#bfe3ff);border-radius:12px;height:min(72vh,560px);width:auto;max-width:96vw;touch-action:none;cursor:pointer"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🚚</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('gfc');GF={cv:cv,cx:cv.getContext('2d'),W:300,H:460,by:200,vy:0,pipes:[],sc:0,over:false,started:false};
   cv.onpointerdown=gFlapTap;document.removeEventListener('keydown',gFlapKey);document.addEventListener('keydown',gFlapKey);
@@ -8874,7 +8874,7 @@ function gFlapKey(e){if(GH.view!=='flap')return;if(e.code==='Space'||e.key===' '
 /* ════════ 게임3: Stack ════════ */
 var GS={};
 function gStackStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gsc" width="300" height="460" style="background:linear-gradient(#1a1a2e,#16213e);border-radius:12px;width:min(92vw,360px);touch-action:none;cursor:pointer"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭해서 블록 멈추기 · 칼같이 쌓아요!</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gsc" width="300" height="460" style="background:linear-gradient(#1a1a2e,#16213e);border-radius:12px;height:min(72vh,560px);width:auto;max-width:96vw;touch-action:none;cursor:pointer"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭해서 블록 멈추기 · 칼같이 쌓아요!</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('gsc');var bw=130;
   GS={cv:cv,cx:cv.getContext('2d'),W:300,H:460,bh:26,stack:[{x:(300-bw)/2,w:bw}],cur:null,dir:1,spd:2.2,sc:0,over:false};
@@ -8928,7 +8928,7 @@ function gTetKey(e){if(GH.view!=='tetris')return;var k=e.key;if(k==='ArrowLeft')
 function gTetCellDraw(c,x,y,s,col,al){c.globalAlpha=al||1;c.fillStyle=col;c.fillRect(x,y,s,s);c.fillStyle='rgba(255,255,255,.30)';c.fillRect(x,y,s,Math.max(2,s*0.16));c.fillRect(x,y,Math.max(2,s*0.16),s);c.fillStyle='rgba(0,0,0,.28)';c.fillRect(x,y+s-Math.max(2,s*0.16),s,Math.max(2,s*0.16));c.fillRect(x+s-Math.max(2,s*0.16),y,Math.max(2,s*0.16),s);c.globalAlpha=1;}
 function gTetMini(c,t,bx,by,ms){var cs=gTetCellsOf(t,0,0,0);var minc=9,maxc=0,minr=9,maxr=0;for(var i=0;i<4;i++){minc=Math.min(minc,cs[i][1]);maxc=Math.max(maxc,cs[i][1]);minr=Math.min(minr,cs[i][0]);maxr=Math.max(maxr,cs[i][0]);}var w=(maxc-minc+1),h=(maxr-minr+1);var ox=bx-(minc*ms)-(w*ms)/2,oy=by-(minr*ms)-(h*ms)/2;for(var j=0;j<4;j++)gTetCellDraw(c,ox+cs[j][1]*ms,oy+cs[j][0]*ms,ms-1,GT_P[t].c,1);}
 function gTetStart(){var st=document.getElementById('g-stage');if(!st)return;var cell=Math.min(24,Math.floor((Math.min(window.innerWidth||360,420)-16)/15));var bw=cell*10,panelX=bw+10,pw=cell*4.6,W=Math.ceil(bw+12+pw),H=cell*20;
-  st.innerHTML='<div style="text-align:center"><canvas id="gtc" width="'+W+'" height="'+H+'" style="background:#0b0e1a;border-radius:10px;border:1px solid #ffffff22;width:min(94vw,'+(W*1.3)+'px);max-width:100%"></canvas>'
+  st.innerHTML='<div style="text-align:center"><canvas id="gtc" width="'+W+'" height="'+H+'" style="background:#0b0e1a;border-radius:10px;border:1px solid #ffffff22;height:min(74vh,600px);width:auto;max-width:96vw"></canvas>'
    +'<div style="display:flex;justify-content:center;gap:7px;margin-top:12px;flex-wrap:wrap">'
    +'<button onclick="gTetHold()" style="'+gTetBtn('#455a64')+'">HOLD</button>'
    +'<button onclick="gTetMove(-1)" style="'+gTetBtn()+'">◀</button>'
@@ -8967,7 +8967,7 @@ var GU_R=[14,18,23,29,36,44,53,63,74,86];
 var GU_C=['#e74c3c','#ff7979','#9b59b6','#f6b93b','#fa83b4','#7bed9f','#26de81','#e056fd','#ff9f43','#20bf6b'];
 var GU_NM=['🍒','🍓','🍇','🍊','🍑','🍏','🍎','🍐','🍍','🍉'];
 function gSuikaStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="guc" width="320" height="470" style="background:linear-gradient(#fff7e6,#ffe0b2);border-radius:14px;width:min(92vw,360px);touch-action:none;cursor:pointer;box-shadow:inset 0 0 0 4px #d7a86e"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">움직여 위치 잡고 탭해서 떨어뜨리기 · 같은 과일끼리 합쳐요!</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="guc" width="320" height="470" style="background:linear-gradient(#fff7e6,#ffe0b2);border-radius:14px;height:min(72vh,560px);width:auto;max-width:96vw;touch-action:none;cursor:pointer;box-shadow:inset 0 0 0 4px #d7a86e"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">움직여 위치 잡고 탭해서 떨어뜨리기 · 같은 과일끼리 합쳐요!</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('guc'),W=320,H=470;
   GU={cv:cv,cx:cv.getContext('2d'),W:W,H:H,top:84,fruits:[],sc:0,over:false,cool:0,cx0:W/2,next:Math.floor(Math.random()*5),ovf:0,pops:[]};
