@@ -3405,7 +3405,7 @@ function go(tab){
   else if(tab==='rq'){_rqTab='';mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
   else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
   else if(tab==='pb'){mc.innerHTML=pgPback();setTimeout(pbInit,100);}
-  else if(tab==='rl'){mc.innerHTML=pgRoulette();setTimeout(rlInit,80);}
+  else if(tab==='rl'){GH.view='hub';mc.innerHTML=pgArcade();setTimeout(arcInit,60);}
   else if(tab==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='er'){mc.innerHTML=pgEmergencyContact();mc.scrollTop=0;}}).catch(function(){});}
   // Re-show important unread announcements on each tab switch (except the announcement tab itself)
   if(CU&&tab!=='nc'&&tab!=='ab'){setTimeout(function(){checkUnreadAnns(true);},300);}
@@ -8653,6 +8653,147 @@ function pbInjectStyle(){
   if(!document.getElementById('pb-ov')){var o=document.createElement('div');o.id='pb-ov';o.className='pb-ov';o.onclick=function(e){if(e.target===o)pbCloseOv();};o.innerHTML='<div class="pb-sheet" id="pb-sheet"></div>';document.body.appendChild(o);}
   if(!document.getElementById('pb-zoom')){var z=document.createElement('div');z.id='pb-zoom';z.className='pb-zoom';z.onclick=function(){z.classList.remove('show');};z.innerHTML='<span class="pb-zx">×</span><img id="pb-zimg">';document.body.appendChild(z);}
 }
+/* ═════════ 팀플 놀이터(게임 허브) ═════════ */
+var GH={view:'hub',raf:0,board:{},loadingB:false};
+function ghUid(){return (CU&&(CU.id||CU.name))||'anon';}
+function ghName(){return (CU&&CU.name)||'익명';}
+function ghYM(){var d=new Date(Date.now()+9*3600000);return d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2);}
+function ghMonthLabel(){var d=new Date(Date.now()+9*3600000);return (d.getUTCMonth()+1)+'월';}
+function ghGameMeta(g){return {'2048':['🔢','2048'],'flap':['🐤','플래피버드'],'stack':['🧱','Stack']}[g]||['🎮',g];}
+
+async function ghSave(game,score){score=Math.round(score||0);if(!sbClient||!CU||score<=0)return;try{await sbClient.from('game_scores').insert({game:game,uid:String(ghUid()),uname:ghName(),score:score,ym:ghYM()});}catch(e){}}
+async function ghLoad(game){GH.loadingB=true;ghRenderBoard(game);try{var r=await sbClient.from('game_scores').select('uid,uname,score').eq('game',game).eq('ym',ghYM()).order('score',{ascending:false}).limit(400);var rows=(r&&r.data)||[];var best={};rows.forEach(function(x){if(!best[x.uid]||x.score>best[x.uid].score)best[x.uid]={uname:x.uname,score:x.score};});var arr=Object.keys(best).map(function(k){return {uid:k,uname:best[k].uname,score:best[k].score};});arr.sort(function(a,b){return b.score-a.score;});GH.board[game]=arr.slice(0,20);}catch(e){GH.board[game]=null;}GH.loadingB=false;ghRenderBoard(game);}
+
+/* ── 디스패처: 코인탭(rl) → 허브 / 룰렛 / 게임 ── */
+function pgArcade(){if(GH.view==='roulette')return pgRoulette();if(GH.view==='2048'||GH.view==='flap'||GH.view==='stack')return ghGameShell(GH.view);return pgGameHub();}
+function arcInit(){if(GH.view==='roulette'){rlInit();return;}if(GH.view==='2048'){g48Start();}else if(GH.view==='flap'){gFlapStart();}else if(GH.view==='stack'){gStackStart();}}
+function ghOpen(v){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.view=v;var mc=document.getElementById('mc');if(!mc)return;mc.innerHTML=pgArcade();setTimeout(arcInit,40);}
+function ghBack(){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}try{document.removeEventListener('keydown',g48Key);document.removeEventListener('keydown',gFlapKey);document.removeEventListener('keydown',gStackKey);}catch(e){}GH.view='hub';var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgGameHub();}
+
+/* ── 허브 화면 ── */
+function pgGameHub(){
+  var adm=rlIsAdmin(),active=getFeatureCtrl('roulette','active');
+  if(!rlCanManage()&&!active)return '<div style="text-align:center;color:#90a4ae;padding:46px 14px;font-size:14px">🎮 팀플 놀이터가 아직 열리지 않았습니다.</div>';
+  var h='<div style="padding:8px 12px 90px">';
+  h+='<div style="position:relative;text-align:center;padding:20px 10px 16px;border-radius:16px;overflow:hidden;background:linear-gradient(135deg,#15193a,#241a4d 55%,#3a1d5c);margin-bottom:14px">';
+  for(var i=0;i<14;i++){var x=(i*37+11)%96,y=(i*53+7)%90,s=(i%3)+1;h+='<span style="position:absolute;left:'+x+'%;top:'+y+'%;width:'+s+'px;height:'+s+'px;border-radius:50%;background:#fff;opacity:.7;animation:rlTwk '+(1.5+(i%5)*0.4)+'s infinite '+(i%7)*0.2+'s"></span>';}
+  h+='<div style="position:relative;font-size:22px;font-weight:900;color:#fff;letter-spacing:1px">🎮 팀플 놀이터</div><div style="position:relative;font-size:12px;color:#c9b8ff;margin-top:3px">매달 1일~말일 · 월간 랭킹전</div></div>';
+  if(adm){h+='<div onclick="rlToggleActive()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:'+(active?'#e8f5e9':'#fceaea')+';border:1px solid '+(active?'#a5d6a7':'#ef9a9a')+';border-radius:12px;padding:10px 14px;margin-bottom:14px"><span style="font-size:13px;font-weight:700;color:'+(active?'#2e7d32':'#c62828')+'">'+(active?'✅ 기사들에게 공개됨':'🔒 비공개 (관리자만 보임)')+'</span><span style="font-size:12px;font-weight:800;color:'+(active?'#2e7d32':'#c62828')+'">'+(active?'끄기':'공개하기')+'</span></div>';}
+  var cards=[
+    {v:'roulette',ic:'🎯',t:'팀플 운빨',d:'마블 룰렛 행운 추첨',g:'linear-gradient(135deg,#b71c5e,#7b1fa2)'},
+    {v:'2048',ic:'🔢',t:'2048',d:'숫자 합치기 · 월간 랭킹',g:'linear-gradient(135deg,#ef6c00,#f9a825)'},
+    {v:'flap',ic:'🐤',t:'플래피버드',d:'장애물 피하기 · 월간 랭킹',g:'linear-gradient(135deg,#0277bd,#26c6da)'},
+    {v:'stack',ic:'🧱',t:'Stack',d:'블록 쌓기 · 월간 랭킹',g:'linear-gradient(135deg,#2e7d32,#9ccc65)'}
+  ];
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  cards.forEach(function(c){h+='<div onclick="ghOpen(\''+c.v+'\')" style="cursor:pointer;background:'+c.g+';border-radius:15px;padding:16px 12px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.22);min-height:108px;display:flex;flex-direction:column;justify-content:center"><div style="font-size:30px">'+c.ic+'</div><div style="font-size:15px;font-weight:900;margin-top:6px">'+c.t+'</div><div style="font-size:10.5px;opacity:.92;margin-top:2px">'+c.d+'</div></div>';});
+  h+='</div></div>';
+  return h;
+}
+
+/* ── 게임 공통 셸 ── */
+function ghGameShell(g){var m=ghGameMeta(g);
+  return '<div style="padding:10px 12px 90px">'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+      +'<button onclick="ghBack()" style="background:#eceff1;border:none;border-radius:9px;padding:7px 12px;font-size:13px;font-weight:800;color:#37474f;cursor:pointer">← 게임</button>'
+      +'<span style="font-weight:900;font-size:16px">'+m[0]+' '+m[1]+'</span>'
+      +'<span style="margin-left:auto;font-size:11px;color:#90a4ae">'+ghMonthLabel()+' 랭킹전</span>'
+    +'</div>'
+    +'<div id="g-stage"></div>'
+    +'<div id="g-board" style="margin-top:16px"></div>'
+  +'</div>';
+}
+function ghRenderBoard(g){var el=document.getElementById('g-board');if(!el)return;var arr=GH.board[g];var me=String(ghUid());
+  var html='<div style="font-weight:800;font-size:13px;margin-bottom:8px;color:#ef6c00">🏆 '+ghMonthLabel()+' 랭킹 TOP 20</div>';
+  if(GH.loadingB)html+='<div style="color:#90a4ae;font-size:12px">불러오는 중…</div>';
+  else if(arr===null)html+='<div style="color:#90a4ae;font-size:12px">랭킹 기록 테이블이 아직 없어요. (game_scores)</div>';
+  else if(!arr||!arr.length)html+='<div style="color:#90a4ae;font-size:12px">아직 기록이 없어요. 첫 주인공이 되어보세요! 🎉</div>';
+  else{html+='<div style="display:flex;flex-direction:column;gap:3px">';
+    arr.forEach(function(x,i){var mine=String(x.uid)===me;var rk=['🥇','🥈','🥉'][i]||('<span style="display:inline-block;width:20px;text-align:center;color:#b0bec5;font-weight:800">'+(i+1)+'</span>');
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;background:'+(mine?'#fff8e1':'#f7f8fa')+';border:1px solid '+(mine?'#ffd54f':'#eceff1')+'"><span style="font-size:14px;min-width:22px;text-align:center">'+rk+'</span><span style="font-weight:'+(mine?'900':'600')+';font-size:13px;color:#263238">'+x.uname+(mine?' (나)':'')+'</span><span style="margin-left:auto;font-weight:900;font-size:14px;color:#ef6c00">'+x.score+'</span></div>';});
+    html+='</div>';}
+  el.innerHTML=html;
+}
+
+/* ════════ 게임1: 2048 ════════ */
+var G48={g:[],sc:0,over:false};
+var G48COL={2:['#eee4da','#776e65'],4:['#ede0c8','#776e65'],8:['#f2b179','#fff'],16:['#f59563','#fff'],32:['#f67c5f','#fff'],64:['#f65e3b','#fff'],128:['#edcf72','#fff'],256:['#edcc61','#fff'],512:['#edc850','#fff'],1024:['#edc53f','#fff'],2048:['#edc22e','#fff']};
+function g48Start(){var st=document.getElementById('g-stage');if(!st)return;
+  st.innerHTML='<div style="text-align:center"><div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:10px"><div style="background:#bbada0;color:#fff;border-radius:9px;padding:6px 16px;font-weight:800;font-size:13px">점수 <span id="g48sc" style="font-size:16px">0</span></div><button onclick="g48New()" style="background:#8f7a66;color:#fff;border:none;border-radius:9px;padding:8px 14px;font-weight:800;font-size:13px;cursor:pointer">다시</button></div><div id="g48" style="display:inline-block;background:#bbada0;border-radius:10px;padding:8px;touch-action:none;user-select:none"></div><div style="font-size:11px;color:#90a4ae;margin-top:8px">방향키 또는 손가락으로 밀기</div></div>';
+  document.removeEventListener('keydown',g48Key);document.addEventListener('keydown',g48Key);
+  g48Swipe(document.getElementById('g48'));g48New();ghLoad('2048');}
+function g48New(){G48.g=[];for(var i=0;i<16;i++)G48.g.push(0);G48.sc=0;G48.over=false;g48Add();g48Add();g48Draw();}
+function g48Add(){var e=[];for(var i=0;i<16;i++)if(!G48.g[i])e.push(i);if(!e.length)return;G48.g[e[Math.floor(Math.random()*e.length)]]=Math.random()<0.9?2:4;}
+function g48Slide(row){var a=row.filter(function(v){return v;});for(var i=0;i<a.length-1;i++){if(a[i]===a[i+1]){a[i]*=2;G48.sc+=a[i];a.splice(i+1,1);}}while(a.length<4)a.push(0);return a;}
+function g48Move(dir){var g=G48.g,moved=false;
+  function gr(r){return [g[r*4],g[r*4+1],g[r*4+2],g[r*4+3]];}function sr(r,a){for(var c=0;c<4;c++)g[r*4+c]=a[c];}
+  function gc(c){return [g[c],g[c+4],g[c+8],g[c+12]];}function sc(c,a){for(var r=0;r<4;r++)g[r*4+c]=a[r];}
+  for(var k=0;k<4;k++){var line=(dir<2)?gr(k):gc(k);var o=line.slice();if(dir===1||dir===3)line.reverse();line=g48Slide(line);if(dir===1||dir===3)line.reverse();if(dir<2)sr(k,line);else sc(k,line);if(line.join()!==o.join())moved=true;}
+  if(moved){g48Add();g48Draw();if(g48Stuck()){G48.over=true;g48Draw();ghSave('2048',G48.sc);ghLoad('2048');}}}
+function g48Stuck(){var g=G48.g;for(var i=0;i<16;i++){if(!g[i])return false;var r=i%4,c=Math.floor(i/4);if(r<3&&g[i]===g[i+1])return false;if(c<3&&g[i]===g[i+4])return false;}return true;}
+function g48Draw(){var el=document.getElementById('g48');if(!el)return;var sz=Math.min(76,Math.floor((Math.min(window.innerWidth||360,420)-50)/4));var html='<div style="display:grid;grid-template-columns:repeat(4,'+sz+'px);gap:8px">';
+  for(var i=0;i<16;i++){var v=G48.g[i];var col=G48COL[v]||['#3c3a32','#fff'];var fs=v>=1024?Math.floor(sz*0.34):v>=128?Math.floor(sz*0.4):Math.floor(sz*0.46);
+    html+='<div style="width:'+sz+'px;height:'+sz+'px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:'+fs+'px;background:'+(v?col[0]:'#cdc1b4')+';color:'+col[1]+'">'+(v||'')+'</div>';}
+  html+='</div>';
+  if(G48.over)html+='<div style="margin-top:10px;font-weight:900;color:#776e65;font-size:15px">게임 오버! 점수 '+G48.sc+' 🎯</div>';
+  el.innerHTML=html;var s=document.getElementById('g48sc');if(s)s.textContent=G48.sc;}
+function g48Key(e){if(GH.view!=='2048'||G48.over)return;var d={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3,a:0,d:1,w:2,s:3}[e.key];if(d!==undefined){e.preventDefault();g48Move(d);}}
+function g48Swipe(el){if(!el)return;var sx=0,sy=0;
+  el.addEventListener('touchstart',function(e){var t=e.touches[0];sx=t.clientX;sy=t.clientY;},{passive:true});
+  el.addEventListener('touchend',function(e){if(G48.over)return;var t=e.changedTouches[0];var dx=t.clientX-sx,dy=t.clientY-sy;if(Math.abs(dx)<24&&Math.abs(dy)<24)return;if(Math.abs(dx)>Math.abs(dy))g48Move(dx>0?1:0);else g48Move(dy>0?3:2);},{passive:true});}
+
+/* ════════ 게임2: 플래피버드 ════════ */
+var GF={};
+function gFlapStart(){var st=document.getElementById('g-stage');if(!st)return;
+  st.innerHTML='<div style="text-align:center"><canvas id="gfc" width="300" height="440" style="background:linear-gradient(#7ec0ee,#bfe3ff);border-radius:12px;max-width:100%;touch-action:none;cursor:pointer"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프</div></div>';
+  var cv=document.getElementById('gfc');GF={cv:cv,cx:cv.getContext('2d'),W:300,H:440,by:200,vy:0,pipes:[],sc:0,over:false,started:false,t:0};
+  cv.onpointerdown=gFlapTap;document.removeEventListener('keydown',gFlapKey);document.addEventListener('keydown',gFlapKey);
+  ghLoad('flap');gFlapLoop();}
+function gFlapTap(){if(!GF.cx)return;if(GF.over){gFlapStart();return;}GF.started=true;GF.vy=-6.0;}
+function gFlapKey(e){if(GH.view!=='flap')return;if(e.code==='Space'||e.key===' '||e.key==='ArrowUp'){e.preventDefault();gFlapTap();}}
+function gFlapLoop(){if(GH.view!=='flap'||!GF.cx)return;var g=GF,c=g.cx,W=g.W,H=g.H,bx=64,br=12,pw=50,gap=140,gnd=H-30;g.t++;
+  if(g.started&&!g.over){g.vy+=0.34;g.by+=g.vy;
+    if(g.pipes.length===0||g.pipes[g.pipes.length-1].x<W-150){var gy=50+Math.random()*(gnd-gap-90);g.pipes.push({x:W+10,gy:gy,passed:false});}
+    for(var i=0;i<g.pipes.length;i++){var p=g.pipes[i];p.x-=2.4;if(!p.passed&&p.x+pw<bx){p.passed=true;g.sc++;}}
+    g.pipes=g.pipes.filter(function(p){return p.x+pw>-10;});
+    for(var i2=0;i2<g.pipes.length;i2++){var p2=g.pipes[i2];if(bx+br>p2.x&&bx-br<p2.x+pw&&(g.by-br<p2.gy||g.by+br>p2.gy+gap)){g.over=true;}}
+    if(g.by+br>=gnd||g.by-br<=0){g.by=Math.max(br,Math.min(gnd-br,g.by));g.over=true;}
+    if(g.over){ghSave('flap',g.sc);ghLoad('flap');}}
+  c.clearRect(0,0,W,H);
+  c.fillStyle='#5cb85c';for(var i3=0;i3<g.pipes.length;i3++){var p3=g.pipes[i3];c.fillRect(p3.x,0,pw,p3.gy);c.fillRect(p3.x,p3.gy+gap,pw,gnd-(p3.gy+gap));c.fillStyle='#4a9d4a';c.fillRect(p3.x-2,p3.gy-14,pw+4,14);c.fillRect(p3.x-2,p3.gy+gap,pw+4,14);c.fillStyle='#5cb85c';}
+  c.fillStyle='#d2b48c';c.fillRect(0,gnd,W,H-gnd);
+  c.save();c.translate(bx,g.by);c.rotate(Math.max(-0.5,Math.min(1.0,g.vy*0.07)));c.fillStyle='#ffd54f';c.beginPath();c.arc(0,0,br,0,7);c.fill();c.fillStyle='#fff';c.beginPath();c.arc(4,-4,4,0,7);c.fill();c.fillStyle='#333';c.beginPath();c.arc(5,-4,2,0,7);c.fill();c.fillStyle='#ff9800';c.beginPath();c.moveTo(br-2,0);c.lineTo(br+7,3);c.lineTo(br-2,6);c.fill();c.restore();
+  c.fillStyle='#fff';c.strokeStyle='#0006';c.lineWidth=3;c.font='900 30px sans-serif';c.textAlign='center';c.strokeText(g.sc,W/2,54);c.fillText(g.sc,W/2,54);
+  if(!g.started){c.fillStyle='#0008';c.fillRect(0,H/2-34,W,68);c.fillStyle='#fff';c.font='800 17px sans-serif';c.fillText('탭해서 시작!',W/2,H/2+6);}
+  if(g.over){c.fillStyle='#0008';c.fillRect(0,H/2-50,W,100);c.fillStyle='#fff';c.font='900 22px sans-serif';c.fillText('GAME OVER',W/2,H/2-8);c.font='800 15px sans-serif';c.fillText('점수 '+g.sc+' · 탭해서 재시작',W/2,H/2+22);}
+  GH.raf=requestAnimationFrame(gFlapLoop);}
+
+/* ════════ 게임3: Stack ════════ */
+var GS={};
+function gStackStart(){var st=document.getElementById('g-stage');if(!st)return;
+  st.innerHTML='<div style="text-align:center"><canvas id="gsc" width="300" height="440" style="background:linear-gradient(#1a1a2e,#16213e);border-radius:12px;max-width:100%;touch-action:none;cursor:pointer"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭해서 블록 멈추기 · 칼같이 쌓아요!</div></div>';
+  var cv=document.getElementById('gsc');var bw=130;
+  GS={cv:cv,cx:cv.getContext('2d'),W:300,H:440,bh:26,base:{x:(300-bw)/2,w:bw},stack:[],cur:null,dir:1,spd:2.2,sc:0,over:false};
+  GS.stack.push({x:GS.base.x,w:bw});gStackSpawn();
+  cv.onpointerdown=gStackDrop;document.removeEventListener('keydown',gStackKey);document.addEventListener('keydown',gStackKey);
+  ghLoad('stack');gStackLoop();}
+function gStackSpawn(){var top=GS.stack[GS.stack.length-1];GS.cur={x:0,w:top.w};GS.dir=1;GS.spd=2.2+Math.min(2.6,GS.sc*0.12);}
+function gStackKey(e){if(GH.view!=='stack')return;if(e.code==='Space'||e.key===' '){e.preventDefault();gStackDrop();}}
+function gStackDrop(){var g=GS;if(!g.cx)return;if(g.over){gStackStart();return;}var top=g.stack[g.stack.length-1],cur=g.cur;
+  var L=Math.max(cur.x,top.x),R=Math.min(cur.x+cur.w,top.x+top.w),ov=R-L;
+  if(ov<=0){g.over=true;ghSave('stack',g.sc);ghLoad('stack');return;}
+  g.stack.push({x:L,w:ov});g.sc++;gStackSpawn();}
+function gStackLoop(){if(GH.view!=='stack'||!GS.cx)return;var g=GS,c=g.cx,W=g.W,H=g.H,bh=g.bh;
+  if(!g.over&&g.cur){g.cur.x+=g.dir*g.spd;if(g.cur.x<=0){g.cur.x=0;g.dir=1;}if(g.cur.x+g.cur.w>=W){g.cur.x=W-g.cur.w;g.dir=-1;}}
+  c.clearRect(0,0,W,H);
+  var n=g.stack.length,shift=Math.max(0,(n+1)*bh-(H-40));
+  for(var i=0;i<n;i++){var b=g.stack[i];var y=H-bh-(i*bh)+shift;var hue=(i*28)%360;c.fillStyle='hsl('+hue+',62%,58%)';c.fillRect(b.x,y,b.w,bh-2);}
+  if(!g.over&&g.cur){var cy=H-bh-(n*bh)+shift;var hue2=(n*28)%360;c.fillStyle='hsl('+hue2+',70%,62%)';c.fillRect(g.cur.x,cy,g.cur.w,bh-2);}
+  c.fillStyle='#fff';c.strokeStyle='#0007';c.lineWidth=3;c.font='900 30px sans-serif';c.textAlign='center';c.strokeText(g.sc,W/2,46);c.fillText(g.sc,W/2,46);
+  if(g.over){c.fillStyle='#000a';c.fillRect(0,H/2-50,W,100);c.fillStyle='#fff';c.font='900 22px sans-serif';c.fillText('GAME OVER',W/2,H/2-8);c.font='800 15px sans-serif';c.fillText('블록 '+g.sc+'개 · 탭해서 재시작',W/2,H/2+22);}
+  GH.raf=requestAnimationFrame(gStackLoop);}
+
+
 /* ═════════ 마블 룰렛 이벤트 추첨 (코인·이름·등수·풀스크린) ═════════ */
 var RLT={cur:null,curId:null,events:[],partsByEv:{},autoRan:{},showCreate:false,showEdit:false,formBonus:{clean:false,clean_n:2,backup:false,backup_n:2,backup_list:[]},parts:[],records:[],theme:'lava',curTheme:'lava',curG:0.1,rankCount:1,formPrizes:[],curPrizes:[],openMd:{},exclude:[],marbles:null,rng:null,finishOrder:[],frames:0,seed:0,ang:0,camY:0,gen:0,palIdx:0,loading:false};
 var RLT_PAL=['#F5A623','#7ED321','#4A90E2','#9B6DE2','#2EC4B6','#FF6B57','#FF4D9D','#FFD54F','#26A69A','#EC407A','#AB47BC','#42A5F5','#66BB6A','#FFA726','#8D6E63','#5C6BC0','#26C6DA','#D4E157','#FF8A65','#BA68C8'];
@@ -8774,7 +8915,7 @@ function rlMgmtPanelHtml(){if(!rlIsAdmin())return '';var ev=RLT.cur;var cOn=!!ev
 function pgRoulette(){
   rlInjectStyle();var canM=rlCanManage(),adm=rlIsAdmin(),active=getFeatureCtrl('roulette','active');
   if(!canM&&!active)return '<div class="rl-wrap"><div style="text-align:center;color:#90a4ae;padding:42px 0;font-size:14px">🎯 팀플 운빨이 아직 열리지 않았습니다.</div></div>';
-  var h='<div class="rl-wrap">';h+=rlBannerHtml();if(adm)h+=rlToggleHtml(active);
+  var h='<div class="rl-wrap">';h+=rlBannerHtml();h+='<div onclick="ghBack()" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;background:#eceff1;color:#37474f;border-radius:9px;padding:6px 12px;font-size:12px;font-weight:800;margin:2px 0 8px">← 🎮 게임 목록</div>';if(adm)h+=rlToggleHtml(active);
   if(RLT.loading)h+='<div style="text-align:center;color:#b0bec5;padding:12px 0;font-size:13px">불러오는 중…</div>';
   if(canM&&RLT.cur){
     var ev=RLT.cur;
