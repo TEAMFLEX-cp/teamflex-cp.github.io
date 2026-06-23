@@ -10176,9 +10176,9 @@ async function rqRerequest(reqId){
   var leftMs=(new Date(base0).getTime()+600000)-Date.now();
   if(leftMs>0){alert('재요청은 10분 단위로 가능합니다.\n약 '+Math.ceil(leftMs/60000)+'분 후 다시 시도해주세요.');return;}
   if(!confirm('이 요청을 캠프 채팅방에 재요청할까요?'))return;
-  var MENT='[ 해당건은 처리가 안되는거 같아서 재요청 드립니다. ]';
+  var MENT='[ 해당 요청이 처리가 안되는거 같아서 재요청 드립니다. ]';
   var prev=String((r.payload&&r.payload.text)||'');
-  var idx=prev.lastIndexOf('해당건은 처리가 안되는거 같아서 재요청 드립니다.');
+  var idx=prev.lastIndexOf('해당 요청이 처리가 안되는거 같아서 재요청 드립니다.');
   var base=(idx>=0?prev.slice(0,prev.lastIndexOf('[',idx)):prev).replace(/\n+$/,'');
   var newText=base+'\n\n'+MENT;
   var newPayload=Object.assign({},r.payload||{},{text:newText,resent_at:new Date().toISOString()});
