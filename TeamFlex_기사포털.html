@@ -8681,7 +8681,8 @@ var GH_GAMES=[
   {v:'tetris',ic:'🟦',t:'테트리스',g:'linear-gradient(135deg,#1565c0,#42a5f5)',rank:true},
   {v:'flap',ic:'🚚',t:'택배차 점프',g:'linear-gradient(135deg,#0277bd,#26c6da)',rank:true},
   {v:'stack',ic:'🧱',t:'Stack',g:'linear-gradient(135deg,#2e7d32,#9ccc65)',rank:true},
-  {v:'suika',ic:'🍉',t:'수박게임',g:'linear-gradient(135deg,#c62828,#66bb6a)',rank:true}
+  {v:'suika',ic:'🍉',t:'수박게임',g:'linear-gradient(135deg,#c62828,#66bb6a)',rank:true},
+  {v:'omok',ic:'⚫',t:'오목',g:'linear-gradient(135deg,#6d4c41,#bcaaa4)',rank:true}
 ];
 function ghGameInfo(v){for(var i=0;i<GH_GAMES.length;i++)if(GH_GAMES[i].v===v)return GH_GAMES[i];return {v:v,ic:'🎮',t:v};}
 function ghGameMeta(g){var i=ghGameInfo(g);return [i.ic,i.t];}
@@ -8719,7 +8720,7 @@ function ghEnterHub(){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.
 function ghRemoveKeys(){try{document.removeEventListener('keydown',g48Key);document.removeEventListener('keydown',gFlapKey);document.removeEventListener('keydown',gStackKey);document.removeEventListener('keydown',gTetKey);}catch(e){}}
 function ghOpen(v){if(v==='roulette'){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;GH.view='roulette';var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgArcade();setTimeout(arcInit,40);}return;}ghStartGame(v);}
 function ghStartGame(g){ghInjectStyle();ghAudio();if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();GH.view=g;var pop=document.getElementById('gh-pop');if(!pop)return;pop.innerHTML=ghGameShell(g);pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}
-  setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();},40);}
+  setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();},40);}
 function ghBack(){ghEnterHub();}
 
 /* ── 허브 화면 ── */
@@ -9000,6 +9001,43 @@ function gSuikaFruit(c,x,y,r,t){c.save();c.beginPath();c.arc(x,y,r,0,7);var grd=
   c.restore();}
 function gSuikaDrop(){var g=GU;if(g.over){gSuikaStart();return;}if(g.cool>0)return;g.fruits.push({x:g.cx0,y:48,vx:0,vy:0,r:GU_R[g.next],t:g.next,m:false,age:0});g.cool=24;g.next=Math.floor(Math.random()*5);ghSfx('drop');}
 
+
+/* ════════ 게임: 오목 (vs AI) ════════ */
+var GO={};
+function gOmWin(g,r,c,p){var ds=[[0,1],[1,0],[1,1],[1,-1]];for(var d=0;d<4;d++){var cnt=1,s;for(s=1;s<5;s++){var rr=r+ds[d][0]*s,cc=c+ds[d][1]*s;if(rr<0||rr>14||cc<0||cc>14||g[rr][cc]!==p)break;cnt++;}for(s=1;s<5;s++){var r2=r-ds[d][0]*s,c2=c-ds[d][1]*s;if(r2<0||r2>14||c2<0||c2>14||g[r2][c2]!==p)break;cnt++;}if(cnt>=5)return true;}return false;}
+function gOmDir(g,r,c,dr,dc,p){var cnt=1,oa=false,ob=false,i;for(i=1;;i++){var rr=r+dr*i,cc=c+dc*i;if(rr<0||rr>14||cc<0||cc>14)break;if(g[rr][cc]===p)cnt++;else{if(g[rr][cc]===0)oa=true;break;}}for(i=1;;i++){var r2=r-dr*i,c2=c-dc*i;if(r2<0||r2>14||c2<0||c2>14)break;if(g[r2][c2]===p)cnt++;else{if(g[r2][c2]===0)ob=true;break;}}var open=(oa?1:0)+(ob?1:0);if(cnt>=5)return 1000000;if(cnt===4)return open===2?120000:(open===1?15000:0);if(cnt===3)return open===2?7000:(open===1?400:0);if(cnt===2)return open===2?250:(open===1?18:0);if(cnt===1)return open===2?8:0;return 0;}
+function gOmVal(g,r,c,p){var s=0,ds=[[0,1],[1,0],[1,1],[1,-1]];for(var d=0;d<4;d++)s+=gOmDir(g,r,c,ds[d][0],ds[d][1],p);return s;}
+function gOmCands(g){var set={},out=[],any=false;for(var r=0;r<15;r++)for(var c=0;c<15;c++)if(g[r][c]){any=true;for(var dr=-2;dr<=2;dr++)for(var dc=-2;dc<=2;dc++){var rr=r+dr,cc=c+dc;if(rr>=0&&rr<15&&cc>=0&&cc<15&&!g[rr][cc]){var k=rr*15+cc;if(!set[k]){set[k]=1;out.push([rr,cc]);}}}}if(!any)return[[7,7]];return out;}
+function gOmBest(g,me){var opp=me===1?2:1,best=[7,7],bv=-1,cand=gOmCands(g);for(var k=0;k<cand.length;k++){var r=cand[k][0],c=cand[k][1];g[r][c]=me;var atk=gOmVal(g,r,c,me);g[r][c]=opp;var def=gOmVal(g,r,c,opp);g[r][c]=0;var v=Math.max(atk,def*0.94)+(7-Math.max(Math.abs(r-7),Math.abs(c-7)))*1.5;if(v>bv){bv=v;best=[r,c];}}return best;}
+function gOmokStart(){var st=document.getElementById('g-stage');if(!st)return;var size=Math.max(280,Math.min((window.innerWidth||360)-16,(window.innerHeight||640)-215,470));
+  var streak=0;try{streak=parseInt(localStorage.getItem('omok_streak')||'0',10)||0;}catch(e){}
+  st.innerHTML='<div style="text-align:center"><div style="color:#fff;font-weight:800;font-size:14px;margin-bottom:8px">⚫ 나(흑) vs 🤖 AI(백) · 연승 <span id="gostk" style="color:#ffd54f">'+streak+'</span></div>'
+   +'<canvas id="goc" width="'+size+'" height="'+size+'" style="background:#e3b873;border-radius:10px;max-width:100%;max-height:80vh;touch-action:none;cursor:pointer;display:block;margin:0 auto"></canvas>'
+   +'<div id="gomsg" style="color:#90a4ae;font-size:12px;margin-top:8px;height:18px">내 차례예요. 교차점을 탭하세요.</div>'
+   +'<button onclick="gOmokStart()" style="margin-top:8px;background:#455a64;border:none;color:#fff;border-radius:9px;padding:8px 18px;font-weight:800;font-size:13px;cursor:pointer">새 게임</button></div>';
+  if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
+  var cv=document.getElementById('goc');var pad=size*0.05,gap=(size-2*pad)/14;
+  var grid=[];for(var i=0;i<15;i++)grid.push(new Array(15).fill(0));
+  GO={cv:cv,cx:cv.getContext('2d'),size:size,pad:pad,gap:gap,grid:grid,turn:1,over:false,streak:streak,last:null,my:my,busy:false};
+  cv.onpointerdown=gOmTap;ghLoad('omok');gOmDraw();}
+function gOmDraw(){var g=GO;if(!g.cx)return;var c=g.cx,sz=g.size,pad=g.pad,gap=g.gap,R=gap*0.44;
+  c.clearRect(0,0,sz,sz);c.fillStyle='#e3b873';c.fillRect(0,0,sz,sz);
+  c.strokeStyle='#6b4a22';c.lineWidth=1;for(var i=0;i<15;i++){c.beginPath();c.moveTo(pad,pad+i*gap);c.lineTo(sz-pad,pad+i*gap);c.stroke();c.beginPath();c.moveTo(pad+i*gap,pad);c.lineTo(pad+i*gap,sz-pad);c.stroke();}
+  var sp=[3,7,11];c.fillStyle='#6b4a22';for(var a=0;a<3;a++)for(var b=0;b<3;b++){c.beginPath();c.arc(pad+sp[a]*gap,pad+sp[b]*gap,gap*0.1,0,7);c.fill();}
+  for(var r=0;r<15;r++)for(var cc=0;cc<15;cc++){if(!g.grid[r][cc])continue;var x=pad+cc*gap,y=pad+r*gap;var blk=g.grid[r][cc]===1;var grd=c.createRadialGradient(x-R*0.3,y-R*0.3,R*0.2,x,y,R);if(blk){grd.addColorStop(0,'#666');grd.addColorStop(1,'#111');}else{grd.addColorStop(0,'#fff');grd.addColorStop(1,'#cfd2d6');}c.beginPath();c.arc(x,y,R,0,7);c.fillStyle=grd;c.fill();c.strokeStyle='rgba(0,0,0,.25)';c.lineWidth=1;c.stroke();}
+  if(g.last){var lx=pad+g.last[1]*gap,ly=pad+g.last[0]*gap;c.strokeStyle='#e53935';c.lineWidth=2;c.beginPath();c.arc(lx,ly,R*0.45,0,7);c.stroke();}
+  if(g.over){c.fillStyle='rgba(0,0,0,.55)';c.fillRect(0,sz/2-44,sz,88);c.fillStyle='#fff';c.textAlign='center';c.font='900 26px sans-serif';c.fillText(g.win===1?'🎉 승리!':(g.win===2?'😢 패배':'무승부'),sz/2,sz/2-2);c.font='800 14px sans-serif';c.fillText('연승 '+g.streak+' · 새 게임을 눌러요',sz/2,sz/2+24);}}
+function gOmMsg(t){var e=document.getElementById('gomsg');if(e)e.textContent=t;}
+function gOmTap(e){var g=GO;if(g.over||g.busy||g.turn!==1||!g.cx)return;var rect=g.cv.getBoundingClientRect();var px=(e.clientX-rect.left)/rect.width*g.size,py=(e.clientY-rect.top)/rect.height*g.size;var c=Math.round((px-g.pad)/g.gap),r=Math.round((py-g.pad)/g.gap);if(r<0||r>14||c<0||c>14||g.grid[r][c])return;
+  g.grid[r][c]=1;g.last=[r,c];ghSfx('move');
+  if(gOmWin(g.grid,r,c,1)){g.over=true;g.win=1;g.streak++;try{localStorage.setItem('omok_streak',String(g.streak));}catch(_){}var se=document.getElementById('gostk');if(se)se.textContent=g.streak;ghSfx('clear');setTimeout(function(){ghSfx('score');},120);ghSave('omok',g.streak);ghLoad('omok');gOmDraw();gOmMsg('승리! 🎉');return;}
+  if(gOmFull(g.grid)){g.over=true;g.win=0;gOmDraw();gOmMsg('무승부');return;}
+  g.turn=2;g.busy=true;gOmDraw();gOmMsg('AI가 두는 중…');
+  setTimeout(function(){if(g.my!==GH.gen||GH.view!=='omok')return;var mv=gOmBest(g.grid,2);g.grid[mv[0]][mv[1]]=2;g.last=mv;ghSfx('move');g.busy=false;
+    if(gOmWin(g.grid,mv[0],mv[1],2)){g.over=true;g.win=2;g.streak=0;try{localStorage.setItem('omok_streak','0');}catch(_){}var se2=document.getElementById('gostk');if(se2)se2.textContent=0;ghSfx('over');gOmDraw();gOmMsg('패배 😢');return;}
+    if(gOmFull(g.grid)){g.over=true;g.win=0;gOmDraw();gOmMsg('무승부');return;}
+    g.turn=1;gOmDraw();gOmMsg('내 차례예요.');},340);}
+function gOmFull(g){for(var r=0;r<15;r++)for(var c=0;c<15;c++)if(!g[r][c])return false;return true;}
 
 /* ═════════ 마블 룰렛 이벤트 추첨 (코인·이름·등수·풀스크린) ═════════ */
 var RLT={cur:null,curId:null,events:[],partsByEv:{},autoRan:{},showCreate:false,showEdit:false,formBonus:{clean:false,clean_n:2,backup:false,backup_n:2,backup_list:[]},parts:[],records:[],theme:'lava',curTheme:'lava',curG:0.1,rankCount:1,formPrizes:[],curPrizes:[],openMd:{},exclude:[],marbles:null,rng:null,finishOrder:[],frames:0,seed:0,ang:0,camY:0,gen:0,palIdx:0,loading:false};
