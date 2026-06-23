@@ -1,5 +1,5 @@
 // TeamFlex Service Worker v47 — 백그라운드 스케줄 체크 + Push 알림 + 구독 자동 갱신
-const CACHE_NAME = 'teamflex-v268';
+const CACHE_NAME = 'teamflex-v269';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -14,12 +14,36 @@ self.addEventListener('activate', e => {
   );
 });
 
-// ── 네트워크 우선 fetch ───────────────────────────────────────────────────────
+// ── fetch ─────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = e.request.url;
   if (url.includes('supabase') || url.includes('googleapis')) return;
-  // 캐시 우선(stale-while-revalidate): 캐시 즉시 응답 + 백그라운드 갱신 → 접속 즉시화
+
+  // HTML 문서: 네트워크 우선 + 무결성 검사('</html>'로 끝나는 정상 응답만 캐시,
+  //   절단된 응답은 저장 않고 직전 정상본 폴백) → 깨진 파일이 캐시에 박혀 먹통되는 사고 차단.
+  const isDoc = e.request.mode === 'navigate' || url.indexOf('TeamFlex_') >= 0 || url.endsWith('.html') || url.endsWith('/');
+  if (isDoc) {
+    e.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      try {
+        const resp = await fetch(e.request);
+        const txt = await resp.clone().text();
+        if (resp.ok && txt.indexOf('</html>') >= 0) {
+          try { cache.put(e.request, resp.clone()); } catch (_) {}
+          return resp;
+        }
+        const cached = await cache.match(e.request);
+        return cached || resp;
+      } catch (_) {
+        const cached = await cache.match(e.request);
+        return cached || fetch(e.request).catch(() => Response.error());
+      }
+    })());
+    return;
+  }
+
+  // 그 외 정적 자원: 캐시 우선(stale-while-revalidate)
   e.respondWith((async () => {
     try {
       const cache = await caches.open(CACHE_NAME);
