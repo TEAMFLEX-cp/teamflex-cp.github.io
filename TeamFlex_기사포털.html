@@ -3369,6 +3369,7 @@ async function refreshNavBadges(){
 var _navHistory=[];
 var _lastBackMs=0;
 function go(tab){
+  if(tab!=='rl'&&typeof GH!=='undefined'&&GH){try{if(GH.raf){cancelAnimationFrame(GH.raf);GH.raf=0;}GH.gen=(GH.gen||0)+1;GH.view='hub';GH.gomEdit=false;var _ghp=document.getElementById('gh-pop');if(_ghp)_ghp.style.display='none';if(typeof ghRemoveKeys==='function')ghRemoveKeys();document.body.style.overflow='';}catch(e){}}
   // 설정 서브메뉴 시트가 열려있으면 닫기
   var _cfgSheet=document.getElementById('cfg-sub-sheet');if(_cfgSheet)_cfgSheet.remove();
   var _usrSheet=document.getElementById('usr-sub-sheet');if(_usrSheet)_usrSheet.remove();
