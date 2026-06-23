@@ -6892,7 +6892,9 @@ function pgMisdelivery(){
       '</div>'+
       '<div style="flex:1.05;min-width:0;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 3px">'+
         '<div style="font-size:10px;color:#90a4ae;margin-bottom:5px;font-weight:700">처리완료</div>'+
-        '<div style="display:flex;gap:7px;align-items:center"><div style="text-align:center"><div style="font-size:18px;font-weight:800;color:#2e7d32;line-height:1" id="md-n-done">-</div><div style="font-size:9px;color:#558b2f;margin-top:2px">인입</div></div><div style="width:1px;height:26px;background:#e0e0e0"></div><div style="text-align:center"><div style="font-size:18px;font-weight:800;color:#4527a0;line-height:1" id="md-n-req">-</div><div style="font-size:9px;color:#5c6bc0;margin-top:2px">요청</div></div></div>'+
+        '<div style="text-align:center;margin-bottom:6px"><div style="font-size:20px;font-weight:800;color:#2e7d32;line-height:1" id="md-n-done">-</div><div style="font-size:10px;color:#558b2f;margin-top:2px;font-weight:700">인입</div></div>'+
+        '<div style="width:32px;height:1px;background:#e0e0e0;margin-bottom:6px"></div>'+
+        '<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#4527a0;line-height:1" id="md-n-req">-</div><div style="font-size:10px;color:#5c6bc0;margin-top:2px;font-weight:700">요청</div></div>'+
       '</div>'+
     '</div>';
   }
@@ -7127,8 +7129,9 @@ async function mdLoadCases(){
       var nP=_mdCases.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&!_mdNoAction(c);}).length;
       var nNo=_mdCases.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&_mdNoAction(c);}).length;
       var nW=_mdCases.filter(function(c){return c.status==='replied';}).length;
-      var nD=_mdCases.filter(function(c){return c.status==='approved';}).length;
-      var nReq=(_rqCases||[]).filter(function(r){return r.status==='approved';}).length;
+      var _cm=kstToday().slice(0,7);
+      var nD=_mdCases.filter(function(c){return c.status==='approved'&&(kstDateStr(c.created_at||c.occurred_at)||'').slice(0,7)===_cm;}).length;
+      var nReq=(_rqCases||[]).filter(function(r){return r.status==='approved'&&(kstDateStr(r.created_at)||'').slice(0,7)===_cm;}).length;
       var el;
       if((el=document.getElementById('md-n-pending')))el.textContent=nP;
       if((el=document.getElementById('md-n-noaction')))el.textContent=nNo;
