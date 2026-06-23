@@ -2206,6 +2206,13 @@ window.addEventListener('popstate',function(e){
   if(sheet){sheet.remove();window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;}
   var uSheet=document.getElementById('usr-sub-sheet');
   if(uSheet){uSheet.remove();window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;}
+  // 게임 풀스크린 팝업이 열려있으면: 게임 완전 정리 후 놀이터 허브로 (본앱 렉 방지)
+  var _ghPopBack=document.getElementById('gh-pop');
+  if(_ghPopBack&&_ghPopBack.style.display==='block'){
+    if(typeof ghKill==='function')ghKill();
+    if(typeof ghEnterHub==='function'){try{ghEnterHub();}catch(e){}}
+    window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;
+  }
   // 오배송 팝업 (동적 생성이라 DOM 존재 여부로 체크)
   if(document.getElementById('md-popup-back')){mdCloseCase();window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return;}
   var rqNov=document.getElementById('rq-notice-ov');
@@ -3369,7 +3376,8 @@ async function refreshNavBadges(){
 var _navHistory=[];
 var _lastBackMs=0;
 function go(tab){
-  if(tab!=='rl'&&typeof GH!=='undefined'&&GH){try{if(GH.raf){cancelAnimationFrame(GH.raf);GH.raf=0;}GH.gen=(GH.gen||0)+1;GH.view='hub';GH.gomEdit=false;var _ghp=document.getElementById('gh-pop');if(_ghp)_ghp.style.display='none';if(typeof ghRemoveKeys==='function')ghRemoveKeys();document.body.style.overflow='';}catch(e){}}
+  if(tab!=='rl'&&typeof ghKill==='function'){try{ghKill();}catch(e){}}
+  if(tab!=='hm'&&typeof _stopWxEffect==='function'){try{_stopWxEffect();}catch(e){}}
   // 설정 서브메뉴 시트가 열려있으면 닫기
   var _cfgSheet=document.getElementById('cfg-sub-sheet');if(_cfgSheet)_cfgSheet.remove();
   var _usrSheet=document.getElementById('usr-sub-sheet');if(_usrSheet)_usrSheet.remove();
@@ -3997,6 +4005,7 @@ function _startWxEffect(type){
   if(type==='sun'){
     var ang=0;var cx=canvas.width*0.78,cy=canvas.height*0.22,R=26;
     function drawSun(){
+      if(!canvas.isConnected){_wxAnim=null;return;}
       ctx.clearRect(0,0,canvas.width,canvas.height);ctx.save();ctx.translate(cx,cy);ctx.rotate(ang);
       for(var i=0;i<12;i++){var a=(Math.PI*2/12)*i;ctx.beginPath();ctx.moveTo(Math.cos(a)*(R+7),Math.sin(a)*(R+7));ctx.lineTo(Math.cos(a)*(R+17+(i%2===0?5:0)),Math.sin(a)*(R+17+(i%2===0?5:0)));ctx.strokeStyle='rgba(255,230,60,0.45)';ctx.lineWidth=2.2;ctx.lineCap='round';ctx.stroke();}
       ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);ctx.fillStyle='rgba(255,220,40,0.18)';ctx.fill();ctx.restore();ang+=0.007;_wxAnim=requestAnimationFrame(drawSun);
@@ -4006,6 +4015,7 @@ function _startWxEffect(type){
   var drops=[];var count=(type==='rain')?80:50;
   for(var k=0;k<count;k++){drops.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,len:type==='rain'?(8+Math.random()*14):(4+Math.random()*6),spd:type==='rain'?(6+Math.random()*6):(1+Math.random()*2),op:0.2+Math.random()*0.5,r:type==='snow'?(2+Math.random()*3):0,dx:type==='snow'?(Math.random()*1.5-0.75):(-1.5)});}
   function draw(){
+    if(!canvas.isConnected){_wxAnim=null;return;}
     ctx.clearRect(0,0,canvas.width,canvas.height);
     drops.forEach(function(p){ctx.save();ctx.globalAlpha=p.op;if(type==='rain'){ctx.strokeStyle='rgba(180,220,255,0.85)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+p.dx*2,p.y+p.len);ctx.stroke();p.y+=p.spd;p.x+=p.dx;if(p.y>canvas.height){p.y=-p.len;p.x=Math.random()*canvas.width;}}else{ctx.fillStyle='rgba(220,240,255,0.9)';ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();p.y+=p.spd;p.x+=p.dx;if(p.y>canvas.height){p.y=-p.r;p.x=Math.random()*canvas.width;}}ctx.restore();});
     _wxAnim=requestAnimationFrame(draw);
@@ -8726,6 +8736,17 @@ function ghOpen(v){if(v==='roulette'){if(GH.raf){try{cancelAnimationFrame(GH.raf
 function ghStartGame(g){ghInjectStyle();ghAudio();if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();GH.view=g;var pop=document.getElementById('gh-pop');if(!pop)return;pop.innerHTML=ghGameShell(g);pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}
   setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();else if(g==='runner')gRunStart();else if(g==='jump')gJumpStart();else if(g==='match')gMatchStart();else if(g==='tower')gTowerStart();else if(g==='marble')gMarbleStart();else if(g==='gostop')gGostopStart();},40);}
 function ghBack(){ghEnterHub();}
+/* ── 게임 완전 정리: 모든 루프/타이머/오디오/상태 해제 (본앱 렉 방지) ── */
+function ghKill(){
+  try{if(GH.raf){cancelAnimationFrame(GH.raf);GH.raf=0;}}catch(e){}
+  try{GH.gen=(GH.gen||0)+1;GH.view='hub';GH.gomEdit=false;}catch(e){}
+  try{if(typeof ghRemoveKeys==='function')ghRemoveKeys();}catch(e){}
+  try{var p=document.getElementById('gh-pop');if(p){p.style.display='none';p.innerHTML='';}}catch(e){}
+  try{document.body.style.overflow='';}catch(e){}
+  try{if(typeof GHS!=='undefined'&&GHS&&GHS.ctx&&GHS.ctx.state==='running')GHS.ctx.suspend();}catch(e){}
+  try{if(typeof GMB!=='undefined')GMB=null;}catch(e){}
+  try{if(typeof GS!=='undefined')GS=null;}catch(e){}
+}
 
 /* ── 허브 화면 ── */
 function pgGameHub(){
@@ -11975,28 +11996,4 @@ function _renderPddLogPopup(log,canDelete){
 
 async function deletePddLogSelected(){
   if(!sbClient)return;
-  var checked=Array.from(document.querySelectorAll('.pdd-log-chk:checked')).map(function(c){return c.value;});
-  if(checked.length===0){alert('삭제할 항목을 선택해주세요.');return;}
-  if(!confirm(checked.length+'건을 삭제하시겠습니까?'))return;
-  try{
-    var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
-    var log=[];
-    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
-    log=log.filter(function(e){return!checked.includes(String(e.id));});
-    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
-    showFreshPddLog();
-  }catch(e){alert('삭제 실패: '+e.message);}
-}
-
-async function deletePddLogAll(){
-  if(!sbClient)return;
-  if(!confirm('전체 PDD MISS 기록을 삭제하시겠습니까?'))return;
-  try{
-    await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:'[]'},{onConflict:'key'});
-    showFreshPddLog();
-  }catch(e){alert('삭제 실패: '+e.message);}
-}
-
-
-</script>
-</body></html>
+  var checked=Array.from(document.querySelectorAll('.pdd-log-chk:checked')).map(function(c){return c.value;}
