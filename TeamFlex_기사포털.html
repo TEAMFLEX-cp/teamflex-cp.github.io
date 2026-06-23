@@ -8695,8 +8695,7 @@ var GH_GAMES=[
   {v:'jump',ic:'⬆️',t:'팀플 무한점프',g:'linear-gradient(135deg,#5e35b1,#9575cd)',rank:true},
   {v:'match',ic:'🎴',t:'그림 맞추기',g:'linear-gradient(135deg,#1565c0,#42a5f5)',rank:true},
   {v:'tower',ic:'🧱',t:'택배 쌓기 타워',g:'linear-gradient(135deg,#ef6c00,#ffb74d)',rank:true},
-  {v:'marble',ic:'🎲',t:'팀플렉스 마블',g:'linear-gradient(135deg,#1565c0,#43a047)',rank:true},
-  {v:'gostop',ic:'🌸',t:'맞고',g:'linear-gradient(135deg,#b71c1c,#e53935)',rank:true}
+  {v:'marble',ic:'🎲',t:'팀플렉스 마블',g:'linear-gradient(135deg,#1565c0,#43a047)',rank:true}
 ];
 function ghGameInfo(v){for(var i=0;i<GH_GAMES.length;i++)if(GH_GAMES[i].v===v)return GH_GAMES[i];return {v:v,ic:'🎮',t:v};}
 function ghGameMeta(g){var i=ghGameInfo(g);return [i.ic,i.t];}
@@ -8729,12 +8728,12 @@ function ghGomActive(){return GH.gom&&GH.gom.game&&GH.gom.ym===ghYM();}
 /* ── 디스패처(풀스크린) ── */
 function pgArcade(){if(GH.view==='roulette')return pgRoulette();return pgGameHub();}
 function arcInit(){if(GH.view==='roulette'){rlInit();return;}ghHubInit();}
-async function ghHubInit(){ghInjectStyle();await ghLoadGOM();await ghLoadAllBoards();try{await gsBoardLoad();}catch(e){}if(GH.view==='hub'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgGameHub();}}
+async function ghHubInit(){ghInjectStyle();await ghLoadGOM();await ghLoadAllBoards();if(GH.view==='hub'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgGameHub();}}
 function ghEnterHub(){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();var pop=document.getElementById('gh-pop');if(pop)pop.style.display='none';try{document.body.style.overflow='';}catch(e){}GH.view='hub';GH.gomEdit=false;var mc=document.getElementById('mc');ghInjectStyle();if(mc)mc.innerHTML=pgGameHub();ghHubInit();}
 function ghRemoveKeys(){try{document.removeEventListener('keydown',g48Key);document.removeEventListener('keydown',gFlapKey);document.removeEventListener('keydown',gStackKey);document.removeEventListener('keydown',gTetKey);document.removeEventListener('keydown',gRunKey);document.removeEventListener('keydown',gJumpKey);document.removeEventListener('keyup',gJumpKeyUp);document.removeEventListener('keydown',gMatchKey);document.removeEventListener('keydown',gTowerKey);}catch(e){}}
 function ghOpen(v){if(v==='roulette'){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;GH.view='roulette';var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgArcade();setTimeout(arcInit,40);}return;}ghStartGame(v);}
 function ghStartGame(g){ghInjectStyle();ghAudio();if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();GH.view=g;var pop=document.getElementById('gh-pop');if(!pop)return;pop.innerHTML=ghGameShell(g);pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}
-  setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();else if(g==='runner')gRunStart();else if(g==='jump')gJumpStart();else if(g==='match')gMatchStart();else if(g==='tower')gTowerStart();else if(g==='marble')gMarbleStart();else if(g==='gostop')gGostopStart();},40);}
+  setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();else if(g==='runner')gRunStart();else if(g==='jump')gJumpStart();else if(g==='match')gMatchStart();else if(g==='tower')gTowerStart();else if(g==='marble')gMarbleStart();},40);}
 function ghBack(){ghEnterHub();}
 /* ── 게임 완전 정리: 모든 루프/타이머/오디오/상태 해제 (본앱 렉 방지) ── */
 function ghKill(){
@@ -8832,7 +8831,7 @@ function ghGameShell(g){var m=ghGameMeta(g);
     +'<div id="g-board" style="margin:18px auto 0;max-width:460px;width:100%"></div>'
   +'</div>';
 }
-function ghFmtScore(game,score){if(game==='gostop'){return Number(score).toLocaleString()+'원';}if(game==='match'){return (100000/Math.max(1,score)).toFixed(1)+'초';}if(game==='jump'){return score+'층';}if(game==='marble'){return Math.round(200000/Math.max(1,score))+'초';}return score;}
+function ghFmtScore(game,score){if(game==='match'){return (100000/Math.max(1,score)).toFixed(1)+'초';}if(game==='jump'){return score+'층';}if(game==='marble'){return Math.round(200000/Math.max(1,score))+'초';}return score;}
 function ghRenderBoard(g){var el=document.getElementById('g-board');if(!el)return;var arr=GH.board[g];var me=String(ghUid());
   var html='<div style="font-weight:800;font-size:13px;margin-bottom:8px;color:#ffd54f">🏆 '+ghMonthLabel()+' 랭킹 TOP 20</div>';
   if(GH.loadingB)html+='<div style="color:#90a4ae;font-size:12px">불러오는 중…</div>';
@@ -9383,222 +9382,6 @@ function gMbOver(winner,cap){var g=GMB;if(g.over)return;g.over=true;g.winner=win
   if(winner===1){g.msg=(cap?'🏆 영업 종료! 자산 우위 승 · ':'🏆 승리! '+Math.round(sec)+'초 만에 컴퓨터 파산 · ')+'내 자산 '+g.me.money;ghSfx('clear');ghSave('marble',Math.max(1,Math.round(200000/Math.max(20,sec))));}
   else{g.msg='😢 파산 — 패배';ghSfx('over');}
   ghLoad('marble');gMbUI();}
-
-/* ═════════ 게임: 맞고(2인 vs 컴퓨터) — 화투 48장, 누적 보유금액 ═════════ */
-var GS=null, GS_UNIT=100, GS_DEF=50000, GS_BANK=GS_DEF, GS_BANKMAP={};
-function gsMakeDeck(){var d=[],id=0;function add(m,t,s,p){d.push({id:id++,m:m,type:t,sub:s||null,pi:p||0});}
-  add(1,'gwang',null);add(1,'tti','red');add(1,'pi',null,1);add(1,'pi',null,1);
-  add(2,'yul','godori');add(2,'tti','red');add(2,'pi',null,1);add(2,'pi',null,1);
-  add(3,'gwang',null);add(3,'tti','red');add(3,'pi',null,1);add(3,'pi',null,1);
-  add(4,'yul','godori');add(4,'tti','grass');add(4,'pi',null,1);add(4,'pi',null,1);
-  add(5,'yul',null);add(5,'tti','grass');add(5,'pi',null,1);add(5,'pi',null,1);
-  add(6,'yul',null);add(6,'tti','blue');add(6,'pi',null,1);add(6,'pi',null,1);
-  add(7,'yul',null);add(7,'tti','grass');add(7,'pi',null,1);add(7,'pi',null,1);
-  add(8,'gwang',null);add(8,'yul','godori');add(8,'pi',null,1);add(8,'pi',null,1);
-  add(9,'yul',null);add(9,'tti','blue');add(9,'pi',null,1);add(9,'pi',null,1);
-  add(10,'yul',null);add(10,'tti','blue');add(10,'pi',null,1);add(10,'pi',null,1);
-  add(11,'gwang',null);add(11,'pi',null,1);add(11,'pi',null,1);add(11,'pi','ssang',2);
-  add(12,'gwang','bi');add(12,'yul',null);add(12,'tti','rain');add(12,'pi','ssang',2);return d;}
-function gsShuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
-function gsNewGame(){var deck=gsShuffle(gsMakeDeck());
-  var G={deck:deck,hand:[[],[]],field:[],cap:[[],[]],turn:Math.floor(Math.random()*2),go:[0,0],score:[0,0],over:false,winner:-1,msg:'',phase:'play',_prevScore:[0,0]};
-  for(var i=0;i<8;i++)G.field.push(deck.pop());
-  for(var p=0;p<2;p++)for(var k=0;k<10;k++)G.hand[p].push(deck.pop());return G;}
-function gsScore(cap){var g=cap.filter(function(c){return c.type==='gwang';});var hasBi=g.some(function(c){return c.sub==='bi';});
-  var ng=g.length,gw=ng>=5?15:ng===4?4:ng===3?(hasBi?2:3):0;
-  var yul=cap.filter(function(c){return c.type==='yul';});var godori=yul.filter(function(c){return c.sub==='godori';}).length;
-  var god=godori>=3?5:0,yp=yul.length>=5?(yul.length-4):0;
-  var ttis=cap.filter(function(c){return c.type==='tti';});
-  var red=ttis.filter(function(c){return c.sub==='red';}).length,blue=ttis.filter(function(c){return c.sub==='blue';}).length,grass=ttis.filter(function(c){return c.sub==='grass';}).length;
-  var hong=red>=3?3:0,chung=blue>=3?3:0,cho=grass>=3?3:0,tp=ttis.length>=5?(ttis.length-4):0;
-  var pv=0;cap.forEach(function(c){if(c.type==='pi')pv+=(c.pi||1);});var pp=pv>=10?(pv-9):0;
-  return {total:gw+god+yp+hong+chung+cho+tp+pp,gw:gw,godori:god,yul:yp,hong:hong,chung:chung,cho:cho,tti:tp,pi:pp,ngwang:ng,pv:pv,nyul:yul.length};}
-function gsSteal(G,p){var opp=1-p,c=G.cap[opp],idx=-1;for(var i=0;i<c.length;i++){if(c[i].type==='pi'&&(c[i].pi||1)===1){idx=i;break;}}
-  if(idx<0)for(var j=0;j<c.length;j++){if(c[j].type==='pi'){idx=j;break;}}if(idx>=0){G.cap[p].push(c.splice(idx,1)[0]);return true;}return false;}
-function gsCardVal(c){return c.type==='gwang'?100:c.type==='yul'?(c.sub==='godori'?60:40):c.type==='tti'?30:(c.pi===2?12:10);}
-function gsBestIdx(f,idxs){var best=idxs[0],bv=-1;idxs.forEach(function(ix){var v=gsCardVal(f[ix]);if(v>bv){bv=v;best=ix;}});return best;}
-function gsResolve(G,p,card,fromFlip,placedMonth){var f=G.field,m=card.m,same=[];for(var i=0;i<f.length;i++)if(f[i].m===m)same.push(i);
-  if(fromFlip&&placedMonth===m&&same.length>=2){if(same.length>=3){var gb=[card];var ix=same.slice().sort(function(a,b){return b-a;});ix.forEach(function(k){gb.push(f.splice(k,1)[0]);});return {got:gb,n:4,ttak:true};}f.push(card);return {got:[],n:0,ppeok:true};}
-  if(same.length===0){f.push(card);return {got:[],n:0};}
-  if(same.length===1){return {got:[card,f.splice(same[0],1)[0]],n:1};}
-  if(same.length===2){var pick=gsBestIdx(f,same);return {got:[card,f.splice(pick,1)[0]],n:1,leftPair:true};}
-  var gb2=[card];var ix2=same.slice().sort(function(a,b){return b-a;});ix2.forEach(function(k){gb2.push(f.splice(k,1)[0]);});return {got:gb2,n:3,sweep:true};}
-function gsPlay(G,p,card){if(G.over||G.phase!=='play')return;var hi=G.hand[p].indexOf(card);if(hi<0)return;G.hand[p].splice(hi,1);
-  var beforeEmpty=G.field.length,stole=0,ev='';var r1=gsResolve(G,p,card,false);var placedNoMatch=(r1.n===0&&!r1.ppeok);
-  if(r1.got.length)G.cap[p]=G.cap[p].concat(r1.got);if(r1.sweep){if(gsSteal(G,p))stole++;ev='따닥';}
-  var flip=G.deck.pop();G.lastFlip=flip||null;
-  if(flip){var r2=gsResolve(G,p,flip,true,card.m);
-    if(r2.ppeok){ev='뻑';}else{if(r2.got.length)G.cap[p]=G.cap[p].concat(r2.got);
-      if(r2.ttak){if(gsSteal(G,p))stole++;ev='따닥';}if(r2.sweep){if(gsSteal(G,p))stole++;ev='따닥';}
-      if(placedNoMatch&&flip.m===card.m&&r2.n>=1){if(gsSteal(G,p))stole++;ev='쪽';}}}
-  if(G.field.length===0&&beforeEmpty>0){if(gsSteal(G,p))stole++;ev=(ev?ev+'+':'')+'쓸';}
-  var sc=gsScore(G.cap[p]);G.score[p]=sc.total;G.lastEvent=ev;G.lastStole=stole;
-  var prev=G._prevScore[p];if(sc.total>=7&&sc.total>prev){G.phase='decide';G.decideBy=p;}G._prevScore[p]=sc.total;
-  return {event:ev,stole:stole,score:sc.total};}
-function gsDecide(G,p,goFlag){if(G.phase!=='decide'||G.decideBy!==p)return;if(goFlag){G.go[p]++;G.phase='play';gsNextTurn(G);}else{gsStop(G,p);}}
-function gsNextTurn(G){G.turn=1-G.turn;if(G.hand[0].length===0&&G.hand[1].length===0&&!G.over){G.over=true;G.winner=-1;G.msg='나가리 (무승부)';}}
-function gsStop(G,p){G.over=true;G.winner=p;var sc=gsScore(G.cap[p]),base=sc.total,opp=1-p,osc=gsScore(G.cap[opp]);
-  var go=G.go[p],addPts=Math.min(go,2),mult=Math.pow(2,Math.max(0,go-2)),pts=(base+addPts)*mult,bak=[];
-  if(sc.pv>=10&&osc.pv<=7){pts*=2;bak.push('피박');}if(sc.gw>0&&osc.ngwang===0){pts*=2;bak.push('광박');}
-  if(G.go[opp]>0){pts*=2;bak.push('고박');}
-  G.result={winner:p,base:base,go:go,pts:Math.round(pts),bak:bak,detail:sc};
-  G.msg='STOP! '+base+'점'+(go>0?' '+go+'고':'')+(bak.length?' ('+bak.join('+')+')':'')+' = '+Math.round(pts)+'점';}
-function gsAIPlay(G){var p=G.turn,hand=G.hand[p];if(!hand.length)return;var best=hand[0],bv=-1;
-  hand.forEach(function(c){var m=G.field.filter(function(f){return f.m===c.m;}).length;var v=m>0?gsCardVal(c)+m*5:-gsCardVal(c)*0.1;if(v>bv){bv=v;best=c;}});return gsPlay(G,p,best);}
-function gsAIDecide(G){var p=G.decideBy,sc=G.score[p],os=G.score[1-p];var stop=sc>=10||G.hand[p].length<=3||G.go[p]>=2||os>=5;if(!stop&&Math.random()<0.4)stop=true;gsDecide(G,p,!stop);}
-
-/* ── 카드 표시정보 ── */
-var GS_MON={1:['#1b5e20','🌲'],2:['#ad1457','🌸'],3:['#d81b60','🌸'],4:['#4e342e','🌿'],5:['#2e7d32','🌱'],6:['#6a1b9a','🌺'],7:['#b71c1c','🍂'],8:['#e65100','🌕'],9:['#f9a825','🌼'],10:['#bf360c','🍁'],11:['#4527a0','🌳'],12:['#1565c0','🌧️']};
-var GS_ANI={2:'🐦',4:'🐦',6:'🦋',7:'🐗',8:'🦆',9:'🍶',10:'🦌',12:'🐦'};
-var GS_GW={1:'🕊️',3:'🌸',8:'🌕',11:'🐦',12:'☂️'};
-function gsFace(c){var mark='피',mc='#607d8b';
-  if(c.type==='gwang'){mark=c.sub==='bi'?'비광':'광';mc='#c62828';}
-  else if(c.type==='yul'){mark=c.sub==='godori'?'고도리':'열끗';mc='#6a1b9a';}
-  else if(c.type==='tti'){mark=c.sub==='red'?'홍단':c.sub==='blue'?'청단':c.sub==='grass'?'초단':'비단';mc=c.sub==='red'?'#c62828':c.sub==='blue'?'#1565c0':c.sub==='rain'?'#3949ab':'#2e7d32';}
-  else if(c.type==='pi'){mark=c.pi===2?'쌍피':'피';mc='#607d8b';}
-  return {mark:mark,mc:mc,m:c.m,mcol:GS_MON[c.m][0]};}
-function gsCardHtml(c,opt){opt=opt||{};var sz=opt.sz||'m';
-  var W=sz==='xs'?27:sz==='s'?34:sz==='l'?60:46,H=Math.round(W*1.5);
-  if(opt.back){return '<div style="width:'+W+'px;height:'+H+'px;border-radius:6px;background:linear-gradient(135deg,#8e1a1a,#b71c1c 55%,#7f0000);border:2px solid #f3e3bd;box-shadow:0 2px 5px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;flex:0 0 auto"><span style="color:#ffd54f;font-size:'+(W*0.42)+'px">✿</span></div>';}
-  var mon=GS_MON[c.m];
-  var scene=c.type==='gwang'?(GS_GW[c.m]||'🌕'):c.type==='yul'?(GS_ANI[c.m]||'🐾'):mon[1];
-  var hl=opt.sel?'box-shadow:0 0 0 3px #fff176,0 0 16px 4px rgba(255,235,59,.9);transform:translateY(-10px);':'box-shadow:0 2px 6px rgba(0,0,0,.4);';
-  var click=opt.click?(' onclick="'+opt.click+'" style="cursor:pointer;'):' style="';
-  var inner='<div style="position:absolute;top:1px;left:3px;font-size:'+(W*0.2)+'px;font-weight:900;color:'+mon[0]+';line-height:1;text-shadow:0 1px 0 #fff">'+c.m+'월</div>';
-  inner+='<div style="position:absolute;top:'+(W*0.26)+'px;left:0;right:0;text-align:center;font-size:'+(W*0.5)+'px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))">'+scene+'</div>';
-  if(c.type==='gwang'){
-    inner+='<div style="position:absolute;top:1px;right:2px;background:#c62828;color:#fff;font-size:'+(W*0.26)+'px;font-weight:900;border-radius:4px;padding:0 '+(W*0.07)+'px;line-height:1.25;box-shadow:0 1px 2px rgba(0,0,0,.4)">光</div>';
-    inner+='<div style="position:absolute;bottom:'+(W*0.06)+'px;left:'+(W*0.12)+'px;right:'+(W*0.12)+'px;height:'+(W*0.2)+'px;background:linear-gradient(#e53935,#b71c1c);border-radius:3px;box-shadow:inset 0 0 3px rgba(0,0,0,.3)"></div>';
-  }else if(c.type==='tti'){
-    var tcol=c.sub==='red'?'#d32f2f':c.sub==='blue'?'#1976d2':c.sub==='rain'?'#3949ab':'#43a047';
-    var tl=c.sub==='red'?'홍단':c.sub==='blue'?'청단':c.sub==='grass'?'':'비';
-    inner+='<div style="position:absolute;bottom:'+(W*0.09)+'px;left:'+(W*0.09)+'px;right:'+(W*0.09)+'px;height:'+(W*0.3)+'px;background:'+tcol+';border-radius:3px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:'+(W*0.21)+'px;font-weight:900;box-shadow:0 1px 2px rgba(0,0,0,.3)">'+tl+'</div>';
-  }else if(c.type==='pi'&&c.pi===2){
-    inner+='<div style="position:absolute;bottom:2px;right:3px;background:#37474f;color:#ffd54f;font-size:'+(W*0.2)+'px;font-weight:900;border-radius:3px;padding:0 '+(W*0.09)+'px;line-height:1.3">쌍</div>';
-  }
-  return '<div'+click+'width:'+W+'px;height:'+H+'px;border-radius:6px;background:linear-gradient(160deg,#fbf6e6,#efe3c2);border:2px solid #2e2a22;'+hl+'flex:0 0 auto;position:relative;overflow:hidden;transition:transform .12s">'+inner+'</div>';}
-function gsCapSummary(cap){var sc=gsScore(cap);var ng=cap.filter(function(c){return c.type==='gwang';}).length;
-  var ny=cap.filter(function(c){return c.type==='yul';}).length;var nt=cap.filter(function(c){return c.type==='tti';}).length;
-  var pv=0;cap.forEach(function(c){if(c.type==='pi')pv+=(c.pi||1);});
-  return {ng:ng,ny:ny,nt:nt,pv:pv,total:sc.total};}
-
-/* ── 게임 시작/렌더 ── */
-function gGostopStart(){var st=document.getElementById('g-stage');if(!st)return;
-  GS=gsNewGame();GS.gen=++GH.gen;GS.busy=false;
-  st.innerHTML='<div id="gs-wrap" style="max-width:480px;margin:0 auto;width:100%"></div>';
-  gsBankLoad();gsRender();
-  if(GS.turn===1)setTimeout(gsAITurn,800); else gsSetMsg('내 차례 — 낼 패를 고르세요');}
-function gsSetMsg(m){GS.msg=m;var el=document.getElementById('gs-msg');if(el)el.textContent=m;}
-function gsRender(){if(!GS)return;var w=document.getElementById('gs-wrap');if(!w)return;var G=GS;
-  var meC=gsCapSummary(G.cap[0]),aiC=gsCapSummary(G.cap[1]);
-  var h='';
-  // 보유금액 바
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#1b5e20,#2e7d32);border-radius:10px;padding:6px 12px;margin-bottom:6px;color:#fff">'
-   +'<span style="font-size:12px;font-weight:800">💰 내 보유금액</span><span style="font-size:16px;font-weight:900;color:#ffe082">'+GS_BANK.toLocaleString()+'원</span></div>';
-  // ── 컴퓨터: 점수 + 손패 장수(작게) + 먹은 패(크게) ──
-  h+='<div style="background:#0d3a18;border-radius:12px;padding:7px 9px;box-shadow:inset 0 0 16px rgba(0,0,0,.4)">';
-  h+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:2px"><span style="font-size:12px;font-weight:800;color:#ff8a80">🤖 컴퓨터</span>'
-   +'<span style="font-size:10.5px;color:#9fd4ab;background:#ffffff14;border-radius:10px;padding:1px 7px">손패 '+G.hand[1].length+'장</span>'
-   +'<span style="margin-left:auto;font-size:13px;font-weight:900;color:#fff59d">'+aiC.total+'점'+(G.go[1]?' '+G.go[1]+'고':'')+'</span></div>';
-  h+='<div style="font-size:10px;color:#7fb98c;margin-bottom:1px">상대가 먹은 패 · 광'+aiC.ng+' 끗'+aiC.ny+' 띠'+aiC.nt+' 피'+aiC.pv+'</div>';
-  h+=gsCapCards(G.cap[1]);
-  h+='</div>';
-  // ── 바닥(필드) ──
-  h+='<div style="background:radial-gradient(circle at 50% 40%,#2e7d32,#1b5e20);border-radius:12px;padding:9px;margin:6px 0;min-height:120px;box-shadow:inset 0 0 22px rgba(0,0,0,.45)">';
-  h+='<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center">';
-  for(var j=0;j<G.field.length;j++)h+=gsCardHtml(G.field[j],{sz:'m'});
-  h+='</div>';
-  h+='<div style="text-align:center;margin-top:6px;font-size:10.5px;color:#a5d6a7">남은 더미 '+G.deck.length+'장'+(G.lastFlip?' · 방금 뒤집기 '+gsFace(G.lastFlip).m+'월 '+gsFace(G.lastFlip).mark:'')+'</div>';
-  h+='</div>';
-  // 메시지
-  h+='<div id="gs-msg" style="min-height:18px;text-align:center;font-size:13px;font-weight:800;color:#ffd54f;margin:3px 0">'+(G.msg||'')+'</div>';
-  // ── 나: 먹은 패(크게) + 점수 + 손패(오름차순, 크게) ──
-  h+='<div style="background:#13321c;border-radius:12px;padding:7px 9px;box-shadow:inset 0 0 16px rgba(0,0,0,.4)">';
-  h+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:2px"><span style="font-size:12px;font-weight:800;color:#80d8ff">🙋 내가 먹은 패</span>'
-   +'<span style="font-size:10px;color:#9fd4ab">광'+meC.ng+' 끗'+meC.ny+' 띠'+meC.nt+' 피'+meC.pv+'</span>'
-   +'<span style="margin-left:auto;font-size:14px;font-weight:900;color:#fff59d">'+meC.total+'점'+(G.go[0]?' '+G.go[0]+'고':'')+'</span></div>';
-  h+=gsCapCards(G.cap[0]);
-  // 내 손패 (오름차순)
-  var ord={gwang:0,yul:1,tti:2,pi:3};
-  var myHand=G.hand[0].slice().sort(function(a,b){return (a.m-b.m)||(ord[a.type]-ord[b.type])||((b.pi||0)-(a.pi||0));});
-  var myTurn=(!G.over&&G.turn===0&&G.phase==='play'&&!GS.busy);
-  h+='<div style="border-top:1px dashed #ffffff22;margin-top:7px;padding-top:7px"><div style="font-size:10px;color:#9fd4ab;margin-bottom:4px">내 손패 '+myHand.length+'장 '+(myTurn?'· 낼 패를 누르세요':'')+'</div>';
-  h+='<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center">';
-  for(var k=0;k<myHand.length;k++){var c=myHand[k];h+=gsCardHtml(c,{sz:'l',click:myTurn?('gsHumanPlay('+c.id+')'):''});}
-  h+='</div></div></div>';
-  // 컨트롤
-  h+='<div style="display:flex;gap:7px;justify-content:center;margin-top:9px;flex-wrap:wrap">';
-  if(G.phase==='decide'&&G.decideBy===0&&!G.over){
-    h+='<button onclick="gsGo()" style="'+gsBtn('#e65100')+'">🔥 고! ('+G.score[0]+'점)</button>';
-    h+='<button onclick="gsStopBtn()" style="'+gsBtn('#2e7d32')+'">✋ 스톱 (받기)</button>';}
-  h+='<button onclick="gGostopStart()" style="'+gsBtn('#455a64')+'">↺ 새 판</button>';
-  h+='</div>';
-  w.innerHTML=h;}
-function gsCapCards(cap){var mh=Math.round(27*1.5);
-  if(!cap.length)return '<div style="min-height:'+mh+'px;display:flex;align-items:center;color:#5b7a63;font-size:10px">아직 먹은 패 없음</div>';
-  var order={gwang:0,yul:1,tti:2,pi:3};
-  var s=cap.slice().sort(function(a,b){return (order[a.type]-order[b.type])||(a.m-b.m)||((b.pi||0)-(a.pi||0));});
-  var h='<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px;min-height:'+mh+'px">';
-  s.forEach(function(c){h+=gsCardHtml(c,{sz:'xs'});});
-  return h+'</div>';}
-function gsBtn(c){return 'background:linear-gradient(135deg,'+c+',rgba(0,0,0,.25));color:#fff;border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.3)';}
-function gsHumanPlay(id){var G=GS;if(!G||G.over||G.turn!==0||G.phase!=='play'||GS.busy)return;
-  var card=null;for(var i=0;i<G.hand[0].length;i++)if(G.hand[0][i].id===id)card=G.hand[0][i];if(!card)return;
-  GS.busy=true;gsPlay(G,0,card);ghSfx&&ghSfx('drop');
-  if(G.lastEvent)gsSetMsg('✨ '+G.lastEvent+(G.lastStole?' · 피 '+G.lastStole+'장 획득!':''));
-  gsRender();
-  if(G.phase==='decide'&&G.decideBy===0){GS.busy=false;gsSetMsg('7점 돌파! 고 또는 스톱을 선택하세요');gsRender();return;}
-  gsNextTurn(G);gsRender();gsAfterTurn();}
-function gsAfterTurn(){var G=GS;if(G.over){gsFinish();return;}
-  if(G.turn===1){setTimeout(gsAITurn,750);}
-  else{ // 내 차례
-    if(G.hand[0].length===0){gsNextTurn(G);gsRender();gsAfterTurn();return;}
-    GS.busy=false;gsSetMsg('내 차례 — 낼 패를 고르세요');gsRender();}}
-function gsAITurn(){var G=GS;if(!G||G.over||G.gen!==GH.gen||GH.view!=='gostop')return;GS.busy=true;
-  if(G.hand[1].length===0){gsNextTurn(G);gsRender();gsAfterTurn();return;}
-  gsAIPlay(G);ghSfx&&ghSfx('move');
-  gsSetMsg('🤖 컴퓨터가 패를 냈습니다'+(G.lastEvent?' ('+G.lastEvent+')':''));gsRender();
-  if(G.phase==='decide'&&G.decideBy===1){gsSetMsg('🤖 컴퓨터 고민 중…');
-    setTimeout(function(){if(!GS||GS.gen!==GH.gen)return;var was=G.go[1];gsAIDecide(G);
-      if(G.over){gsRender();gsFinish();return;}
-      gsSetMsg(G.go[1]>was?'🤖 컴퓨터 '+G.go[1]+'고!':'컴퓨터 계속');gsRender();gsAfterTurn();},900);return;}
-  gsNextTurn(G);gsRender();gsAfterTurn();}
-function gsGo(){var G=GS;if(!G||G.phase!=='decide'||G.decideBy!==0)return;gsDecide(G,0,true);ghSfx&&ghSfx('score');gsSetMsg('🔥 '+G.go[0]+'고! 계속 갑니다');gsRender();gsAfterTurn();}
-function gsStopBtn(){var G=GS;if(!G||G.phase!=='decide'||G.decideBy!==0)return;gsDecide(G,0,false);gsRender();gsFinish();}
-function gsFinish(){var G=GS;if(G._fin)return;G._fin=true;var delta=0,title='',detail='';
-  if(G.winner===0){var r=G.result;delta=r.pts*GS_UNIT;title='🏆 승리!';
-    detail=r.base+'점'+(r.go?' · '+r.go+'고':'')+(r.bak.length?' · '+r.bak.join('+'):'')+' → '+r.pts+'점 ×'+GS_UNIT+'원';ghSfx&&ghSfx('clear');}
-  else if(G.winner===1){var r2=G.result;var lp=r2?r2.pts:Math.max(1,G.score[1]);delta=-lp*GS_UNIT;title='😢 패배';
-    detail=(r2?(r2.base+'점'+(r2.go?' '+r2.go+'고':'')+(r2.bak.length?' '+r2.bak.join('+'):'')+' → '+r2.pts+'점'):G.score[1]+'점')+' 지불';ghSfx&&ghSfx('over');}
-  else{title='🤝 나가리';detail='무승부 — 변동 없음';}
-  GS_BANK=Math.max(0,GS_BANK+delta);gsBankSave();
-  var w=document.getElementById('gs-wrap');if(!w)return;
-  var col=G.winner===0?'#2e7d32':G.winner===1?'#c62828':'#607d8b';
-  var ov='<div style="text-align:center;padding:22px 14px;background:linear-gradient(160deg,#102818,#0a1f12);border-radius:14px;margin-top:10px;border:2px solid '+col+'">'
-   +'<div style="font-size:26px;font-weight:900;color:#fff;margin-bottom:6px">'+title+'</div>'
-   +'<div style="font-size:13px;color:#cfd8dc;margin-bottom:8px">'+detail+'</div>'
-   +'<div style="font-size:15px;font-weight:900;color:'+(delta>0?'#69f0ae':delta<0?'#ff8a80':'#b0bec5')+'">'+(delta>0?'+':'')+delta.toLocaleString()+'원</div>'
-   +'<div style="font-size:13px;color:#ffe082;font-weight:800;margin-top:4px">보유 '+GS_BANK.toLocaleString()+'원</div>'
-   +'<button onclick="gGostopStart()" style="'+gsBtn('#1565c0')+';margin-top:14px">다시 하기</button></div>';
-  w.insertAdjacentHTML('beforeend',ov);}
-
-/* ── 보유금액 누적(app_settings: gostop_bank) ── */
-async function gsBankLoad(){try{if(!sbClient){GS_BANK=GS_DEF;return;}
-  var r=await sbClient.from('app_settings').select('value').eq('key','gostop_bank').maybeSingle();
-  var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);GS_BANKMAP=v||{};
-  var uid=String(ghUid());var rec=GS_BANKMAP[uid];
-  GS_BANK=(rec&&typeof rec.bal==='number')?rec.bal:GS_DEF;
-  if(GS_BANK<GS_UNIT)GS_BANK=GS_DEF; // 재충전
-  gsRenderBank();gsBuildBoard();}catch(e){GS_BANK=GS_DEF;}}
-async function gsBankSave(){try{if(!sbClient)return;var uid=String(ghUid());
-  GS_BANKMAP[uid]={uname:ghName(),bal:GS_BANK,ts:Date.now()};
-  await sbClient.from('app_settings').upsert({key:'gostop_bank',value:JSON.stringify(GS_BANKMAP)},{onConflict:'key'});
-  gsBuildBoard();}catch(e){}}
-function gsRenderBank(){var w=document.getElementById('gs-wrap');if(w&&GS)gsRender();}
-function gsBuildBoard(){var arr=Object.keys(GS_BANKMAP).map(function(k){var r=GS_BANKMAP[k];return {uid:k,uname:r.uname||'익명',score:r.bal||0};});
-  arr.sort(function(a,b){return b.score-a.score;});GH.board['gostop']=arr.slice(0,20);GH.loadingB=false;
-  if(GH.view==='gostop')ghRenderBoard('gostop');}
-async function gsBoardLoad(){try{if(!sbClient)return;var r=await sbClient.from('app_settings').select('value').eq('key','gostop_bank').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);GS_BANKMAP=v||{};var arr=Object.keys(GS_BANKMAP).map(function(k){var x=GS_BANKMAP[k];return {uid:k,uname:x.uname||'익명',score:x.bal||0};});arr.sort(function(a,b){return b.score-a.score;});GH.board['gostop']=arr.slice(0,20);}catch(e){}}
 
 /* ═════════ 마블 룰렛 이벤트 추첨 (코인·이름·등수·풀스크린) ═════════ */
 var RLT={cur:null,curId:null,events:[],partsByEv:{},autoRan:{},showCreate:false,showEdit:false,formBonus:{clean:false,clean_n:2,backup:false,backup_n:2,backup_list:[]},parts:[],records:[],theme:'lava',curTheme:'lava',curG:0.1,rankCount:1,formPrizes:[],curPrizes:[],openMd:{},exclude:[],marbles:null,rng:null,finishOrder:[],frames:0,seed:0,ang:0,camY:0,gen:0,palIdx:0,loading:false};
