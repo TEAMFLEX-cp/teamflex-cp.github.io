@@ -3498,10 +3498,12 @@ function checkUnreadAnns(impOnly, chainCb){
   if(window._annPopupDismissed){ if(_annChainCb){var _cbx=_annChainCb;_annChainCb=null;setTimeout(_cbx,50);} return; }
   // [버그수정] 서버 읽음기록(announcement_reads)이 아직 로딩 전이면 먼저 로드 후 재평가.
   //   팝업이 로딩 전에 떠서 '이미 읽은 공지'를 안읽음으로 잘못 띄우던 타이밍 문제 차단.
-  if(!window._annBriefFetched && sbClient && CU && (CU.id||CU.name)){
-    window._annBriefFetched=true;
-    _annFetchBrief().then(function(){ checkUnreadAnns(impOnly); });
-    return;
+  if(!window._annBriefReady && sbClient && CU && (CU.id||CU.name)){
+    if(!window._annBriefFetched){
+      window._annBriefFetched=true;
+      _annFetchBrief().then(function(){ window._annBriefReady=true; checkUnreadAnns(impOnly); });
+    }
+    return;  // 브리핑(공지+오배송+프백) 완료 전엔 팝업 안 띄움
   }
   var anns=getAnns().filter(function(a){return !isAnnExpired(a)&&!a.disabled;});
   ANN_QUEUE=anns.filter(function(a){
