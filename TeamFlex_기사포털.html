@@ -8727,15 +8727,18 @@ async function rlRemovePart(pid){if(!rlIsAdmin())return;try{await sbClient.from(
 async function rlCancelEvent(){if(!rlCanManage()||!RLT.cur)return;if(!confirm('이 이벤트를 삭제(취소)할까요?'))return;try{await sbClient.from('roulette_events').update({status:'canceled'}).eq('id',RLT.cur.id);}catch(e){}RLT.curId=null;RLT.cur=null;rlReload();}
 function rlRunEvent(ev,isAuto){
   if(!ev)return;
-  var parts=RLT.partsByEv[ev.id]||[];
+  var stored=RLT.partsByEv[ev.id]||[];
+  var base;
+  if(ev.mode==='all'&&stored.length===0){var ex={};(RLT.exclude||[]).forEach(function(n){ex[n]=true;});base=rlApprovedNames().filter(function(n){return !ex[n];}).map(function(n,i){return {name:n,weight:1,color:rlColorFor(i)};});}
+  else {base=stored.map(function(p){return {name:p.name,weight:p.weight||1,color:p.color};});}
   var _ce=!!(ev.bonus_clean),_cn=ev.bonus_clean_n||2,_be=!!(ev.bonus_backup),_bn2=ev.bonus_backup_n||2;var _bset={};(ev.backup_list||[]).forEach(function(n){_bset[n]=true;});
-  var list=parts.map(function(p){var w=p.weight||1;if(_ce&&!RLT.openMd[p.name])w+=_cn;if(_be&&_bset[p.name])w+=_bn2;return {name:p.name,w:Math.min(15,w),c:p.color||'#888'};});
-  if(list.length<2){if(!isAuto)showToast('참가자가 2명 이상이어야 합니다.',false);return;}
+  var list=base.map(function(p){var w=p.weight||1;if(_ce&&!RLT.openMd[p.name])w+=_cn;if(_be&&_bset[p.name])w+=_bn2;return {name:p.name,w:Math.min(15,w),c:p.color||'#888'};});
+  if(list.length<2){showToast(isAuto?'⏰ 자동 추첨 실패: 참가자가 2명 이상이어야 합니다.':'참가자가 2명 이상이어야 합니다.',false);return;}
   ev.status='done';try{sbClient.from('roulette_events').update({status:'done'}).eq('id',ev.id).then(function(){});}catch(e){}
   var seed=Math.floor(Math.random()*1000000);var rc=ev.rank_count||1;
   rlPlay(seed,list,rc,(ev.prizes||[]),function(){
     var seen={},rk=[];for(var i=RLT.finishOrder.length-1;i>=0;i--){var o=RLT.finishOrder[i].o;if(!seen[o.name]){seen[o.name]=true;rk.push(o.name);}}
-    sbClient.from('roulette_draws').insert({use_text:ev.name,participants:list,seed:seed,grav:0.1,theme:'lava',winner:rk[0],ranking:rk,rank_count:rc,prizes:(ev.prizes||[]),event_id:ev.id,created_by:(CU&&CU.name)||''}).then(function(res){if(res&&res.error)showToast('기록 저장 실패: '+res.error.message,false);});
+    sbClient.from('roulette_draws').insert({use_text:ev.name,participants:list,seed:seed,grav:0.1,theme:'lava',winner:rk[0],ranking:rk,rank_count:rc,prizes:(ev.prizes||[]),event_id:ev.id,created_by:(CU&&CU.name)||''}).then(function(res){if(res&&res.error)showToast('기록 저장 실패: '+res.error.message,false);rlReload();});
   });
 }
 function rlRun(){if(!rlCanManage()){showToast('관리자·팀장만 실행할 수 있습니다.',false);return;}if(!RLT.cur)return;rlRunEvent(RLT.cur,false);}
