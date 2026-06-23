@@ -8895,7 +8895,7 @@ function gStackDrop(){var g=GS;if(!g.cx)return;if(g.over){gStackStart();return;}
   var L=Math.max(cur.x,top.x),R=Math.min(cur.x+cur.w,top.x+top.w),ov=R-L;
   if(ov<=0){g.over=true;ghSfx('over');ghSave('stack',g.sc);ghLoad('stack');return;}
   g.stack.push({x:L,w:ov});g.sc++;ghSfx('drop');gStackSpawn();}
-/* ════════ 게임4: 테트리스 ════════ */
+/* ════════ 게임4: 테트리스 (고퀄) ════════ */
 var GT={};
 var GT_P={
  I:{c:'#29e0e0',r:[[[1,0],[1,1],[1,2],[1,3]],[[0,2],[1,2],[2,2],[3,2]]]},
@@ -8907,41 +8907,60 @@ var GT_P={
  L:{c:'#f59331',r:[[[0,2],[1,0],[1,1],[1,2]],[[0,1],[1,1],[2,1],[2,2]],[[1,0],[1,1],[1,2],[2,0]],[[0,0],[0,1],[1,1],[2,1]]]}
 };
 var GT_KEYS=['I','O','T','S','Z','J','L'];
-function gTetCells(cur){var rs=GT_P[cur.t].r;var stt=rs[cur.rot%rs.length];var out=[];for(var i=0;i<4;i++)out.push([cur.y+stt[i][0],cur.x+stt[i][1]]);return out;}
+var GT_BAG=[];
+function gTetPull(){if(!GT_BAG.length){GT_BAG=GT_KEYS.slice();for(var i=GT_BAG.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=GT_BAG[i];GT_BAG[i]=GT_BAG[j];GT_BAG[j]=t;}}return GT_BAG.pop();}
+function gTetCellsOf(t,rot,x,y){var rs=GT_P[t].r;var stt=rs[rot%rs.length];var out=[];for(var i=0;i<4;i++)out.push([y+stt[i][0],x+stt[i][1]]);return out;}
+function gTetCells(cur){return gTetCellsOf(cur.t,cur.rot,cur.x,cur.y);}
 function gTetFits(cur){var cs=gTetCells(cur);for(var i=0;i<4;i++){var r=cs[i][0],c=cs[i][1];if(c<0||c>=10||r>=20)return false;if(r>=0&&GT.grid[r][c])return false;}return true;}
-function gTetSpawn(){var t=GT_KEYS[Math.floor(Math.random()*7)];GT.cur={t:t,rot:0,x:3,y:0};if(!gTetFits(GT.cur)){GT.over=true;ghSfx('over');ghSave('tetris',GT.sc);ghLoad('tetris');}}
+function gTetGhostY(){if(!GT.cur)return 0;var y=GT.cur.y;while(gTetFits({t:GT.cur.t,rot:GT.cur.rot,x:GT.cur.x,y:y+1}))y++;return y;}
+function gTetSpawn(){GT.cur={t:GT.nextT,rot:0,x:3,y:0};GT.nextT=gTetPull();GT.holdUsed=false;if(!gTetFits(GT.cur)){GT.over=true;ghSfx('over');ghSave('tetris',GT.sc);ghLoad('tetris');}}
 function gTetLock(){var cs=gTetCells(GT.cur);for(var i=0;i<4;i++){var r=cs[i][0],c=cs[i][1];if(r>=0)GT.grid[r][c]=GT_P[GT.cur.t].c;}
-  var cleared=0;for(var r2=19;r2>=0;r2--){var full=true;for(var c2=0;c2<10;c2++)if(!GT.grid[r2][c2]){full=false;break;}if(full){GT.grid.splice(r2,1);GT.grid.unshift(new Array(10).fill(0));cleared++;r2++;}}
-  if(cleared){GT.lines+=cleared;GT.sc+=[0,100,300,500,800][cleared]*(1+Math.floor(GT.lines/10));}
-  ghSfx(cleared?'clear':'drop');gTetSpawn();}
-function gTetMove(dx){if(GT.over||!GT.cur)return;var n={t:GT.cur.t,rot:GT.cur.rot,x:GT.cur.x+dx,y:GT.cur.y};if(gTetFits(n)){GT.cur=n;ghSfx('move');}}
-function gTetRot(){if(GT.over||!GT.cur)return;var n={t:GT.cur.t,rot:(GT.cur.rot+1),x:GT.cur.x,y:GT.cur.y};if(gTetFits(n)){GT.cur=n;ghSfx('rotate');return;}n.x=GT.cur.x-1;if(gTetFits(n)){GT.cur=n;ghSfx('rotate');return;}n.x=GT.cur.x+1;if(gTetFits(n)){GT.cur=n;ghSfx('rotate');}}
-function gTetSoft(){if(GT.over||!GT.cur)return;var n={t:GT.cur.t,rot:GT.cur.rot,x:GT.cur.x,y:GT.cur.y+1};if(gTetFits(n)){GT.cur=n;GT.sc+=1;}else gTetLock();}
-function gTetHard(){if(GT.over||!GT.cur)return;while(true){var n={t:GT.cur.t,rot:GT.cur.rot,x:GT.cur.x,y:GT.cur.y+1};if(gTetFits(n)){GT.cur=n;GT.sc+=2;}else break;}gTetLock();}
-function gTetKey(e){if(GH.view!=='tetris')return;var k=e.key;if(k==='ArrowLeft'){e.preventDefault();gTetMove(-1);}else if(k==='ArrowRight'){e.preventDefault();gTetMove(1);}else if(k==='ArrowDown'){e.preventDefault();gTetSoft();}else if(k==='ArrowUp'){e.preventDefault();gTetRot();}else if(k===' '||k==='Spacebar'){e.preventDefault();gTetHard();}}
-function gTetStart(){var st=document.getElementById('g-stage');if(!st)return;var cell=Math.min(26,Math.floor((Math.min(window.innerWidth||360,420)-24)/10));var W=cell*10,H=cell*20;
-  st.innerHTML='<div style="text-align:center"><div style="margin-bottom:8px;color:#fff;font-weight:800;font-size:14px">점수 <span id="gtsc">0</span> · 라인 <span id="gtln">0</span></div><canvas id="gtc" width="'+W+'" height="'+H+'" style="background:#0b0e1a;border-radius:8px;border:1px solid #ffffff22"></canvas>'
-   +'<div style="display:flex;justify-content:center;gap:8px;margin-top:12px">'
+  var rows=[];for(var r2=0;r2<20;r2++){var full=true;for(var c2=0;c2<10;c2++)if(!GT.grid[r2][c2]){full=false;break;}if(full)rows.push(r2);}
+  if(rows.length){GT.clearing=true;GT.flashRows=rows;GT.flashT=9;GT.cur=null;ghSfx('clear');}else{ghSfx('drop');gTetSpawn();}}
+function gTetDoClear(){var rows=GT.flashRows||[];rows.sort(function(a,b){return a-b;});for(var i=rows.length-1;i>=0;i--){GT.grid.splice(rows[i],1);GT.grid.unshift(new Array(10).fill(0));}
+  var n=rows.length;GT.lines+=n;GT.level=1+Math.floor(GT.lines/10);GT.sc+=[0,100,300,500,800][n]*GT.level;GT.clearing=false;GT.flashRows=[];gTetSpawn();}
+function gTetMove(dx){if(GT.over||GT.clearing||!GT.cur)return;var n={t:GT.cur.t,rot:GT.cur.rot,x:GT.cur.x+dx,y:GT.cur.y};if(gTetFits(n)){GT.cur=n;ghSfx('move');}}
+function gTetRot(){if(GT.over||GT.clearing||!GT.cur)return;var rot=GT.cur.rot+1;var kicks=[0,-1,1,-2,2];for(var k=0;k<kicks.length;k++){var n={t:GT.cur.t,rot:rot,x:GT.cur.x+kicks[k],y:GT.cur.y};if(gTetFits(n)){GT.cur=n;ghSfx('rotate');return;}}}
+function gTetSoft(){if(GT.over||GT.clearing||!GT.cur)return;var n={t:GT.cur.t,rot:GT.cur.rot,x:GT.cur.x,y:GT.cur.y+1};if(gTetFits(n)){GT.cur=n;GT.sc+=1;}else gTetLock();}
+function gTetHard(){if(GT.over||GT.clearing||!GT.cur)return;var gy=gTetGhostY();GT.sc+=Math.max(0,(gy-GT.cur.y))*2;GT.cur.y=gy;gTetLock();}
+function gTetHold(){if(GT.over||GT.clearing||!GT.cur||GT.holdUsed)return;ghSfx('rotate');if(GT.holdT){var tmp=GT.holdT;GT.holdT=GT.cur.t;GT.cur={t:tmp,rot:0,x:3,y:0};}else{GT.holdT=GT.cur.t;GT.cur={t:GT.nextT,rot:0,x:3,y:0};GT.nextT=gTetPull();}GT.holdUsed=true;if(!gTetFits(GT.cur)){GT.over=true;ghSfx('over');ghSave('tetris',GT.sc);ghLoad('tetris');}}
+function gTetKey(e){if(GH.view!=='tetris')return;var k=e.key;if(k==='ArrowLeft'){e.preventDefault();gTetMove(-1);}else if(k==='ArrowRight'){e.preventDefault();gTetMove(1);}else if(k==='ArrowDown'){e.preventDefault();gTetSoft();}else if(k==='ArrowUp'||k==='x'){e.preventDefault();gTetRot();}else if(k===' '||k==='Spacebar'){e.preventDefault();gTetHard();}else if(k==='c'||k==='Shift'){e.preventDefault();gTetHold();}}
+function gTetCellDraw(c,x,y,s,col,al){c.globalAlpha=al||1;c.fillStyle=col;c.fillRect(x,y,s,s);c.fillStyle='rgba(255,255,255,.30)';c.fillRect(x,y,s,Math.max(2,s*0.16));c.fillRect(x,y,Math.max(2,s*0.16),s);c.fillStyle='rgba(0,0,0,.28)';c.fillRect(x,y+s-Math.max(2,s*0.16),s,Math.max(2,s*0.16));c.fillRect(x+s-Math.max(2,s*0.16),y,Math.max(2,s*0.16),s);c.globalAlpha=1;}
+function gTetMini(c,t,bx,by,ms){var cs=gTetCellsOf(t,0,0,0);var minc=9,maxc=0,minr=9,maxr=0;for(var i=0;i<4;i++){minc=Math.min(minc,cs[i][1]);maxc=Math.max(maxc,cs[i][1]);minr=Math.min(minr,cs[i][0]);maxr=Math.max(maxr,cs[i][0]);}var w=(maxc-minc+1),h=(maxr-minr+1);var ox=bx-(minc*ms)-(w*ms)/2,oy=by-(minr*ms)-(h*ms)/2;for(var j=0;j<4;j++)gTetCellDraw(c,ox+cs[j][1]*ms,oy+cs[j][0]*ms,ms-1,GT_P[t].c,1);}
+function gTetStart(){var st=document.getElementById('g-stage');if(!st)return;var cell=Math.min(24,Math.floor((Math.min(window.innerWidth||360,420)-16)/15));var bw=cell*10,panelX=bw+10,pw=cell*4.6,W=Math.ceil(bw+12+pw),H=cell*20;
+  st.innerHTML='<div style="text-align:center"><canvas id="gtc" width="'+W+'" height="'+H+'" style="background:#0b0e1a;border-radius:10px;border:1px solid #ffffff22;width:min(94vw,'+(W*1.3)+'px);max-width:100%"></canvas>'
+   +'<div style="display:flex;justify-content:center;gap:7px;margin-top:12px;flex-wrap:wrap">'
+   +'<button onclick="gTetHold()" style="'+gTetBtn('#455a64')+'">HOLD</button>'
    +'<button onclick="gTetMove(-1)" style="'+gTetBtn()+'">◀</button>'
    +'<button onclick="gTetRot()" style="'+gTetBtn()+'">⟳</button>'
    +'<button onclick="gTetSoft()" style="'+gTetBtn()+'">▼</button>'
    +'<button onclick="gTetMove(1)" style="'+gTetBtn()+'">▶</button>'
    +'<button onclick="gTetHard()" style="'+gTetBtn('#ef6c00')+'">⤓</button></div>'
-   +'<div style="font-size:11px;color:#90a4ae;margin-top:8px">버튼 또는 방향키 · ⟳회전 · ⤓하드드롭</div></div>';
-  if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
-  GT={cv:document.getElementById('gtc'),cx:document.getElementById('gtc').getContext('2d'),cell:cell,W:W,H:H,grid:[],cur:null,sc:0,lines:0,over:false,fc:0};
+   +'<div style="font-size:11px;color:#90a4ae;margin-top:8px">방향키 이동 · ↑/X 회전 · Space 하드드롭 · C 홀드</div></div>';
+  if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;GT_BAG=[];
+  GT={cv:document.getElementById('gtc'),cx:document.getElementById('gtc').getContext('2d'),cell:cell,bw:bw,panelX:panelX,W:W,H:H,grid:[],cur:null,nextT:gTetPull(),holdT:null,holdUsed:false,sc:0,lines:0,level:1,over:false,clearing:false,flashRows:[],flashT:0,fc:0};
   for(var i=0;i<20;i++)GT.grid.push(new Array(10).fill(0));gTetSpawn();
   document.removeEventListener('keydown',gTetKey);document.addEventListener('keydown',gTetKey);ghLoad('tetris');
   (function loop(){if(my!==GH.gen||GH.view!=='tetris'||!GT.cx)return;var g=GT,c=g.cx,cs=g.cell;g.fc++;
-    var iv=Math.max(8,42-Math.floor(g.lines/2)*2);if(!g.over&&g.fc%iv===0){var n={t:g.cur.t,rot:g.cur.rot,x:g.cur.x,y:g.cur.y+1};if(gTetFits(n))g.cur=n;else gTetLock();}
+    if(!g.over){
+      if(g.clearing){g.flashT--;if(g.flashT<=0)gTetDoClear();}
+      else{var iv=Math.max(5,46-(g.level-1)*4);if(g.fc%iv===0){var n={t:g.cur.t,rot:g.cur.rot,x:g.cur.x,y:g.cur.y+1};if(gTetFits(n))g.cur=n;else gTetLock();}}
+    }
     c.clearRect(0,0,g.W,g.H);
-    for(var r=0;r<20;r++)for(var col=0;col<10;col++){if(g.grid[r][col]){c.fillStyle=g.grid[r][col];c.fillRect(col*cs+1,r*cs+1,cs-2,cs-2);}else{c.fillStyle='#141a2e';c.fillRect(col*cs,r*cs,cs-0.5,cs-0.5);}}
-    if(g.cur&&!g.over){var cc=gTetCells(g.cur);c.fillStyle=GT_P[g.cur.t].c;for(var i2=0;i2<4;i2++){var rr=cc[i2][0],cl=cc[i2][1];if(rr>=0)c.fillRect(cl*cs+1,rr*cs+1,cs-2,cs-2);}}
-    var s1=document.getElementById('gtsc');if(s1)s1.textContent=g.sc;var s2=document.getElementById('gtln');if(s2)s2.textContent=g.lines;
-    if(g.over){c.fillStyle='#000b';c.fillRect(0,g.H/2-50,g.W,100);c.fillStyle='#fff';c.textAlign='center';c.font='900 22px sans-serif';c.fillText('GAME OVER',g.W/2,g.H/2-6);c.font='800 14px sans-serif';c.fillText('점수 '+g.sc,g.W/2,g.H/2+20);}
+    c.fillStyle='#0a0d18';c.fillRect(0,0,g.bw,g.H);
+    for(var r=0;r<20;r++)for(var col=0;col<10;col++){if(g.grid[r][col])gTetCellDraw(c,col*cs+0.5,r*cs+0.5,cs-1,g.grid[r][col],1);else{c.fillStyle='#121829';c.fillRect(col*cs,r*cs,cs-0.4,cs-0.4);}}
+    if(g.clearing){var fl=(Math.floor(g.flashT/2)%2)===0;if(fl){c.fillStyle='rgba(255,255,255,.85)';for(var fi=0;fi<g.flashRows.length;fi++)c.fillRect(0,g.flashRows[fi]*cs,g.bw,cs);}}
+    if(g.cur&&!g.over&&!g.clearing){var gy=gTetGhostY();var gc=gTetCellsOf(g.cur.t,g.cur.rot,g.cur.x,gy);for(var i2=0;i2<4;i2++){var rr=gc[i2][0],cl=gc[i2][1];if(rr>=0){c.strokeStyle=GT_P[g.cur.t].c;c.globalAlpha=0.5;c.lineWidth=2;c.strokeRect(cl*cs+1.5,rr*cs+1.5,cs-3,cs-3);c.globalAlpha=1;}}
+      var cc=gTetCells(g.cur);for(var i3=0;i3<4;i3++){var r3=cc[i3][0],c3=cc[i3][1];if(r3>=0)gTetCellDraw(c,c3*cs+0.5,r3*cs+0.5,cs-1,GT_P[g.cur.t].c,1);}}
+    var px=g.panelX,ms=Math.max(10,cs*0.62);
+    c.fillStyle='#8a93b5';c.font='800 10px sans-serif';c.textAlign='left';c.textBaseline='alphabetic';
+    c.fillText('NEXT',px,16);c.fillStyle='#0a0d18';c.fillRect(px,22,ms*4,ms*3.2);gTetMini(c,g.nextT,px+ms*2,22+ms*1.6,ms);
+    c.fillStyle='#8a93b5';c.fillText('HOLD',px,22+ms*3.2+22);var hy=22+ms*3.2+28;c.fillStyle='#0a0d18';c.fillRect(px,hy,ms*4,ms*3.2);if(g.holdT)gTetMini(c,g.holdT,px+ms*2,hy+ms*1.6,ms);
+    var ty=hy+ms*3.2+24;c.fillStyle='#8a93b5';c.fillText('SCORE',px,ty);c.fillStyle='#ffd54f';c.font='900 15px sans-serif';c.fillText(g.sc,px,ty+18);
+    c.fillStyle='#8a93b5';c.font='800 10px sans-serif';c.fillText('LEVEL '+g.level,px,ty+40);c.fillText('LINES '+g.lines,px,ty+56);
+    if(g.over){c.fillStyle='#000c';c.fillRect(0,g.H/2-50,g.bw,100);c.fillStyle='#fff';c.textAlign='center';c.font='900 22px sans-serif';c.fillText('GAME OVER',g.bw/2,g.H/2-6);c.font='800 14px sans-serif';c.fillText('점수 '+g.sc,g.bw/2,g.H/2+20);}
     GH.raf=requestAnimationFrame(loop);})();}
-function gTetBtn(bg){return 'background:'+(bg||'#37474f')+';border:none;color:#fff;border-radius:10px;width:52px;height:46px;font-size:20px;font-weight:800;cursor:pointer';}
-
+function gTetBtn(bg){return 'background:'+(bg||'#37474f')+';border:none;color:#fff;border-radius:10px;min-width:46px;height:46px;padding:0 10px;font-size:16px;font-weight:800;cursor:pointer';}
 /* ════════ 게임5: 수박게임(Suika) 고퀄 ════════ */
 var GU={};
 var GU_R=[14,18,23,29,36,44,53,63,74,86];
