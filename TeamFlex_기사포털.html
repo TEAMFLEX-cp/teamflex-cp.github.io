@@ -8681,7 +8681,9 @@ var GH_GAMES=[
   {v:'2048',ic:'🔢',t:'2048',g:'linear-gradient(135deg,#ef6c00,#f9a825)',rank:true},
   {v:'tetris',ic:'🟦',t:'테트리스',g:'linear-gradient(135deg,#1565c0,#42a5f5)',rank:true},
   {v:'flap',ic:'🚚',t:'팀플 점프',g:'linear-gradient(135deg,#0277bd,#26c6da)',rank:true},
-  {v:'stack',ic:'🧱',t:'Stack',g:'linear-gradient(135deg,#2e7d32,#9ccc65)',rank:true}
+  {v:'stack',ic:'🧱',t:'Stack',g:'linear-gradient(135deg,#2e7d32,#9ccc65)',rank:true},
+  {v:'runner',ic:'🏃',t:'팀플 러너',g:'linear-gradient(135deg,#00897b,#4db6ac)',rank:true},
+  {v:'jump',ic:'⬆️',t:'팀플 무한점프',g:'linear-gradient(135deg,#5e35b1,#9575cd)',rank:true}
 ];
 function ghGameInfo(v){for(var i=0;i<GH_GAMES.length;i++)if(GH_GAMES[i].v===v)return GH_GAMES[i];return {v:v,ic:'🎮',t:v};}
 function ghGameMeta(g){var i=ghGameInfo(g);return [i.ic,i.t];}
@@ -8716,10 +8718,10 @@ function pgArcade(){if(GH.view==='roulette')return pgRoulette();return pgGameHub
 function arcInit(){if(GH.view==='roulette'){rlInit();return;}ghHubInit();}
 async function ghHubInit(){ghInjectStyle();await ghLoadGOM();await ghLoadAllBoards();if(GH.view==='hub'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgGameHub();}}
 function ghEnterHub(){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();var pop=document.getElementById('gh-pop');if(pop)pop.style.display='none';try{document.body.style.overflow='';}catch(e){}GH.view='hub';GH.gomEdit=false;var mc=document.getElementById('mc');ghInjectStyle();if(mc)mc.innerHTML=pgGameHub();ghHubInit();}
-function ghRemoveKeys(){try{document.removeEventListener('keydown',g48Key);document.removeEventListener('keydown',gFlapKey);document.removeEventListener('keydown',gStackKey);document.removeEventListener('keydown',gTetKey);}catch(e){}}
+function ghRemoveKeys(){try{document.removeEventListener('keydown',g48Key);document.removeEventListener('keydown',gFlapKey);document.removeEventListener('keydown',gStackKey);document.removeEventListener('keydown',gTetKey);document.removeEventListener('keydown',gRunKey);document.removeEventListener('keydown',gJumpKey);document.removeEventListener('keyup',gJumpKeyUp);}catch(e){}}
 function ghOpen(v){if(v==='roulette'){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;GH.view='roulette';var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgArcade();setTimeout(arcInit,40);}return;}ghStartGame(v);}
 function ghStartGame(g){ghInjectStyle();ghAudio();if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();GH.view=g;var pop=document.getElementById('gh-pop');if(!pop)return;pop.innerHTML=ghGameShell(g);pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}
-  setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();},40);}
+  setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();else if(g==='runner')gRunStart();else if(g==='jump')gJumpStart();},40);}
 function ghBack(){ghEnterHub();}
 
 /* ── 허브 화면 ── */
@@ -9072,6 +9074,93 @@ function gOmTap(e){var g=GO;if(g.over||g.busy||g.turn!==1||!g.cx)return;var rect
     if(gOmFull(g.grid)){g.over=true;g.win=0;gOmDraw();gOmMsg('무승부');return;}
     g.turn=1;gOmDraw();gOmMsg('내 차례예요.');},340);}
 function gOmFull(g){for(var r=0;r<15;r++)for(var c=0;c<15;c++)if(!g[r][c])return false;return true;}
+
+/* ════════ 공통: 배송조끼 캐릭터 ════════ */
+function gRR(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();}
+function gLG(c,x,y,x2,y2,a,b){var g=c.createLinearGradient(x,y,x2,y2);g.addColorStop(0,a);g.addColorStop(1,b);return g;}
+function gChar(c,x,y,ph,run){c.save();c.translate(x,y);
+ c.save();c.fillStyle='rgba(0,0,0,.18)';c.beginPath();c.ellipse(0,21,15,5,0,0,7);c.fill();c.restore();
+ var s1=run?Math.sin(ph):0.3,s2=run?Math.sin(ph+Math.PI):-0.3;
+ c.strokeStyle='#2b2f3a';c.lineWidth=5;c.lineCap='round';
+ c.beginPath();c.moveTo(-3,8);c.lineTo(-3+s1*7,20);c.stroke();
+ c.beginPath();c.moveTo(3,8);c.lineTo(3+s2*7,20);c.stroke();
+ c.save();c.shadowColor='rgba(0,0,0,.25)';c.shadowBlur=6;c.shadowOffsetY=3;
+ c.fillStyle=gLG(c,0,-9,0,11,'#ffe14d','#ffc400');gRR(c,-10,-9,20,20,5);c.fill();c.restore();
+ c.strokeStyle='#15406e';c.lineWidth=2.2;gRR(c,-10,-9,20,20,5);c.stroke();
+ c.fillStyle='#e8eef5';c.fillRect(-10,-1,20,3.5);c.fillRect(-10,5,20,2);
+ c.strokeStyle='#15406e';c.lineWidth=1.4;c.beginPath();c.moveTo(0,-9);c.lineTo(0,11);c.stroke();
+ c.strokeStyle='#ffd21e';c.lineWidth=4;c.lineCap='round';var aa=run?Math.sin(ph+Math.PI)*5:2;c.beginPath();c.moveTo(6,-5);c.lineTo(11,2+aa);c.stroke();
+ c.fillStyle='#ffd9b0';c.beginPath();c.arc(0,-17,7,0,7);c.fill();
+ c.fillStyle='#2b2f3a';c.beginPath();c.arc(2.5,-18,1.3,0,7);c.fill();
+ c.fillStyle='#15406e';c.beginPath();c.arc(0,-19,7.5,Math.PI,0);c.fill();c.fillRect(0,-20,12,3.5);
+ c.restore();}
+function gSky(c,W,H){var s=c.createLinearGradient(0,0,0,H);s.addColorStop(0,'#37a8ee');s.addColorStop(.6,'#9ddcff');s.addColorStop(1,'#dff1ff');c.fillStyle=s;c.fillRect(0,0,W,H);
+ var sun=c.createRadialGradient(W-58,52,4,W-58,52,52);sun.addColorStop(0,'#fff6c8');sun.addColorStop(.4,'rgba(255,236,150,.7)');sun.addColorStop(1,'rgba(255,236,150,0)');c.fillStyle=sun;c.beginPath();c.arc(W-58,52,52,0,7);c.fill();}
+function gCloud(c,x,y,s){c.save();c.globalAlpha=.9;c.fillStyle='#fff';c.beginPath();c.arc(x,y,15*s,0,7);c.arc(x+16*s,y+5*s,12*s,0,7);c.arc(x-15*s,y+5*s,11*s,0,7);c.arc(x+2*s,y+9*s,14*s,0,7);c.fill();c.restore();}
+
+/* ════════ 게임: 팀플 러너 ════════ */
+var GR={};
+function gRunStart(){var st=document.getElementById('g-stage');if(!st)return;
+  st.innerHTML='<div style="text-align:center"><canvas id="grc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:84vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🏃</div></div>';
+  if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
+  var cv=document.getElementById('grc');var W=Math.max(320,Math.min((window.innerWidth||360)-14,460)),H=Math.max(300,Math.min((window.innerHeight||640)-200,520));cv.width=W;cv.height=H;
+  var GND=H-40,CX=Math.round(W*0.24);
+  var clouds=[],bld=[];for(var i=0;i<4;i++)clouds.push({x:Math.random()*W,y:24+Math.random()*70,s:.6+Math.random()*.7});for(var i2=0;i2<8;i2++)bld.push({x:i2*64,w:40+Math.random()*22,h:50+Math.random()*70});
+  GR={cv:cv,cx:cv.getContext('2d'),W:W,H:H,GND:GND,CX:CX,y:GND,vy:0,onG:true,things:[],t:0,dist:0,coins:0,over:false,spd:3.2,ph:0,clouds:clouds,bld:bld};
+  cv.onpointerdown=gRunJump;document.removeEventListener('keydown',gRunKey);document.addEventListener('keydown',gRunKey);
+  ghLoad('runner');
+  (function loop(){if(my!==GH.gen||GH.view!=='runner'||!GR.cx)return;var g=GR,c=g.cx,W=g.W,H=g.H,GND=g.GND,CX=g.CX;g.t++;
+    if(!g.over){g.dist+=g.spd*0.1;g.spd=Math.min(7,3.2+g.dist*0.004);g.ph+=g.onG?0.28:0.12;
+      g.vy+=0.6;g.y+=g.vy;if(g.y>=GND){g.y=GND;g.vy=0;g.onG=true;}
+      if(g.things.length===0||g.things[g.things.length-1].x<W-(120+Math.random()*120)){var r=Math.random();g.things.push(r<0.55?{x:W+20,type:'obs',h:18+Math.random()*16}:{x:W+20,type:'coin',y:GND-30-Math.random()*70});}
+      for(var i=0;i<g.things.length;i++){var o=g.things[i];o.x-=g.spd;}
+      g.things=g.things.filter(function(o){return o.x>-30;});
+      for(var j=0;j<g.things.length;j++){var o2=g.things[j];if(o2.type==='coin'&&!o2.dead&&Math.abs(o2.x-CX)<20&&Math.abs(o2.y-(g.y-12))<26){o2.dead=1;g.coins++;ghSfx('score');}
+        if(o2.type==='obs'&&CX+14>o2.x&&CX-14<o2.x+22&&g.y>GND-o2.h-6){g.over=true;ghSfx('over');ghSave('runner',Math.floor(g.dist)+g.coins*5);ghLoad('runner');}}
+      g.things=g.things.filter(function(o){return !o.dead;});}
+    gSky(c,W,H);
+    g.clouds.forEach(function(cl){if(!g.over)cl.x-=0.3*cl.s;if(cl.x<-40)cl.x=W+40;gCloud(c,cl.x,cl.y,cl.s);});
+    c.fillStyle='#bfd3e6';for(var b=0;b<g.bld.length;b++){var bx=((g.bld[b].x-g.t*0.6)%(W+64)+W+64)%(W+64)-32;gRR(c,bx,GND-g.bld[b].h,g.bld[b].w,g.bld[b].h,3);c.fill();}
+    var rd=c.createLinearGradient(0,GND,0,H);rd.addColorStop(0,'#5b626c');rd.addColorStop(1,'#3a3f47');c.fillStyle=rd;c.fillRect(0,GND,W,H-GND);
+    c.fillStyle='#8a9099';c.fillRect(0,GND,W,4);c.fillStyle='#ffd54f';for(var d=0;d<Math.ceil(W/46)+1;d++){var dx=((d*46-g.t*g.spd*1.4)%(W+46)+W+46)%(W+46)-23;c.fillRect(dx,GND+18,24,4);}
+    g.things.forEach(function(o){if(o.type==='obs'){c.fillStyle=gLG(c,o.x,GND-o.h,o.x,GND,'#ff8a3a','#d8521c');gRR(c,o.x,GND-o.h,22,o.h,3);c.fill();c.fillStyle='rgba(255,255,255,.5)';for(var s=0;s<3;s++)c.fillRect(o.x+2,GND-o.h+4+s*6,18,2);}else{c.save();c.shadowColor='rgba(255,200,40,.8)';c.shadowBlur=8;c.fillStyle='#ffd21e';c.beginPath();c.arc(o.x,o.y,9,0,7);c.fill();c.restore();c.fillStyle='#b8860b';c.font='800 9px sans-serif';c.textAlign='center';c.fillText('₩',o.x,o.y+3);}});
+    gChar(c,CX,g.y,g.ph,!g.over);
+    c.save();c.font='800 13px sans-serif';c.fillStyle='rgba(8,16,34,.5)';gRR(c,10,12,150,28,14);c.fill();c.fillStyle='#fff';c.textAlign='left';c.fillText('🏃 '+Math.floor(g.dist)+'m  ₩'+g.coins,20,31);c.restore();
+    if(g.over){c.fillStyle='rgba(0,0,0,.55)';gRR(c,W/2-120,H/2-44,240,88,14);c.fill();c.fillStyle='#fff';c.font='900 24px sans-serif';c.textAlign='center';c.fillText('GAME OVER',W/2,H/2-6);c.font='800 14px sans-serif';c.fillText('점수 '+(Math.floor(g.dist)+g.coins*5)+' · 탭해서 재시작',W/2,H/2+22);}
+    GH.raf=requestAnimationFrame(loop);})();}
+function gRunJump(){if(!GR.cx)return;if(GR.over){gRunStart();return;}if(GR.onG){GR.vy=-11;GR.onG=false;ghSfx('jump');}}
+function gRunKey(e){if(GH.view!=='runner')return;if(e.code==='Space'||e.key===' '||e.key==='ArrowUp'){e.preventDefault();gRunJump();}}
+
+/* ════════ 게임: 팀플 무한점프 ════════ */
+var GJ={};
+function gJumpStart(){var st=document.getElementById('g-stage');if(!st)return;
+  st.innerHTML='<div style="text-align:center"><canvas id="gjc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:84vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 좌/우 탭 또는 ←→ 로 이동 ⬆️</div></div>';
+  if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
+  var cv=document.getElementById('gjc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,420)),H=Math.max(440,Math.min((window.innerHeight||640)-180,840));cv.width=W;cv.height=H;
+  var plats=[];plats.push({x:W/2-34,y:H-60,w:68});for(var i=1;i<9;i++)plats.push({x:Math.random()*(W-68),y:H-60-i*Math.round(H/9),w:60+Math.random()*24});
+  var clouds=[];for(var i2=0;i2<4;i2++)clouds.push({x:Math.random()*W,y:Math.random()*H,s:.6+Math.random()*.7});
+  GJ={cv:cv,cx:cv.getContext('2d'),W:W,H:H,x:W/2,y:H-90,vy:-11,dir:0,plats:plats,clouds:clouds,h:0,over:false,t:0,ph:0};
+  cv.onpointerdown=gJumpDown;cv.onpointerup=gJumpUp;cv.onpointerleave=gJumpUp;document.removeEventListener('keydown',gJumpKey);document.addEventListener('keydown',gJumpKey);document.removeEventListener('keyup',gJumpKeyUp);document.addEventListener('keyup',gJumpKeyUp);
+  ghLoad('jump');
+  (function loop(){if(my!==GH.gen||GH.view!=='jump'||!GJ.cx)return;var g=GJ,c=g.cx,W=g.W,H=g.H;g.t++;
+    if(!g.over){g.x+=g.dir*5;if(g.x<-12)g.x=W+12;if(g.x>W+12)g.x=-12;
+      g.vy+=0.42;g.y+=g.vy;
+      if(g.vy>0){for(var i=0;i<g.plats.length;i++){var p=g.plats[i];if(g.x>p.x-4&&g.x<p.x+p.w+4&&g.y>=p.y-4&&g.y<=p.y+10){g.vy=-12.4;ghSfx('drop');if(p.spring){g.vy=-18;}}}}
+      if(g.y<H*0.42){var dy=H*0.42-g.y;g.y=H*0.42;g.h+=dy;for(var k=0;k<g.plats.length;k++)g.plats[k].y+=dy;}
+      g.plats=g.plats.filter(function(p){return p.y<H+20;});
+      while(g.plats.length<9){var top=Math.min.apply(null,g.plats.map(function(p){return p.y;}));g.plats.push({x:Math.random()*(W-64),y:top-Math.round(H/9)-Math.random()*20,w:58+Math.random()*26,spring:Math.random()<0.12});}
+      if(g.y>H+24){g.over=true;ghSfx('over');ghSave('jump',Math.floor(g.h/10));ghLoad('jump');}}
+    var sky=c.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#6db8ff');sky.addColorStop(1,'#d6f0ff');c.fillStyle=sky;c.fillRect(0,0,W,H);
+    g.clouds.forEach(function(cl){gCloud(c,cl.x,cl.y,cl.s);});
+    g.plats.forEach(function(p){c.save();c.shadowColor='rgba(0,0,0,.2)';c.shadowBlur=6;c.shadowOffsetY=3;c.fillStyle=p.spring?gLG(c,p.x,p.y,p.x,p.y+14,'#7ee0a0','#2e9e5b'):gLG(c,p.x,p.y,p.x,p.y+14,'#edc794','#caa063');gRR(c,p.x,p.y,p.w,14,4);c.fill();c.restore();c.fillStyle='rgba(150,100,55,.4)';if(!p.spring){c.fillRect(p.x,p.y+5,p.w,2.5);c.fillRect(p.x+p.w*0.45,p.y,p.w*0.1,14);}if(p.spring){c.fillStyle='#1b6e3a';c.fillRect(p.x+p.w/2-5,p.y-5,10,5);}});
+    g.ph+=0.2;gChar(c,g.x,g.y,g.ph,false);
+    c.save();c.font='800 14px sans-serif';c.fillStyle='rgba(8,16,34,.5)';gRR(c,10,12,128,28,14);c.fill();c.fillStyle='#fff';c.textAlign='left';c.fillText('⬆️ '+Math.floor(g.h/10)+'m',20,31);c.restore();
+    if(g.over){c.fillStyle='rgba(0,0,0,.55)';gRR(c,W/2-120,H/2-44,240,88,14);c.fill();c.fillStyle='#fff';c.font='900 24px sans-serif';c.textAlign='center';c.fillText('GAME OVER',W/2,H/2-6);c.font='800 14px sans-serif';c.fillText('높이 '+Math.floor(g.h/10)+'m · 탭해서 재시작',W/2,H/2+22);}
+    GH.raf=requestAnimationFrame(loop);})();}
+function gJumpDown(e){if(!GJ.cx)return;if(GJ.over){gJumpStart();return;}var rect=GJ.cv.getBoundingClientRect();var x=(e.clientX-rect.left)/rect.width*GJ.W;GJ.dir=(x<GJ.W/2)?-1:1;}
+function gJumpUp(){if(GJ)GJ.dir=0;}
+function gJumpKey(e){if(GH.view!=='jump')return;if(e.key==='ArrowLeft'){GJ.dir=-1;}else if(e.key==='ArrowRight'){GJ.dir=1;}else if((e.code==='Space'||e.key===' ')&&GJ.over){gJumpStart();}}
+function gJumpKeyUp(e){if(GH.view!=='jump')return;if(e.key==='ArrowLeft'&&GJ.dir<0)GJ.dir=0;if(e.key==='ArrowRight'&&GJ.dir>0)GJ.dir=0;}
 
 /* ═════════ 마블 룰렛 이벤트 추첨 (코인·이름·등수·풀스크린) ═════════ */
 var RLT={cur:null,curId:null,events:[],partsByEv:{},autoRan:{},showCreate:false,showEdit:false,formBonus:{clean:false,clean_n:2,backup:false,backup_n:2,backup_list:[]},parts:[],records:[],theme:'lava',curTheme:'lava',curG:0.1,rankCount:1,formPrizes:[],curPrizes:[],openMd:{},exclude:[],marbles:null,rng:null,finishOrder:[],frames:0,seed:0,ang:0,camY:0,gen:0,palIdx:0,loading:false};
