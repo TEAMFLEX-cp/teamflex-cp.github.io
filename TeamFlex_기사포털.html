@@ -9448,22 +9448,35 @@ function gsAIPlay(G){var p=G.turn,hand=G.hand[p];if(!hand.length)return;var best
 function gsAIDecide(G){var p=G.decideBy,sc=G.score[p],os=G.score[1-p];var stop=sc>=10||G.hand[p].length<=3||G.go[p]>=2||os>=5;if(!stop&&Math.random()<0.4)stop=true;gsDecide(G,p,!stop);}
 
 /* ── 카드 표시정보 ── */
-var GS_FL={1:['🌲','#2e7d32'],2:['🌸','#d81b60'],3:['🌸','#ec407a'],4:['🍃','#5d4037'],5:['🌿','#43a047'],6:['🦋','#8e24aa'],7:['🐗','#c62828'],8:['🌕','#fb8c00'],9:['🌼','#f9a825'],10:['🍁','#e65100'],11:['🐦','#6d4c41'],12:['☔','#1565c0']};
-function gsFace(c){var fl=GS_FL[c.m],mark='피',mc='#607d8b';
-  if(c.type==='gwang'){mark=c.sub==='bi'?'비광':'광';mc='#c89200';}
-  else if(c.type==='yul'){mark=c.sub==='godori'?'고도리':'열끗';mc='#7b1fa2';}
-  else if(c.type==='tti'){mark=c.sub==='red'?'홍단':c.sub==='blue'?'청단':c.sub==='grass'?'초단':'비단';mc=c.sub==='red'?'#c62828':c.sub==='blue'?'#1565c0':c.sub==='rain'?'#1565c0':'#2e7d32';}
-  else if(c.type==='pi'){mark=c.pi===2?'쌍피':'피';mc='#546e7a';}
-  return {emoji:fl[0],col:fl[1],mark:mark,mc:mc,m:c.m};}
+var GS_MON={1:['#1b5e20','🌲'],2:['#ad1457','🌸'],3:['#d81b60','🌸'],4:['#4e342e','🌿'],5:['#2e7d32','🌱'],6:['#6a1b9a','🌺'],7:['#b71c1c','🍂'],8:['#e65100','🌕'],9:['#f9a825','🌼'],10:['#bf360c','🍁'],11:['#4527a0','🌳'],12:['#1565c0','🌧️']};
+var GS_ANI={2:'🐦',4:'🐦',6:'🦋',7:'🐗',8:'🦆',9:'🍶',10:'🦌',12:'🐦'};
+var GS_GW={1:'🕊️',3:'🌸',8:'🌕',11:'🐦',12:'☂️'};
+function gsFace(c){var mark='피',mc='#607d8b';
+  if(c.type==='gwang'){mark=c.sub==='bi'?'비광':'광';mc='#c62828';}
+  else if(c.type==='yul'){mark=c.sub==='godori'?'고도리':'열끗';mc='#6a1b9a';}
+  else if(c.type==='tti'){mark=c.sub==='red'?'홍단':c.sub==='blue'?'청단':c.sub==='grass'?'초단':'비단';mc=c.sub==='red'?'#c62828':c.sub==='blue'?'#1565c0':c.sub==='rain'?'#3949ab':'#2e7d32';}
+  else if(c.type==='pi'){mark=c.pi===2?'쌍피':'피';mc='#607d8b';}
+  return {mark:mark,mc:mc,m:c.m,mcol:GS_MON[c.m][0]};}
 function gsCardHtml(c,opt){opt=opt||{};var sz=opt.sz||'m';
-  var W=sz==='s'?38:sz==='l'?56:46,H=Math.round(W*1.45);
-  if(opt.back){return '<div style="width:'+W+'px;height:'+H+'px;border-radius:7px;background:linear-gradient(135deg,#b71c1c,#7f0000);border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;flex:0 0 auto"><span style="color:#ffd54f;font-size:'+(W*0.5)+'px;opacity:.85">❀</span></div>';}
-  var f=gsFace(c);var hl=opt.sel?'box-shadow:0 0 0 3px #fff176,0 0 14px 3px rgba(255,235,59,.85);transform:translateY(-8px);':'box-shadow:0 2px 5px rgba(0,0,0,.35);';
+  var W=sz==='xs'?27:sz==='s'?34:sz==='l'?60:46,H=Math.round(W*1.5);
+  if(opt.back){return '<div style="width:'+W+'px;height:'+H+'px;border-radius:6px;background:linear-gradient(135deg,#8e1a1a,#b71c1c 55%,#7f0000);border:2px solid #f3e3bd;box-shadow:0 2px 5px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;flex:0 0 auto"><span style="color:#ffd54f;font-size:'+(W*0.42)+'px">✿</span></div>';}
+  var mon=GS_MON[c.m];
+  var scene=c.type==='gwang'?(GS_GW[c.m]||'🌕'):c.type==='yul'?(GS_ANI[c.m]||'🐾'):mon[1];
+  var hl=opt.sel?'box-shadow:0 0 0 3px #fff176,0 0 16px 4px rgba(255,235,59,.9);transform:translateY(-10px);':'box-shadow:0 2px 6px rgba(0,0,0,.4);';
   var click=opt.click?(' onclick="'+opt.click+'" style="cursor:pointer;'):' style="';
-  return '<div'+click+'width:'+W+'px;height:'+H+'px;border-radius:7px;background:linear-gradient(160deg,#fffef7,#fff3d6);border:1.5px solid #e0c98a;'+hl+'display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:3px 0;flex:0 0 auto;position:relative;transition:transform .12s">'
-    +'<div style="font-size:'+(W*0.2)+'px;font-weight:900;color:'+f.col+';line-height:1">'+f.m+'</div>'
-    +'<div style="font-size:'+(W*0.46)+'px;line-height:1">'+f.emoji+'</div>'
-    +'<div style="font-size:'+(W*0.21)+'px;font-weight:900;color:#fff;background:'+f.mc+';border-radius:4px;padding:1px 4px;line-height:1.3">'+f.mark+'</div></div>';}
+  var inner='<div style="position:absolute;top:1px;left:3px;font-size:'+(W*0.2)+'px;font-weight:900;color:'+mon[0]+';line-height:1;text-shadow:0 1px 0 #fff">'+c.m+'월</div>';
+  inner+='<div style="position:absolute;top:'+(W*0.26)+'px;left:0;right:0;text-align:center;font-size:'+(W*0.5)+'px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))">'+scene+'</div>';
+  if(c.type==='gwang'){
+    inner+='<div style="position:absolute;top:1px;right:2px;background:#c62828;color:#fff;font-size:'+(W*0.26)+'px;font-weight:900;border-radius:4px;padding:0 '+(W*0.07)+'px;line-height:1.25;box-shadow:0 1px 2px rgba(0,0,0,.4)">光</div>';
+    inner+='<div style="position:absolute;bottom:'+(W*0.06)+'px;left:'+(W*0.12)+'px;right:'+(W*0.12)+'px;height:'+(W*0.2)+'px;background:linear-gradient(#e53935,#b71c1c);border-radius:3px;box-shadow:inset 0 0 3px rgba(0,0,0,.3)"></div>';
+  }else if(c.type==='tti'){
+    var tcol=c.sub==='red'?'#d32f2f':c.sub==='blue'?'#1976d2':c.sub==='rain'?'#3949ab':'#43a047';
+    var tl=c.sub==='red'?'홍단':c.sub==='blue'?'청단':c.sub==='grass'?'':'비';
+    inner+='<div style="position:absolute;bottom:'+(W*0.09)+'px;left:'+(W*0.09)+'px;right:'+(W*0.09)+'px;height:'+(W*0.3)+'px;background:'+tcol+';border-radius:3px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:'+(W*0.21)+'px;font-weight:900;box-shadow:0 1px 2px rgba(0,0,0,.3)">'+tl+'</div>';
+  }else if(c.type==='pi'&&c.pi===2){
+    inner+='<div style="position:absolute;bottom:2px;right:3px;background:#37474f;color:#ffd54f;font-size:'+(W*0.2)+'px;font-weight:900;border-radius:3px;padding:0 '+(W*0.09)+'px;line-height:1.3">쌍</div>';
+  }
+  return '<div'+click+'width:'+W+'px;height:'+H+'px;border-radius:6px;background:linear-gradient(160deg,#fbf6e6,#efe3c2);border:2px solid #2e2a22;'+hl+'flex:0 0 auto;position:relative;overflow:hidden;transition:transform .12s">'+inner+'</div>';}
 function gsCapSummary(cap){var sc=gsScore(cap);var ng=cap.filter(function(c){return c.type==='gwang';}).length;
   var ny=cap.filter(function(c){return c.type==='yul';}).length;var nt=cap.filter(function(c){return c.type==='tti';}).length;
   var pv=0;cap.forEach(function(c){if(c.type==='pi')pv+=(c.pi||1);});
@@ -9480,51 +9493,53 @@ function gsRender(){if(!GS)return;var w=document.getElementById('gs-wrap');if(!w
   var meC=gsCapSummary(G.cap[0]),aiC=gsCapSummary(G.cap[1]);
   var h='';
   // 보유금액 바
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#1b5e20,#2e7d32);border-radius:10px;padding:7px 12px;margin-bottom:8px;color:#fff">'
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(90deg,#1b5e20,#2e7d32);border-radius:10px;padding:6px 12px;margin-bottom:6px;color:#fff">'
    +'<span style="font-size:12px;font-weight:800">💰 내 보유금액</span><span style="font-size:16px;font-weight:900;color:#ffe082">'+GS_BANK.toLocaleString()+'원</span></div>';
-  // 컴퓨터 영역
-  h+='<div style="background:#0d3a18;border-radius:12px;padding:8px 10px;box-shadow:inset 0 0 18px rgba(0,0,0,.4)">';
-  h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="font-size:12px;font-weight:800;color:#ff8a80">🤖 컴퓨터</span>'
-   +'<span style="font-size:11px;color:#c8e6c9">광'+aiC.ng+' 끗'+aiC.ny+' 띠'+aiC.nt+' 피'+aiC.pv+'</span>'
+  // ── 컴퓨터: 점수 + 손패 장수(작게) + 먹은 패(크게) ──
+  h+='<div style="background:#0d3a18;border-radius:12px;padding:7px 9px;box-shadow:inset 0 0 16px rgba(0,0,0,.4)">';
+  h+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:2px"><span style="font-size:12px;font-weight:800;color:#ff8a80">🤖 컴퓨터</span>'
+   +'<span style="font-size:10.5px;color:#9fd4ab;background:#ffffff14;border-radius:10px;padding:1px 7px">손패 '+G.hand[1].length+'장</span>'
    +'<span style="margin-left:auto;font-size:13px;font-weight:900;color:#fff59d">'+aiC.total+'점'+(G.go[1]?' '+G.go[1]+'고':'')+'</span></div>';
-  h+='<div style="display:flex;gap:3px;justify-content:center;min-height:'+Math.round(38*1.45)+'px">';
-  for(var i=0;i<G.hand[1].length;i++)h+=gsCardHtml(null,{back:true,sz:'s'});
+  h+='<div style="font-size:10px;color:#7fb98c;margin-bottom:1px">상대가 먹은 패 · 광'+aiC.ng+' 끗'+aiC.ny+' 띠'+aiC.nt+' 피'+aiC.pv+'</div>';
+  h+=gsCapCards(G.cap[1]);
   h+='</div>';
-  h+=gsCapRow(G.cap[1]);
-  h+='</div>';
-  // 필드
-  h+='<div style="background:radial-gradient(circle at 50% 40%,#2e7d32,#1b5e20);border-radius:12px;padding:10px;margin:8px 0;min-height:130px;box-shadow:inset 0 0 22px rgba(0,0,0,.45)">';
+  // ── 바닥(필드) ──
+  h+='<div style="background:radial-gradient(circle at 50% 40%,#2e7d32,#1b5e20);border-radius:12px;padding:9px;margin:6px 0;min-height:120px;box-shadow:inset 0 0 22px rgba(0,0,0,.45)">';
   h+='<div style="display:flex;flex-wrap:wrap;gap:5px;justify-content:center;align-items:center">';
   for(var j=0;j<G.field.length;j++)h+=gsCardHtml(G.field[j],{sz:'m'});
   h+='</div>';
-  h+='<div style="text-align:center;margin-top:7px;font-size:11px;color:#a5d6a7">남은 더미 '+G.deck.length+'장'+(G.lastFlip?' · 방금 뒤집기 '+gsFace(G.lastFlip).m+'월 '+gsFace(G.lastFlip).mark:'')+'</div>';
+  h+='<div style="text-align:center;margin-top:6px;font-size:10.5px;color:#a5d6a7">남은 더미 '+G.deck.length+'장'+(G.lastFlip?' · 방금 뒤집기 '+gsFace(G.lastFlip).m+'월 '+gsFace(G.lastFlip).mark:'')+'</div>';
   h+='</div>';
   // 메시지
-  h+='<div id="gs-msg" style="min-height:20px;text-align:center;font-size:13px;font-weight:800;color:#ffd54f;margin:4px 0">'+(G.msg||'')+'</div>';
-  // 내 영역
-  h+='<div style="background:#13321c;border-radius:12px;padding:8px 10px;box-shadow:inset 0 0 18px rgba(0,0,0,.4)">';
-  h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="font-size:12px;font-weight:800;color:#80d8ff">🙋 나</span>'
-   +'<span style="font-size:11px;color:#c8e6c9">광'+meC.ng+' 끗'+meC.ny+' 띠'+meC.nt+' 피'+meC.pv+'</span>'
-   +'<span style="margin-left:auto;font-size:13px;font-weight:900;color:#fff59d">'+meC.total+'점'+(G.go[0]?' '+G.go[0]+'고':'')+'</span></div>';
-  h+=gsCapRow(G.cap[0]);
-  // 내 손패
-  h+='<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:7px">';
+  h+='<div id="gs-msg" style="min-height:18px;text-align:center;font-size:13px;font-weight:800;color:#ffd54f;margin:3px 0">'+(G.msg||'')+'</div>';
+  // ── 나: 먹은 패(크게) + 점수 + 손패(오름차순, 크게) ──
+  h+='<div style="background:#13321c;border-radius:12px;padding:7px 9px;box-shadow:inset 0 0 16px rgba(0,0,0,.4)">';
+  h+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:2px"><span style="font-size:12px;font-weight:800;color:#80d8ff">🙋 내가 먹은 패</span>'
+   +'<span style="font-size:10px;color:#9fd4ab">광'+meC.ng+' 끗'+meC.ny+' 띠'+meC.nt+' 피'+meC.pv+'</span>'
+   +'<span style="margin-left:auto;font-size:14px;font-weight:900;color:#fff59d">'+meC.total+'점'+(G.go[0]?' '+G.go[0]+'고':'')+'</span></div>';
+  h+=gsCapCards(G.cap[0]);
+  // 내 손패 (오름차순)
+  var ord={gwang:0,yul:1,tti:2,pi:3};
+  var myHand=G.hand[0].slice().sort(function(a,b){return (a.m-b.m)||(ord[a.type]-ord[b.type])||((b.pi||0)-(a.pi||0));});
   var myTurn=(!G.over&&G.turn===0&&G.phase==='play'&&!GS.busy);
-  for(var k=0;k<G.hand[0].length;k++){var c=G.hand[0][k];
-    h+=gsCardHtml(c,{sz:'l',click:myTurn?('gsHumanPlay('+c.id+')'):''});}
-  h+='</div></div>';
+  h+='<div style="border-top:1px dashed #ffffff22;margin-top:7px;padding-top:7px"><div style="font-size:10px;color:#9fd4ab;margin-bottom:4px">내 손패 '+myHand.length+'장 '+(myTurn?'· 낼 패를 누르세요':'')+'</div>';
+  h+='<div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center">';
+  for(var k=0;k<myHand.length;k++){var c=myHand[k];h+=gsCardHtml(c,{sz:'l',click:myTurn?('gsHumanPlay('+c.id+')'):''});}
+  h+='</div></div></div>';
   // 컨트롤
-  h+='<div style="display:flex;gap:7px;justify-content:center;margin-top:10px;flex-wrap:wrap">';
+  h+='<div style="display:flex;gap:7px;justify-content:center;margin-top:9px;flex-wrap:wrap">';
   if(G.phase==='decide'&&G.decideBy===0&&!G.over){
     h+='<button onclick="gsGo()" style="'+gsBtn('#e65100')+'">🔥 고! ('+G.score[0]+'점)</button>';
     h+='<button onclick="gsStopBtn()" style="'+gsBtn('#2e7d32')+'">✋ 스톱 (받기)</button>';}
   h+='<button onclick="gGostopStart()" style="'+gsBtn('#455a64')+'">↺ 새 판</button>';
   h+='</div>';
   w.innerHTML=h;}
-function gsCapRow(cap){if(!cap.length)return '<div style="min-height:22px"></div>';
-  var order={gwang:0,yul:1,tti:2,pi:3};var s=cap.slice().sort(function(a,b){return (order[a.type]-order[b.type])||(a.m-b.m);});
-  var h='<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:5px">';
-  s.forEach(function(c){var f=gsFace(c);h+='<span style="font-size:9px;font-weight:800;color:#fff;background:'+f.mc+';border-radius:3px;padding:1px 3px;line-height:1.4">'+f.m+f.emoji+'</span>';});
+function gsCapCards(cap){var mh=Math.round(27*1.5);
+  if(!cap.length)return '<div style="min-height:'+mh+'px;display:flex;align-items:center;color:#5b7a63;font-size:10px">아직 먹은 패 없음</div>';
+  var order={gwang:0,yul:1,tti:2,pi:3};
+  var s=cap.slice().sort(function(a,b){return (order[a.type]-order[b.type])||(a.m-b.m)||((b.pi||0)-(a.pi||0));});
+  var h='<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:4px;min-height:'+mh+'px">';
+  s.forEach(function(c){h+=gsCardHtml(c,{sz:'xs'});});
   return h+'</div>';}
 function gsBtn(c){return 'background:linear-gradient(135deg,'+c+',rgba(0,0,0,.25));color:#fff;border:none;border-radius:10px;padding:11px 18px;font-size:14px;font-weight:900;cursor:pointer;box-shadow:0 3px 8px rgba(0,0,0,.3)';}
 function gsHumanPlay(id){var G=GS;if(!G||G.over||G.turn!==0||G.phase!=='play'||GS.busy)return;
