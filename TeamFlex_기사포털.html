@@ -762,7 +762,17 @@ function _unreadSchedLog(){
 var SB_URL='https://czpinyfirgvkhdfnvkls.supabase.co';
 var SB_KEY='sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 var sbClient=null;
-try{sbClient=supabase.createClient(SB_URL,SB_KEY);}catch(e){console.warn('Supabase init failed',e);}
+// 모든 Supabase 요청에 12초 상한 — 서버가 느리거나 응답이 없어도 무한 대기(앱 멈춤) 방지.
+function _sbFetch(input,init){
+  init=init||{};
+  if(init.signal)return fetch(input,init);
+  var ctrl;
+  try{ctrl=new AbortController();}catch(e){return fetch(input,init);}
+  var to=setTimeout(function(){try{ctrl.abort();}catch(_){}}, 12000);
+  init.signal=ctrl.signal;
+  return fetch(input,init).then(function(r){clearTimeout(to);return r;},function(err){clearTimeout(to);throw err;});
+}
+try{sbClient=supabase.createClient(SB_URL,SB_KEY,{global:{fetch:_sbFetch}});}catch(e){console.warn('Supabase init failed',e);try{sbClient=supabase.createClient(SB_URL,SB_KEY);}catch(e2){}}
 var _pendingName=''; // 승인대기 중인 기사 이름 추적
 var _deferredInstallPrompt=null; // PWA 설치 프롬프트 저장
 var _featureControls=null; // 기능별 활성화/알림 제어 설정
