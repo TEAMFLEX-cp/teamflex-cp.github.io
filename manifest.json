@@ -5,7 +5,7 @@
   "start_url": "/TeamFlex_기사포털.html",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0D1B2A",
+  "background_color": "#000000",
   "theme_color": "#1B6FD8",
   "orientation": "portrait",
   "lang": "ko",
