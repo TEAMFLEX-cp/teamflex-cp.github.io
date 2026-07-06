@@ -3608,7 +3608,7 @@ function go(tab){
   else if(tab==='az'){mc.innerHTML=pgAdminSettle();if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='az')mc.innerHTML=pgAdminSettle();}).catch(function(){});}
   else if(tab==='ap')mc.innerHTML=pgPermissions();
   else if(tab==='ph')mc.innerHTML=pgPhoneBook();
-  else if(tab==='cfg')mc.innerHTML=pgSettings();
+  else if(tab==='cfg'){mc.innerHTML=pgSettings();setTimeout(svInit,60);}
   else if(tab==='sl')mc.innerHTML=pgSchedLog();
   else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();mdStartRqRefresh();},200);}
   else if(tab==='rq'){_rqTab='';mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
@@ -6846,6 +6846,56 @@ function erImportExcel(input){
   };
   reader.readAsText(file,'UTF-8');
 }
+/* ── 서버 감시 카드 (관리자 전용) ── */
+function svAgoSec(iso){if(!iso)return null;var s=String(iso).trim();var t=Date.parse(s.indexOf('T')>=0?s:s.replace(' ','T'));if(isNaN(t))t=Date.parse(s);if(isNaN(t))return null;return (Date.now()-t)/1000;}
+function svFmtAgo(sec){if(sec==null)return '기록 없음';sec=Math.max(0,Math.round(sec));if(sec<60)return sec+'초 전';if(sec<3600)return Math.floor(sec/60)+'분 전';if(sec<86400)return Math.floor(sec/3600)+'시간 전';return Math.floor(sec/86400)+'일 전';}
+function svState(st){if(!st||!st.updated_at)return 'wait';var a=svAgoSec(st.updated_at);if(a==null)return 'wait';if(a<=900&&st.alive!==false)return 'ok';if(a<=2400)return 'warn';return 'down';}
+function svShotHtml(shot){if(!shot||!shot.b64)return '<div style="padding:22px;text-align:center;color:#9aa0a6;font-size:12px">아직 캡처 이미지가 없어요. 폴러 연결 후 표시됩니다.</div>';var when=shot.at?('<div style="font-size:10px;color:#888;padding:4px 8px;background:#fff">🕒 '+shot.at+'</div>'):'';return '<img src="data:image/png;base64,'+shot.b64+'" style="width:100%;display:block">'+when;}
+function svCardHtml(st,shot,teamsOn,webhook){
+  var s=svState(st);
+  var conf={ok:{bg:'#e8f7ee',bd:'#48c07d',ic:'🟢',t:'정상 작동 중',tc:'#1f9a52'},warn:{bg:'#fff8e1',bd:'#ffb300',ic:'🟡',t:'응답 지연',tc:'#b47b00'},down:{bg:'#fdecec',bd:'#e53935',ic:'🔴',t:'응답 없음 — 점검 필요',tc:'#c62828'},wait:{bg:'#f2f3f5',bd:'#c7ccd4',ic:'⏳',t:'측정 대기중',tc:'#5a6472'}}[s];
+  var ago=(st&&st.updated_at)?svFmtAgo(svAgoSec(st.updated_at)):'기록 없음';
+  var lastMsg=(st&&st.last_msg_at)?svFmtAgo(svAgoSec(st.last_msg_at)):'—';
+  var proc=(st&&st.proc)||{};
+  function row(label,ok,txt){var c=ok?'#1f9a52':(ok===false?'#c62828':'#9aa0a6');var dot=ok?'🟢':(ok===false?'🔴':'⚪');return '<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee"><span style="font-size:13px;color:#555">'+label+'</span><span style="font-size:12.5px;font-weight:700;color:'+c+'">'+dot+' '+txt+'</span></div>';}
+  var h='';
+  h+='<div style="background:'+conf.bg+';border:1px solid '+conf.bd+';border-radius:12px;padding:15px;text-align:center;margin-bottom:12px">';
+  h+='<div style="font-size:30px;line-height:1">'+conf.ic+'</div>';
+  h+='<div style="font-size:18px;font-weight:800;color:'+conf.tc+';margin-top:3px">'+conf.t+'</div>';
+  h+='<div style="font-size:12px;color:#777;margin-top:3px">'+(s==='wait'?'폴러 heartbeat 연결 전 (21시 이후 활성화)':'마지막 신호 '+ago+' · 처리 '+lastMsg)+'</div>';
+  h+='</div>';
+  h+='<div style="background:#fafbfc;border:1px solid #eee;border-radius:11px;padding:4px 13px;margin-bottom:12px">';
+  h+=row('📨 Teams 폴러', proc.poller===undefined?null:!!proc.poller, proc.poller===undefined?'대기':(proc.poller?'실행중':'중지'));
+  h+=row('🥬 신선 폴러', proc.fresh===undefined?null:!!proc.fresh, proc.fresh===undefined?'대기':(proc.fresh?'실행중':'중지'));
+  h+=row('🔑 Teams 세션', proc.session===undefined?null:!!proc.session, proc.session===undefined?'대기':(proc.session?'로그인 유지':'만료'));
+  var tp=(st&&st.today)||{};
+  h+='<div style="display:flex;justify-content:space-between;padding:9px 0"><span style="font-size:13px;color:#555">📊 오늘 처리 · 알림</span><span style="font-size:12.5px;font-weight:700;color:#333">'+(tp.processed!=null?tp.processed:'—')+'건 · '+(tp.pushed!=null?tp.pushed:'—')+'</span></div>';
+  h+='</div>';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px"><span style="font-size:13px;font-weight:700;color:#444">📸 서버 화면</span><button onclick="svReqShot()" style="padding:5px 12px;background:#eef1f8;border:1px solid #c5cae9;border-radius:8px;font-size:12px;font-weight:700;color:#3949ab;cursor:pointer">↺ 최신 캡처</button></div>';
+  h+='<div id="sv-shot" style="border-radius:9px;overflow:hidden;border:1px solid #e0e0e0;background:#f5f5f5;min-height:60px">'+svShotHtml(shot)+'</div>';
+  h+='<div style="display:flex;align-items:center;gap:9px;background:#f8f9ff;border:1px solid #e6eaf5;border-radius:11px;padding:11px 13px;margin-top:12px">';
+  h+='<span style="font-size:16px">🔔</span><div style="flex:1"><div style="font-size:13px;font-weight:700;color:#333">이상 시 푸시 알림</div><div style="font-size:11px;color:#888">서버 문제 발생·복구 시 관리자에게 즉시</div></div>';
+  h+='<button onclick="svToggleTeams()" style="padding:6px 16px;border-radius:20px;border:none;background:'+(teamsOn?'#1565c0':'#e0e0e0')+';color:'+(teamsOn?'#fff':'#666')+';font-size:13px;font-weight:700;cursor:pointer">'+(teamsOn?'켜짐':'꺼짐')+'</button>';
+  h+='</div>';
+  return h;
+}
+async function svInit(light){
+  try{
+    var keys=light?['poller_status','poller_teams_notify','poller_teams_webhook']:['poller_status','server_shot','poller_teams_notify','poller_teams_webhook'];
+    var r=await sbClient.from('app_settings').select('key,value').in('key',keys);
+    var m={};((r&&r.data)||[]).forEach(function(x){m[x.key]=x.value;});
+    var st=null,shot=window.__svShot||null,teamsOn=true,webhook='';
+    try{st=JSON.parse(m.poller_status||'null');}catch(e){}
+    if(!light){try{shot=JSON.parse(m.server_shot||'null');}catch(e){}window.__svShot=shot;}
+    try{var tv=m.poller_teams_notify;if(typeof tv==='string')tv=JSON.parse(tv);teamsOn=(tv!==false);}catch(e){}
+    try{var wv=m.poller_teams_webhook;if(typeof wv==='string'){try{wv=JSON.parse(wv);}catch(_e){}}webhook=wv||'';}catch(e){}
+    var el=document.getElementById('sv-card');if(el)el.innerHTML=svCardHtml(st,shot,teamsOn,webhook);
+  }catch(e){var el2=document.getElementById('sv-card');if(el2)el2.innerHTML='<div style="padding:16px;color:#c62828;font-size:12px">상태 불러오기 실패</div>';}
+  if(CUR_TAB==='cfg')setTimeout(function(){if(CUR_TAB==='cfg')svInit(true);},60000);
+}
+async function svReqShot(){try{await sbClient.from('app_settings').upsert({key:'server_shot_req',value:JSON.stringify(Date.now())},{onConflict:'key'});}catch(e){}var b=document.getElementById('sv-shot');if(b)b.innerHTML='<div style="padding:20px;text-align:center;color:#888;font-size:12px">📸 최신 화면 요청 중… 잠시 후 표시됩니다</div>';setTimeout(function(){svInit(false);},7000);}
+async function svSaveWebhook(){var el=document.getElementById('sv-wh');if(!el)return;var url=(el.value||'').trim();try{await sbClient.from('app_settings').upsert({key:'poller_teams_webhook',value:JSON.stringify(url)},{onConflict:'key'});}catch(e){}svInit(false);}
+async function svToggleTeams(){try{var r=await sbClient.from('app_settings').select('value').eq('key','poller_teams_notify').maybeSingle();var cur=r&&r.data&&r.data.value;if(typeof cur==='string'){try{cur=JSON.parse(cur);}catch(e){}}var eff=(cur!==false);var next=!eff;await sbClient.from('app_settings').upsert({key:'poller_teams_notify',value:JSON.stringify(next)},{onConflict:'key'});svInit();}catch(e){}}
 function pgSettings(){
   var cfg=getCfg();
   var schedChecks=['admin','leader','sub'].map(function(r){
@@ -6861,6 +6911,8 @@ function pgSettings(){
   var curAdminId=cfg.adminId||ROOT_ADMIN.id;
   var curAdminPw=cfg.adminPw||ROOT_ADMIN.pw;
   return '<div class="stit">&#x2699; 시스템 설정</div>'+
+    // ── 서버 감시 (관리자 전용) ──
+    '<div class="card"><div class="ctit">&#x1FA7A; 서버 감시</div><div id="sv-card">'+svCardHtml(null,null,true,'')+'</div></div>'+
     // ── Supabase 진단 (테스트 전용 — 삭제됨) ──
 
     // ── 관리자 계정 ──
@@ -9212,7 +9264,10 @@ var em=['✨','⭐','🌟','✨','⭐'];for(var j=0;j<5;j++){var ex=(j*23+9)%90,
 /* ── 점수 저장/조회 ── */
 async function ghSave(game,score){score=Math.round(score||0);if(!sbClient||!CU||score<=0)return;var prevTop=null;try{var _r=await sbClient.from('game_scores').select('uid,uname,score').eq('game',game).eq('ym',ghYM()).order('score',{ascending:false}).limit(1).maybeSingle();if(_r&&_r.data)prevTop=_r.data;}catch(e){}try{await sbClient.from('game_scores').insert({game:game,uid:String(ghUid()),uname:ghName(),score:score,ym:ghYM()});}catch(e){}try{if(prevTop&&score>prevTop.score&&String(prevTop.uid)!==String(ghUid())&&prevTop.uname&&typeof sendPushToAll==='function'&&(typeof isQuietHour!=='function'||!isQuietHour())){sendPushToAll('🥇 1등 자리 뺏김!',(ghName()||'누군가')+'님이 '+ghGameInfo(game).t+' 1등을 갱신했어요! 다시 도전하세요 🔥','game1st_'+game+'_'+Date.now(),prevTop.uname);}}catch(e){}}
 async function ghLoad(game){GH.loadingB=true;ghRenderBoard(game);try{var r=await sbClient.from('game_scores').select('uid,uname,score,created_at').eq('game',game).eq('ym',ghYM()).order('score',{ascending:false}).order('created_at',{ascending:true}).limit(800);var rows=(r&&r.data)||[];var best={};rows.forEach(function(x){var e=best[x.uid];if(!e||x.score>e.score){best[x.uid]={uname:x.uname,score:x.score,ts:x.created_at};}else if(x.score===e.score&&x.created_at<e.ts){e.ts=x.created_at;}});var arr=Object.keys(best).map(function(k){return {uid:k,uname:best[k].uname,score:best[k].score,ts:best[k].ts};});arr.sort(function(a,b){return b.score-a.score||(a.ts<b.ts?-1:a.ts>b.ts?1:0);});GH.board[game]=arr.slice(0,20);}catch(e){GH.board[game]=null;}GH.loadingB=false;ghRenderBoard(game);}
-async function ghLoadAllBoards(){if(!sbClient)return;try{var r=await sbClient.from('game_scores').select('game,uid,uname,score,created_at').eq('ym',ghYM()).order('score',{ascending:false}).order('created_at',{ascending:true}).limit(5000);var rows=(r&&r.data)||[];var byG={};rows.forEach(function(x){(byG[x.game]=byG[x.game]||[]).push(x);});Object.keys(byG).forEach(function(g){var best={};byG[g].forEach(function(x){var e=best[x.uid];if(!e||x.score>e.score){best[x.uid]={uname:x.uname,score:x.score,ts:x.created_at};}else if(x.score===e.score&&x.created_at<e.ts){e.ts=x.created_at;}});var arr=Object.keys(best).map(function(k){return{uid:k,uname:best[k].uname,score:best[k].score,ts:best[k].ts};});arr.sort(function(a,b){return b.score-a.score||(a.ts<b.ts?-1:a.ts>b.ts?1:0);});GH.board[g]=arr.slice(0,20);});}catch(e){}}
+async function ghLoadAllBoards(){if(!sbClient)return;try{var r=await sbClient.from('game_scores').select('game,uid,uname,score,created_at').eq('ym',ghYM()).order('score',{ascending:false}).order('created_at',{ascending:true}).limit(5000);var rows=(r&&r.data)||[];var byG={};rows.forEach(function(x){(byG[x.game]=byG[x.game]||[]).push(x);});GH.stats={};var _allU={};Object.keys(byG).forEach(function(g){var best={},uids={};byG[g].forEach(function(x){uids[x.uid]=1;_allU[x.uid]=1;var e=best[x.uid];if(!e||x.score>e.score){best[x.uid]={uname:x.uname,score:x.score,ts:x.created_at};}else if(x.score===e.score&&x.created_at<e.ts){e.ts=x.created_at;}});GH.stats[g]={plays:byG[g].length,players:Object.keys(uids).length};var arr=Object.keys(best).map(function(k){return{uid:k,uname:best[k].uname,score:best[k].score,ts:best[k].ts};});arr.sort(function(a,b){return b.score-a.score||(a.ts<b.ts?-1:a.ts>b.ts?1:0);});GH.board[g]=arr.slice(0,20);});GH.stats._totalPlayers=Object.keys(_allU).length;}catch(e){}}
+async function ghLoadPlaytime(){if(!sbClient){GH.playtime=GH.playtime||{};return;}try{var r=await sbClient.from('app_settings').select('value').eq('key','game_playtime').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);GH.playtime=v||{};}catch(e){GH.playtime=GH.playtime||{};}}
+async function ghLogPlaytime(g,sec){if(!sbClient||!g||sec<3||sec>3600)return;try{var r=await sbClient.from('app_settings').select('value').eq('key','game_playtime').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);v=v||{};var e=v[g]||{sec:0,cnt:0};e.sec+=Math.round(sec);e.cnt+=1;v[g]=e;await sbClient.from('app_settings').upsert({key:'game_playtime',value:JSON.stringify(v)},{onConflict:'key'});GH.playtime=v;}catch(e){}}
+function ghFlushPlay(){try{if(GH.gamePlaying&&GH.gameStart){var sec=(Date.now()-GH.gameStart)/1000;ghLogPlaytime(GH.gamePlaying,sec);}}catch(e){}GH.gamePlaying=null;GH.gameStart=0;}
 
 /* ── 이달의 선정 게임 ── */
 async function ghLoadGOM(){if(!sbClient){GH.gomLoaded=true;return;}try{var r=await sbClient.from('app_settings').select('value').eq('key','game_of_month').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);GH.gom=v||null;}catch(e){GH.gom=null;}try{var _rex=await sbClient.from('app_settings').select('value').eq('key','king_exclude_admin').maybeSingle();var _xv=_rex&&_rex.data&&_rex.data.value;if(typeof _xv==='string')_xv=JSON.parse(_xv);GH.kingExAdmin=!!_xv;}catch(e){GH.kingExAdmin=false;}GH.gomLoaded=true;}
@@ -9267,15 +9322,16 @@ function ghKingBoxHtml(adm){
 /* ── 디스패처(풀스크린) ── */
 function pgArcade(){if(GH.view==='roulette')return pgRoulette();return pgGameHub();}
 function arcInit(){if(GH.view==='roulette'){rlInit();return;}ghHubInit();}
-async function ghHubInit(){ghInjectStyle();await ghLoadGOM();await ghLoadAllBoards();if(GH.view==='hub'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgGameHub();}}
-function ghEnterHub(){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();var pop=document.getElementById('gh-pop');if(pop)pop.style.display='none';try{document.body.style.overflow='';}catch(e){}GH.view='hub';GH.gomEdit=false;var mc=document.getElementById('mc');ghInjectStyle();if(mc)mc.innerHTML=pgGameHub();ghHubInit();}
+async function ghHubInit(){ghInjectStyle();await ghLoadGOM();await ghLoadPlaytime();await ghLoadAllBoards();if(GH.view==='hub'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgGameHub();}}
+function ghEnterHub(){try{ghFlushPlay();}catch(e){}if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();var pop=document.getElementById('gh-pop');if(pop)pop.style.display='none';try{document.body.style.overflow='';}catch(e){}GH.view='hub';GH.gomEdit=false;var mc=document.getElementById('mc');ghInjectStyle();if(mc)mc.innerHTML=pgGameHub();ghHubInit();}
 function ghRemoveKeys(){try{document.removeEventListener('keydown',g48Key);document.removeEventListener('keydown',gFlapKey);document.removeEventListener('keydown',gStackKey);document.removeEventListener('keydown',gTetKey);document.removeEventListener('keydown',gRunKey);document.removeEventListener('keydown',gJumpKey);document.removeEventListener('keyup',gJumpKeyUp);document.removeEventListener('keydown',gMatchKey);document.removeEventListener('keydown',gTowerKey);document.removeEventListener('keydown',gTimberKey);document.removeEventListener('keydown',gKnifeKey);}catch(e){}}
-function ghOpen(v){if(v==='roulette'){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;GH.view='roulette';var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgArcade();setTimeout(arcInit,40);}return;}ghStartGame(v);}
-function ghStartGame(g){ghInjectStyle();ghAudio();if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();GH.view=g;var pop=document.getElementById('gh-pop');if(!pop)return;var _IFR={ballsort:'구슬모으기.html',blockblast:'블록블라스트.html',screwsort:'나사정리.html'};if(_IFR[g]){pop.innerHTML='<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 12px;background:#0d1117"><button onclick="ghEnterHub()" style="background:#2a2f3d;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer">← 나가기</button><div style="color:#fff;font-weight:700">'+ghGameInfo(g).ic+' '+ghGameInfo(g).t+'</div></div><iframe src="'+_IFR[g]+'?ts='+Date.now()+'" style="width:100%;height:calc(100vh - 54px);border:none;display:block;background:#161b22"></iframe>';pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}return;}pop.innerHTML=ghGameShell(g);pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}
+function ghOpen(v){if(v==='roulette'){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;GH.view='roulette';GH.gamePlaying='roulette';GH.gameStart=Date.now();var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgArcade();setTimeout(arcInit,40);}return;}ghStartGame(v);}
+function ghStartGame(g){ghInjectStyle();ghAudio();if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();GH.view=g;GH.gamePlaying=g;GH.gameStart=Date.now();var pop=document.getElementById('gh-pop');if(!pop)return;var _IFR={ballsort:'구슬모으기.html',blockblast:'블록블라스트.html',screwsort:'나사정리.html'};if(_IFR[g]){pop.innerHTML='<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 12px;background:#0d1117"><button onclick="ghEnterHub()" style="background:#2a2f3d;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer">← 나가기</button><div style="color:#fff;font-weight:700">'+ghGameInfo(g).ic+' '+ghGameInfo(g).t+'</div></div><iframe src="'+_IFR[g]+'?ts='+Date.now()+'" style="width:100%;height:calc(100vh - 54px);border:none;display:block;background:#161b22"></iframe>';pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}return;}pop.innerHTML=ghGameShell(g);pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}
   setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();else if(g==='runner')gRunStart();else if(g==='jump')gJumpStart();else if(g==='match')gMatchStart();else if(g==='tower')gTowerStart();else if(g==='timber')gTimberStart();else if(g==='knife')gKnifeStart();else if(g==='sichuan')gSichuanStart();},40);}
 function ghBack(){ghEnterHub();}
 /* ── 게임 완전 정리: 모든 루프/타이머/오디오/상태 해제 (본앱 렉 방지) ── */
 function ghKill(){
+  try{ghFlushPlay();}catch(e){}
   try{if(GH.raf){cancelAnimationFrame(GH.raf);GH.raf=0;}}catch(e){}
   try{GH.gen=(GH.gen||0)+1;GH.view='hub';GH.gomEdit=false;}catch(e){}
   try{if(typeof ghRemoveKeys==='function')ghRemoveKeys();}catch(e){}
@@ -9297,16 +9353,61 @@ function pgGameHub(){
   h+='<div style="position:relative;font-size:12px;color:#cbbcf2;margin-top:6px">매달 1일~말일 · 월간 랭킹전</div></div>';
   h+=ghGomBoxHtml(adm);
   if(adm){h+='<div onclick="rlToggleActive()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:'+(active?'#e8f5e9':'#fceaea')+';border:1px solid '+(active?'#a5d6a7':'#ef9a9a')+';border-radius:12px;padding:9px 14px;margin:12px 0"><span style="font-size:12.5px;font-weight:700;color:'+(active?'#2e7d32':'#c62828')+'">'+(active?'✅ 기사들에게 공개됨':'🔒 비공개 (관리자만 보임)')+'</span><span style="font-size:12px;font-weight:800;color:'+(active?'#2e7d32':'#c62828')+'">'+(active?'끄기':'공개하기')+'</span></div>';}
-  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">';
+  // 팀플 운빨 — 가로 배너
+  var _rl=ghGameInfo('roulette');
+  h+='<div onclick="ghOpen(\'roulette\')" style="cursor:pointer;position:relative;overflow:hidden;background:'+_rl.g+';border-radius:16px;padding:15px 17px;margin-top:12px;display:flex;align-items:center;gap:13px;box-shadow:0 6px 18px rgba(123,31,162,.4)"><div style="font-size:38px">🎯</div><div style="flex:1;min-width:0"><div style="font-size:17px;font-weight:900;color:#fff">팀플 운빨</div><div style="font-size:11.5px;color:#ffd7ec;margin-top:2px">'+(_rl.d||'마블 룰렛 · 행운 추첨')+'</div></div><div style="background:rgba(255,255,255,.2);border-radius:12px;padding:9px 14px;font-size:14px;font-weight:900;color:#fff;white-space:nowrap">▶ 뽑기</div></div>';
+  // 관리자 전용 인기 분석
+  if(adm)h+=ghStatsPanelHtml();
+  // 게임 목록 — 인기순 정렬
+  var _st=GH.stats||{};
+  var _others=GH_GAMES.filter(function(c){return c.v!=='roulette';}).map(function(c){var s=_st[c.v]||{plays:0,players:0};return {c:c,plays:s.plays||0,players:s.players||0};});
+  _others.sort(function(a,b){return b.plays-a.plays||b.players-a.players;});
+  var _maxP=_others.length?Math.max(1,_others[0].plays):1;
+  h+='<div style="font-size:12.5px;font-weight:800;color:#cbbcf2;margin:16px 2px 8px">🎲 인기 게임</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
   var selG=ghGomActive()?GH.gom.game:null;
-  GH_GAMES.forEach(function(c){
-    var sel=(c.v===selG);
+  _others.forEach(function(o){
+    var c=o.c,sel=(c.v===selG);
+    var hot=(o.plays>0&&o.plays>=_maxP*0.5);
     var inner='<div style="font-size:30px">'+c.ic+'</div><div style="font-size:15px;font-weight:900;margin-top:5px">'+c.t+'</div>';
     if(c.rank){var bd=GH.board[c.v]||[];if(bd.length){var medals=['🥈','🥉'];inner+='<div style="margin-top:6px;font-size:10px;line-height:1.55;opacity:.97">';for(var i=0;i<3&&i<bd.length;i++){if(i===0){inner+='<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px"><span class="ghgold" style="font-size:16px">🥇</span> <b style="color:#fff59d">'+ghDisp(bd[i].uname)+'</b> <b>'+ghFmtScore(c.v,bd[i].score)+'</b></div>';}else{inner+='<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+medals[i-1]+' '+ghDisp(bd[i].uname)+' <b>'+ghFmtScore(c.v,bd[i].score)+'</b></div>';}}inner+='</div>';}else{inner+='<div style="font-size:10px;opacity:.8;margin-top:6px">랭킹 대기중 · 1등 도전!</div>';}}
-    else{inner+='<div style="font-size:10.5px;opacity:.92;margin-top:3px">'+c.d+'</div>';}
-    h+='<div onclick="ghOpen(\''+c.v+'\')" class="'+(sel?'ghsel':'')+'" style="position:relative;cursor:pointer;background:'+c.g+';border-radius:15px;padding:15px 12px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.22);min-height:120px;display:flex;flex-direction:column;justify-content:flex-start">'+(sel?'<span class="ghbig">🌟</span>':'')+inner+'</div>';
+    else{inner+='<div style="font-size:10.5px;opacity:.92;margin-top:3px">'+(c.d||'')+'</div>';}
+    var badge=hot?'<span style="position:absolute;top:8px;right:8px;font-size:9px;background:#ff5a63;color:#fff;padding:1px 7px;border-radius:8px;font-weight:800;z-index:2">HOT🔥</span>':'';
+    h+='<div onclick="ghOpen(\''+c.v+'\')" class="'+(sel?'ghsel':'')+'" style="position:relative;cursor:pointer;background:'+c.g+';border-radius:15px;padding:15px 12px;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.22);min-height:120px;display:flex;flex-direction:column;justify-content:flex-start">'+(sel?'<span class="ghbig">🌟</span>':'')+badge+inner+'</div>';
   });
   h+='</div></div>';
+  return h;
+}
+/* ── 관리자 전용 게임 인기 분석 패널 ── */
+function ghStatsPanelHtml(){
+  if(!rlIsAdmin())return '';
+  var st=GH.stats||{},pt=GH.playtime||{};
+  var list=GH_GAMES.filter(function(c){return c.v!=='roulette';}).map(function(c){var s=st[c.v]||{plays:0,players:0};var p=pt[c.v];var avg=(p&&p.cnt)?p.sec/p.cnt:0;return {c:c,plays:s.plays||0,players:s.players||0,avg:avg};});
+  list.sort(function(a,b){return b.plays-a.plays||b.players-a.players;});
+  var maxP=list.length?Math.max(1,list[0].plays):1;
+  var totalP=st._totalPlayers||0;
+  var totalPlays=list.reduce(function(a,b){return a+b.plays;},0);
+  function fmtT(s){if(!s)return '-';s=Math.round(s);var m=Math.floor(s/60),ss=s%60;return m+'분 '+(ss<10?'0':'')+ss+'초';}
+  var h='<div style="background:linear-gradient(180deg,#141b26,#0f1420);border:1px solid #2a3444;border-radius:14px;padding:13px 12px;margin-top:12px">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:13px;font-weight:900;color:#ffd54f">📊 게임 인기 분석</div><span style="font-size:9.5px;color:#ffd54f;background:rgba(255,213,79,.14);padding:2px 8px;border-radius:9px;font-weight:700">관리자 전용</span></div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:11px"><div style="flex:1;background:#1c2330;border-radius:10px;padding:8px;text-align:center"><div style="font-size:10px;color:#8a94a8">이번 달 총 플레이</div><div style="font-size:17px;font-weight:900;color:#fff">'+totalPlays.toLocaleString()+'<span style="font-size:10px;color:#8a94a8">회</span></div></div><div style="flex:1;background:#1c2330;border-radius:10px;padding:8px;text-align:center"><div style="font-size:10px;color:#8a94a8">참여 기사</div><div style="font-size:17px;font-weight:900;color:#34d17a">'+totalP+'<span style="font-size:10px;color:#8a94a8">명</span></div></div></div>';
+  var idx=0;
+  list.forEach(function(o){
+    idx++;
+    var pct=totalP?Math.round(o.players/totalP*100):0;
+    var barw=Math.round(o.plays/maxP*100);
+    var cold=o.plays===0, low=(o.plays>0&&o.plays<=maxP*0.2), hot=(o.plays>0&&o.plays>=maxP*0.5);
+    var badge=cold?'<span style="font-size:9px;background:#2a3444;color:#8a94a8;padding:1px 7px;border-radius:8px;font-weight:700">❄️ 미인기</span>':(low?'<span style="font-size:9px;background:#3a2f1c;color:#ffb74d;padding:1px 7px;border-radius:8px;font-weight:700">⚠️ 저조</span>':(hot?'<span style="font-size:9px;background:#ff5a63;color:#fff;padding:1px 7px;border-radius:8px;font-weight:700">HOT🔥</span>':''));
+    var barcol=cold?'#5a6472':(low?'#6b7280':(hot?'linear-gradient(90deg,#ff8a3d,#ff5a63)':'#4a86ff'));
+    var op=cold?'.6':(low?'.82':'1');
+    h+='<div style="opacity:'+op+';padding:8px 2px;border-bottom:1px solid #1e2632">';
+    h+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px"><span style="font-size:11px;font-weight:900;color:#8a94a8;width:15px">'+idx+'</span><span style="font-size:16px">'+o.c.ic+'</span><span style="font-size:13px;font-weight:700;color:#fff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+o.c.t+'</span>'+badge+'</div>';
+    h+='<div style="display:flex;align-items:center;gap:7px"><div style="flex:1;height:7px;background:#2a3444;border-radius:4px;overflow:hidden"><div style="width:'+barw+'%;height:100%;background:'+barcol+'"></div></div><span style="font-size:11px;font-weight:800;color:#cdd3df;width:34px;text-align:right">'+pct+'%</span></div>';
+    h+='<div style="display:flex;gap:11px;margin-top:4px;font-size:10px;color:#8a94a8"><span>플레이 <b style="color:#cdd3df">'+o.plays.toLocaleString()+'</b></span><span>기사 <b style="color:#cdd3df">'+o.players+'명</b></span><span>평균 <b style="color:#cdd3df">'+fmtT(o.avg)+'</b></span></div>';
+    h+='</div>';
+  });
+  h+='<div style="font-size:9.5px;color:#5a6472;margin-top:8px;text-align:center">참여율 = 게임 참여 기사 중 비율 · 평균은 세션 측정치 · 이번 달 기준</div>';
+  h+='</div>';
   return h;
 }
 /* ── 이달의 선정 게임 박스 ── */
