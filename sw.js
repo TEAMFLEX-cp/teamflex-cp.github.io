@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v48 — 백그라운드 스케줄 체크 + Push 알림 + 구독 자동 갱신 + 서버감시 카드
-const CACHE_NAME = 'teamflex-v314';
+// TeamFlex Service Worker v49 — 서버감시 메뉴화 + 구슬모으기 수정 + 게임 정리
+const CACHE_NAME = 'teamflex-v315';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
