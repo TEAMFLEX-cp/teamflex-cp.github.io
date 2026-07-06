@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v49 — 서버감시 메뉴화 + 구슬모으기 수정 + 게임 정리
-const CACHE_NAME = 'teamflex-v315';
+// TeamFlex Service Worker v50 — 재배포(Pages 빌드 재시도)
+const CACHE_NAME = 'teamflex-v316';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
