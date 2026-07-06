@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>구슬 모으기</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+    background:radial-gradient(120% 80% at 50% 0%,#3a2a83 0%,#241a5e 55%,#191244 100%);color:#fff;overflow:hidden}
+  #app{max-width:460px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:10px 12px 16px}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  .title{font-size:22px;font-weight:800;letter-spacing:.3px}
+  .coins{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.13);padding:5px 12px;border-radius:16px;font-weight:700;font-size:14px}
+  .stats{display:flex;gap:8px;justify-content:center;margin:6px 0 4px}
+  .pill{background:rgba(255,255,255,.13);padding:5px 14px;border-radius:15px;font-size:13px;font-weight:700;color:#e9e2ff}
+  #board{flex:1;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:14px 18px;padding:8px 4px;overflow:auto}
+  .tube{position:relative;width:44px;border-radius:8px 8px 22px 22px;
+    background:linear-gradient(90deg,rgba(255,255,255,.30),rgba(255,255,255,.06) 18%,rgba(159,180,216,.05) 82%,rgba(42,51,88,.26));
+    border:1.5px solid rgba(255,255,255,.32);border-top:none;
+    display:flex;flex-direction:column-reverse;align-items:center;padding:5px 0 6px;transition:transform .12s}
+  .tube::before{content:"";position:absolute;top:-4px;left:2px;right:2px;height:8px;border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.32);border-bottom:none}
+  .tube.sel{transform:translateY(-12px)}
+  .tube.done{box-shadow:0 0 0 2px #34d17a,0 0 18px #34d17a99}
+  .ball{border-radius:50%;margin:2px 0;flex-shrink:0;box-shadow:0 2px 4px rgba(0,0,0,.28);transition:transform .13s}
+  .ball.lift{transform:translateY(-999px)}
+  .ctrl{display:flex;gap:10px;justify-content:center;margin-top:6px}
+  .btn{flex:1;max-width:130px;padding:12px 8px;border:none;border-radius:15px;font-size:14px;font-weight:800;
+    color:#fff;cursor:pointer;background:linear-gradient(180deg,#6b53d4,#4a37a6);box-shadow:0 4px 0 #3a2b86}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 #3a2b86}
+  .btn.g{background:linear-gradient(180deg,#2fbf6b,#1f9a52);box-shadow:0 4px 0 #167a3f}
+  .ov{position:fixed;inset:0;background:rgba(15,10,40,.72);display:none;align-items:center;justify-content:center;z-index:20;backdrop-filter:blur(3px)}
+  .ov.show{display:flex}
+  .card{background:linear-gradient(180deg,#3a2a83,#271c63);border:1.5px solid rgba(255,255,255,.2);border-radius:24px;
+    padding:26px 24px;text-align:center;width:80%;max-width:320px;box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  .card h2{margin:6px 0 4px;font-size:26px}
+  .card p{margin:2px 0 16px;color:#cfc6ff;font-size:14px}
+  .conf{position:fixed;top:-10px;width:9px;height:14px;border-radius:2px;z-index:19;pointer-events:none}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg);opacity:.9}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <div class="title">🧪 구슬 모으기</div>
+    <div class="coins">🪙 <span id="coin">0</span></div>
+  </div>
+  <div class="stats">
+    <div class="pill">Lv. <span id="lv">1</span></div>
+    <div class="pill">이동 <span id="mv">0</span></div>
+    <div class="pill">색 <span id="ck">3</span></div>
+  </div>
+  <div id="board"></div>
+  <div class="ctrl">
+    <button class="btn" onclick="undo()">↩️ 되돌리기</button>
+    <button class="btn" onclick="restart()">🔄 다시</button>
+  </div>
+</div>
+
+<div class="ov" id="ov">
+  <div class="card">
+    <div style="font-size:44px">🎉</div>
+    <h2 id="ovh">클리어!</h2>
+    <p id="ovp">Lv.1 완료 · +10 🪙</p>
+    <button class="btn g" style="max-width:none;width:100%" onclick="nextStage()">다음 단계 ▶</button>
+  </div>
+</div>
+
+<script>
+var PAL=['#ff5a63','#4a86ff','#34d17a','#ffc62e','#a463ff','#ff8a3d','#2ee6d6','#ff5ea8','#8bc34a','#00bcd4','#e91e63','#c9a227'];
+function ballBg(c){return 'radial-gradient(circle at 33% 27%,rgba(255,255,255,.85) 0%,rgba(255,255,255,0) 34%),radial-gradient(circle at 68% 80%,rgba(0,0,0,.30) 0%,rgba(0,0,0,0) 42%),'+c;}
+
+var tubes=[],cap=4,K=3,E=2,stage=1,moves=0,coins=0,sel=-1,history=[],extraTubes=0;
+try{coins=parseInt(localStorage.getItem('bs_coins')||'0')||0;stage=parseInt(localStorage.getItem('bs_stage')||'1')||1;}catch(e){}
+
+function diff(s){
+  K=Math.min(3+Math.floor((s-1)/6),10);
+  cap=Math.min(4+Math.floor((s-1)/70),7);
+  E=2;
+}
+function topColor(t){return t.length?t[t.length-1]:-1;}
+function topRun(t){if(!t.length)return 0;var c=t[t.length-1],n=1;for(var i=t.length-2;i>=0;i--){if(t[i]===c)n++;else break;}return n;}
+function canPour(a,b){if(a===b)return false;var s=tubes[a],d=tubes[b];if(!s.length)return false;if(d.length>=cap)return false;if(!d.length)return true;return topColor(s)===topColor(d);}
+function doPour(a,b){var s=tubes[a],d=tubes[b],run=topRun(s),space=cap-d.length,m=Math.min(run,space);for(var i=0;i<m;i++)d.push(s.pop());return m;}
+function isWin(){return tubes.every(function(t){return t.length===0||(t.length===cap&&t.every(function(x){return x===t[0];}));});}
+
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}}
+function solvable(){ // 제한 DFS: true / false / null(불명·큰판은 허용)
+  var seen={},stack=[tubes.map(function(t){return t.slice();})],cnt=0;
+  function key(ts){return ts.map(function(t){return t.join(',');}).sort().join('|');}
+  while(stack.length){
+    if(cnt++>60000)return null;
+    var st=stack.pop();
+    if(st.every(function(t){return t.length===0||(t.length===cap&&t.every(function(x){return x===t[0];}));}))return true;
+    var kk=key(st);if(seen[kk])continue;seen[kk]=1;
+    for(var a=0;a<st.length;a++)for(var b=0;b<st.length;b++){
+      if(a!==b&&st[a].length&&st[b].length<cap&&(!st[b].length||st[a][st[a].length-1]===st[b][st[b].length-1])){
+        var ns=st.map(function(t){return t.slice();});var col=ns[a][ns[a].length-1];
+        while(ns[a].length&&ns[a][ns[a].length-1]===col&&ns[b].length<cap)ns[b].push(ns[a].pop());
+        stack.push(ns);
+      }
+    }
+  }
+  return false;
+}
+function build(s){
+  diff(s);
+  var balls=[];for(var k=0;k<K;k++)for(var c=0;c<cap;c++)balls.push(k);
+  var att=0;
+  do{
+    shuffle(balls);
+    tubes=[];var idx=0;
+    for(var kk2=0;kk2<K;kk2++){var t=[];for(var c2=0;c2<cap;c2++)t.push(balls[idx++]);tubes.push(t);}
+    for(var e=0;e<E+extraTubes;e++)tubes.push([]);
+    att++;
+  }while((isWin()||solvable()===false)&&att<40);
+  moves=0;sel=-1;history=[];
+}
+
+function snap(){return tubes.map(function(t){return t.slice();});}
+function pushHist(){history.push(snap());if(history.length>200)history.shift();}
+
+function render(){
+  document.getElementById('lv').textContent=stage;
+  document.getElementById('mv').textContent=moves;
+  document.getElementById('ck').textContent=K;
+  document.getElementById('coin').textContent=coins;
+  var bd=document.getElementById('board');bd.innerHTML='';
+  var bs=cap>=7?28:cap>=6?31:34; // ball size by capacity
+  tubes.forEach(function(t,i){
+    var d=document.createElement('div');d.className='tube';
+    d.style.height=(cap*(bs+4)+14)+'px';d.style.width=(bs+10)+'px';
+    if(sel===i)d.className+=' sel';
+    if(t.length===cap&&t.every(function(x){return x===t[0];}))d.className+=' done';
+    t.forEach(function(col){var b=document.createElement('div');b.className='ball';b.style.width=bs+'px';b.style.height=bs+'px';b.style.background=ballBg(PAL[col]);d.appendChild(b);});
+    d.onclick=function(){click(i);};
+    bd.appendChild(d);
+  });
+}
+
+function click(i){
+  if(sel<0){ if(tubes[i].length){sel=i;render();} return; }
+  if(sel===i){sel=-1;render();return;}
+  if(canPour(sel,i)){ pushHist(); doPour(sel,i); moves++; sel=-1; render();
+    if(isWin())setTimeout(win,180);
+  } else { sel=tubes[i].length?i:-1; render(); }
+}
+function undo(){ if(!history.length)return; tubes=history.pop(); if(moves>0)moves--; sel=-1; render(); }
+function restart(){ extraTubes=0; build(stage); render(); }
+function addTube(){ if(tubes.length>=K+6)return; tubes.push([]); extraTubes++; sel=-1; render(); }
+
+function win(){
+  var reward=10+Math.floor(stage/2);
+  coins+=reward;
+  try{localStorage.setItem('bs_coins',coins);localStorage.setItem('bs_stage',stage+1);}catch(e){}
+  try{if(window.parent!==window)parent.postMessage({type:'ghscore',game:'ballsort',score:stage},'*');}catch(e){}
+  document.getElementById('ovh').textContent='클리어! 🎉';
+  document.getElementById('ovp').textContent='Lv.'+stage+' 완료 · +'+reward+' 🪙';
+  document.getElementById('ov').className='ov show';
+  confetti();
+}
+function nextStage(){ document.getElementById('ov').className='ov'; stage++; extraTubes=0; build(stage); render(); }
+
+function confetti(){
+  var cs=['#ff5a63','#4a86ff','#34d17a','#ffc62e','#a463ff','#ff8a3d'];
+  for(var i=0;i<40;i++){(function(){var e=document.createElement('div');e.className='conf';e.style.left=(Math.random()*100)+'vw';e.style.background=cs[i%6];e.style.animation='fall '+(1.2+Math.random()*1.2)+'s linear '+(Math.random()*.5)+'s forwards';document.body.appendChild(e);setTimeout(function(){e.remove();},3200);})();}
+}
+
+build(stage);render();
+</script>
+</body>
+</html>

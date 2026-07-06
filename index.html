@@ -9174,6 +9174,9 @@ function ghName(){return (CU&&CU.name)||'익명';}
 function ghYM(){var d=new Date(Date.now()+9*3600000);return d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2);}
 function ghMonthLabel(){var d=new Date(Date.now()+9*3600000);return (d.getUTCMonth()+1)+'월';}
 var GH_GAMES=[
+  {v:'ballsort',ic:'🧪',t:'구슬 모으기',g:'linear-gradient(135deg,#3a2a83,#6b53d4)',rank:true},
+  {v:'blockblast',ic:'🟦',t:'블록 블라스트',g:'linear-gradient(135deg,#241f52,#4a86ff)',rank:true},
+  {v:'screwsort',ic:'🔩',t:'나사 정리',g:'linear-gradient(135deg,#3b4152,#8a94a8)',rank:true},
   {v:'roulette',ic:'🎯',t:'팀플 운빨',d:'마블 룰렛 행운 추첨',g:'linear-gradient(135deg,#b71c5e,#7b1fa2)',rank:false},
   {v:'2048',ic:'🔢',t:'2048',g:'linear-gradient(135deg,#ef6c00,#f9a825)',rank:true},
   {v:'tetris',ic:'🟦',t:'테트리스',g:'linear-gradient(135deg,#1565c0,#42a5f5)',rank:true},
@@ -9186,6 +9189,7 @@ var GH_GAMES=[
   {v:'knife',ic:'🔪',t:'나이프 히트',g:'linear-gradient(135deg,#5d4037,#a1887f)',rank:true},
   {v:'sichuan',ic:'🀄',t:'사천성',g:'linear-gradient(135deg,#1a2440,#ef4444)',rank:true}
 ];
+try{if(!window._ghMsgBound){window._ghMsgBound=1;window.addEventListener('message',function(ev){var d=ev&&ev.data;if(d&&d.type==='ghscore'&&d.game&&typeof d.score==='number'&&typeof ghSave==='function'){ghSave(d.game,d.score);}});}}catch(e){}
 function ghGameInfo(v){for(var i=0;i<GH_GAMES.length;i++)if(GH_GAMES[i].v===v)return GH_GAMES[i];return {v:v,ic:'🎮',t:v};}
 function ghGameMeta(g){var i=ghGameInfo(g);return [i.ic,i.t];}
 
@@ -9267,7 +9271,7 @@ async function ghHubInit(){ghInjectStyle();await ghLoadGOM();await ghLoadAllBoar
 function ghEnterHub(){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();var pop=document.getElementById('gh-pop');if(pop)pop.style.display='none';try{document.body.style.overflow='';}catch(e){}GH.view='hub';GH.gomEdit=false;var mc=document.getElementById('mc');ghInjectStyle();if(mc)mc.innerHTML=pgGameHub();ghHubInit();}
 function ghRemoveKeys(){try{document.removeEventListener('keydown',g48Key);document.removeEventListener('keydown',gFlapKey);document.removeEventListener('keydown',gStackKey);document.removeEventListener('keydown',gTetKey);document.removeEventListener('keydown',gRunKey);document.removeEventListener('keydown',gJumpKey);document.removeEventListener('keyup',gJumpKeyUp);document.removeEventListener('keydown',gMatchKey);document.removeEventListener('keydown',gTowerKey);document.removeEventListener('keydown',gTimberKey);document.removeEventListener('keydown',gKnifeKey);}catch(e){}}
 function ghOpen(v){if(v==='roulette'){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;GH.view='roulette';var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgArcade();setTimeout(arcInit,40);}return;}ghStartGame(v);}
-function ghStartGame(g){ghInjectStyle();ghAudio();if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();GH.view=g;var pop=document.getElementById('gh-pop');if(!pop)return;pop.innerHTML=ghGameShell(g);pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}
+function ghStartGame(g){ghInjectStyle();ghAudio();if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();GH.view=g;var pop=document.getElementById('gh-pop');if(!pop)return;var _IFR={ballsort:'구슬모으기.html',blockblast:'블록블라스트.html',screwsort:'나사정리.html'};if(_IFR[g]){pop.innerHTML='<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 12px;background:#0d1117"><button onclick="ghEnterHub()" style="background:#2a2f3d;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer">← 나가기</button><div style="color:#fff;font-weight:700">'+ghGameInfo(g).ic+' '+ghGameInfo(g).t+'</div></div><iframe src="'+_IFR[g]+'?ts='+Date.now()+'" style="width:100%;height:calc(100vh - 54px);border:none;display:block;background:#161b22"></iframe>';pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}return;}pop.innerHTML=ghGameShell(g);pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}
   setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();else if(g==='runner')gRunStart();else if(g==='jump')gJumpStart();else if(g==='match')gMatchStart();else if(g==='tower')gTowerStart();else if(g==='timber')gTimberStart();else if(g==='knife')gKnifeStart();else if(g==='sichuan')gSichuanStart();},40);}
 function ghBack(){ghEnterHub();}
 /* ── 게임 완전 정리: 모든 루프/타이머/오디오/상태 해제 (본앱 렉 방지) ── */
