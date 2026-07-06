@@ -50,6 +50,7 @@
     <div class="pill">Lv. <span id="lv">1</span></div>
     <div class="pill">이동 <span id="mv">0</span></div>
     <div class="pill">색 <span id="ck">3</span></div>
+    <div class="pill" id="tmpill">⏱️ <span id="tm">1:00</span></div>
   </div>
   <div id="board"></div>
   <div class="ctrl">
@@ -60,10 +61,10 @@
 
 <div class="ov" id="ov">
   <div class="card">
-    <div style="font-size:44px">🎉</div>
+    <div id="ovi" style="font-size:44px">🎉</div>
     <h2 id="ovh">클리어!</h2>
     <p id="ovp">Lv.1 완료 · +10 🪙</p>
-    <button class="btn g" style="max-width:none;width:100%" onclick="nextStage()">다음 단계 ▶</button>
+    <button class="btn g" id="ovbtn" style="max-width:none;width:100%" onclick="ovAct()">다음 단계 ▶</button>
   </div>
 </div>
 
@@ -140,6 +141,7 @@ function render(){
 }
 
 function click(i){
+  if(locked)return;
   if(sel<0){ if(tubes[i].length){sel=i;render();} return; }
   if(sel===i){sel=-1;render();return;}
   if(canPour(sel,i)){ pushHist(); doPour(sel,i); moves++; sel=-1; render();
@@ -147,27 +149,38 @@ function click(i){
   } else { sel=tubes[i].length?i:-1; render(); }
 }
 function undo(){ if(!hist.length)return; tubes=hist.pop(); if(moves>0)moves--; sel=-1; render(); }
-function restart(){ extraTubes=0; build(stage); render(); }
+function restart(){ locked=false; extraTubes=0; build(stage); render(); startTimer(); }
 function addTube(){ if(tubes.length>=K+6)return; tubes.push([]); extraTubes++; sel=-1; render(); }
 
 function win(){
+  stopTimer(); locked=true; ovMode='next';
   var reward=10+Math.floor(stage/2);
   coins+=reward;
   try{localStorage.setItem('bs_coins',coins);localStorage.setItem('bs_stage',stage+1);}catch(e){}
   try{if(window.parent!==window)parent.postMessage({type:'ghscore',game:'ballsort',score:stage},'*');}catch(e){}
+  var _i=document.getElementById('ovi');if(_i)_i.textContent='🎉';
   document.getElementById('ovh').textContent='클리어! 🎉';
   document.getElementById('ovp').textContent='Lv.'+stage+' 완료 · +'+reward+' 🪙';
+  var _b=document.getElementById('ovbtn');if(_b)_b.textContent='다음 단계 ▶';
   document.getElementById('ov').className='ov show';
   confetti();
 }
-function nextStage(){ document.getElementById('ov').className='ov'; stage++; extraTubes=0; build(stage); render(); }
+function nextStage(){ ovAct(); }
 
 function confetti(){
   var cs=['#ff5a63','#4a86ff','#34d17a','#ffc62e','#a463ff','#ff8a3d'];
   for(var i=0;i<40;i++){(function(){var e=document.createElement('div');e.className='conf';e.style.left=(Math.random()*100)+'vw';e.style.background=cs[i%6];e.style.animation='fall '+(1.2+Math.random()*1.2)+'s linear '+(Math.random()*.5)+'s forwards';document.body.appendChild(e);setTimeout(function(){e.remove();},3200);})();}
 }
 
-build(stage);render();
+var timeLeft=0,timerId=null,locked=false,ovMode='next';
+function stageLimit(s){if(s<=19)return 60;return 90+Math.floor((s-20)/10)*30;}
+function fmtTime(sec){sec=Math.max(0,sec);var m=Math.floor(sec/60),s=sec%60;return m+':'+(s<10?'0':'')+s;}
+function updTime(){var el=document.getElementById('tm');if(el)el.textContent=fmtTime(timeLeft);var p=document.getElementById('tmpill');if(p)p.style.color=(timeLeft<=10?'#ff5a63':'');}
+function stopTimer(){if(timerId){clearInterval(timerId);timerId=null;}}
+function startTimer(){stopTimer();timeLeft=stageLimit(stage);updTime();timerId=setInterval(function(){timeLeft--;updTime();if(timeLeft<=0){stopTimer();timeUp();}},1000);}
+function timeUp(){locked=true;ovMode='retry';var i=document.getElementById('ovi');if(i)i.textContent='⏰';document.getElementById('ovh').textContent='⏰ 시간 초과!';document.getElementById('ovp').textContent='Lv.'+stage+' · 시간 안에 못 풀었어요';var b=document.getElementById('ovbtn');if(b)b.textContent='다시 하기 ▶';document.getElementById('ov').className='ov show';}
+function ovAct(){document.getElementById('ov').className='ov';var i=document.getElementById('ovi');if(i)i.textContent='🎉';locked=false;extraTubes=0;if(ovMode!=='retry')stage++;build(stage);render();startTimer();}
+build(stage);render();startTimer();
 </script>
 </body>
 </html>
