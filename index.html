@@ -712,7 +712,7 @@ textarea.ann-input:focus{border-color:#1565c0}
 <div id="app">
   <div class="ah">
     <div class="au">
-      <div>
+      <div onclick="go('hm')" style="cursor:pointer">
         <div class="an" id="han"></div>
         <div class="ar" id="har"></div>
       </div>
@@ -2211,6 +2211,12 @@ function openCfgSubMenu(){
         '<button onclick="closeCfgSubMenu();go(\'cfg\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f8f9ff;border:2px solid #e8eaf6;border-radius:14px;font-size:15px;font-weight:700;color:#283593;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x2699;&#xFE0F;</span><div style="flex:1;min-width:0"><div>시스템 설정</div><div style="font-size:11px;font-weight:400;color:#9fa8da;margin-top:2px;white-space:normal;word-break:keep-all">관리자 계정·스케줄 잠금·Teams 연동</div></div>'+
         '</button>'+
+        '<button onclick="closeCfgSubMenu();go(\'sl\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f1f8f4;border:2px solid #c8e6c9;border-radius:14px;font-size:15px;font-weight:700;color:#2e7d32;cursor:pointer;text-align:left;box-sizing:border-box">'+
+          '<span style="font-size:24px;flex-shrink:0">&#x1F4CB;</span><div style="flex:1;min-width:0"><div>변경이력</div><div style="font-size:11px;font-weight:400;color:#66bb6a;margin-top:2px">스케줄 변경 기록</div></div>'+
+        '</button>'+
+        '<button onclick="closeCfgSubMenu();go(\'az\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#fff8e1;border:2px solid #ffe082;border-radius:14px;font-size:15px;font-weight:700;color:#e65100;cursor:pointer;text-align:left;box-sizing:border-box">'+
+          '<span style="font-size:24px;flex-shrink:0">&#x1F4B0;</span><div style="flex:1;min-width:0"><div>정산</div><div style="font-size:11px;font-weight:400;color:#ffa726;margin-top:2px">기사 정산 관리</div></div>'+
+        '</button>'+
       '</div>'+
     '</div>';
   document.body.appendChild(sheet);
@@ -3079,17 +3085,14 @@ function launchApp(){
   var bn=document.getElementById('bn');
   if(CU.role==='admin'){
     bn.innerHTML=
-      '<div class="ni on" id="ni-hm" onclick="go(\'hm\')"><span class="nicon">&#x1F3E0;</span>홈</div>'+
       '<div class="ni" id="ni-ab" onclick="go(\'ab\')"><span class="nicon">&#x1F4E2;</span>공지</div>'+
       '<div class="ni" id="ni-as" onclick="go(\'as\')"><span class="nicon">&#x1F4C5;</span>스케줄</div>'+
-      '<div class="ni" id="ni-sl" onclick="go(\'sl\')"><span class="nicon">&#x1F4CB;</span>변경이력</div>'+
       '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>오배송</div>'+
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       '<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>'+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
       '<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백소명</div>'+
       '<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>'+
-      '<div class="ni" id="ni-az" onclick="go(\'az\')"><span class="nicon">&#x1F4B0;</span>정산</div>'+
       '<div class="ni" id="ni-cfg" onclick="openCfgSubMenu()"><span class="nicon">&#x2699;</span>설정</div>';
     go('hm');
   } else if(CU.status==='suspended'){
@@ -3589,7 +3592,7 @@ function go(tab){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   var el=document.getElementById('ni-'+tab);if(el)el.classList.add('on');
   // 권한/연락처/설정은 모두 ni-cfg 탭을 활성 표시
-  if(tab==='ap'||tab==='ph'||tab==='cfg'){var cfgEl=document.getElementById('ni-cfg');if(cfgEl)cfgEl.classList.add('on');}
+  if(tab==='ap'||tab==='ph'||tab==='cfg'||tab==='sl'||tab==='az'){var cfgEl=document.getElementById('ni-cfg');if(cfgEl)cfgEl.classList.add('on');}
   // 일반 사용자 설정 하위 탭(비상연락망/정산)은 ni-usr-cfg 활성 표시
   if(tab==='er'||tab==='st'){var uCfgEl=document.getElementById('ni-usr-cfg');if(uCfgEl)uCfgEl.classList.add('on');}
   window.history.pushState({tab:tab,ts:Date.now()},'');
