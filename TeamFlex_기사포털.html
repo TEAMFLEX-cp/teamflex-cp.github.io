@@ -2217,6 +2217,9 @@ function openCfgSubMenu(){
         '<button onclick="closeCfgSubMenu();go(\'az\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#fff8e1;border:2px solid #ffe082;border-radius:14px;font-size:15px;font-weight:700;color:#e65100;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F4B0;</span><div style="flex:1;min-width:0"><div>정산</div><div style="font-size:11px;font-weight:400;color:#ffa726;margin-top:2px">기사 정산 관리</div></div>'+
         '</button>'+
+        '<button onclick="closeCfgSubMenu();go(\'sv\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e8f7ee;border:2px solid #a5d6bb;border-radius:14px;font-size:15px;font-weight:700;color:#1f7a4d;cursor:pointer;text-align:left;box-sizing:border-box">'+
+          '<span style="font-size:24px;flex-shrink:0">&#x1FA7A;</span><div style="flex:1;min-width:0"><div>서버 감시</div><div style="font-size:11px;font-weight:400;color:#4caf82;margin-top:2px">폴러 상태·서버화면·푸시 알림</div></div>'+
+        '</button>'+
       '</div>'+
     '</div>';
   document.body.appendChild(sheet);
@@ -3592,7 +3595,7 @@ function go(tab){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   var el=document.getElementById('ni-'+tab);if(el)el.classList.add('on');
   // 권한/연락처/설정은 모두 ni-cfg 탭을 활성 표시
-  if(tab==='ap'||tab==='ph'||tab==='cfg'||tab==='sl'||tab==='az'){var cfgEl=document.getElementById('ni-cfg');if(cfgEl)cfgEl.classList.add('on');}
+  if(tab==='ap'||tab==='ph'||tab==='cfg'||tab==='sl'||tab==='az'||tab==='sv'){var cfgEl=document.getElementById('ni-cfg');if(cfgEl)cfgEl.classList.add('on');}
   // 일반 사용자 설정 하위 탭(비상연락망/정산)은 ni-usr-cfg 활성 표시
   if(tab==='er'||tab==='st'){var uCfgEl=document.getElementById('ni-usr-cfg');if(uCfgEl)uCfgEl.classList.add('on');}
   window.history.pushState({tab:tab,ts:Date.now()},'');
@@ -3608,7 +3611,8 @@ function go(tab){
   else if(tab==='az'){mc.innerHTML=pgAdminSettle();if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='az')mc.innerHTML=pgAdminSettle();}).catch(function(){});}
   else if(tab==='ap')mc.innerHTML=pgPermissions();
   else if(tab==='ph')mc.innerHTML=pgPhoneBook();
-  else if(tab==='cfg'){mc.innerHTML=pgSettings();setTimeout(svInit,60);}
+  else if(tab==='cfg')mc.innerHTML=pgSettings();
+  else if(tab==='sv'){mc.innerHTML=pgServerMon();setTimeout(function(){svInit(false);},60);}
   else if(tab==='sl')mc.innerHTML=pgSchedLog();
   else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();mdStartRqRefresh();},200);}
   else if(tab==='rq'){_rqTab='';mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
@@ -6896,6 +6900,11 @@ async function svInit(light){
 async function svReqShot(){try{await sbClient.from('app_settings').upsert({key:'server_shot_req',value:JSON.stringify(Date.now())},{onConflict:'key'});}catch(e){}var b=document.getElementById('sv-shot');if(b)b.innerHTML='<div style="padding:20px;text-align:center;color:#888;font-size:12px">📸 최신 화면 요청 중… 잠시 후 표시됩니다</div>';setTimeout(function(){svInit(false);},7000);}
 async function svSaveWebhook(){var el=document.getElementById('sv-wh');if(!el)return;var url=(el.value||'').trim();try{await sbClient.from('app_settings').upsert({key:'poller_teams_webhook',value:JSON.stringify(url)},{onConflict:'key'});}catch(e){}svInit(false);}
 async function svToggleTeams(){try{var r=await sbClient.from('app_settings').select('value').eq('key','poller_teams_notify').maybeSingle();var cur=r&&r.data&&r.data.value;if(typeof cur==='string'){try{cur=JSON.parse(cur);}catch(e){}}var eff=(cur!==false);var next=!eff;await sbClient.from('app_settings').upsert({key:'poller_teams_notify',value:JSON.stringify(next)},{onConflict:'key'});svInit();}catch(e){}}
+function pgServerMon(){
+  return '<div class="stit">&#x1FA7A; 서버 감시</div>'+
+    '<div style="font-size:12px;color:#78909c;margin:-4px 2px 12px">폴러·신선 상태와 서버 화면을 실시간 확인 · 이상 시 관리자에게 자동 푸시</div>'+
+    '<div class="card"><div id="sv-card">'+svCardHtml(null,null,true,'')+'</div></div>';
+}
 function pgSettings(){
   var cfg=getCfg();
   var schedChecks=['admin','leader','sub'].map(function(r){
@@ -6911,8 +6920,6 @@ function pgSettings(){
   var curAdminId=cfg.adminId||ROOT_ADMIN.id;
   var curAdminPw=cfg.adminPw||ROOT_ADMIN.pw;
   return '<div class="stit">&#x2699; 시스템 설정</div>'+
-    // ── 서버 감시 (관리자 전용) ──
-    '<div class="card"><div class="ctit">&#x1FA7A; 서버 감시</div><div id="sv-card">'+svCardHtml(null,null,true,'')+'</div></div>'+
     // ── Supabase 진단 (테스트 전용 — 삭제됨) ──
 
     // ── 관리자 계정 ──
