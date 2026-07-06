@@ -610,6 +610,14 @@ textarea.ann-input:focus{border-color:#1565c0}
       <div class="mt">&#x1F4E2; 공지사항 작성</div>
       <div class="fg"><label>제목</label><input type="text" id="ann-title-inp" placeholder="공지 제목"></div>
       <div class="fg"><label>내용</label><textarea class="ann-input" id="ann-body-inp" placeholder="공지 내용을 입력하세요..."></textarea></div>
+      <div class="fg" style="margin-top:2px"><label style="font-size:13px;font-weight:700;color:#333;margin-bottom:7px;display:block">📷 사진 첨부 <span style="font-size:11px;color:#888;font-weight:400">(선택 · 여러 장)</span></label>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button type="button" onclick="annPickPhoto(true)" style="flex:1;padding:9px 4px;background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">📷 촬영</button>
+          <button type="button" onclick="annPickPhoto(false)" style="flex:1;padding:9px 4px;background:#e8eaf6;color:#3949ab;border:1.5px solid #9fa8da;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">🖼️ 사진첩</button>
+        </div>
+        <div id="ann-fpreview"></div>
+        <input type="file" id="ann-file-inp" accept="image/*" multiple style="display:none" onchange="annHandlePhoto(this)">
+      </div>
       <div class="checkbox-row" id="ann-imp-row" style="display:none"><input type="checkbox" id="ann-imp"><label for="ann-imp">&#x2757; 중요 공지 — 최상단 고정 (팀장·관리자 전용)</label></div><div class="fg" style="margin-top:10px"><label style="font-size:13px;font-weight:700;color:#333;margin-bottom:7px;display:block">✨ 효과 <span style="font-size:11px;color:#888;font-weight:400">(접속 팝업·목록에서 강조)</span></label><div id="ann-fx-chips" style="display:flex;flex-wrap:wrap;gap:6px"><span class="ann-chip on" data-fx="" data-col="#607d8b" data-on="#607d8b" data-tx="#fff" onclick="annPickFx(this)" style="background:#607d8b;color:#fff">없음</span><span class="ann-chip" data-fx="siren" data-col="#e53935" data-on="#e53935" data-tx="#fff" onclick="annPickFx(this)" style="color:#e53935;border-color:#e53935">🚨 경광등</span><span class="ann-chip" data-fx="important" data-col="#caa200" data-on="#ffe600" data-tx="#d50000" onclick="annPickFx(this)" style="color:#caa200;border-color:#caa200">❗ 중요!</span><span class="ann-chip" data-fx="urgent" data-col="#ef6c00" data-on="#ef6c00" data-tx="#fff" onclick="annPickFx(this)" style="color:#ef6c00;border-color:#ef6c00">⚠️ 긴급</span><span class="ann-chip" data-fx="mustread" data-col="#7e57c2" data-on="#7e57c2" data-tx="#fff" onclick="annPickFx(this)" style="color:#7e57c2;border-color:#7e57c2">📌 필독</span><span class="ann-chip" data-fx="nw" data-col="#2e9e5b" data-on="#2e9e5b" data-tx="#fff" onclick="annPickFx(this)" style="color:#2e9e5b;border-color:#2e9e5b">✨ NEW</span><span class="ann-chip" data-fx="update" data-col="#1565c0" data-on="#1565c0" data-tx="#fff" onclick="annPickFx(this)" style="color:#1565c0;border-color:#1565c0">💫 앱업데이트</span><span class="ann-chip" data-fx="bar" data-col="#00897b" data-on="#00897b" data-tx="#fff" onclick="annPickFx(this)" style="color:#00897b;border-color:#00897b">📋 컬러바</span></div><input type="hidden" id="ann-effect" value=""></div>
       <div class="fg" style="margin-top:10px">
         <label style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px;display:block">📅 노출 기간 <span style="color:#e53935">*</span> <span style="font-size:11px;color:#888;font-weight:400">(기간 만료 후 자동 숨김)</span></label>
@@ -910,8 +918,9 @@ async function syncFromSupabase(){
             id:a.id,
             sb_id:a.id,
             title:a.title,
-            body:a.body||a.content||'',
-            content:a.body||a.content||'',
+            body:annSplit(a.body||a.content||'').t,
+            content:annSplit(a.body||a.content||'').t,
+            images:annSplit(a.body||a.content||'').imgs,
             author:a.author||'관리자',
             important:a.pinned||false,
             effect:a.effect||'',
@@ -1109,7 +1118,7 @@ function sbSaveDriver(d){
 // ── Supabase에 공지사항 저장 ──────────────────────────────────────────
 function sbSaveAnn(ann){
   if(!sbClient||!ann)return;
-  var obj={title:ann.title||'',body:ann.content||ann.body||'',
+  var obj={title:ann.title||'',body:(ann.content||ann.body||'')+((ann.images&&ann.images.length)?('[[TFIMG]]'+ann.images.join('|')):''),
            author:ann.author||'관리자',pinned:ann.important||false,effect:ann.effect||null,
            expire_at:ann.expireAt||null};
   if(ann.sb_id){
@@ -2375,7 +2384,8 @@ if('serviceWorker' in navigator){
                     '<div><div style="font-size:15px;font-weight:800;color:#1a237e">공지사항 '+impHtml+'</div>'+
                     '<div style="font-size:11px;color:#aaa">'+(d.author||'관리자')+' &middot; '+d.created_at+'</div></div></div>'+
                     '<div style="font-size:17px;font-weight:800;margin-bottom:14px;color:#1a1a1a">'+d.title+'</div>'+
-                    '<div style="font-size:14px;color:#444;line-height:1.8;background:#f8f9ff;border-radius:10px;padding:14px">'+(d.body||'').replace(/\n/g,'<br>')+'</div>';
+                    annImgRow(annSplit(d.body||'').imgs)+
+                    '<div style="font-size:14px;color:#444;line-height:1.8;background:#f8f9ff;border-radius:10px;padding:14px">'+annSplit(d.body||'').t.replace(/\n/g,'<br>')+'</div>';
                   pop.style.display='';
                 }
               }).catch(function(){});
@@ -3672,7 +3682,7 @@ async function _annFetchBrief(){
         var resolvedExpire=a.expire_at||(ex?ex.expireAt:null)||null;
         var autoExpired=resolvedExpire&&new Date(resolvedExpire).getTime()<=Date.now();
         var localDisabled=ex?(!!(ex.disabled)):false;
-        return {id:a.id,sb_id:a.id,title:a.title,body:a.body||a.content||'',content:a.body||a.content||'',author:a.author||'관리자',important:a.pinned||false,effect:a.effect||'',at:a.created_at,expireAt:resolvedExpire,expireDays:(ex?ex.expireDays:null)||null,readBy:mergedRby,disabled:autoExpired||localDisabled};
+        return {id:a.id,sb_id:a.id,title:a.title,body:annSplit(a.body||a.content||'').t,content:annSplit(a.body||a.content||'').t,images:annSplit(a.body||a.content||'').imgs,author:a.author||'관리자',important:a.pinned||false,effect:a.effect||'',at:a.created_at,expireAt:resolvedExpire,expireDays:(ex?ex.expireDays:null)||null,readBy:mergedRby,disabled:autoExpired||localDisabled};
       });
       localStorage.setItem('tfann',JSON.stringify(anns));
     }
@@ -4509,7 +4519,8 @@ function openAnnView(annId){
     '<div><div style="font-size:15px;font-weight:800;color:#1a237e">공지사항 '+impHtml+'</div>'+
     '<div style="font-size:11px;color:#aaa">'+a.author+' &middot; '+a.at+'</div></div></div>'+
     '<div style="font-size:17px;font-weight:800;margin-bottom:14px;color:#1a1a1a">'+a.title+'</div>'+
-    '<div style="font-size:14px;color:#444;line-height:1.8;background:#f8f9ff;border-radius:10px;padding:14px">'+a.body.replace(/\n/g,'<br>')+'</div>'+
+    annImgRow((a.images&&a.images.length)?a.images:annSplit(a.body).imgs)+
+    '<div style="font-size:14px;color:#444;line-height:1.8;background:#f8f9ff;border-radius:10px;padding:14px">'+annSplit(a.body).t.replace(/\n/g,'<br>')+'</div>'+
     checkBtn+_annMgmtHTML(a);
   document.getElementById('ann-popup').style.display='';
   _annPBtn('confirm');
@@ -4687,10 +4698,11 @@ function openAnnWrite(){
     if(lbl){lbl.style.border='2px solid #e0e0e0';lbl.style.background='#fff';lbl.style.fontWeight='400';lbl.style.color='#555';}
   });
   document.getElementById('ann-err').textContent='';
+  _annPhotos=[];var _afp1=document.getElementById('ann-fpreview');if(_afp1)_afp1.innerHTML='';var _afi=document.getElementById('ann-file-inp');if(_afi)_afi.value='';
 }
 function closeAnnWrite(){document.getElementById('ann-write-modal').style.display='none';}
 var _annSubmitting=false;
-function submitAnn(){
+async function submitAnn(){
   if(_annSubmitting)return; // 중복 클릭 방지
   var title=document.getElementById('ann-title-inp').value.trim();
   var body=document.getElementById('ann-body-inp').value.trim();
@@ -4703,9 +4715,10 @@ function submitAnn(){
   _annSubmitting=true;
   var btn=document.querySelector('#ann-write-modal .btn-p');
   if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+  var _annImgs=[];try{_annImgs=await annUploadPhotos();}catch(_e){console.error('annUpload',_e);}
   var anns=getAnns();
   var _eff=(document.getElementById('ann-effect')||{}).value||'';
-  var a={id:Date.now(),title:title,body:body,important:imp,effect:_eff,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name],expireAt:expireAt,expireDays:expireDays};
+  var a={id:Date.now(),title:title,body:body,important:imp,effect:_eff,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name],expireAt:expireAt,expireDays:expireDays,images:_annImgs};
   anns.push(a);saveAnns(anns);
   // 로컬 알림 + 전체 Push 발송
   var notifTitle='📢 팀플 - '+(imp?'[중요] ':'')+title;
@@ -4716,10 +4729,22 @@ function submitAnn(){
   _unreadAnnIds.push(a.id);
   startReminderTimer(notifTitle,notifBody);
   document.getElementById('ann-title-inp').value='';document.getElementById('ann-body-inp').value='';
+  _annPhotos=[];var _afp0=document.getElementById('ann-fpreview');if(_afp0)_afp0.innerHTML='';
   document.getElementById('ann-imp').checked=false;try{annResetFx();}catch(e){}
   setTimeout(function(){_annSubmitting=false;if(btn){btn.disabled=false;btn.textContent='공지 올리기';}},3000);
   closeAnnWrite();go(CU.role==='admin'?'ab':'nc');updateNavDots();
 }
+
+// ── 공지 사진 첨부 (저장 시 본문에 [[TFIMG]]url|url 로 붙이고, 불러올 때 분리) ──
+var _annPhotos=[];
+function annSplit(b){b=b||'';var m=b.indexOf('[[TFIMG]]');if(m<0)return{t:b,imgs:[]};return{t:b.slice(0,m).replace(/\s+$/,''),imgs:b.slice(m+9).split('|').filter(Boolean)};}
+function annImgRow(imgs){if(!imgs||!imgs.length)return '';var h='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';imgs.forEach(function(u){h+='<img src="'+u+'" onclick="annLightbox(\''+u+'\')" style="width:calc(50% - 4px);max-height:230px;object-fit:cover;border-radius:10px;cursor:pointer;border:1px solid #e6e6ea">';});h+='</div>';return h;}
+function annLightbox(u){var o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px';o.onclick=function(){o.remove();};o.innerHTML='<img src="'+u+'" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px">';document.body.appendChild(o);}
+function annPickPhoto(cam){var inp=document.getElementById('ann-file-inp');if(!inp)return;if(cam)inp.setAttribute('capture','camera');else inp.removeAttribute('capture');inp.value='';inp.click();}
+function annHandlePhoto(input){var files=Array.from(input.files||[]);if(!files.length)return;files.forEach(function(f){_annPhotos.push(f);});annRenderPreview();}
+function annRemovePhoto(i){_annPhotos.splice(i,1);annRenderPreview();}
+function annRenderPreview(){var prev=document.getElementById('ann-fpreview');if(!prev)return;prev.innerHTML='';_annPhotos.forEach(function(f,i){var fr=new FileReader();fr.onload=function(e){var d=document.createElement('div');d.style.cssText='position:relative;display:inline-block;margin:2px';d.innerHTML='<img src="'+e.target.result+'" style="width:62px;height:62px;object-fit:cover;border-radius:8px"><button type="button" onclick="annRemovePhoto('+i+')" style="position:absolute;top:-6px;right:-6px;background:#c62828;color:#fff;border:none;border-radius:50%;width:19px;height:19px;font-size:11px;cursor:pointer;line-height:1;padding:0">✕</button>';prev.appendChild(d);};fr.readAsDataURL(f);});}
+async function annUploadPhotos(){var urls=[];for(var i=0;i<_annPhotos.length;i++){var file=_annPhotos[i];var ext='jpg';if(file.type){ext=file.type.split('/').pop().replace('jpeg','jpg');}var path='ann-photos/'+Date.now()+'-'+i+'.'+ext;try{var up=await sbClient.storage.from('photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:true});if(!up.error){var pu=sbClient.storage.from('photos').getPublicUrl(path);if(pu&&pu.data&&pu.data.publicUrl)urls.push(pu.data.publicUrl);}else{console.error('annUpload',up.error);}}catch(e){console.error('annUpload ex',e);}}return urls;}
 
 // ── MY SCHEDULE (arrow navigation) ───────────────────────────────────
 function moveMyWeek(delta){
