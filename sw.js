@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v61 — 점검카드까지 shine 통일
-const CACHE_NAME = 'teamflex-v327';
+// TeamFlex Service Worker v62 — 돌고래떼 SVG 리얼 점프
+const CACHE_NAME = 'teamflex-v328';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
