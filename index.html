@@ -12194,10 +12194,7 @@ async function loadFreshStatus(){
     var _pddBtn=_pddBtnHtml(isAdmin,_pddShare,_pddMiss,_pddMiss*100000);
     var html=frKwPopupHtml+frTimePopupHtml+frNPH+'__ADMIN_BAR__'+
       '<div class="stit">&#x1F33F; 신선 현황</div>'+frKwBtn+
-      _pddBtn+
-      '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">'+
-        '<button onclick="loadFreshStatus()" style="background:#388e3c;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 새로고침</button>'+
-      '</div>'+r2Banner;
+      _pddBtn+r2Banner;
 
     if(fsRes.error||!fsRes.data||fsRes.data.length===0){
       html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>신선 배송 현황 데이터 없음<br><span style="font-size:11px;color:#999">수량 체크 실행 후 자동으로 업데이트됩니다</span></p></div>';
@@ -12629,7 +12626,7 @@ function _pddBtnHtml(isAdmin,share,miss,amt){
   var sm='<div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1;background:#fff;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#888">이번 미스</div><div style="font-size:16px;font-weight:800;color:#333">'+miss+'건</div></div><div style="flex:1;background:#fff;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#c62828">총 차감</div><div style="font-size:16px;font-weight:800;color:#c62828">'+_pddWon(amt)+'</div></div></div>';
   var full='<div onclick="showFreshPddLog()" style="cursor:pointer;background:#fde5ee;border:1px solid #f5b8d0;border-radius:14px;padding:11px 13px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#c2185b;font-size:14px;font-weight:700">&#x1F338; PDD MISS 기록 확인</span><span style="font-size:11px;color:#c2185b">열기 &#x203A;</span></div>';
   if(isAdmin) return full+sm+'</div>';
-  if(share){ var lead=(CU&&CU.role==='leader'); return full+(lead?sm:'')+'</div>'; }
+  if(share){ return full+sm+'</div>'; }
   return '<div onclick="alert(\'\\uD83D\\uDD27 업데이트 테스트 중입니다\')" style="cursor:pointer;background:#f6eef1;border:1px solid #e3c9d4;border-radius:14px;padding:12px 13px;margin-bottom:10px;opacity:.85"><div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#a86985;font-size:14px;font-weight:700">&#x1F338; PDD MISS 기록</span><span style="font-size:10px;background:#bbb;color:#fff;padding:2px 9px;border-radius:20px">준비중</span></div></div>';
 }
 function _pddShowName(e){
