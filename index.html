@@ -719,7 +719,7 @@ textarea.ann-input:focus{border-color:#1565c0}
     </div>
     <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0">
-        <button id="btnRefresh" onclick="doManualRefresh()" style="background:rgba(255,255,255,.18);border:none;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:16px;cursor:pointer;white-space:nowrap">&#x1F504; 동기화</button>
+        <button id="btnRefresh" onclick="doManualRefresh()" style="background:rgba(255,255,255,.18);border:none;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:16px;cursor:pointer;white-space:nowrap">&#x1F504; 새로고침</button>
         <span id="sync-status-lbl" style="font-size:10px;color:rgba(255,255,255,.5);padding-right:4px;white-space:nowrap"></span>
       </div>
       <button class="btn-lo" onclick="openPwModal()">&#x1F512;</button>
@@ -2117,8 +2117,7 @@ document.addEventListener('visibilitychange',function(){
     var before=_awHash();
     Promise.all([syncFromSupabase(), loadFeatureControls(), loadSchedSettings()]).then(function(){
       var after=_awHash();
-      // 항상 화면 갱신 (스크롤 위치 보존) — 변경 여부와 무관하게 최신 데이터 표시
-      _reRenderCurTab();
+      // 자동 재렌더 제거 — 동기화(새로고침) 버튼 누를 때만 갱신
       if(after!==before){
         console.log('[Auto] 변경 감지 → 화면 갱신 + 알림');
         // "팀플" 알림 소리
@@ -2140,7 +2139,7 @@ document.addEventListener('visibilitychange',function(){
 // ── 수동 새로고침 버튼 (헤더 버튼으로만 동기화) ──────────────────────
 function doManualRefresh(){
   var btn=document.getElementById('btnRefresh');
-  if(btn){btn.disabled=true;btn.innerHTML='&#x1F504; 동기화 중...';}
+  if(btn){btn.disabled=true;btn.innerHTML='&#x1F504; 새로고침 중...';}
   if(sbClient){
     // 기사/공지 동기화 + 스케줄(share 포함) 동기화 동시 실행
     Promise.all([syncFromSupabase(), schedRefresh()]).then(function(){
@@ -12594,7 +12593,7 @@ async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRoute
     var cutoff=new Date();cutoff.setDate(cutoff.getDate()-60);
     var cutoffStr=kstDateStr(cutoff);
     log=log.filter(function(e){return(e.date||'')>=cutoffStr;});
-    var added=false;
+    var added=false; var _pddNewW=[];
     missWorkers.forEach(function(w){
       var key=todayStr+'_'+w;
       if(_pddLogSaved[key])return;
@@ -12602,16 +12601,18 @@ async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRoute
       var already=log.some(function(e){return e.date===todayStr&&e.worker===w;});
       if(already)return;
       log.push({id:Date.now()+'_'+Math.random().toString(36).slice(2),date:todayStr,worker:w,route:wRouteLabel(w),miss:wPdd(w),status:'',confirmed:false});
-      added=true;
+      added=true; _pddNewW.push(w);
     });
     if(!added)return;
     await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(log)},{onConflict:'key'});
+    try{ var _sr=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_share_active').limit(1); var _sh=!!(_sr.data&&_sr.data[0]&&(_sr.data[0].value==='1'||_sr.data[0].value===1)); if(_sh){ _pddNewW.forEach(function(nw){ _pddPush(nw,'🔔 PDD 미스 발생','PDD 미스가 접수되었습니다. 신선 탭에서 확인해주세요.'); }); } }catch(_pe){}
   }catch(e){console.warn('[PDD LOG] 저장 실패:',e.message);}
 }
 
 /* ══════════ PDD MISS (사쿠라 버튼 → 팝업 / 정산월 26~25 / 역할 익명 / 상태·확정·삭제 / 공유활성화) ══════════ */
 var _PDD={log:[],share:false,month:0};
 var _PDD_D=100000;
+async function _pddPush(driverName,title,body){ try{ if(!driverName||!PUSH_EDGE_URL)return; await fetch(PUSH_EDGE_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({title:title,body:body,driver_name:driverName,data:{url:'/?tab=fr',type:'pdd_miss'}})}); }catch(e){} }
 function _pddPeriod(off){
   var d=new Date(Date.now()+9*3600000);
   var y=d.getUTCFullYear(), mo=d.getUTCMonth(), day=d.getUTCDate();
@@ -12651,7 +12652,7 @@ function _pddRowHtml(e){
   var show=_pddShowName(e);
   var nm=show?e.worker:'***', rt=show?(e.route||''):'***';
   var st=e.status||'', cancel=(st==='정상배송인정'), conf=!!e.confirmed, amt=(e.miss||0)*_PDD_D;
-  var STm={'':['공유중','#e3f2fd','#1565c0'],'사유확인중':['사유확인 중','#fff8e1','#ef6c00'],'정상배송인정':['정상배송 인정(취소)','#e8f5e9','#2e7d32'],'미공유':['기사 미공유(익명)','#ede7f6','#5e35b1']};
+  var STm={'':['공유중','#e3f2fd','#1565c0'],'사유확인중':['사유확인 중','#fff8e1','#ef6c00'],'정상배송인정':['정상배송 인정(취소)','#e8f5e9','#2e7d32'],'미공유':['담당자 미공유(익명)','#ede7f6','#5e35b1']};
   var bd=STm[st]||STm[''], showBadge=(admin||st==='사유확인중'||st==='정상배송인정');
   var badge=showBadge?'<span style="font-size:10px;font-weight:700;background:'+bd[1]+';color:'+bd[2]+';padding:2px 8px;border-radius:20px">'+bd[0]+'</span>':'';
   var confB=conf?' <span style="font-size:10px;font-weight:800;color:#fff;background:#2e7d32;padding:2px 7px;border-radius:20px">&#x2713; 확정</span>':'';
@@ -12659,14 +12660,14 @@ function _pddRowHtml(e){
   var nmS=show?'color:#1a237e':'color:#bbb;letter-spacing:3px';
   var ctrl='';
   if(admin){
-    var opts=[['','공유중'],['사유확인중','사유확인 중'],['정상배송인정','정상배송 인정(취소)'],['미공유','기사 미공유']].map(function(o){return '<option value="'+o[0]+'"'+(st===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');
+    var opts=[['','공유중'],['사유확인중','사유확인 중'],['정상배송인정','정상배송 인정(취소)'],['미공유','담당자 미공유']].map(function(o){return '<option value="'+o[0]+'"'+(st===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');
     ctrl='<div style="display:flex;gap:6px;margin-top:8px;align-items:center"><select onchange="pddSetStatus(\''+e.id+'\',this.value)" style="flex:1;padding:5px;border:1px solid #ccc;border-radius:7px;font-size:11px">'+opts+'</select>'
       +'<button onclick="pddToggleConfirm(\''+e.id+'\')" style="border:1px solid '+(conf?'#2e7d32':'#ccc')+';background:'+(conf?'#e8f5e9':'#fff')+';color:'+(conf?'#2e7d32':'#777')+';border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer">'+(conf?'&#x2713;확정':'확정')+'</button>'
       +'<button onclick="pddDelRecord(\''+e.id+'\')" style="border:1px solid #ef9a9a;background:#fff;color:#c62828;border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer">&#x1F5D1;</button></div>';
   }
   return '<div style="border:1px solid '+(conf?'#cfe3d0':'#eee')+';background:'+(cancel?'#f6faf6':'#fff')+';border-radius:12px;padding:10px 12px;margin-bottom:8px">'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;color:#666">'+(e.date||'')+'</span><span>'+badge+confB+meB+'</span></div>'
-    +'<div style="font-size:13px;color:#333">기사 <b style="'+nmS+'">'+nm+'</b> &#xB7; 라우트 <b style="'+nmS+'">'+rt+'</b></div>'
+    +'<div style="font-size:13px;color:#333">담당자 <b style="'+nmS+'">'+nm+'</b> &#xB7; 라우트 <b style="'+nmS+'">'+rt+'</b></div>'
     +'<div style="font-size:12px;color:#555;margin-top:4px">미스 <b style="color:#c62828">'+(e.miss||0)+'건</b> &#x2192; 차감 <b style="color:#c62828;'+(cancel?'text-decoration:line-through;color:#999':'')+'">'+_pddWon(amt)+'</b>'+(cancel?' <b style="color:#2e7d32">취소</b>':'')+'</div>'
     +ctrl+'</div>';
 }
@@ -12678,7 +12679,7 @@ function _pddRenderPopup(){
   var rows=list.length?list.map(_pddRowHtml).join(''):'<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">이번 정산월 기록 없음</div>';
   function mb(off,t){var a=(_PDD.month===off);return '<button onclick="pddSetMonth('+off+')" style="flex:1;padding:7px;border:1px solid '+(a?'#c2185b':'#ddd')+';background:'+(a?'#fce4ec':'#fff')+';color:'+(a?'#c2185b':'#777')+';border-radius:8px;font-size:12px;font-weight:'+(a?'700':'400')+';cursor:pointer">'+t+'</button>';}
   var monthTab='<div style="display:flex;gap:6px;margin-bottom:10px">'+mb(0,'이번 달')+mb(-1,'지난 달')+'</div>';
-  var shareBar=admin?('<div style="display:flex;align-items:center;justify-content:space-between;background:'+(_PDD.share?'#e8f5e9':'#f2f2f2')+';border-radius:10px;padding:9px 12px;margin-bottom:10px"><span style="font-size:12px;font-weight:700;color:'+(_PDD.share?'#2e7d32':'#888')+'">&#x1F465; 팀장&#xB7;기사 공유 '+(_PDD.share?'활성화됨':'비활성(테스트중)')+'</span><button onclick="pddToggleShare()" style="border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:800;color:#fff;background:'+(_PDD.share?'#2e7d32':'#9e9e9e')+';cursor:pointer">'+(_PDD.share?'&#x25CF; ON':'&#x25CB; OFF')+'</button></div>'):'';
+  var shareBar=admin?('<div style="display:flex;align-items:center;justify-content:space-between;background:'+(_PDD.share?'#e8f5e9':'#f2f2f2')+';border-radius:10px;padding:9px 12px;margin-bottom:10px"><span style="font-size:12px;font-weight:700;color:'+(_PDD.share?'#2e7d32':'#888')+'">&#x1F465; 팀장&#xB7;담당자 공유 '+(_PDD.share?'활성화됨':'비활성(테스트중)')+'</span><button onclick="pddToggleShare()" style="border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:800;color:#fff;background:'+(_PDD.share?'#2e7d32':'#9e9e9e')+';cursor:pointer">'+(_PDD.share?'&#x25CF; ON':'&#x25CB; OFF')+'</button></div>'):'';
   var delAll=(admin&&list.length)?'<button onclick="deletePddLogAll()" style="width:100%;margin-top:8px;padding:9px;background:#fff;color:#c62828;border:1px solid #ef9a9a;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">전체 삭제</button>':'';
   var popup='<div id="pdd-log-popup" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:20100;display:flex;align-items:flex-end;justify-content:center">'
     +'<div style="background:#fff;width:100%;max-width:480px;max-height:94%;border-radius:18px 18px 0 0;overflow:auto;padding:14px">'
@@ -12691,7 +12692,7 @@ function _pddRenderPopup(){
 }
 async function _pddSave(){ try{ await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(_PDD.log)},{onConflict:'key'}); }catch(e){} }
 function pddSetMonth(off){ _PDD.month=off; _pddRenderPopup(); }
-async function pddSetStatus(id,st){ var e=_PDD.log.filter(function(x){return String(x.id)===String(id);})[0]; if(e){e.status=st; await _pddSave(); _pddRenderPopup();} }
+async function pddSetStatus(id,st){ var e=_PDD.log.filter(function(x){return String(x.id)===String(id);})[0]; if(e){e.status=st; await _pddSave(); if(_PDD.share&&st!=='미공유'){var _m={'':'PDD 미스가 공유되었습니다.','사유확인중':'PDD 미스 사유를 확인 중입니다.','정상배송인정':'PDD 미스가 정상배송으로 인정되어 취소되었습니다.'}; _pddPush(e.worker,'📌 PDD 미스 상태 변경',_m[st]||'PDD 미스 상태가 변경되었습니다.');} _pddRenderPopup();} }
 async function pddToggleConfirm(id){ var e=_PDD.log.filter(function(x){return String(x.id)===String(id);})[0]; if(e){e.confirmed=!e.confirmed; await _pddSave(); _pddRenderPopup();} }
 async function pddDelRecord(id){ if(!confirm('이 기록을 삭제할까요?'))return; _PDD.log=_PDD.log.filter(function(x){return String(x.id)!==String(id);}); await _pddSave(); _pddRenderPopup(); }
 async function pddToggleShare(){ _PDD.share=!_PDD.share; try{ await sbClient.from('app_settings').upsert({key:'fresh_pdd_share_active',value:_PDD.share?'1':'0'},{onConflict:'key'}); }catch(e){} _pddRenderPopup(); }
