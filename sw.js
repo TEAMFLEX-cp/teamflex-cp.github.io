@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v52 — 홈 감성 배경(계절+날씨) + 점검카드 2상태
-const CACHE_NAME = 'teamflex-v318';
+// TeamFlex Service Worker v53 — 홈 카드 전체 글래스 통일 + 계절/날씨 배경
+const CACHE_NAME = 'teamflex-v319';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
