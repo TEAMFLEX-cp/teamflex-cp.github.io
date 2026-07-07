@@ -52,6 +52,21 @@
   .jp .day{min-width:14px;width:14px;background:#f0f0f0;font-weight:700}
   .jp .mk{min-width:14px;width:14px;font-size:9px;font-weight:700;height:14px}
   .jp .hd2{background:#f0f0f0;font-weight:700}
+  /* A4 꽉 채운 공식 서식 */
+  .fm-law{font-size:8px;color:#333}
+  .fm-ttl{text-align:center;font-weight:800;letter-spacing:3px;font-size:20px;margin:2px 0 6px}
+  .fm-info{border-collapse:collapse;width:100%;color:#000}
+  .fm-info td{border:1px solid #333;text-align:center;font-size:11px;padding:3px 4px}
+  .fm-info .k{background:#f0f0f0;font-weight:700}
+  .fm-mw{flex:1;display:flex;margin-top:-1px}
+  .fm-main{border-collapse:collapse;width:100%;table-layout:fixed;height:100%;color:#000}
+  .fm-main th,.fm-main td{border:1px solid #333;text-align:center}
+  .fm-main th{background:#f0f0f0;font-weight:700;font-size:10.5px}
+  .fm-main .cat{background:#f7f7f7;font-weight:700;font-size:11px;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:2px}
+  .fm-main .nm2{text-align:left;font-size:9.5px;padding:0 5px;line-height:1.12}
+  .fm-main .mk{font-size:12.5px;font-weight:700}
+  .fm-main .x{color:#c62828}.fm-main .mi{color:#666}
+  .fm-main .rowh{background:#f0f0f0;font-weight:700;font-size:10px}
 </style>
 </head>
 <body>
@@ -246,28 +261,28 @@ function buildForm(){
   var yp=VIEW.split('-');var days=MDATA.days||{};var dim=daysInMonth(VIEW);
   var sig=REG&&REG.sig;
   function markFor(day,idx){var dd=days[day];if(!dd)return '';if(dd.off)return '미';var v=dd.items&&dd.items[idx];if(!v)return '';if(v==='x')return '×';if(v==='mi')return '미';return '○';}
-  var h='<div style="text-align:center;font-size:14px;font-weight:800;letter-spacing:2px;margin-bottom:6px">운수종사자 일상점검표</div>';
-  h+='<table class="jp" style="width:100%;table-layout:fixed"><tr><td class="hd2" style="width:60px">점검연월</td><td>'+yp[0]+'년 '+(+yp[1])+'월</td><td class="hd2" style="width:76px">운송사업자명</td><td>'+esc(REG&&REG.company||'')+'</td><td class="hd2" style="width:54px">차량번호</td><td>'+esc(REG&&REG.vehicle||'')+'</td><td class="hd2" style="width:78px">운수종사자명</td><td>'+esc(USER)+'</td></tr></table>';
-  h+='<table class="jp" style="width:100%;margin-top:-1px"><thead><tr><th class="hd2" colspan="2" rowspan="2">점검항목</th><th class="hd2" colspan="31">점검결과 ( 양호 ○ , 불량 × , 미운행시 "미" 기입 )</th></tr><tr>';
-  for(var d=1;d<=31;d++)h+='<th class="day">'+d+'</th>';
+  var cg='<colgroup><col style="width:2.4%"><col style="width:16.6%">';for(var d0=1;d0<=31;d0++)cg+='<col style="width:2.61%">';cg+='</colgroup>';
+  var h='<div class="fm-law">■ 화물자동차 운수사업법 시행규칙 [별지 제14호의5서식] [시행 2026. 6. 30.]</div>';
+  h+='<div class="fm-ttl">운수종사자 일상점검표</div>';
+  h+='<table class="fm-info"><tr><td class="k" style="width:8%">점검연월</td><td style="width:17%">'+yp[0]+'년 '+(+yp[1])+'월</td><td class="k" style="width:9%">운송사업자명</td><td style="width:16%">'+esc(REG&&REG.company||'')+'</td><td class="k" style="width:8%">차량번호</td><td style="width:12%">'+esc(REG&&REG.vehicle||'')+'</td><td class="k" style="width:10%">운수종사자명</td><td>'+esc(USER)+'</td></tr></table>';
+  h+='<div class="fm-mw"><table class="fm-main">'+cg+'<thead><tr><th colspan="2" rowspan="2">점검항목</th><th colspan="31">점검결과 ( 양호 ○ , 불량 × , 미운행시 "미" 기입 )</th></tr><tr>';
+  for(var d=1;d<=31;d++)h+='<th>'+d+'</th>';
   h+='</tr></thead><tbody>';
   for(var r=0;r<ITEMS.length;r++){h+='<tr>';if(ITEMS[r][0])h+='<td class="cat" rowspan="'+CATSPAN[ITEMS[r][0]]+'">'+ITEMS[r][0]+'</td>';h+='<td class="nm2">'+ITEMS[r][1]+'</td>';
-    for(var c=1;c<=31;c++){var m=c<=dim?markFor(c,r):'';var col=m==='×'?'color:#c62828':(m==='미'?'color:#888':'');h+='<td class="mk" style="'+col+'">'+m+'</td>';}
+    for(var c=1;c<=31;c++){var m=c<=dim?markFor(c,r):'';h+='<td class="mk '+(m==='×'?'x':m==='미'?'mi':'')+'">'+m+'</td>';}
     h+='</tr>';}
-  // 서명행
-  h+='<tr><td class="hd2" colspan="2">점검자 확인(서명)</td>';
-  for(var c2=1;c2<=31;c2++){var dd=days[c2];var v='';if(dd&&!dd.off&&sig){v='<img src="'+sig+'" style="height:12px">';}else if(dd&&dd.off){v='<span style="font-size:6px;color:#888">휴</span>';}h+='<td class="mk">'+v+'</td>';}
+  h+='<tr><td class="rowh" colspan="2">점검자 확인(서명)</td>';
+  for(var c2=1;c2<=31;c2++){var dd=days[c2];var v='';if(dd&&!dd.off&&sig){v='<img src="'+sig+'" style="height:16px">';}else if(dd&&dd.off){v='<span style="font-size:8px;color:#888">휴</span>';}h+='<td>'+v+'</td>';}
   h+='</tr>';
-  // 불량조치
   var memos=[];for(var mc=1;mc<=dim;mc++){var d2=days[mc];if(d2&&d2.memo)memos.push(mc+'일: '+d2.memo);}
-  h+='<tr><td class="hd2" colspan="2" style="height:30px">불량상태 조치 기록</td><td colspan="31" style="text-align:left;font-size:8px;padding:3px 5px;vertical-align:top">'+esc(memos.join('  /  '))+'</td></tr>';
-  h+='</tbody></table>';
+  h+='<tr><td class="rowh" colspan="2">불량상태 조치 기록</td><td colspan="31" style="text-align:left;font-size:9.5px;padding:4px 6px;vertical-align:top">'+esc(memos.join('  /  '))+'</td></tr>';
+  h+='</tbody></table></div>';
   return h;
 }
 function openForm(){
   var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><b style="font-size:15px">📋 공식 서식 (상시 비치)</b><span onclick="closeSheet()" style="font-size:20px;color:#999;cursor:pointer">×</span></div>';
   h+='<div style="display:flex;gap:7px;margin-bottom:10px"><button class="btn b-red" style="flex:1" onclick="dlPDF()">📄 PDF</button><button class="btn b-green" style="flex:1" onclick="dlExcel()">📊 Excel</button></div>';
-  h+='<div style="overflow-x:auto;border:1px solid #ccc;border-radius:8px;padding:8px;background:#fff"><div id="formbox" style="min-width:640px">'+buildForm()+'</div></div>';
+  h+='<div style="overflow-x:auto;border:1px solid #ccc;border-radius:8px;padding:8px;background:#fff"><div id="formbox" style="width:940px;height:664px;display:flex;flex-direction:column">'+buildForm()+'</div></div>';
   document.getElementById('sheet').innerHTML=h;openSheet();
 }
 
@@ -282,16 +297,16 @@ function saveBlob(blob,name){var a=document.createElement('a');a.href=URL.create
 function loadScript(src){return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
 function dlPDF(){
   var yp=VIEW.split('-');toast('PDF 만드는 중…');
-  // 임시 렌더 영역
-  var wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-9999px;top:0;background:#fff;padding:14px;width:1000px';
-  wrap.innerHTML='<div style="text-align:left;font-size:9px">■ 화물자동차 운수사업법 시행규칙 [별지 제14호의5서식]</div>'+buildForm();
+  // A4 가로 비율(297:210)에 꽉 차게 렌더
+  var wrap=document.createElement('div');
+  wrap.style.cssText='position:fixed;left:-99999px;top:0;width:1400px;height:990px;background:#fff;padding:24px 28px;box-sizing:border-box;display:flex;flex-direction:column;font-family:"Malgun Gothic",sans-serif';
+  wrap.innerHTML=buildForm();
   document.body.appendChild(wrap);
   var ok=function(){return typeof html2canvas!=='undefined'&&window.jspdf;};
   var chain=ok()?Promise.resolve():loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js').then(function(){return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');});
   chain.then(function(){return html2canvas(wrap,{scale:2,backgroundColor:'#fff'});}).then(function(canvas){
     var jsPDF=window.jspdf.jsPDF;var pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-    var pw=297,ph=210,iw=pw-16,ih=canvas.height*iw/canvas.width;if(ih>ph-16)ih=ph-16;
-    pdf.addImage(canvas.toDataURL('image/png'),'PNG',8,8,iw,ih);
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',6,5,285,200);
     pdf.save('일상점검표_'+yp[0]+yp[1]+'.pdf');
     document.body.removeChild(wrap);toast('PDF 저장');
   }).catch(function(){document.body.removeChild(wrap);toast('PDF 실패 · 인터넷 확인 후 다시');});
