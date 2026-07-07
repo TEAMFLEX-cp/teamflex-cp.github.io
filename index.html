@@ -12182,10 +12182,20 @@ async function loadFreshStatus(){
 
     var _canSeePddLog=(isAdmin||CU.role==='leader');
     var frNPH=isAdmin?'<div id="fr-notify-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10100;align-items:center;justify-content:center"><div style="background:#fff;border-radius:16px;padding:20px;width:92%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.25)"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700;color:#e65100">&#x1F514; 신선 알림 시간 설정</span><button onclick="closeFrNotifyPopup()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#757575;line-height:1">&#x2715;</button></div><div style="font-size:11px;color:#9e9e9e;margin-bottom:10px">해당 시간에 기사들 폰으로 신선 현황 알림을 발송합니다. (앱 푸시 알림)</div><div id="fr-notify-time-list" style="margin-bottom:10px;min-height:32px;display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px"><input id="fr-notify-input" type="text" placeholder="예: 20:00" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:13px" onkeydown="if(event.key===\'Enter\')addFrNotifyTime()"><button onclick="addFrNotifyTime()" style="padding:8px 14px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">추가</button></div></div></div>':'';
+    var _pddLog=[], _pddShare=false;
+    try{
+      var _plr=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
+      if(_plr.data&&_plr.data[0]){var _rv=_plr.data[0].value;_pddLog=(typeof _rv==='string')?JSON.parse(_rv):_rv;if(!Array.isArray(_pddLog))_pddLog=[];}
+      var _psr=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_share_active').limit(1);
+      _pddShare=!!(_psr.data&&_psr.data[0]&&(_psr.data[0].value==='1'||_psr.data[0].value===1||_psr.data[0].value===true));
+    }catch(_pe){}
+    var _pper=_pddPeriod(0);
+    var _pddMiss=_pddLog.filter(function(e){return (e.date||'')>=_pper.start&&(e.date||'')<=_pper.end;}).reduce(function(s,e){return s+((e.status==='정상배송인정')?0:(e.miss||0));},0);
+    var _pddBtn=_pddBtnHtml(isAdmin,_pddShare,_pddMiss,_pddMiss*100000);
     var html=frKwPopupHtml+frTimePopupHtml+frNPH+'__ADMIN_BAR__'+
       '<div class="stit">&#x1F33F; 신선 현황</div>'+frKwBtn+
+      _pddBtn+
       '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">'+
-        (_canSeePddLog?'<button onclick="showFreshPddLog()" style="background:#6a1b9a;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x26A0; PDD 기록</button>':'')+
         '<button onclick="loadFreshStatus()" style="background:#388e3c;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">&#x1F504; 새로고침</button>'+
       '</div>'+r2Banner;
 
@@ -12594,7 +12604,7 @@ async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRoute
       _pddLogSaved[key]=true;
       var already=log.some(function(e){return e.date===todayStr&&e.worker===w;});
       if(already)return;
-      log.push({id:Date.now()+'_'+Math.random().toString(36).slice(2),date:todayStr,worker:w,route:wRouteLabel(w),miss:wPdd(w)});
+      log.push({id:Date.now()+'_'+Math.random().toString(36).slice(2),date:todayStr,worker:w,route:wRouteLabel(w),miss:wPdd(w),status:'',confirmed:false});
       added=true;
     });
     if(!added)return;
@@ -12602,17 +12612,105 @@ async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRoute
   }catch(e){console.warn('[PDD LOG] 저장 실패:',e.message);}
 }
 
+/* ══════════ PDD MISS (사쿠라 버튼 → 팝업 / 정산월 26~25 / 역할 익명 / 상태·확정·삭제 / 공유활성화) ══════════ */
+var _PDD={log:[],share:false,month:0};
+var _PDD_D=100000;
+function _pddPeriod(off){
+  var d=new Date(Date.now()+9*3600000);
+  var y=d.getUTCFullYear(), mo=d.getUTCMonth(), day=d.getUTCDate();
+  var base=mo; if(day>=26) base=mo+1; base+=(off||0);
+  var end=new Date(Date.UTC(y,base,25)), start=new Date(Date.UTC(y,base-1,26));
+  function s(t){return t.getUTCFullYear()+'-'+String(t.getUTCMonth()+1).padStart(2,'0')+'-'+String(t.getUTCDate()).padStart(2,'0');}
+  function L(t){return t.getUTCFullYear()+'.'+String(t.getUTCMonth()+1).padStart(2,'0')+'.'+String(t.getUTCDate()).padStart(2,'0');}
+  return {start:s(start),end:s(end),label:L(start)+' ~ '+L(end).slice(5)};
+}
+function _pddWon(n){return (n||0).toLocaleString('ko-KR')+'원';}
+function _pddBtnHtml(isAdmin,share,miss,amt){
+  var sm='<div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1;background:#fff;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#888">이번 미스</div><div style="font-size:16px;font-weight:800;color:#333">'+miss+'건</div></div><div style="flex:1;background:#fff;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#c62828">총 차감</div><div style="font-size:16px;font-weight:800;color:#c62828">'+_pddWon(amt)+'</div></div></div>';
+  var full='<div onclick="showFreshPddLog()" style="cursor:pointer;background:#fde5ee;border:1px solid #f5b8d0;border-radius:14px;padding:11px 13px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#c2185b;font-size:14px;font-weight:700">&#x1F338; PDD MISS 기록 확인</span><span style="font-size:11px;color:#c2185b">열기 &#x203A;</span></div>';
+  if(isAdmin) return full+sm+'</div>';
+  if(share){ var lead=(CU&&CU.role==='leader'); return full+(lead?sm:'')+'</div>'; }
+  return '<div onclick="alert(\'\\uD83D\\uDD27 업데이트 테스트 중입니다\')" style="cursor:pointer;background:#f6eef1;border:1px solid #e3c9d4;border-radius:14px;padding:12px 13px;margin-bottom:10px;opacity:.85"><div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#a86985;font-size:14px;font-weight:700">&#x1F338; PDD MISS 기록</span><span style="font-size:10px;background:#bbb;color:#fff;padding:2px 9px;border-radius:20px">준비중</span></div></div>';
+}
+function _pddShowName(e){
+  var role=(CU&&CU.role)||'', me=(CU&&CU.name)||'';
+  if(role==='admin')return true;
+  if(e.status==='미공유')return false;
+  if(e.status==='정상배송인정')return role==='leader';
+  if(role==='leader')return true;
+  return e.worker===me;
+}
+function _pddNotice(){
+  return '<div style="background:#fff5f5;border:1px solid #f3c0c0;border-radius:12px;padding:11px 12px;margin-bottom:12px;font-size:11.5px;color:#7a2c2c;line-height:1.6">'
+    +'<div style="font-weight:800;color:#c62828;font-size:12px;margin-bottom:6px">&#x26A0; 신선 PDD MISS 안내</div>'
+    +'<div>&#x2022; 미스 1건당 <b>100,000원 차감</b> &#xB7; 전액 개인 기부로 기부증 전달<br>&#x2022; 어플 오작동 miss (본사 확인하여 인정되지 않으면 miss로 판정)<br>&#x2022; 선완료 등으로 인한 인입 또는 miss 판정<br>&#x2022; 통신 저하&#xB7;시간 초과 miss<br>&#x2022; 20시 이후 사진 중복 촬영으로 miss</div>'
+    +'<div style="margin-top:8px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:8px;padding:8px 10px;color:#e65100;font-weight:800;font-size:12px;line-height:1.5">&#x1F557; 신선 체크는 프로그램으로 <u>20시 이후에도 정확히 미스가 감지</u>됩니다!<br>어플 조작 미스(중복 사진 촬영)로 miss 발생하지 않도록 각별히 주의하세요.</div>'
+    +'<div style="margin-top:7px;font-weight:800;color:#c62828">신선 PDD MISS는 어떤 이유든 미스입니다.</div>'
+    +'<div style="margin-top:3px;font-weight:800;color:#b71c1c">SLA 점수 반영 부분으로 절대 발생하면 안 되기에 강력하게 제재합니다.</div></div>';
+}
+function _pddRowHtml(e){
+  var role=(CU&&CU.role)||'', me=(CU&&CU.name)||'', admin=(role==='admin');
+  var own=(role!=='admin'&&role!=='leader'&&e.worker===me);
+  var show=_pddShowName(e);
+  var nm=show?e.worker:'***', rt=show?(e.route||''):'***';
+  var st=e.status||'', cancel=(st==='정상배송인정'), conf=!!e.confirmed, amt=(e.miss||0)*_PDD_D;
+  var STm={'':['공유중','#e3f2fd','#1565c0'],'사유확인중':['사유확인 중','#fff8e1','#ef6c00'],'정상배송인정':['정상배송 인정(취소)','#e8f5e9','#2e7d32'],'미공유':['기사 미공유(익명)','#ede7f6','#5e35b1']};
+  var bd=STm[st]||STm[''], showBadge=(admin||st==='사유확인중'||st==='정상배송인정');
+  var badge=showBadge?'<span style="font-size:10px;font-weight:700;background:'+bd[1]+';color:'+bd[2]+';padding:2px 8px;border-radius:20px">'+bd[0]+'</span>':'';
+  var confB=conf?' <span style="font-size:10px;font-weight:800;color:#fff;background:#2e7d32;padding:2px 7px;border-radius:20px">&#x2713; 확정</span>':'';
+  var meB=(own&&show&&(st===''||st==='사유확인중'))?' <span style="font-size:10px;font-weight:700;color:#fff;background:#1976d2;padding:2px 7px;border-radius:20px">나</span>':'';
+  var nmS=show?'color:#1a237e':'color:#bbb;letter-spacing:3px';
+  var ctrl='';
+  if(admin){
+    var opts=[['','공유중'],['사유확인중','사유확인 중'],['정상배송인정','정상배송 인정(취소)'],['미공유','기사 미공유']].map(function(o){return '<option value="'+o[0]+'"'+(st===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');
+    ctrl='<div style="display:flex;gap:6px;margin-top:8px;align-items:center"><select onchange="pddSetStatus(\''+e.id+'\',this.value)" style="flex:1;padding:5px;border:1px solid #ccc;border-radius:7px;font-size:11px">'+opts+'</select>'
+      +'<button onclick="pddToggleConfirm(\''+e.id+'\')" style="border:1px solid '+(conf?'#2e7d32':'#ccc')+';background:'+(conf?'#e8f5e9':'#fff')+';color:'+(conf?'#2e7d32':'#777')+';border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer">'+(conf?'&#x2713;확정':'확정')+'</button>'
+      +'<button onclick="pddDelRecord(\''+e.id+'\')" style="border:1px solid #ef9a9a;background:#fff;color:#c62828;border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer">&#x1F5D1;</button></div>';
+  }
+  return '<div style="border:1px solid '+(conf?'#cfe3d0':'#eee')+';background:'+(cancel?'#f6faf6':'#fff')+';border-radius:12px;padding:10px 12px;margin-bottom:8px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;color:#666">'+(e.date||'')+'</span><span>'+badge+confB+meB+'</span></div>'
+    +'<div style="font-size:13px;color:#333">기사 <b style="'+nmS+'">'+nm+'</b> &#xB7; 라우트 <b style="'+nmS+'">'+rt+'</b></div>'
+    +'<div style="font-size:12px;color:#555;margin-top:4px">미스 <b style="color:#c62828">'+(e.miss||0)+'건</b> &#x2192; 차감 <b style="color:#c62828;'+(cancel?'text-decoration:line-through;color:#999':'')+'">'+_pddWon(amt)+'</b>'+(cancel?' <b style="color:#2e7d32">취소</b>':'')+'</div>'
+    +ctrl+'</div>';
+}
+function _pddRenderPopup(){
+  var role=(CU&&CU.role)||'', admin=(role==='admin');
+  var per=_pddPeriod(_PDD.month);
+  var list=_PDD.log.filter(function(e){return (e.date||'')>=per.start&&(e.date||'')<=per.end;});
+  list.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
+  var rows=list.length?list.map(_pddRowHtml).join(''):'<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">이번 정산월 기록 없음</div>';
+  function mb(off,t){var a=(_PDD.month===off);return '<button onclick="pddSetMonth('+off+')" style="flex:1;padding:7px;border:1px solid '+(a?'#c2185b':'#ddd')+';background:'+(a?'#fce4ec':'#fff')+';color:'+(a?'#c2185b':'#777')+';border-radius:8px;font-size:12px;font-weight:'+(a?'700':'400')+';cursor:pointer">'+t+'</button>';}
+  var monthTab='<div style="display:flex;gap:6px;margin-bottom:10px">'+mb(0,'이번 달')+mb(-1,'지난 달')+'</div>';
+  var shareBar=admin?('<div style="display:flex;align-items:center;justify-content:space-between;background:'+(_PDD.share?'#e8f5e9':'#f2f2f2')+';border-radius:10px;padding:9px 12px;margin-bottom:10px"><span style="font-size:12px;font-weight:700;color:'+(_PDD.share?'#2e7d32':'#888')+'">&#x1F465; 팀장&#xB7;기사 공유 '+(_PDD.share?'활성화됨':'비활성(테스트중)')+'</span><button onclick="pddToggleShare()" style="border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:800;color:#fff;background:'+(_PDD.share?'#2e7d32':'#9e9e9e')+';cursor:pointer">'+(_PDD.share?'&#x25CF; ON':'&#x25CB; OFF')+'</button></div>'):'';
+  var delAll=(admin&&list.length)?'<button onclick="deletePddLogAll()" style="width:100%;margin-top:8px;padding:9px;background:#fff;color:#c62828;border:1px solid #ef9a9a;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">전체 삭제</button>':'';
+  var popup='<div id="pdd-log-popup" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:20100;display:flex;align-items:flex-end;justify-content:center">'
+    +'<div style="background:#fff;width:100%;max-width:480px;max-height:94%;border-radius:18px 18px 0 0;overflow:auto;padding:14px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:15px;font-weight:800;color:#c2185b">&#x1F338; PDD MISS 기록 확인 ('+list.length+'건)</span><button onclick="var p=document.getElementById(\'pdd-log-popup\');if(p)p.remove()" style="border:none;background:#eee;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer">&#x2715; 닫기</button></div>'
+    +monthTab
+    +'<div style="font-size:11px;color:#c2185b;background:#fdf0f5;border-radius:8px;padding:5px 10px;margin-bottom:10px;display:inline-block">&#x1F4C5; 정산월 &#xB7; '+per.label+'</div>'
+    +shareBar+_pddNotice()+rows+delAll+'</div></div>';
+  var ex=document.getElementById('pdd-log-popup'); if(ex)ex.remove();
+  document.body.insertAdjacentHTML('beforeend',popup);
+}
+async function _pddSave(){ try{ await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(_PDD.log)},{onConflict:'key'}); }catch(e){} }
+function pddSetMonth(off){ _PDD.month=off; _pddRenderPopup(); }
+async function pddSetStatus(id,st){ var e=_PDD.log.filter(function(x){return String(x.id)===String(id);})[0]; if(e){e.status=st; await _pddSave(); _pddRenderPopup();} }
+async function pddToggleConfirm(id){ var e=_PDD.log.filter(function(x){return String(x.id)===String(id);})[0]; if(e){e.confirmed=!e.confirmed; await _pddSave(); _pddRenderPopup();} }
+async function pddDelRecord(id){ if(!confirm('이 기록을 삭제할까요?'))return; _PDD.log=_PDD.log.filter(function(x){return String(x.id)!==String(id);}); await _pddSave(); _pddRenderPopup(); }
+async function pddToggleShare(){ _PDD.share=!_PDD.share; try{ await sbClient.from('app_settings').upsert({key:'fresh_pdd_share_active',value:_PDD.share?'1':'0'},{onConflict:'key'}); }catch(e){} _pddRenderPopup(); }
 async function showFreshPddLog(){
   if(!sbClient)return;
   try{
     var res=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_miss_log').limit(1);
-    var log=[];
-    if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
-    log.sort(function(a,b){return(b.date||'').localeCompare(a.date||'');});
-    var isAdmin=(CU&&CU.role==='admin');
-    _renderPddLogPopup(log,isAdmin);
+    var log=[]; if(res.data&&res.data.length>0){var raw=res.data[0].value;log=(typeof raw==='string')?JSON.parse(raw):raw;if(!Array.isArray(log))log=[];}
+    var sr=await sbClient.from('app_settings').select('value').eq('key','fresh_pdd_share_active').limit(1);
+    var share=!!(sr.data&&sr.data[0]&&(sr.data[0].value==='1'||sr.data[0].value===1||sr.data[0].value===true));
+    if((CU&&CU.role)!=='admin'&&!share){ alert('🔧 업데이트 테스트 중입니다'); return; }
+    _PDD.log=log; _PDD.share=share;
+    _pddRenderPopup();
   }catch(e){alert('기록 불러오기 실패: '+e.message);}
 }
+
 
 function _renderPddLogPopup(log,canDelete){
   var existing=document.getElementById('pdd-log-popup');
