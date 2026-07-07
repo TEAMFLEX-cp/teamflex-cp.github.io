@@ -3927,12 +3927,16 @@ function hbgInit(){ if(document.getElementById('hbg'))return;
   +'@keyframes hglow{0%,100%{box-shadow:0 0 0 0 rgba(255,90,110,.5),0 6px 18px rgba(255,90,90,.35)}50%{box-shadow:0 0 20px 5px rgba(255,110,130,.6),0 6px 20px rgba(255,90,90,.4)}}'
   +'.hspk{position:absolute;font-size:12px;animation:htwk 1.6s infinite;pointer-events:none;z-index:2}'
   +'#hbg .hp{position:absolute;top:-30px;pointer-events:none;will-change:transform}'
-  +'.onhome .hero{background:rgba(255,255,255,.16)!important;-webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px);border:1px solid rgba(255,255,255,.36);box-shadow:0 8px 22px rgba(0,0,0,.12)!important;text-shadow:0 1px 3px rgba(0,0,0,.3)}'
+  +'.onhome .hero{background:rgba(255,255,255,.11)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3);box-shadow:0 6px 18px rgba(0,0,0,.1)!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
   +'.onhome #weather-card{background:transparent!important;box-shadow:none!important}'
-  +'.onhome #weather-card>div{background:rgba(255,255,255,.16)!important;-webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px);border:1px solid rgba(255,255,255,.36);text-shadow:0 1px 3px rgba(0,0,0,.3)}'
-  +'.onhome .ft-btn{background:rgba(255,255,255,.13)!important;-webkit-backdrop-filter:blur(11px);backdrop-filter:blur(11px);border:1px solid rgba(255,255,255,.32)!important;box-shadow:none!important;text-shadow:0 1px 3px rgba(0,0,0,.32)}'
-  +'.onhome .card{background:rgba(255,255,255,.16)!important;-webkit-backdrop-filter:blur(11px);backdrop-filter:blur(11px);border:1px solid rgba(255,255,255,.32)}'
-  +'.onhome .bn{background:rgba(255,255,255,.72)!important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.5)!important;box-shadow:0 -2px 14px rgba(0,0,0,.1)!important}';
+  +'.onhome #weather-card>div{background:rgba(255,255,255,.11)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3);text-shadow:0 1px 4px rgba(0,0,0,.35)}'
+  +'.onhome .ft-btn{background:rgba(255,255,255,.1)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3)!important;box-shadow:none!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
+  +'.onhome .card{background:rgba(255,255,255,.11)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3)}'
+  +'.onhome .bn{background:rgba(255,255,255,.13)!important;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);border-top:1px solid rgba(255,255,255,.28)!important;box-shadow:none!important}'
+  +'.onhome .bn .ni{color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.5)}'
+  +'.onhome .bn .ni.on{color:#ffe27a!important}'
+  +'.onhome .ah{background:transparent!important;box-shadow:none!important;border-bottom:none!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
+  +'.onhome .ah .btn-lo,.onhome .ah #btnRefresh{background:rgba(255,255,255,.18)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3)!important}';
   document.head.appendChild(st);
   var bg=document.createElement('div');bg.id='hbg';bg.style.cssText='position:fixed;inset:0;z-index:-1;display:none;pointer-events:none;overflow:hidden';
   document.body.insertBefore(bg,document.body.firstChild);
@@ -3953,7 +3957,7 @@ function hbgHide(){var bg=document.getElementById('hbg');if(bg)bg.style.display=
 function inspCardBody(state,cnt){
   if(state==='done'||state==='off'){
     var msg=state==='off'?'🛌 오늘 휴무':'✅ 오늘 점검 완료';
-    return '<div onclick="inspOpen()" style="cursor:pointer;border-radius:15px;padding:13px 15px;margin-bottom:12px;background:rgba(255,255,255,.16);backdrop-filter:blur(11px);-webkit-backdrop-filter:blur(11px);border:1px solid rgba(255,255,255,.34);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.32);display:flex;align-items:center;gap:11px"><span style="font-size:26px">&#x1F69B;</span><div style="flex:1"><div style="font-size:14px;font-weight:800">차량 일상점검</div><div style="font-size:11px;color:#c8f7dd;font-weight:700;margin-top:2px">'+msg+' &middot; 이번달 '+cnt+'일</div></div><span style="font-size:20px">&#x2714;&#xFE0F;</span></div>';
+    return '<div onclick="inspOpen()" style="cursor:pointer;border-radius:15px;padding:13px 15px;margin-bottom:12px;background:rgba(255,255,255,.11);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3);color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;gap:11px"><span style="font-size:26px">&#x1F69B;</span><div style="flex:1"><div style="font-size:14px;font-weight:800">차량 일상점검</div><div style="font-size:11px;color:#c8f7dd;font-weight:700;margin-top:2px">'+msg+' &middot; 이번달 '+cnt+'일</div></div><span style="font-size:20px">&#x2714;&#xFE0F;</span></div>';
   }
   return '<div onclick="inspOpen()" style="cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:14px 15px;margin-bottom:12px;background:linear-gradient(135deg,#ff5f6d,#ffc371);color:#fff;animation:hglow 1.8s infinite">'+
     '<span class="hspk" style="top:8px;left:44%">✨</span><span class="hspk" style="top:22px;right:16px;animation-delay:.5s">⭐</span>'+

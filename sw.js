@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v56 — 네비 유리 + hero/카드 유리 목업 일치
-const CACHE_NAME = 'teamflex-v322';
+// TeamFlex Service Worker v57 — 헤더·카드·네비 전부 투명유리 통일(계절배경 비침)
+const CACHE_NAME = 'teamflex-v323';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
