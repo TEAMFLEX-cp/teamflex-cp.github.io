@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v59 — 이름판제거·모래사장·네비글씨·전박스 shine
-const CACHE_NAME = 'teamflex-v325';
+// TeamFlex Service Worker v60 — 돌고래 점프 + 바다 바닥 고정
+const CACHE_NAME = 'teamflex-v326';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
