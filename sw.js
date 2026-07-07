@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v60 — 돌고래 점프 + 바다 바닥 고정
-const CACHE_NAME = 'teamflex-v326';
+// TeamFlex Service Worker v61 — 점검카드까지 shine 통일
+const CACHE_NAME = 'teamflex-v327';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
