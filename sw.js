@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v58 — 전탭 계절 파스텔 테마(고퀄 SVG 배경·유리박스·헤더이름판)
-const CACHE_NAME = 'teamflex-v324';
+// TeamFlex Service Worker v59 — 이름판제거·모래사장·네비글씨·전박스 shine
+const CACHE_NAME = 'teamflex-v325';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
