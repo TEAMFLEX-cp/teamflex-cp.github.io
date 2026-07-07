@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v57 — 헤더·카드·네비 전부 투명유리 통일(계절배경 비침)
-const CACHE_NAME = 'teamflex-v323';
+// TeamFlex Service Worker v58 — 전탭 계절 파스텔 테마(고퀄 SVG 배경·유리박스·헤더이름판)
+const CACHE_NAME = 'teamflex-v324';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -267,6 +267,4 @@ self.addEventListener('pushsubscriptionchange', e => {
           method: 'DELETE', headers: { apikey: SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
         });
       }
-    } catch (err) { /* 갱신 실패는 다음 앱 열기 때 subscribePush가 복구 */ }
-  })());
-});
+    } catch (err) { /* 갱신 실패는 다음 앱 열기 때 subscribePush가 

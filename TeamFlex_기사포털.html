@@ -3601,7 +3601,7 @@ function go(tab){
   if(tab==='er'||tab==='st'){var uCfgEl=document.getElementById('ni-usr-cfg');if(uCfgEl)uCfgEl.classList.add('on');}
   window.history.pushState({tab:tab,ts:Date.now()},'');
   var mc=document.getElementById('mc');
-  try{if(tab==='hm'){if(typeof hbgApply==='function')hbgApply();}else{if(typeof hbgHide==='function')hbgHide();}}catch(e){}
+  try{if(typeof hbgApply==='function')hbgApply(tab==='hm');}catch(e){}
   if(tab==='hm'){mc.innerHTML=pgHome();setTimeout(function(){try{inspHomeLoad();}catch(e){}},80);if(CU&&CU.role!=='admin'){try{tqLoadAlert().then(function(){if(CUR_TAB==='hm'){var _m=document.getElementById('mc');if(_m)_m.innerHTML=pgHome();try{inspHomeLoad();}catch(e){}}try{tqDriverPopup();}catch(_e){}});}catch(e){}}}
   else if(tab==='nc')mc.innerHTML=pgAnn(false);
   else if(tab==='my')mc.innerHTML=pgMySched();
@@ -3927,31 +3927,55 @@ function hbgInit(){ if(document.getElementById('hbg'))return;
   +'@keyframes hglow{0%,100%{box-shadow:0 0 0 0 rgba(255,90,110,.5),0 6px 18px rgba(255,90,90,.35)}50%{box-shadow:0 0 20px 5px rgba(255,110,130,.6),0 6px 20px rgba(255,90,90,.4)}}'
   +'.hspk{position:absolute;font-size:12px;animation:htwk 1.6s infinite;pointer-events:none;z-index:2}'
   +'#hbg .hp{position:absolute;top:-30px;pointer-events:none;will-change:transform}'
-  +'.onhome .hero{background:rgba(255,255,255,.11)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3);box-shadow:0 6px 18px rgba(0,0,0,.1)!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
-  +'.onhome #weather-card{background:transparent!important;box-shadow:none!important}'
-  +'.onhome #weather-card>div{background:rgba(255,255,255,.11)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3);text-shadow:0 1px 4px rgba(0,0,0,.35)}'
-  +'.onhome .ft-btn{background:rgba(255,255,255,.1)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3)!important;box-shadow:none!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
-  +'.onhome .card{background:rgba(255,255,255,.11)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3)}'
-  +'.onhome .bn{background:rgba(255,255,255,.13)!important;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);border-top:1px solid rgba(255,255,255,.28)!important;box-shadow:none!important}'
-  +'.onhome .bn .ni{color:#fff!important;text-shadow:0 1px 3px rgba(0,0,0,.5)}'
-  +'.onhome .bn .ni.on{color:#ffe27a!important}'
-  +'.onhome .ah{background:transparent!important;box-shadow:none!important;border-bottom:none!important;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
-  +'.onhome .ah .btn-lo,.onhome .ah #btnRefresh{background:rgba(255,255,255,.18)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3)!important}';
+  +'@keyframes wvx{from{transform:translateX(0)}to{transform:translateX(-1200px)}}'
+  +'@keyframes hsun{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.06);opacity:1}}'
+  +'@keyframes hcloud{from{transform:translateX(-160px)}to{transform:translateX(560px)}}'
+  +'@keyframes hcloud2{from{transform:translateX(-220px)}to{transform:translateX(520px)}}'
+  +'.onhome .ah{background:transparent!important;box-shadow:none!important;border-bottom:none!important}'
+  +'.onhome .ah .au{background:rgba(255,255,255,.46)!important;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);border:1px solid rgba(255,255,255,.6)!important;border-radius:14px!important;padding:7px 13px!important;box-shadow:0 3px 12px rgba(90,105,140,.2)!important;display:inline-block!important}'
+  +'.onhome .ah .an,.onhome .ah #han{color:#14264d!important;font-weight:800!important;text-shadow:none!important}'
+  +'.onhome .ah .ar,.onhome .ah #har{color:#3b4c72!important;text-shadow:none!important;opacity:1!important}'
+  +'.onhome .ah .btn-lo,.onhome .ah #btnRefresh{background:rgba(255,255,255,.35)!important;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.5)!important}'
+  +'.onhome .bn{background:rgba(255,255,255,.3)!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.45)!important;box-shadow:none!important}'
+  +'.onhome.htab .hero,.onhome.htab #weather-card>div,.onhome.htab .ft-btn{background:rgba(255,255,255,.28)!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.5)!important;box-shadow:0 4px 14px rgba(110,125,160,.14)!important;text-shadow:0 1px 4px rgba(0,0,0,.28)}'
+  +'.onhome.htab #weather-card{background:transparent!important;box-shadow:none!important}'
+  +'.onhome.htab .card{background:rgba(255,255,255,.24)!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.5)!important}'
+  +'.onhome:not(.htab) .card,.onhome:not(.htab) [onclick^="openAnnView"],.onhome:not(.htab) [onclick^="openReq"],.onhome:not(.htab) [onclick^="openMd"]{background:var(--sc,rgba(255,255,255,.7))!important;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--sb,rgba(255,255,255,.55))!important;box-shadow:0 4px 14px rgba(120,130,160,.14)!important}'
+  +'.onhome .fgrp{overflow:hidden!important;border-radius:16px!important;box-shadow:0 4px 14px rgba(110,125,160,.16)!important;border:1px solid rgba(255,255,255,.5)!important}'
+  +'.onhome .ftw,.onhome table.ft{border-radius:0!important}'
+  +'.onhome:not(.htab) [style*="border-radius:9px"]{border-radius:14px!important}'
+  +'.onhome:not(.htab) [style*="border-radius:8px"]{border-radius:14px!important}'
+  +'.onhome:not(.htab) [style*="border-radius:6px"]{border-radius:12px!important}'
+  +'.onhome .sched-sticky-nav{background:rgba(255,255,255,.5)!important;-webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);border:1px solid rgba(255,255,255,.55)!important;border-radius:16px!important;box-shadow:0 4px 14px rgba(110,125,160,.16)!important;margin-bottom:8px}'
+  +'.onhome .sched-sticky-nav button,.onhome #sched-refresh-btn,.onhome .btn-edit{background:rgba(255,255,255,.62)!important;color:#33517f!important;border:1px solid rgba(255,255,255,.72)!important;border-radius:12px!important;box-shadow:0 2px 6px rgba(120,130,160,.14)!important}';
   document.head.appendChild(st);
   var bg=document.createElement('div');bg.id='hbg';bg.style.cssText='position:fixed;inset:0;z-index:-1;display:none;pointer-events:none;overflow:hidden';
   document.body.insertBefore(bg,document.body.firstChild);
 }
 function hbgSeason(){var m=(new Date(Date.now()+9*3600000)).getUTCMonth()+1;if(m>=3&&m<=5)return 'spring';if(m>=6&&m<=8)return 'summer';if(m>=9&&m<=11)return 'autumn';return 'winter';}
 function hbgWeather(){try{var c=_weatherCache&&_weatherCache.current_weather&&_weatherCache.current_weather.weathercode;if(c==null)return null;c=parseInt(c);if((c>=51&&c<=67)||(c>=80&&c<=82)||c>=95)return 'rain';if((c>=71&&c<=77)||(c>=85&&c<=86))return 'snow';return null;}catch(e){return null;}}
-function hbgTheme(){var w=hbgWeather();if(w==='rain')return {grad:'linear-gradient(180deg,#5f6f88,#43526b 55%,#313d54)',p:'rain'};if(w==='snow')return {grad:'linear-gradient(175deg,#7aa0d0,#6f97c9 55%,#88b0dc)',p:'snow'};var s=hbgSeason();if(s==='spring')return {grad:'linear-gradient(165deg,#e07bb0,#a97fe0 50%,#6bbf9c)',p:'sakura'};if(s==='summer')return {grad:'linear-gradient(180deg,#4fb3ee,#3f9bf0 52%,#2f6fd6)',p:'wave'};if(s==='autumn')return {grad:'linear-gradient(165deg,#e0894a,#cf6a3e 55%,#a85535)',p:'leaf'};return {grad:'linear-gradient(175deg,#7aa0d0,#6f97c9 55%,#88b0dc)',p:'snow'};}
-function hbgParticles(type){var s='',i;
-  if(type==='sakura'){for(i=0;i<16;i++)s+='<span class="hp" style="left:'+(i*6.3)+'%;font-size:'+(12+i%3*5)+'px;animation:hbgFall '+(6+i%5)+'s linear '+(i*0.5)+'s infinite">🌸</span>';}
-  else if(type==='leaf'){var L=['🍂','🍁','🍂'];for(i=0;i<16;i++)s+='<span class="hp" style="left:'+(i*6.3)+'%;font-size:'+(13+i%3*5)+'px;animation:hbgFall '+(6+i%5)+'s linear '+(i*0.5)+'s infinite">'+L[i%3]+'</span>';}
-  else if(type==='snow'){for(i=0;i<20;i++)s+='<span class="hp" style="left:'+(i*5)+'%;font-size:'+(10+i%3*5)+'px;color:#fff;animation:hbgSnow '+(6+i%5)+'s linear '+(i*0.4)+'s infinite">❄️</span>';s+='<div style="position:absolute;bottom:82px;left:16px;font-size:34px">⛄</div><div style="position:absolute;bottom:84px;right:18px;font-size:28px">🎿</div>';}
-  else if(type==='rain'){for(i=0;i<26;i++)s+='<span class="hp" style="left:'+(i*3.9)+'%;width:2px;height:14px;background:rgba(210,230,255,.7);border-radius:2px;animation:hbgRain '+(0.7+i%3*0.15)+'s linear '+(i*0.06)+'s infinite"></span>';s+='<div style="position:absolute;top:70px;left:7%;font-size:38px;opacity:.8">☁️</div><div style="position:absolute;top:100px;right:12%;font-size:30px;opacity:.65">☁️</div>';}
-  else if(type==='wave'){for(i=0;i<10;i++)s+='<span class="hp" style="left:'+(i*10+3)+'%;width:2px;height:10px;background:rgba(255,255,255,.5);border-radius:2px;animation:hbgRain '+(1+i%3*0.2)+'s linear '+(i*0.15)+'s infinite"></span>';s+='<div style="position:absolute;bottom:74px;left:0;right:0;font-size:34px;letter-spacing:-6px;text-align:center;opacity:.85;animation:hbgBob 2.4s ease-in-out infinite">🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊</div><div style="position:absolute;bottom:108px;right:18px;font-size:28px">⛱️</div>';}
+function hbgTheme(){var w=hbgWeather();if(w==='rain')return {grad:'linear-gradient(180deg,#c3cddc,#b4bfd2 55%,#ccd5e3)',p:'rain',card:'rgba(240,243,250,.74)',bd:'rgba(255,255,255,.5)'};if(w==='snow')return {grad:'linear-gradient(175deg,#d3e2f4,#cdd8ef 52%,#e2ecf8)',p:'snow',card:'rgba(240,246,254,.74)',bd:'rgba(255,255,255,.65)'};var s=hbgSeason();if(s==='spring')return {grad:'linear-gradient(165deg,#f8d3e4,#e0cdf0 48%,#cbe8d8)',p:'sakura',card:'rgba(255,240,248,.66)',bd:'rgba(255,255,255,.55)'};if(s==='summer')return {grad:'linear-gradient(180deg,#4fb3ee,#3f9bf0 52%,#2f6fd6)',p:'wave',card:'rgba(232,244,253,.66)',bd:'rgba(255,255,255,.55)'};if(s==='autumn')return {grad:'linear-gradient(165deg,#f4d3ad,#ecc0a6 50%,#e0b5bc)',p:'leaf',card:'rgba(253,241,228,.7)',bd:'rgba(255,255,255,.55)'};return {grad:'linear-gradient(175deg,#d3e2f4,#cdd8ef 52%,#e2ecf8)',p:'snow',card:'rgba(240,246,254,.74)',bd:'rgba(255,255,255,.65)'};}
+function hbgParticles(type){
+  function cloud(w,h,op){return '<div style="width:'+w+'px;height:'+h+'px;background:radial-gradient(circle at 30% 55%,rgba(255,255,255,'+op+'),rgba(255,255,255,0) 72%),radial-gradient(circle at 60% 45%,rgba(255,255,255,'+op+'),rgba(255,255,255,0) 74%),radial-gradient(circle at 80% 60%,rgba(255,255,255,'+op+'),rgba(255,255,255,0) 72%)"></div>';}
+  function hills(layers){var g='';layers.forEach(function(l){g+='<path d="M0,'+l.y+' C200,'+(l.y-28)+' 400,'+(l.y+18)+' 600,'+l.y+' C800,'+(l.y-24)+' 1000,'+(l.y+14)+' 1200,'+l.y+' L1200,220 L0,220 Z" fill="'+l.fill+'"/>';});return '<div style="position:absolute;left:0;right:0;bottom:0;height:220px;overflow:hidden"><svg style="position:absolute;bottom:0;width:100%;height:220px" viewBox="0 0 1200 220" preserveAspectRatio="none">'+g+'</svg></div>';}
+  function maple(c){return '<svg width="17" height="17" viewBox="0 0 24 24" style="display:block"><path fill="'+c+'" d="M12 2l1.5 3 3.2-1-1.1 3.2 3 1.5-2.8 1.9 1.9 2.9-3.4-.4L12 22l-1.6-4.4-3.4.4 1.9-2.9-2.8-1.9 3-1.5L6 4l3.2 1z"/></svg>';}
+  var s='',i;
+  if(type==='wave'){
+    return '<div style="position:absolute;top:40px;right:52px;width:104px;height:104px;border-radius:50%;background:radial-gradient(circle at 50% 50%,#fffdf0,rgba(255,248,205,.6) 50%,rgba(255,244,185,0) 72%);box-shadow:0 0 70px 26px rgba(255,249,210,.28);animation:hsun 6s ease-in-out infinite"></div>'
+      +'<div style="position:absolute;top:96px;left:0;animation:hcloud 42s linear infinite">'+cloud(150,40,.85)+'</div>'
+      +'<div style="position:absolute;top:190px;left:0;animation:hcloud2 60s linear infinite">'+cloud(110,30,.7)+'</div>'
+      +'<div style="position:absolute;left:0;right:0;bottom:0;height:170px;overflow:hidden"><svg style="position:absolute;bottom:0;left:0;width:100%;height:170px" viewBox="0 0 1200 170" preserveAspectRatio="none"><defs><path id="pvwv" d="M0,72 C150,124 320,20 600,64 C880,108 1050,28 1200,72 L1200,170 L0,170 Z"/></defs>'
+      +'<g style="animation:wvx 13s linear infinite"><use href="#pvwv" x="0" y="22" fill="rgba(205,230,250,.42)"/><use href="#pvwv" x="1200" y="22" fill="rgba(205,230,250,.42)"/></g>'
+      +'<g style="animation:wvx 9.5s linear infinite"><use href="#pvwv" x="0" y="46" fill="rgba(115,170,234,.52)"/><use href="#pvwv" x="1200" y="46" fill="rgba(115,170,234,.52)"/></g>'
+      +'<g style="animation:wvx 7s linear infinite"><use href="#pvwv" x="0" y="72" fill="rgba(48,120,206,.8)"/><use href="#pvwv" x="1200" y="72" fill="rgba(48,120,206,.8)"/></g>'
+      +'</svg></div>';
+  }
+  if(type==='sakura'){for(i=0;i<18;i++)s+='<span style="position:absolute;top:-30px;left:'+(i*5.6)+'%;width:'+(9+i%3*3)+'px;height:'+(7+i%3*2)+'px;background:linear-gradient(135deg,#ffe0ef,#ff9ecb);border-radius:50% 0 50% 50%;box-shadow:0 1px 2px rgba(0,0,0,.05);animation:hbgFall '+(6+i%5)+'s linear '+(i*0.4)+'s infinite"></span>';return s+hills([{fill:'rgba(170,215,175,.32)',y:140},{fill:'rgba(135,195,145,.5)',y:168}]);}
+  if(type==='leaf'){var C=['#d2691e','#c0562a','#e0902f','#b7472b'];for(i=0;i<15;i++)s+='<span style="position:absolute;top:-30px;left:'+(i*6.6)+'%;animation:hbgFall '+(6+i%5)+'s linear '+(i*0.5)+'s infinite">'+maple(C[i%4])+'</span>';return s+hills([{fill:'rgba(205,120,60,.32)',y:138},{fill:'rgba(165,85,45,.5)',y:166}]);}
+  if(type==='snow'){for(i=0;i<28;i++)s+='<span style="position:absolute;top:-14px;left:'+(i*3.6)+'%;width:'+(4+i%3*3)+'px;height:'+(4+i%3*3)+'px;background:#fff;border-radius:50%;filter:blur(.4px);opacity:'+(.6+i%3*.15)+';animation:hbgSnow '+(6+i%5)+'s linear '+(i*0.35)+'s infinite"></span>';return s+hills([{fill:'rgba(255,255,255,.5)',y:135},{fill:'rgba(246,251,255,.82)',y:165}])+'<svg width="70" height="80" viewBox="0 0 70 80" style="position:absolute;bottom:36px;left:22px"><circle cx="35" cy="54" r="20" fill="#fff"/><circle cx="35" cy="28" r="14" fill="#fff"/><circle cx="30" cy="26" r="2" fill="#333"/><circle cx="40" cy="26" r="2" fill="#333"/><path d="M35 31 l10 3 -10 2z" fill="#ff8c3b"/><circle cx="35" cy="48" r="2" fill="#444"/><circle cx="35" cy="58" r="2" fill="#444"/></svg>';}
+  if(type==='rain'){for(i=0;i<32;i++)s+='<span style="position:absolute;top:-20px;left:'+(i*3.2)+'%;width:2px;height:'+(14+i%3*6)+'px;background:linear-gradient(rgba(220,235,255,0),rgba(205,228,255,.85));border-radius:2px;transform:rotate(11deg);animation:hbgRain '+(0.6+i%3*0.12)+'s linear '+(i*0.05)+'s infinite"></span>';return s+'<div style="position:absolute;top:70px;left:6%;animation:hcloud2 50s linear infinite">'+cloud(150,42,.55)+'</div><div style="position:absolute;top:150px;right:8%;animation:hcloud 64s linear infinite">'+cloud(120,34,.45)+'</div>'+hills([{fill:'rgba(120,140,170,.3)',y:150},{fill:'rgba(90,110,145,.45)',y:176}]);}
   return s;}
-function hbgApply(){try{hbgInit();var th=hbgTheme();var bg=document.getElementById('hbg');if(!bg)return;bg.style.background=th.grad;bg.innerHTML=hbgParticles(th.p);bg.style.display='block';document.body.classList.add('onhome');}catch(e){}}
+function hbgApply(isHome){try{hbgInit();if(isHome===undefined)isHome=(typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm');var th=hbgTheme();var bg=document.getElementById('hbg');if(!bg)return;bg.style.background=th.grad;bg.innerHTML=hbgParticles(th.p);bg.style.display='block';document.body.classList.add('onhome');if(isHome){document.body.classList.add('htab');}else{document.body.classList.remove('htab');}if(th.card)document.body.style.setProperty('--sc',th.card);if(th.bd)document.body.style.setProperty('--sb',th.bd);}catch(e){}}
 function hbgHide(){var bg=document.getElementById('hbg');if(bg)bg.style.display='none';try{document.body.classList.remove('onhome');}catch(e){}}
 /* ── 홈 점검 카드 (미작성=강조 / 완료=차분 반투명) ── */
 function inspCardBody(state,cnt){
@@ -4219,30 +4243,33 @@ var _weatherCity='';
 function _wxCardHTML(){
   return '<div class="card" id="weather-card" style="padding:0;overflow:hidden;margin-bottom:12px">'+
     '<div style="background:linear-gradient(135deg,#1565c0,#1e88e5,#42a5f5);border-radius:14px;overflow:hidden">'+
-      '<div id="wx-location" style="text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:1.5px;padding:7px 12px 0">&#x1F4CD; 위치 확인 중...</div>'+
-      '<div style="display:flex">'+
-        '<div id="wd-0" onclick="toggleHourly(0)" style="flex:3;text-align:center;padding:10px 10px 12px;border-right:1px solid rgba(255,255,255,.2);cursor:pointer;position:relative;overflow:hidden">'+
-          '<canvas id="wx-canvas" style="position:absolute;inset:0;pointer-events:none;display:none"></canvas>'+
-          '<div style="position:relative;z-index:1">'+
-            '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.8);margin-bottom:10px;letter-spacing:2px">오늘</div>'+
-            '<div id="wd-0-cur" style="font-size:46px;font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 10px rgba(0,0,0,.2)">--°</div>'+
-            '<div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:3px">현재 온도</div>'+
-            '<div id="wd-0-tmp" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.8);margin-top:7px;background:rgba(0,0,0,.18);border-radius:8px;padding:2px 10px;display:inline-block">--/--</div>'+
-            '<div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:6px" id="wd-0-arr">&#x25BC; 강수&#xB7;적설</div>'+
+      '<div id="wx-location" style="text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:1.5px;padding:8px 12px 2px">&#x1F4CD; 위치 확인 중...</div>'+
+      '<div id="wd-0" onclick="toggleHourly(0)" style="position:relative;overflow:hidden;cursor:pointer;padding:6px 16px 10px">'+
+        '<canvas id="wx-canvas" style="position:absolute;inset:0;pointer-events:none;display:none"></canvas>'+
+        '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:11px">'+
+          '<div id="wd-0-icon" style="font-size:34px;line-height:1">&#x23F3;</div>'+
+          '<div id="wd-0-cur" style="font-size:40px;font-weight:900;color:#fff;line-height:1;text-shadow:0 2px 10px rgba(0,0,0,.18)">--&#xB0;</div>'+
+          '<div style="text-align:left;line-height:1.4">'+
+            '<div id="wd-0-lbl" style="font-size:13px;font-weight:800;color:#fff">-</div>'+
+            '<div id="wd-0-tmp" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.85)">--/--</div>'+
           '</div>'+
+          '<div style="flex:1"></div>'+
+          '<div id="wd-0-arr" style="font-size:10px;font-weight:700;color:rgba(255,255,255,.8);white-space:nowrap">&#x25BC; 강수&#xB7;적설</div>'+
         '</div>'+
-        '<div id="wd-1" onclick="toggleHourly(1)" style="flex:1.5;text-align:center;padding:14px 5px;border-right:1px solid rgba(255,255,255,.2);cursor:pointer">'+
-          '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.75);margin-bottom:4px;letter-spacing:1px">내일</div>'+
-          '<div id="wd-1-icon" style="font-size:24px;margin-bottom:4px;line-height:1">&#x23F3;</div>'+
-          '<div id="wd-1-lbl" style="font-size:11px;color:#fff;font-weight:700">-</div>'+
-          '<div id="wd-1-tmp" style="font-size:14px;font-weight:800;color:#fff;margin-top:4px">--/--</div>'+
-          '<div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:5px" id="wd-1-arr">&#x25BC; 강수</div>'+
+      '</div>'+
+      '<div style="display:flex;border-top:1px solid rgba(255,255,255,.18)">'+
+        '<div id="wd-1" onclick="toggleHourly(1)" style="flex:1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;padding:9px 6px;border-right:1px solid rgba(255,255,255,.18);cursor:pointer">'+
+          '<span style="font-size:10px;font-weight:800;color:rgba(255,255,255,.8)">내일</span>'+
+          '<span id="wd-1-icon" style="font-size:18px;line-height:1">&#x23F3;</span>'+
+          '<span id="wd-1-lbl" style="font-size:10px;color:#fff;font-weight:600">-</span>'+
+          '<span id="wd-1-tmp" style="font-size:12px;font-weight:800;color:#fff">--/--</span>'+
+          '<span id="wd-1-arr" style="font-size:9px;color:rgba(255,255,255,.55)">&#x25BC;</span>'+
         '</div>'+
-        '<div style="flex:1.2;text-align:center;padding:14px 4px">'+
-          '<div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.7);margin-bottom:4px">모레</div>'+
-          '<div id="wd-2-icon" style="font-size:20px;margin-bottom:4px;line-height:1">&#x23F3;</div>'+
-          '<div id="wd-2-lbl" style="font-size:10px;color:#fff;font-weight:600">-</div>'+
-          '<div id="wd-2-tmp" style="font-size:12px;font-weight:700;color:#fff;margin-top:4px">--/--</div>'+
+        '<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;padding:9px 6px">'+
+          '<span style="font-size:10px;font-weight:800;color:rgba(255,255,255,.8)">모레</span>'+
+          '<span id="wd-2-icon" style="font-size:18px;line-height:1">&#x23F3;</span>'+
+          '<span id="wd-2-lbl" style="font-size:10px;color:#fff;font-weight:600">-</span>'+
+          '<span id="wd-2-tmp" style="font-size:12px;font-weight:800;color:#fff">--/--</span>'+
         '</div>'+
       '</div>'+
       '<div id="hourly-0" style="display:none;background:rgba(0,0,0,.25);padding:10px 12px">'+
