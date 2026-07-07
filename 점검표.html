@@ -58,15 +58,15 @@
   .fm-info{border-collapse:collapse;width:100%;color:#000}
   .fm-info td{border:1px solid #333;text-align:center;font-size:11px;padding:3px 4px}
   .fm-info .k{background:#f0f0f0;font-weight:700}
-  .fm-mw{flex:1;display:flex;margin-top:-1px}
-  .fm-main{border-collapse:collapse;width:100%;table-layout:fixed;height:100%;color:#000}
+  .fm-mw{margin-top:-1px}
+  .fm-main{border-collapse:collapse;width:100%;table-layout:fixed;color:#000}
   .fm-main th,.fm-main td{border:1px solid #333;text-align:center}
-  .fm-main th{background:#f0f0f0;font-weight:700;font-size:10.5px}
+  .fm-main th{background:#f0f0f0;font-weight:700;font-size:10.5px;height:17px}
   .fm-main .cat{background:#f7f7f7;font-weight:700;font-size:11px;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:2px}
-  .fm-main .nm2{text-align:left;font-size:9.5px;padding:0 5px;line-height:1.12}
-  .fm-main .mk{font-size:12.5px;font-weight:700}
+  .fm-main .nm2{text-align:left;font-size:9px;padding:2px 5px;line-height:1.14;height:42px}
+  .fm-main .mk{font-size:12.5px;font-weight:700;height:42px}
   .fm-main .x{color:#c62828}.fm-main .mi{color:#666}
-  .fm-main .rowh{background:#f0f0f0;font-weight:700;font-size:10px}
+  .fm-main .rowh{background:#f0f0f0;font-weight:700;font-size:10px;height:24px}
 </style>
 </head>
 <body>
@@ -281,9 +281,18 @@ function buildForm(){
 }
 function openForm(){
   var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><b style="font-size:15px">📋 공식 서식 (상시 비치)</b><span onclick="closeSheet()" style="font-size:20px;color:#999;cursor:pointer">×</span></div>';
-  h+='<div style="display:flex;gap:7px;margin-bottom:10px"><button class="btn b-red" style="flex:1" onclick="dlPDF()">📄 PDF</button><button class="btn b-green" style="flex:1" onclick="dlExcel()">📊 Excel</button></div>';
-  h+='<div style="overflow-x:auto;border:1px solid #ccc;border-radius:8px;padding:8px;background:#fff"><div id="formbox" style="width:940px;height:664px;display:flex;flex-direction:column">'+buildForm()+'</div></div>';
+  h+='<div style="display:flex;gap:7px;margin-bottom:10px"><button class="btn b-red" style="flex:1" onclick="dlPDF()">📄 PDF</button><button class="btn b-green" style="flex:1" onclick="dlExcel()">📊 Excel</button><button class="btn b-blue" style="flex:1" onclick="zoomForm()">🔍 크게보기</button></div>';
+  h+='<div style="border:1px solid #ccc;border-radius:8px;background:#fff;padding:6px;overflow:hidden"><div id="fitwrap" style="overflow:hidden"><div id="fitform" style="width:820px;transform-origin:top left">'+buildForm()+'</div></div></div>';
+  h+='<div style="font-size:10px;color:#98a0b2;text-align:center;margin-top:7px">전체가 화면에 맞게 보여요 · 🔍 크게보기로 확대해서 확인</div>';
   document.getElementById('sheet').innerHTML=h;openSheet();
+  setTimeout(function(){var w=document.getElementById('fitwrap'),f=document.getElementById('fitform');if(!w||!f)return;var sc=(w.clientWidth||300)/820;f.style.transform='scale('+sc+')';w.style.height=(f.scrollHeight*sc)+'px';},60);
+}
+function zoomForm(){
+  var ov=document.getElementById('zoomov');if(ov)ov.remove();
+  ov=document.createElement('div');ov.id='zoomov';ov.style.cssText='position:fixed;inset:0;background:#3a3f4a;z-index:80;display:flex;flex-direction:column';
+  ov.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:#1565c0;color:#fff"><b style="font-size:14px">🔍 크게보기 · 밀어서 이동</b><span onclick="var o=document.getElementById(\'zoomov\');if(o)o.remove();" style="font-size:22px;cursor:pointer;padding:0 6px">✕</span></div>'+
+    '<div style="flex:1;overflow:auto;background:#fff;-webkit-overflow-scrolling:touch"><div style="width:960px;padding:12px">'+buildForm()+'</div></div>';
+  document.body.appendChild(ov);
 }
 
 /* ── 다운로드 ── */
@@ -297,16 +306,18 @@ function saveBlob(blob,name){var a=document.createElement('a');a.href=URL.create
 function loadScript(src){return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
 function dlPDF(){
   var yp=VIEW.split('-');toast('PDF 만드는 중…');
-  // A4 가로 비율(297:210)에 꽉 차게 렌더
+  // 자연 높이로 렌더 후 A4 가로에 맞춰 중앙 배치
   var wrap=document.createElement('div');
-  wrap.style.cssText='position:fixed;left:-99999px;top:0;width:1400px;height:990px;background:#fff;padding:24px 28px;box-sizing:border-box;display:flex;flex-direction:column;font-family:"Malgun Gothic",sans-serif';
+  wrap.style.cssText='position:fixed;left:-99999px;top:0;width:1120px;background:#fff;padding:16px 22px;box-sizing:border-box;font-family:"Malgun Gothic",sans-serif';
   wrap.innerHTML=buildForm();
   document.body.appendChild(wrap);
   var ok=function(){return typeof html2canvas!=='undefined'&&window.jspdf;};
   var chain=ok()?Promise.resolve():loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js').then(function(){return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');});
   chain.then(function(){return html2canvas(wrap,{scale:2,backgroundColor:'#fff'});}).then(function(canvas){
     var jsPDF=window.jspdf.jsPDF;var pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
-    pdf.addImage(canvas.toDataURL('image/png'),'PNG',6,5,285,200);
+    var pw=297,ph=210,mg=6;var iw=pw-mg*2;var ih=canvas.height*iw/canvas.width;
+    if(ih>ph-mg*2){ih=ph-mg*2;iw=canvas.width*ih/canvas.height;}
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',(pw-iw)/2,(ph-ih)/2,iw,ih);
     pdf.save('일상점검표_'+yp[0]+yp[1]+'.pdf');
     document.body.removeChild(wrap);toast('PDF 저장');
   }).catch(function(){document.body.removeChild(wrap);toast('PDF 실패 · 인터넷 확인 후 다시');});
