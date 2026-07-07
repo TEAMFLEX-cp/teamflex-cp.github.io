@@ -12648,7 +12648,7 @@ function _pddNotice(){
 }
 function _pddRowHtml(e){
   var role=(CU&&CU.role)||'', me=(CU&&CU.name)||'', admin=(role==='admin');
-  var own=(role!=='admin'&&role!=='leader'&&e.worker===me);
+  var own=(role!=='admin'&&e.worker===me);
   var show=_pddShowName(e);
   var nm=show?e.worker:'***', rt=show?(e.route||''):'***';
   var st=e.status||'', cancel=(st==='정상배송인정'), conf=!!e.confirmed, amt=(e.miss||0)*_PDD_D;
@@ -12665,11 +12665,11 @@ function _pddRowHtml(e){
       +'<button onclick="pddToggleConfirm(\''+e.id+'\')" style="border:1px solid '+(conf?'#2e7d32':'#ccc')+';background:'+(conf?'#e8f5e9':'#fff')+';color:'+(conf?'#2e7d32':'#777')+';border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer">'+(conf?'&#x2713;확정':'확정')+'</button>'
       +'<button onclick="pddDelRecord(\''+e.id+'\')" style="border:1px solid #ef9a9a;background:#fff;color:#c62828;border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer">&#x1F5D1;</button></div>';
   }
-  return '<div style="border:1px solid '+(conf?'#cfe3d0':'#eee')+';background:'+(cancel?'#f6faf6':'#fff')+';border-radius:12px;padding:10px 12px;margin-bottom:8px">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;color:#666">'+(e.date||'')+'</span><span>'+badge+confB+meB+'</span></div>'
-    +'<div style="font-size:13px;color:#333">담당자 <b style="'+nmS+'">'+nm+'</b> &#xB7; 라우트 <b style="'+nmS+'">'+rt+'</b></div>'
-    +'<div style="font-size:12px;color:#555;margin-top:4px">미스 <b style="color:#c62828">'+(e.miss||0)+'건</b> &#x2192; 차감 <b style="color:#c62828;'+(cancel?'text-decoration:line-through;color:#999':'')+'">'+_pddWon(amt)+'</b>'+(cancel?' <b style="color:#2e7d32">취소</b>':'')+'</div>'
-    +ctrl+'</div>';
+  var _inner='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;color:'+(own?'#0d47a1':'#666')+'">'+(e.date||'')+'</span><span>'+badge+confB+meB+'</span></div>'
+    +'<div style="font-size:13px;color:#333">담당자 <b style="'+(own?'color:#0d47a1':nmS)+'">'+nm+'</b> &#xB7; 라우트 <b style="'+(own?'color:#0d47a1':nmS)+'">'+rt+'</b></div>'
+    +'<div style="font-size:12px;color:#555;margin-top:4px">미스 <b style="color:#c62828">'+(e.miss||0)+'건</b> &#x2192; 차감 <b style="color:#c62828;'+(cancel?'text-decoration:line-through;color:#999':'')+'">'+_pddWon(amt)+'</b>'+(cancel?' <b style="color:#2e7d32">취소</b>':'')+'</div>'+ctrl;
+  if(own){ return '<div style="border:2px solid #1565c0;background:#e8f1fd;border-radius:14px;margin-bottom:10px;box-shadow:0 3px 14px rgba(21,101,192,.28);overflow:hidden"><div style="background:#1565c0;color:#fff;font-size:11px;font-weight:800;padding:5px 12px">&#x1F4CC; 내 PDD 기록</div><div style="padding:9px 12px">'+_inner+'</div></div>'; }
+  return '<div style="border:1px solid '+(conf?'#cfe3d0':'#eee')+';background:'+(cancel?'#f6faf6':'#fff')+';border-radius:12px;padding:10px 12px;margin-bottom:8px">'+_inner+'</div>';
 }
 function _pddRenderPopup(){
   var role=(CU&&CU.role)||'', admin=(role==='admin');
