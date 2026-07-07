@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v54 — 홈 밝은 프로스트 유리 + 계절 배경 톤 조정
-const CACHE_NAME = 'teamflex-v320';
+// TeamFlex Service Worker v55 — hero 간소화(이름제거)+안쪽박스 투명, 목업 일치
+const CACHE_NAME = 'teamflex-v321';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
