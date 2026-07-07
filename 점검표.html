@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>차량 일상점검표</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;background:#eef1f6;color:#222}
+  #app{max-width:460px;margin:0 auto;min-height:100%;padding:12px 12px 30px}
+  .hd{background:linear-gradient(135deg,#16306e,#2a4fa0);border-radius:14px;padding:12px 14px;color:#fff;margin-bottom:12px}
+  .hd .t{font-size:16px;font-weight:800}
+  .whorow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;cursor:pointer}
+  .chip{font-size:11px;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:8px}
+  .card{background:#fff;border:1px solid #e3e7f0;border-radius:14px;padding:13px;margin-bottom:12px}
+  .btn{border:none;border-radius:11px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;color:#fff}
+  .b-blue{background:linear-gradient(135deg,#1565c0,#2a4fa0)}
+  .b-red{background:#c0392b}.b-green{background:#1e8e4e}.b-gray{background:#fff;color:#555;border:1.5px solid #d0d5df}
+  .sum{display:flex;gap:7px;margin-bottom:11px}
+  .sum>div{flex:1;background:#fff;border:1px solid #e3e7f0;border-radius:11px;padding:9px;text-align:center}
+  .sum .n{font-size:17px;font-weight:900}.sum .l{font-size:10px;color:#8a93a8}
+  .legend{display:flex;gap:9px;flex-wrap:wrap;font-size:10px;color:#666;margin:0 2px 9px}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+  .cell{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;cursor:pointer;border:1px solid transparent}
+  .cell .d{font-size:10px;opacity:.9}.cell .m{font-size:13px;font-weight:800}
+  .c-ok{background:#2e7d32;color:#fff}.c-bad{background:#c62828;color:#fff}.c-off{background:#1565c0;color:#fff}
+  .c-part{background:#f9a825;color:#fff}.c-none{background:#eef1f6;color:#aab}.c-future{background:#f4f6fa;color:#cdd3df;cursor:not-allowed}
+  .c-today{outline:2px solid #ffca28}
+  .ov{position:fixed;inset:0;background:rgba(15,20,40,.55);display:none;align-items:flex-end;justify-content:center;z-index:50}
+  .ov.show{display:flex}
+  .sheet{background:#fff;width:100%;max-width:460px;border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;padding:16px 14px 26px;animation:up .2s}
+  @keyframes up{from{transform:translateY(30px)}to{transform:translateY(0)}}
+  .item{padding:9px 0;border-bottom:1px solid #f0f2f7}
+  .item .nm{font-size:12px;color:#333;margin-bottom:6px}
+  .segs{display:flex;gap:6px}
+  .seg{flex:1;text-align:center;font-size:11.5px;font-weight:700;padding:7px;border-radius:8px;background:#f3f4f7;color:#999;border:1px solid #e0e0e0;cursor:pointer}
+  .seg.on-o{background:#2e7d32;color:#fff;border-color:#2e7d32}
+  .seg.on-x{background:#c62828;color:#fff;border-color:#c62828}
+  .seg.on-mi{background:#757575;color:#fff;border-color:#757575}
+  .in{width:100%;border:1.5px solid #cfd6e4;border-radius:9px;padding:9px 11px;font-size:13px;outline:none}
+  .lbl{font-size:11px;color:#666;margin:10px 0 4px}
+  .cath{font-size:11.5px;font-weight:800;color:#3a5aa8;margin:8px 2px 6px}
+  .note{background:#fff8e1;border:1px solid #ffe082;border-radius:9px;padding:8px 10px;font-size:10.5px;color:#8a6d00;line-height:1.5}
+  #sigcv{border:1.5px dashed #b7c0d4;border-radius:9px;background:#fbfcfe;width:100%;height:120px;touch-action:none;display:block}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:20px;font-size:12px;z-index:99;opacity:0;transition:opacity .2s}
+  .toast.show{opacity:.95}
+  /* 공식 서식 */
+  .jp{border-collapse:collapse;background:#fff}
+  .jp td,.jp th{border:1px solid #333;padding:1px 2px;text-align:center;font-size:8px;color:#000}
+  .jp .nm2{text-align:left;font-size:7.5px;line-height:1.1;width:150px}
+  .jp .cat{width:14px;font-size:8px;font-weight:700;writing-mode:vertical-rl;text-orientation:upright;background:#f7f7f7}
+  .jp .day{min-width:14px;width:14px;background:#f0f0f0;font-weight:700}
+  .jp .mk{min-width:14px;width:14px;font-size:9px;font-weight:700;height:14px}
+  .jp .hd2{background:#f0f0f0;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app"><div class="card">불러오는 중…</div></div>
+<div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+var SB_URL="https://czpinyfirgvkhdfnvkls.supabase.co";
+var SB_KEY="sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN";
+function qs(k){var m=new RegExp('[?&]'+k+'=([^&]*)').exec(location.search);return m?decodeURIComponent(m[1]):'';}
+var USER=qs('u')||'기사';
+var ITEMS=[
+ ['외관점검','번호판·전면유리·후사경 등의 청결상태'],
+ ['','후미등·차폭등 등 등화장치 작동상태'],
+ ['','창닦이기 작동상태'],
+ ['','적재함(보조지지대 포함)·측면 보호대·후부반사판·트레일러 연결장치의 부착상태 및 훼손 여부'],
+ ['상태점검','타이어 손상 및 마모(1.6㎜이상) 여부'],
+ ['','화물·적재함 지지대(판스프링) 등의 고정상태'],
+ ['','바퀴 너트 등 균열 여부'],
+ ['기타','냉각수·공기압·엔진오일 등 차량 이상 여부(계기판 확인)'],
+ ['','좌석안전띠 상태'],
+ ['','소화기 비치 여부'],
+ ['','안전삼각대 등 비치 여부']
+];
+var CATSPAN={'외관점검':4,'상태점검':3,'기타':4};
+var REG=null, VIEW=null, MDATA={days:{}};
+
+function hdr(){return {apikey:SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};}
+function sbGet(key){return fetch(SB_URL+'/rest/v1/app_settings?select=value&key=eq.'+encodeURIComponent(key),{headers:hdr()}).then(function(r){return r.json();}).then(function(d){if(d&&d[0]){var v=d[0].value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){}}return v;}return null;}).catch(function(){return null;});}
+function sbSet(key,obj){return fetch(SB_URL+'/rest/v1/app_settings?on_conflict=key',{method:'POST',headers:Object.assign(hdr(),{'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify([{key:key,value:JSON.stringify(obj)}])}).catch(function(){});}
+function enc(){return encodeURIComponent(USER);}
+function regKey(){return 'insp_reg_'+enc();}
+function monKey(ym){return 'insp_'+enc()+'_'+ym;}
+
+function nowKST(){return new Date(Date.now()+9*3600000);}
+function ymOf(d){return d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2);}
+function todayObj(){var d=nowKST();return {ym:ymOf(d),y:d.getUTCFullYear(),m:d.getUTCMonth()+1,day:d.getUTCDate()};}
+function daysInMonth(ym){var p=ym.split('-');return new Date(Date.UTC(+p[0],+p[1],0)).getUTCDate();}
+function isFuture(ym,day){var t=todayObj();var p=ym.split('-');var y=+p[0],m=+p[1];if(y>t.y)return true;if(y<t.y)return false;if(m>t.m)return true;if(m<t.m)return false;return day>t.day;}
+
+function dayStatus(dd){if(!dd)return 'none';if(dd.off)return 'off';var it=dd.items;if(!it)return 'none';var ks=Object.keys(it);if(ks.length===0)return 'none';var vals=ITEMS.map(function(_,i){return it[i];});var filled=vals.filter(function(v){return v;}).length;if(vals.indexOf('x')>=0)return 'bad';if(filled<ITEMS.length)return 'part';if(vals.every(function(v){return v==='mi';}))return 'off';return 'ok';}
+
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(function(){t.className='toast';},1800);}
+
+/* ── 로드 ── */
+function load(ym){VIEW=ym;document.getElementById('app').innerHTML='<div class="card">불러오는 중…</div>';
+  return Promise.all([sbGet(regKey()),sbGet(monKey(ym))]).then(function(res){REG=res[0]||null;MDATA=res[1]||{days:{}};if(!MDATA.days)MDATA.days={};renderMonth();});
+}
+
+/* ── 월간 화면 ── */
+function renderMonth(){
+  var t=todayObj();var ym=VIEW;var dim=daysInMonth(ym);var yp=ym.split('-');
+  var regDone=REG&&REG.company&&REG.sig;
+  var days=MDATA.days||{};
+  var cntOk=0,cntBad=0,cntOff=0;
+  for(var d=1;d<=dim;d++){var s=dayStatus(days[d]);if(s==='ok'||s==='part')cntOk++;else if(s==='bad')cntBad++;else if(s==='off')cntOff++;}
+  var h='';
+  h+='<div class="hd"><div class="t">🚛 차량 일상점검</div><div class="whorow" onclick="openReg()">'+
+     '<span class="chip">👤 '+esc(USER)+'</span>'+
+     '<span class="chip">🚚 '+(regDone&&REG.vehicle?esc(REG.vehicle):'차량 미등록')+'</span>'+
+     '<span class="chip">🏢 '+(regDone?esc(REG.company):'사업자 미등록')+'</span>'+
+     '<span class="chip" style="background:rgba(255,255,255,.28)">'+(regDone?'✏️ 정보':'⚠️ 등록필요')+'</span>'+
+     '</div></div>';
+  if(!regDone){h+='<div class="card" style="border-color:#ffcc80;background:#fff8e1"><div style="font-size:13px;font-weight:800;color:#a05a00;margin-bottom:6px">✍️ 먼저 서명·사업자명을 등록해주세요</div><div style="font-size:11.5px;color:#8a6d00;line-height:1.5;margin-bottom:10px">등록하면 점검 완료 시 서명이 자동으로 들어가요. (최초 1회)</div><button class="btn b-blue" style="width:100%" onclick="openReg()">✅ 지금 등록하기</button></div>';}
+  // 월 네비
+  h+='<div class="card" style="padding:10px 12px"><div style="display:flex;align-items:center;justify-content:space-between"><span onclick="moveMonth(-1)" style="font-size:15px;cursor:pointer;padding:2px 10px">◀</span><b style="font-size:15px">'+yp[0]+'년 '+(+yp[1])+'월</b><span onclick="moveMonth(1)" style="font-size:15px;cursor:pointer;padding:2px 10px;color:'+(ym>=t.ym?'#ccc':'#333')+'">▶</span></div></div>';
+  // 요약
+  h+='<div class="sum"><div><div class="l">점검완료</div><div class="n" style="color:#2e7d32">'+cntOk+'일</div></div><div><div class="l">불량</div><div class="n" style="color:#c62828">'+cntBad+'</div></div><div><div class="l">휴무</div><div class="n" style="color:#1565c0">'+cntOff+'일</div></div></div>';
+  // 오늘 작성 유도
+  if(ym===t.ym){var ts=dayStatus(days[t.day]);if(ts==='none'){h+='<button class="btn b-blue" style="width:100%;margin-bottom:12px" onclick="openDay('+t.day+')">📝 오늘('+t.m+'/'+t.day+') 점검 작성하기</button>';}else{h+='<div class="card" style="background:#e8f7ee;border-color:#a5d6bb;text-align:center;font-size:12.5px;font-weight:700;color:#1f7a4d;padding:11px">✅ 오늘 점검 완료 · 탭해서 수정 <span onclick="openDay('+t.day+')" style="color:#1565c0;cursor:pointer">›</span></div>';}}
+  // 범례
+  h+='<div class="legend"><span><b style="color:#2e7d32">●</b> 정상</span><span><b style="color:#c62828">●</b> 불량</span><span><b style="color:#1565c0">●</b> 휴무</span><span><b style="color:#f9a825">●</b> 미완</span><span><b style="color:#cdd3df">●</b> 미작성/미래</span></div>';
+  // 달력
+  h+='<div class="card"><div class="cal">';
+  for(var dd=1;dd<=dim;dd++){
+    var fut=isFuture(ym,dd);var st=dayStatus(days[dd]);
+    var cls='c-none';if(fut)cls='c-future';else if(st==='ok'||st==='part')cls=(st==='part'?'c-part':'c-ok');else if(st==='bad')cls='c-bad';else if(st==='off')cls='c-off';
+    var isT=(ym===t.ym&&dd===t.day);
+    var mk=fut?'':(st==='off'?'휴':st==='bad'?'×':(st==='ok'?'○':st==='part'?'△':''));
+    var onc=fut?'':' onclick="openDay('+dd+')"';
+    h+='<div class="cell '+cls+(isT?' c-today':'')+'"'+onc+'><span class="d">'+dd+'</span><span class="m">'+mk+'</span></div>';
+  }
+  h+='</div><div style="font-size:10px;color:#98a0b2;text-align:center;margin-top:9px">지난·오늘 날짜만 작성 가능 · 미래 날짜는 잠김</div></div>';
+  // 다운로드 / 서식
+  h+='<div style="display:flex;gap:8px;margin-bottom:9px"><button class="btn b-red" style="flex:1" onclick="dlPDF()">📄 PDF</button><button class="btn b-green" style="flex:1" onclick="dlExcel()">📊 Excel</button><button class="btn b-gray" style="flex:1" onclick="openForm()">📋 서식보기</button></div>';
+  h+='<div style="font-size:10px;color:#98a0b2;text-align:center">PDF/Excel = 공식 서식(별지 제14호의5) 그대로 · 상시 비치용</div>';
+  document.getElementById('app').innerHTML=h;
+}
+function moveMonth(dir){var t=todayObj();var p=VIEW.split('-');var y=+p[0],m=+p[1]+dir;if(m<1){m=12;y--;}if(m>12){m=1;y++;}var ny=y+'-'+('0'+m).slice(-2);if(ny>t.ym)return;load(ny);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+/* ── 일일 점검 편집 ── */
+var EDITDAY=null,EDITST=null;
+function openDay(day){
+  if(isFuture(VIEW,day)){toast('미래 날짜는 작성할 수 없어요');return;}
+  EDITDAY=day;var cur=MDATA.days[day]||{items:{},off:false,memo:''};
+  EDITST={items:Object.assign({},cur.items||{}),off:!!cur.off,memo:cur.memo||''};
+  drawDay();openSheet();
+}
+function drawDay(){
+  var p=VIEW.split('-');var h='';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><b style="font-size:15px">'+(+p[1])+'월 '+EDITDAY+'일 점검</b><span onclick="closeSheet()" style="font-size:20px;color:#999;cursor:pointer">×</span></div>';
+  // 휴무 토글
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;background:#f3f6fc;border:1px solid #e0e7f5;border-radius:11px;padding:10px 12px;margin-bottom:12px"><div><div style="font-size:13px;font-weight:800;color:#1a3a7a">🛌 휴무</div><div style="font-size:10px;color:#8a93a8">운행 안 한 날 → 미운행(미)으로 기록</div></div>'+
+     '<div onclick="toggleOff()" style="width:44px;height:24px;background:'+(EDITST.off?'#1565c0':'#d3d8e2')+';border-radius:12px;position:relative;cursor:pointer"><span style="position:absolute;'+(EDITST.off?'right':'left')+':2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%"></span></div></div>';
+  if(!EDITST.off){
+    var lastCat='';
+    for(var i=0;i<ITEMS.length;i++){
+      if(ITEMS[i][0]&&ITEMS[i][0]!==lastCat){lastCat=ITEMS[i][0];h+='<div class="cath">'+(lastCat==='외관점검'?'🔍 ':lastCat==='상태점검'?'🔧 ':'📋 ')+lastCat+'</div>';}
+      var v=EDITST.items[i]||'';
+      h+='<div class="item"><div class="nm">'+ITEMS[i][1]+'</div><div class="segs">'+
+         '<div class="seg '+(v==='o'?'on-o':'')+'" onclick="setItem('+i+',\'o\')">○ 양호</div>'+
+         '<div class="seg '+(v==='x'?'on-x':'')+'" onclick="setItem('+i+',\'x\')">× 불량</div>'+
+         '<div class="seg '+(v==='mi'?'on-mi':'')+'" onclick="setItem('+i+',\'mi\')">미 운행</div>'+
+         '</div></div>';
+    }
+    var hasX=ITEMS.some(function(_,i){return EDITST.items[i]==='x';});
+    h+='<div class="lbl">불량 조치 기록'+(hasX?' <b style="color:#c62828">(불량 항목 있음)</b>':'')+'</div><textarea class="in" id="memo" rows="2" placeholder="예) 후부반사판 파손 → 정비소 교체 예정">'+esc(EDITST.memo)+'</textarea>';
+    h+='<button class="btn b-blue" style="width:100%;margin-top:8px" onclick="quickAllOk()">⚡ 전체 양호로 한번에</button>';
+  } else {
+    h+='<div class="card" style="text-align:center;color:#1565c0;font-weight:700">이 날은 휴무로 기록됩니다 (공식 서식엔 "미"로 표기)</div>';
+  }
+  h+='<button class="btn b-blue" style="width:100%;margin-top:12px" onclick="saveDay()">💾 저장</button>';
+  document.getElementById('sheet').innerHTML=h;
+}
+function setItem(i,v){EDITST.items[i]=v;drawDay();}
+function quickAllOk(){for(var i=0;i<ITEMS.length;i++)EDITST.items[i]='o';drawDay();}
+function toggleOff(){EDITST.off=!EDITST.off;drawDay();}
+function saveDay(){
+  var mem=document.getElementById('memo');if(mem)EDITST.memo=mem.value;
+  if(EDITST.off){MDATA.days[EDITDAY]={off:true,items:{},memo:EDITST.memo||'',ts:Date.now()};}
+  else{
+    var filled=0;for(var i=0;i<ITEMS.length;i++)if(EDITST.items[i])filled++;
+    if(filled===0){toast('항목을 선택해주세요');return;}
+    MDATA.days[EDITDAY]={off:false,items:Object.assign({},EDITST.items),memo:EDITST.memo||'',ts:Date.now()};
+  }
+  sbSet(monKey(VIEW),MDATA);closeSheet();renderMonth();toast('저장됐어요');
+}
+
+/* ── 서명·사업자명 등록 ── */
+var sigCtx,sigDrawing=false,sigDirty=false;
+function openReg(){
+  var locked=REG&&REG.locked;var h='';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><b style="font-size:15px">✍️ 서명·차량·사업자 등록</b><span onclick="closeSheet()" style="font-size:20px;color:#999;cursor:pointer">×</span></div>';
+  if(locked){
+    h+='<div class="card" style="background:#f3f4f7;border:none"><div style="display:flex;align-items:center;gap:7px;margin-bottom:8px"><b>내 등록 정보</b><span style="font-size:10px;background:#e8f7ee;color:#1f7a4d;border:1px solid #a5d6bb;padding:2px 8px;border-radius:8px;font-weight:700">✅ 등록완료 🔒</span></div>'+
+       '<div style="font-size:12.5px;color:#333;line-height:2">운송사업자명 : <b>'+esc(REG.company)+'</b><br>차량번호 : <b>'+esc(REG.vehicle||'-')+'</b><br>등록일 : '+esc((REG.at||'').slice(0,10))+'</div>'+
+       '<div style="background:#fff;border:1px solid #eee;border-radius:8px;height:60px;display:flex;align-items:center;justify-content:center;margin-top:8px"><img src="'+REG.sig+'" style="max-height:52px"></div></div>';
+    h+='<div class="note" style="background:#f3f4f7;border-color:#e0e0e0;color:#777">🔒 잠겨 있어요. 변경하려면 초기화 신청 → 관리자 승인 후 다시 등록할 수 있어요.</div>';
+    h+='<button class="btn b-gray" style="width:100%;margin-top:10px;color:#c0392b;border-color:#e79a8f" onclick="reqReset()">🔄 서명·사업자명 초기화 신청</button>';
+    document.getElementById('sheet').innerHTML=h;openSheet();return;
+  }
+  h+='<div class="lbl">운송사업자명</div><input class="in" id="rg-comp" placeholder="예) ㈜팀플렉스" value="'+esc(REG&&REG.company||'')+'">';
+  h+='<div class="lbl">차량번호</div><input class="in" id="rg-veh" placeholder="예) 82로4067" value="'+esc(REG&&REG.vehicle||'')+'">';
+  h+='<div class="lbl">서명 (손으로 그려주세요)</div><canvas id="sigcv"></canvas><div style="text-align:right;margin-top:4px"><span onclick="sigClear()" style="font-size:11px;color:#5b8def;cursor:pointer">↺ 지우기</span></div>';
+  h+='<div class="note">⚠️ <b>최초 1회만 등록</b>됩니다. 나중에 바꾸려면 <b>관리자에게 초기화 신청</b>이 필요해요.</div>';
+  h+='<button class="btn b-blue" style="width:100%;margin-top:12px" onclick="saveReg()">✅ 등록하기</button>';
+  document.getElementById('sheet').innerHTML=h;openSheet();
+  setTimeout(initSig,60);
+}
+function initSig(){var cv=document.getElementById('sigcv');if(!cv)return;var r=cv.getBoundingClientRect();cv.width=r.width;cv.height=r.height;sigCtx=cv.getContext('2d');sigCtx.lineWidth=2.4;sigCtx.lineCap='round';sigCtx.strokeStyle='#12306e';sigDirty=false;
+  function pos(e){var t=e.touches?e.touches[0]:e;var b=cv.getBoundingClientRect();return {x:t.clientX-b.left,y:t.clientY-b.top};}
+  function down(e){sigDrawing=true;sigDirty=true;var p=pos(e);sigCtx.beginPath();sigCtx.moveTo(p.x,p.y);e.preventDefault();}
+  function move(e){if(!sigDrawing)return;var p=pos(e);sigCtx.lineTo(p.x,p.y);sigCtx.stroke();e.preventDefault();}
+  function up(){sigDrawing=false;}
+  cv.addEventListener('mousedown',down);cv.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+  cv.addEventListener('touchstart',down,{passive:false});cv.addEventListener('touchmove',move,{passive:false});cv.addEventListener('touchend',up);
+}
+function sigClear(){var cv=document.getElementById('sigcv');if(cv&&sigCtx){sigCtx.clearRect(0,0,cv.width,cv.height);sigDirty=false;}}
+function saveReg(){
+  var comp=(document.getElementById('rg-comp').value||'').trim();
+  var veh=(document.getElementById('rg-veh').value||'').trim();
+  if(!comp){toast('운송사업자명을 입력하세요');return;}
+  if(!veh){toast('차량번호를 입력하세요');return;}
+  if(!sigDirty){toast('서명을 그려주세요');return;}
+  var cv=document.getElementById('sigcv');var sig=cv.toDataURL('image/png');
+  REG={company:comp,vehicle:veh,sig:sig,at:new Date().toISOString(),locked:true};
+  sbSet(regKey(),REG);closeSheet();renderMonth();toast('등록됐어요');
+}
+function reqReset(){
+  var reason=prompt('초기화 사유를 입력하세요 (관리자에게 전달됩니다)','');
+  if(reason===null)return;
+  sbGet('insp_reset_reqs').then(function(list){
+    list=list||[];list.push({id:'r'+Date.now(),user:USER,vehicle:REG&&REG.vehicle||'',company:REG&&REG.company||'',reason:reason||'(사유 없음)',at:new Date().toISOString()});
+    sbSet('insp_reset_reqs',list).then(function(){closeSheet();toast('초기화 신청 완료 · 관리자 승인을 기다려주세요');});
+  });
+}
+
+/* ── 공식 서식 보기 ── */
+function buildForm(){
+  var yp=VIEW.split('-');var days=MDATA.days||{};var dim=daysInMonth(VIEW);
+  var sig=REG&&REG.sig;
+  function markFor(day,idx){var dd=days[day];if(!dd)return '';if(dd.off)return '미';var v=dd.items&&dd.items[idx];if(!v)return '';if(v==='x')return '×';if(v==='mi')return '미';return '○';}
+  var h='<div style="text-align:center;font-size:14px;font-weight:800;letter-spacing:2px;margin-bottom:6px">운수종사자 일상점검표</div>';
+  h+='<table class="jp" style="width:100%;table-layout:fixed"><tr><td class="hd2" style="width:60px">점검연월</td><td>'+yp[0]+'년 '+(+yp[1])+'월</td><td class="hd2" style="width:76px">운송사업자명</td><td>'+esc(REG&&REG.company||'')+'</td><td class="hd2" style="width:54px">차량번호</td><td>'+esc(REG&&REG.vehicle||'')+'</td><td class="hd2" style="width:78px">운수종사자명</td><td>'+esc(USER)+'</td></tr></table>';
+  h+='<table class="jp" style="width:100%;margin-top:-1px"><thead><tr><th class="hd2" colspan="2" rowspan="2">점검항목</th><th class="hd2" colspan="31">점검결과 ( 양호 ○ , 불량 × , 미운행시 "미" 기입 )</th></tr><tr>';
+  for(var d=1;d<=31;d++)h+='<th class="day">'+d+'</th>';
+  h+='</tr></thead><tbody>';
+  for(var r=0;r<ITEMS.length;r++){h+='<tr>';if(ITEMS[r][0])h+='<td class="cat" rowspan="'+CATSPAN[ITEMS[r][0]]+'">'+ITEMS[r][0]+'</td>';h+='<td class="nm2">'+ITEMS[r][1]+'</td>';
+    for(var c=1;c<=31;c++){var m=c<=dim?markFor(c,r):'';var col=m==='×'?'color:#c62828':(m==='미'?'color:#888':'');h+='<td class="mk" style="'+col+'">'+m+'</td>';}
+    h+='</tr>';}
+  // 서명행
+  h+='<tr><td class="hd2" colspan="2">점검자 확인(서명)</td>';
+  for(var c2=1;c2<=31;c2++){var dd=days[c2];var v='';if(dd&&!dd.off&&sig){v='<img src="'+sig+'" style="height:12px">';}else if(dd&&dd.off){v='<span style="font-size:6px;color:#888">휴</span>';}h+='<td class="mk">'+v+'</td>';}
+  h+='</tr>';
+  // 불량조치
+  var memos=[];for(var mc=1;mc<=dim;mc++){var d2=days[mc];if(d2&&d2.memo)memos.push(mc+'일: '+d2.memo);}
+  h+='<tr><td class="hd2" colspan="2" style="height:30px">불량상태 조치 기록</td><td colspan="31" style="text-align:left;font-size:8px;padding:3px 5px;vertical-align:top">'+esc(memos.join('  /  '))+'</td></tr>';
+  h+='</tbody></table>';
+  return h;
+}
+function openForm(){
+  var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><b style="font-size:15px">📋 공식 서식 (상시 비치)</b><span onclick="closeSheet()" style="font-size:20px;color:#999;cursor:pointer">×</span></div>';
+  h+='<div style="display:flex;gap:7px;margin-bottom:10px"><button class="btn b-red" style="flex:1" onclick="dlPDF()">📄 PDF</button><button class="btn b-green" style="flex:1" onclick="dlExcel()">📊 Excel</button></div>';
+  h+='<div style="overflow-x:auto;border:1px solid #ccc;border-radius:8px;padding:8px;background:#fff"><div id="formbox" style="min-width:640px">'+buildForm()+'</div></div>';
+  document.getElementById('sheet').innerHTML=h;openSheet();
+}
+
+/* ── 다운로드 ── */
+function dlExcel(){
+  var yp=VIEW.split('-');
+  var html='<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body>'+buildForm().replace(/<img[^>]*>/g,'서명').replace(/class="[^"]*"/g,'')+'</body></html>';
+  var blob=new Blob(['﻿'+html],{type:'application/vnd.ms-excel'});
+  saveBlob(blob,'일상점검표_'+yp[0]+yp[1]+'.xls');toast('Excel 저장');
+}
+function saveBlob(blob,name){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(a.href);},1500);}
+function loadScript(src){return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+function dlPDF(){
+  var yp=VIEW.split('-');toast('PDF 만드는 중…');
+  // 임시 렌더 영역
+  var wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-9999px;top:0;background:#fff;padding:14px;width:1000px';
+  wrap.innerHTML='<div style="text-align:left;font-size:9px">■ 화물자동차 운수사업법 시행규칙 [별지 제14호의5서식]</div>'+buildForm();
+  document.body.appendChild(wrap);
+  var ok=function(){return typeof html2canvas!=='undefined'&&window.jspdf;};
+  var chain=ok()?Promise.resolve():loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js').then(function(){return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');});
+  chain.then(function(){return html2canvas(wrap,{scale:2,backgroundColor:'#fff'});}).then(function(canvas){
+    var jsPDF=window.jspdf.jsPDF;var pdf=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    var pw=297,ph=210,iw=pw-16,ih=canvas.height*iw/canvas.width;if(ih>ph-16)ih=ph-16;
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',8,8,iw,ih);
+    pdf.save('일상점검표_'+yp[0]+yp[1]+'.pdf');
+    document.body.removeChild(wrap);toast('PDF 저장');
+  }).catch(function(){document.body.removeChild(wrap);toast('PDF 실패 · 인터넷 확인 후 다시');});
+}
+
+/* ── 시트 ── */
+function openSheet(){document.getElementById('ov').className='ov show';}
+function closeSheet(){document.getElementById('ov').className='ov';}
+document.getElementById('ov').addEventListener('click',function(e){if(e.target.id==='ov')closeSheet();});
+
+/* ── 시작 ── */
+load(todayObj().ym);
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v50 — 재배포(Pages 빌드 재시도)
-const CACHE_NAME = 'teamflex-v316';
+// TeamFlex Service Worker v51 — 차량 일상점검 + 관리자 홈복구 + 구슬타이머
+const CACHE_NAME = 'teamflex-v317';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 

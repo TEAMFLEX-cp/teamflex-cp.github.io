@@ -3088,6 +3088,7 @@ function launchApp(){
   var bn=document.getElementById('bn');
   if(CU.role==='admin'){
     bn.innerHTML=
+      '<div class="ni on" id="ni-hm" onclick="go(\'hm\')"><span class="nicon">&#x1F3E0;</span>홈</div>'+
       '<div class="ni" id="ni-ab" onclick="go(\'ab\')"><span class="nicon">&#x1F4E2;</span>공지</div>'+
       '<div class="ni" id="ni-as" onclick="go(\'as\')"><span class="nicon">&#x1F4C5;</span>스케줄</div>'+
       '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>오배송</div>'+
@@ -3600,7 +3601,7 @@ function go(tab){
   if(tab==='er'||tab==='st'){var uCfgEl=document.getElementById('ni-usr-cfg');if(uCfgEl)uCfgEl.classList.add('on');}
   window.history.pushState({tab:tab,ts:Date.now()},'');
   var mc=document.getElementById('mc');
-  if(tab==='hm'){mc.innerHTML=pgHome();if(CU&&CU.role!=='admin'){try{tqLoadAlert().then(function(){if(CUR_TAB==='hm'){var _m=document.getElementById('mc');if(_m)_m.innerHTML=pgHome();}try{tqDriverPopup();}catch(_e){}});}catch(e){}}}
+  if(tab==='hm'){mc.innerHTML=pgHome();setTimeout(function(){try{inspHomeLoad();}catch(e){}},80);if(CU&&CU.role!=='admin'){try{tqLoadAlert().then(function(){if(CUR_TAB==='hm'){var _m=document.getElementById('mc');if(_m)_m.innerHTML=pgHome();try{inspHomeLoad();}catch(e){}}try{tqDriverPopup();}catch(_e){}});}catch(e){}}}
   else if(tab==='nc')mc.innerHTML=pgAnn(false);
   else if(tab==='my')mc.innerHTML=pgMySched();
   else if(tab==='fs'){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);setTimeout(function(){if(sbClient&&(!AW[SCHED_WK]||!AW[SCHED_WK].g))schedRefresh();},300);}
@@ -3614,7 +3615,7 @@ function go(tab){
   else if(tab==='cfg')mc.innerHTML=pgSettings();
   else if(tab==='sv'){mc.innerHTML=pgServerMon();setTimeout(function(){svInit(false);},60);}
   else if(tab==='sl')mc.innerHTML=pgSchedLog();
-  else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();mdStartRqRefresh();},200);}
+  else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();mdStartRqRefresh();try{inspLoadResetReqs();}catch(e){}},200);}
   else if(tab==='rq'){_rqTab='';mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
   else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
   else if(tab==='pb'){mc.innerHTML=pgPback();setTimeout(pbInit,100);}
@@ -3903,6 +3904,74 @@ function openFortune(){ if(document.getElementById('ft-pop'))return; var ov=docu
 function closeFortune(){var e=document.getElementById('ft-pop');if(e)e.remove();}
 function saveFtBirth(){var el=document.getElementById('ft-birth-in');if(!el)return;var v=(el.value||'').replace(/[^0-9]/g,'').slice(0,6);if(v.length!==6){alert('생년월일 6자리를 입력해주세요 (예: 850315)');return;}try{localStorage.setItem('tf_birth_'+((CU&&CU.name)||''),v);}catch(e){}closeFortune();openFortune();}
 
+/* ══════════ 차량 일상점검 (iframe 연동) ══════════ */
+function inspOpen(){
+  var pop=document.getElementById('insp-pop');
+  if(!pop){pop=document.createElement('div');pop.id='insp-pop';pop.style.cssText='position:fixed;inset:0;z-index:99991;background:#eef1f6;overflow:auto;-webkit-overflow-scrolling:touch';document.body.appendChild(pop);}
+  var u=encodeURIComponent((CU&&CU.name)||'');
+  pop.innerHTML='<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 12px;background:#16306e"><button onclick="inspClose()" style="background:#2a4fa0;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer">← 나가기</button><div style="color:#fff;font-weight:700">🚛 차량 일상점검</div></div><iframe src="점검표.html?u='+u+'&ts='+Date.now()+'" style="width:100%;height:calc(100vh - 54px);border:none;display:block;background:#eef1f6"></iframe>';
+  pop.style.display='block';try{document.body.style.overflow='hidden';}catch(e){}
+}
+function inspClose(){var pop=document.getElementById('insp-pop');if(pop){pop.style.display='none';pop.innerHTML='';}try{document.body.style.overflow='';}catch(e){}if(CUR_TAB==='hm'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();try{inspHomeLoad();}catch(e){}}}
+function inspHomeCard(){
+  return '<div onclick="inspOpen()" style="position:relative;cursor:pointer;background:linear-gradient(135deg,#0f7a52,#1ba06a);border-radius:15px;padding:13px 15px;color:#fff;margin-bottom:12px;box-shadow:0 5px 16px rgba(15,122,82,.35)">'+
+    '<div style="display:flex;align-items:center;gap:12px"><div style="font-size:32px">&#x1F69B;</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800">차량 일상점검</div>'+
+    '<div style="font-size:11px;color:#c8f2df;margin-top:2px">운행 전 점검하고 기록 남기기</div>'+
+    '<div id="insp-hstat" style="margin-top:5px"><span style="font-size:10px;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:8px">불러오는 중…</span></div></div>'+
+    '<div style="background:rgba(255,255,255,.22);border-radius:11px;padding:9px 13px;font-size:13px;font-weight:900;white-space:nowrap">작성 &#x25B6;</div></div></div>';
+}
+function inspHomeLoad(){
+  if(!sbClient||!CU)return;
+  var d=new Date(Date.now()+9*3600000);var ym=d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2);var day=d.getUTCDate();
+  var key='insp_'+encodeURIComponent(CU.name)+'_'+ym;
+  sbClient.from('app_settings').select('value').eq('key',key).maybeSingle().then(function(r){
+    var el=document.getElementById('insp-hstat');if(!el)return;
+    var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){}}
+    var days=(v&&v.days)||{};var dd=days[day];var txt,bg;
+    if(!dd){txt='&#x25CF; 오늘('+day+'일) 미작성';bg='rgba(255,80,80,.35);border:1px solid #ff9a9a';}
+    else if(dd.off){txt='&#x1F6CC; 오늘 휴무';bg='rgba(255,255,255,.22)';}
+    else{txt='&#x2705; 오늘 점검 완료';bg='rgba(120,255,170,.3)';}
+    el.innerHTML='<span style="font-size:10px;font-weight:700;background:'+bg+';padding:2px 8px;border-radius:8px">'+txt+'</span> <span style="font-size:9.5px;color:#bdeed7">&middot; 이번달 '+Object.keys(days).length+'일</span>';
+  }).catch(function(){});
+}
+/* 초기화 신청 (관리자 오배송 탭) */
+function inspLoadResetReqs(){
+  if(!sbClient||!(CU&&CU.role==='admin'))return;
+  sbClient.from('app_settings').select('value').eq('key','insp_reset_reqs').maybeSingle().then(function(r){
+    var box=document.getElementById('insp-reset-box');if(!box)return;
+    var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){}}
+    var list=v||[];
+    if(!list.length){box.innerHTML='';return;}
+    var h='<div style="font-size:12.5px;font-weight:800;color:#c0392b;margin:2px 2px 8px">&#x1F504; 일상점검 초기화 신청 <span style="font-size:9px;background:#fdecea;color:#c0392b;border:1px solid #f3c2c2;padding:2px 7px;border-radius:8px">'+list.length+'건</span></div>';
+    list.forEach(function(q){
+      h+='<div style="background:#fff;border:1.5px solid #f0c4bc;border-radius:13px;padding:12px 13px;margin-bottom:10px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:13px">&#x1F464; '+_esc(q.user)+' <span style="font-size:11px;color:#888;font-weight:500">&middot; '+_esc(q.vehicle||'')+'</span></b><span style="font-size:9.5px;color:#999">'+kstDateStr(q.at)+'</span></div>'+
+        '<div style="background:#faf7f6;border-radius:8px;padding:7px 9px;font-size:11.5px;color:#555">사유: '+_esc(q.reason||'')+'</div>'+
+        '<div style="display:flex;gap:8px;margin-top:10px"><button onclick="inspApproveReset(\''+q.id+'\',\''+encodeURIComponent(q.user)+'\')" style="flex:1;background:#1e8e4e;color:#fff;border:none;border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer">&#x2705; 초기화 승인</button><button onclick="inspRejectReset(\''+q.id+'\')" style="flex:1;background:#fff;color:#666;border:1.5px solid #d0d5df;border-radius:9px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer">&#x274C; 거절</button></div>'+
+      '</div>';
+    });
+    box.innerHTML=h;
+  }).catch(function(){});
+}
+function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function inspApproveReset(id,userEnc){
+  var user=decodeURIComponent(userEnc);
+  sbClient.from('app_settings').upsert({key:'insp_reg_'+encodeURIComponent(user),value:JSON.stringify(null)},{onConflict:'key'}).then(function(){
+    return sbClient.from('app_settings').select('value').eq('key','insp_reset_reqs').maybeSingle();
+  }).then(function(r){
+    var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){}}
+    var list=(v||[]).filter(function(q){return q.id!==id;});
+    return sbClient.from('app_settings').upsert({key:'insp_reset_reqs',value:JSON.stringify(list)},{onConflict:'key'});
+  }).then(function(){inspLoadResetReqs();}).catch(function(){});
+}
+function inspRejectReset(id){
+  sbClient.from('app_settings').select('value').eq('key','insp_reset_reqs').maybeSingle().then(function(r){
+    var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){}}
+    var list=(v||[]).filter(function(q){return q.id!==id;});
+    return sbClient.from('app_settings').upsert({key:'insp_reset_reqs',value:JSON.stringify(list)},{onConflict:'key'});
+  }).then(function(){inspLoadResetReqs();}).catch(function(){});
+}
 function pgHome(){
   // ── 관리자 전용 홈 (날씨 + 운영 요약) ──
   if(CU&&CU.role==='admin'){
@@ -3944,7 +4013,7 @@ function pgHome(){
         '<span style="font-size:17px;font-weight:800">&#x1F451; 관리자 님 &#x1F44F;&#x1F44F;</span>'+
       '</div>'+
       '</div>'+
-      adminWeatherCard+_ftBtnHTML()+adminSummary;
+      adminWeatherCard+inspHomeCard()+_ftBtnHTML()+adminSummary;
   }
 
   var today=todStr();var tom=tomStr();
@@ -4104,7 +4173,7 @@ function pgHome(){
       '</div>'+
     '</div>'+
     '</div>'+
-    (typeof tqHomeBanner==='function'?tqHomeBanner():'')+weatherCard+_ftBtnHTML();
+    (typeof tqHomeBanner==='function'?tqHomeBanner():'')+weatherCard+inspHomeCard()+_ftBtnHTML();
 }
 // ── WEATHER ──────────────────────────────────────────────────────────
 var _weatherCache=null;var _weatherCacheDate='';var _hourlyOpen=[false,false];
@@ -7193,7 +7262,7 @@ function pgMisdelivery(){
   var isAdmin=CU.role==='admin';
   var isLeader=CU.role==='leader'; // sub(조장) 제외 — 팀장만
 
-  var modeSec='';
+  var modeSec=(isAdmin?'<div id="insp-reset-box"></div>':'');
   if(isAdmin){
     var isAutoMode=(_mdCurrentMode!=='approval');
     modeSec='<div class="md-mode-bar" id="md-mode-bar">'+
