@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v51 — 차량 일상점검 + 관리자 홈복구 + 구슬타이머
-const CACHE_NAME = 'teamflex-v317';
+// TeamFlex Service Worker v52 — 홈 감성 배경(계절+날씨) + 점검카드 2상태
+const CACHE_NAME = 'teamflex-v318';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 

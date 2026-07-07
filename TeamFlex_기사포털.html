@@ -3601,6 +3601,7 @@ function go(tab){
   if(tab==='er'||tab==='st'){var uCfgEl=document.getElementById('ni-usr-cfg');if(uCfgEl)uCfgEl.classList.add('on');}
   window.history.pushState({tab:tab,ts:Date.now()},'');
   var mc=document.getElementById('mc');
+  try{if(tab==='hm'){if(typeof hbgApply==='function')hbgApply();}else{if(typeof hbgHide==='function')hbgHide();}}catch(e){}
   if(tab==='hm'){mc.innerHTML=pgHome();setTimeout(function(){try{inspHomeLoad();}catch(e){}},80);if(CU&&CU.role!=='admin'){try{tqLoadAlert().then(function(){if(CUR_TAB==='hm'){var _m=document.getElementById('mc');if(_m)_m.innerHTML=pgHome();try{inspHomeLoad();}catch(e){}}try{tqDriverPopup();}catch(_e){}});}catch(e){}}}
   else if(tab==='nc')mc.innerHTML=pgAnn(false);
   else if(tab==='my')mc.innerHTML=pgMySched();
@@ -3913,26 +3914,55 @@ function inspOpen(){
   pop.style.display='block';try{document.body.style.overflow='hidden';}catch(e){}
 }
 function inspClose(){var pop=document.getElementById('insp-pop');if(pop){pop.style.display='none';pop.innerHTML='';}try{document.body.style.overflow='';}catch(e){}if(CUR_TAB==='hm'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();try{inspHomeLoad();}catch(e){}}}
-function inspHomeCard(){
-  return '<div onclick="inspOpen()" style="position:relative;cursor:pointer;background:linear-gradient(135deg,#0f7a52,#1ba06a);border-radius:15px;padding:13px 15px;color:#fff;margin-bottom:12px;box-shadow:0 5px 16px rgba(15,122,82,.35)">'+
-    '<div style="display:flex;align-items:center;gap:12px"><div style="font-size:32px">&#x1F69B;</div>'+
-    '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:800">차량 일상점검</div>'+
-    '<div style="font-size:11px;color:#c8f2df;margin-top:2px">운행 전 점검하고 기록 남기기</div>'+
-    '<div id="insp-hstat" style="margin-top:5px"><span style="font-size:10px;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:8px">불러오는 중…</span></div></div>'+
-    '<div style="background:rgba(255,255,255,.22);border-radius:11px;padding:9px 13px;font-size:13px;font-weight:900;white-space:nowrap">작성 &#x25B6;</div></div></div>';
+/* ── 홈 감성 배경 (계절+날씨 자동) ── */
+function hbgInit(){ if(document.getElementById('hbg'))return;
+  var st=document.createElement('style');st.id='hbg-style';
+  st.textContent='@keyframes hbgFall{0%{transform:translateY(-30px) rotate(0);opacity:0}8%{opacity:1}100%{transform:translateY(103vh) rotate(340deg);opacity:.7}}'
+  +'@keyframes hbgRain{0%{transform:translateY(-20px);opacity:0}15%{opacity:.85}100%{transform:translateY(103vh);opacity:0}}'
+  +'@keyframes hbgSnow{0%{transform:translateY(-20px);opacity:0}10%{opacity:1}100%{transform:translateY(103vh) translateX(16px);opacity:.5}}'
+  +'@keyframes hbgBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}'
+  +'@keyframes hsp{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}'
+  +'@keyframes hbnc{0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}'
+  +'@keyframes htwk{0%,100%{opacity:.25;transform:scale(.6)}50%{opacity:1;transform:scale(1.25)}}'
+  +'@keyframes hglow{0%,100%{box-shadow:0 0 0 0 rgba(255,90,110,.5),0 6px 18px rgba(255,90,90,.35)}50%{box-shadow:0 0 20px 5px rgba(255,110,130,.6),0 6px 20px rgba(255,90,90,.4)}}'
+  +'.hspk{position:absolute;font-size:12px;animation:htwk 1.6s infinite;pointer-events:none;z-index:2}'
+  +'#hbg .hp{position:absolute;top:-30px;pointer-events:none;will-change:transform}';
+  document.head.appendChild(st);
+  var bg=document.createElement('div');bg.id='hbg';bg.style.cssText='position:fixed;inset:0;z-index:-1;display:none;pointer-events:none;overflow:hidden';
+  document.body.insertBefore(bg,document.body.firstChild);
 }
+function hbgSeason(){var m=(new Date(Date.now()+9*3600000)).getUTCMonth()+1;if(m>=3&&m<=5)return 'spring';if(m>=6&&m<=8)return 'summer';if(m>=9&&m<=11)return 'autumn';return 'winter';}
+function hbgWeather(){try{var c=_weatherCache&&_weatherCache.current_weather&&_weatherCache.current_weather.weathercode;if(c==null)return null;c=parseInt(c);if((c>=51&&c<=67)||(c>=80&&c<=82)||c>=95)return 'rain';if((c>=71&&c<=77)||(c>=85&&c<=86))return 'snow';return null;}catch(e){return null;}}
+function hbgTheme(){var w=hbgWeather();if(w==='rain')return {grad:'linear-gradient(180deg,#61728c,#45546e 55%,#333f56)',p:'rain'};if(w==='snow')return {grad:'linear-gradient(175deg,#eaf4ff,#d6e8ff 55%,#eef6ff)',p:'snow'};var s=hbgSeason();if(s==='spring')return {grad:'linear-gradient(170deg,#ffe0ef,#f3e8ff 50%,#e3f7e8)',p:'sakura'};if(s==='summer')return {grad:'linear-gradient(180deg,#7fd8ff,#3f9bf0 60%,#2f6fd6)',p:'wave'};if(s==='autumn')return {grad:'linear-gradient(170deg,#ffe3b0,#ffcf9e 55%,#f6b98a)',p:'leaf'};return {grad:'linear-gradient(175deg,#eaf4ff,#d6e8ff 55%,#eef6ff)',p:'snow'};}
+function hbgParticles(type){var s='',i;
+  if(type==='sakura'){for(i=0;i<16;i++)s+='<span class="hp" style="left:'+(i*6.3)+'%;font-size:'+(12+i%3*5)+'px;animation:hbgFall '+(6+i%5)+'s linear '+(i*0.5)+'s infinite">🌸</span>';}
+  else if(type==='leaf'){var L=['🍂','🍁','🍂'];for(i=0;i<16;i++)s+='<span class="hp" style="left:'+(i*6.3)+'%;font-size:'+(13+i%3*5)+'px;animation:hbgFall '+(6+i%5)+'s linear '+(i*0.5)+'s infinite">'+L[i%3]+'</span>';}
+  else if(type==='snow'){for(i=0;i<20;i++)s+='<span class="hp" style="left:'+(i*5)+'%;font-size:'+(10+i%3*5)+'px;color:#fff;animation:hbgSnow '+(6+i%5)+'s linear '+(i*0.4)+'s infinite">❄️</span>';s+='<div style="position:absolute;bottom:82px;left:16px;font-size:34px">⛄</div><div style="position:absolute;bottom:84px;right:18px;font-size:28px">🎿</div>';}
+  else if(type==='rain'){for(i=0;i<26;i++)s+='<span class="hp" style="left:'+(i*3.9)+'%;width:2px;height:14px;background:rgba(210,230,255,.7);border-radius:2px;animation:hbgRain '+(0.7+i%3*0.15)+'s linear '+(i*0.06)+'s infinite"></span>';s+='<div style="position:absolute;top:70px;left:7%;font-size:38px;opacity:.8">☁️</div><div style="position:absolute;top:100px;right:12%;font-size:30px;opacity:.65">☁️</div>';}
+  else if(type==='wave'){for(i=0;i<10;i++)s+='<span class="hp" style="left:'+(i*10+3)+'%;width:2px;height:10px;background:rgba(255,255,255,.5);border-radius:2px;animation:hbgRain '+(1+i%3*0.2)+'s linear '+(i*0.15)+'s infinite"></span>';s+='<div style="position:absolute;bottom:74px;left:0;right:0;font-size:34px;letter-spacing:-6px;text-align:center;opacity:.85;animation:hbgBob 2.4s ease-in-out infinite">🌊🌊🌊🌊🌊🌊🌊🌊🌊🌊</div><div style="position:absolute;bottom:108px;right:18px;font-size:28px">⛱️</div>';}
+  return s;}
+function hbgApply(){try{hbgInit();var th=hbgTheme();var bg=document.getElementById('hbg');if(!bg)return;bg.style.background=th.grad;bg.innerHTML=hbgParticles(th.p);bg.style.display='block';}catch(e){}}
+function hbgHide(){var bg=document.getElementById('hbg');if(bg)bg.style.display='none';}
+/* ── 홈 점검 카드 (미작성=강조 / 완료=차분 반투명) ── */
+function inspCardBody(state,cnt){
+  if(state==='done'||state==='off'){
+    var msg=state==='off'?'🛌 오늘 휴무':'✅ 오늘 점검 완료';
+    return '<div onclick="inspOpen()" style="cursor:pointer;border-radius:15px;padding:13px 15px;margin-bottom:12px;background:rgba(255,255,255,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.72);box-shadow:0 3px 12px rgba(0,0,0,.07);display:flex;align-items:center;gap:11px"><span style="font-size:26px">&#x1F69B;</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#2a3a5a">차량 일상점검</div><div style="font-size:11px;color:#2e9e5e;font-weight:700;margin-top:2px">'+msg+' &middot; 이번달 '+cnt+'일</div></div><span style="font-size:20px">&#x2714;&#xFE0F;</span></div>';
+  }
+  return '<div onclick="inspOpen()" style="cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:14px 15px;margin-bottom:12px;background:linear-gradient(135deg,#ff5f6d,#ffc371);color:#fff;animation:hglow 1.8s infinite">'+
+    '<span class="hspk" style="top:8px;left:44%">✨</span><span class="hspk" style="top:22px;right:16px;animation-delay:.5s">⭐</span>'+
+    '<div style="display:flex;align-items:center;gap:11px"><div style="font-size:30px;animation:hsp 1.4s infinite">&#x1F69B;</div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:900">차량 일상점검</div><div style="margin-top:5px"><span style="font-size:12px;font-weight:900;background:#fff;color:#e5354a;padding:3px 10px;border-radius:9px">🚨 오늘 점검 전!</span></div></div><div style="background:rgba(255,255,255,.25);border-radius:11px;padding:9px 12px;font-size:12.5px;font-weight:900;white-space:nowrap;animation:hbnc 1s infinite">작성 &#x25B6;</div></div></div>';
+}
+function inspHomeCard(){return '<div id="insp-card-wrap">'+inspCardBody('todo',0)+'</div>';}
 function inspHomeLoad(){
   if(!sbClient||!CU)return;
   var d=new Date(Date.now()+9*3600000);var ym=d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2);var day=d.getUTCDate();
   var key='insp_'+encodeURIComponent(CU.name)+'_'+ym;
   sbClient.from('app_settings').select('value').eq('key',key).maybeSingle().then(function(r){
-    var el=document.getElementById('insp-hstat');if(!el)return;
+    var wrap=document.getElementById('insp-card-wrap');if(!wrap)return;
     var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){}}
-    var days=(v&&v.days)||{};var dd=days[day];var txt,bg;
-    if(!dd){txt='&#x25CF; 오늘('+day+'일) 미작성';bg='rgba(255,80,80,.35);border:1px solid #ff9a9a';}
-    else if(dd.off){txt='&#x1F6CC; 오늘 휴무';bg='rgba(255,255,255,.22)';}
-    else{txt='&#x2705; 오늘 점검 완료';bg='rgba(120,255,170,.3)';}
-    el.innerHTML='<span style="font-size:10px;font-weight:700;background:'+bg+';padding:2px 8px;border-radius:8px">'+txt+'</span> <span style="font-size:9.5px;color:#bdeed7">&middot; 이번달 '+Object.keys(days).length+'일</span>';
+    var days=(v&&v.days)||{};var dd=days[day];var state=!dd?'todo':(dd.off?'off':'done');
+    wrap.innerHTML=inspCardBody(state,Object.keys(days).length);
   }).catch(function(){});
 }
 /* 초기화 신청 (관리자 오배송 탭) */
@@ -4322,7 +4352,7 @@ function _renderWeather(data){
 async function loadWeather(){
   var _now=new Date();var _nowH=_now.getHours();var _nowBlock=_now.getMinutes()<30?'00':'30';
   var todayKey=todStr()+'T'+String(_nowH).padStart(2,'0')+'-'+_nowBlock;
-  if(_weatherCache&&_weatherCacheDate===todayKey){_renderWeather(_weatherCache);return;}
+  if(_weatherCache&&_weatherCacheDate===todayKey){_renderWeather(_weatherCache);try{if(CUR_TAB==='hm'&&typeof hbgApply==='function')hbgApply();}catch(e){}return;}
   try{var lsW=localStorage.getItem('tfweather4');if(lsW){var lsD=JSON.parse(lsW);if(lsD.date===todayKey&&lsD.data){_weatherCache=lsD.data;_weatherCacheDate=todayKey;if(lsD.city){_weatherCity=lsD.city;}_renderWeather(lsD.data);return;}}}catch(e){}
   if(!navigator.geolocation){return;}
   var _doFetch=async function(lat,lon){
@@ -4337,6 +4367,7 @@ async function loadWeather(){
             .then(function(rv){return rv.json();}).then(function(geo){var a=geo.address||{};var city=a.city||a.county||a.town||a.village||a.state||'';if(city){_weatherCity=city;try{var sw=JSON.parse(localStorage.getItem('tfweather4')||'{}');sw.city=city;localStorage.setItem('tfweather4',JSON.stringify(sw));}catch(ex){}var le=document.getElementById('wx-location');if(le)le.textContent='📍 '+city;}}).catch(function(){});
         }
         _renderWeather(data);
+        try{if(CUR_TAB==='hm'&&typeof hbgApply==='function')hbgApply();}catch(e){}
       }
     }catch(e){}
   };
