@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v331 — 신선 PDD MISS 사쿠라 버튼·팝업(상태·확정·삭제·공유활성화·정산월)
-const CACHE_NAME = 'teamflex-v335';
+// TeamFlex Service Worker v336 — 요청탭 안내박스 축소(큰 이모지+파손 뱃지, 정중앙)
+const CACHE_NAME = 'teamflex-v336';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
