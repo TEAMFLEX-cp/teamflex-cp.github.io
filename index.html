@@ -8291,17 +8291,17 @@ async function mdPostToTeams(replyId){
       var errTxt=await res.text().catch(function(){return res.status;});
       console.warn('[mdPostToTeams] HTTP '+res.status,errTxt);
       // Edge Function 실패 → 폴러가 처리하므로 사용자에게 안내만
-      alert('✅ 답변이 저장됐습니다.\n⚠️ 팀즈 즉시 전송은 실패했지만, 클라우드PC 폴러가 1분 내로 자동 재전송합니다.\n(오류: HTTP '+res.status+')');
+      alert('✅ 답변이 저장됐습니다.\n팀즈 전송은 자동으로 처리됩니다.');
       return;
     }
     var json=await res.json();
     if(!json.ok){
       console.warn('[mdPostToTeams]',json);
-      alert('✅ 답변이 저장됐습니다.\n⚠️ 팀즈 전송 응답 오류: '+(json.error||JSON.stringify(json))+'\n클라우드PC 폴러가 재전송합니다.');
+      alert('✅ 답변이 저장됐습니다.\n팀즈 전송은 자동으로 처리됩니다.');
     }
   }catch(e){
     console.error('[mdPostToTeams]',e);
-    alert('✅ 답변이 저장됐습니다.\n⚠️ 팀즈 전송 연결 실패: '+e.message+'\n클라우드PC 폴러가 1분 내 자동 재전송합니다.');
+    alert('✅ 답변이 저장됐습니다.\n팀즈 전송은 자동으로 처리됩니다.');
   }
 }
 async function mdPostTeamsAck(caseId){
