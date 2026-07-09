@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v336 — 요청탭 안내박스 축소(큰 이모지+파손 뱃지, 정중앙)
-const CACHE_NAME = 'teamflex-v336';
+// TeamFlex Service Worker v337 — PDD박스 이름변경 + 신선 빈데이터시 __ADMIN_BAR__ 노출 버그 수정
+const CACHE_NAME = 'teamflex-v337';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 

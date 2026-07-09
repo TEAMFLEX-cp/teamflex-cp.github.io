@@ -12197,7 +12197,7 @@ async function loadFreshStatus(){
 
     if(fsRes.error||!fsRes.data||fsRes.data.length===0){
       html+='<div class="empty"><div class="ei">&#x1F33F;</div><p>신선 배송 현황 데이터 없음<br><span style="font-size:11px;color:#999">수량 체크 실행 후 자동으로 업데이트됩니다</span></p></div>';
-      mc.innerHTML=html;
+      mc.innerHTML=html.replace('__ADMIN_BAR__','');
       return;
     }
 
@@ -12217,7 +12217,7 @@ async function loadFreshStatus(){
 
     if(routes.length===0){
       html+='<div class="card" style="text-align:center;color:#888;padding:24px">배송 현황 없음</div>';
-      mc.innerHTML=html;
+      mc.innerHTML=html.replace('__ADMIN_BAR__','');
       return;
     }
 
@@ -12625,7 +12625,7 @@ function _pddPeriod(off){
 function _pddWon(n){return (n||0).toLocaleString('ko-KR')+'원';}
 function _pddBtnHtml(isAdmin,share,miss,amt){
   var sm='<div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1;background:#fff;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#888">이번 미스</div><div style="font-size:16px;font-weight:800;color:#333">'+miss+'건</div></div><div style="flex:1;background:#fff;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#c62828">총 차감</div><div style="font-size:16px;font-weight:800;color:#c62828">'+_pddWon(amt)+'</div></div></div>';
-  var full='<div onclick="showFreshPddLog()" style="cursor:pointer;background:#fde5ee;border:1px solid #f5b8d0;border-radius:14px;padding:11px 13px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#c2185b;font-size:14px;font-weight:700">&#x1F338; PDD MISS 기록 확인</span><span style="font-size:11px;color:#c2185b">열기 &#x203A;</span></div>';
+  var full='<div onclick="showFreshPddLog()" style="cursor:pointer;background:#fde5ee;border:1px solid #f5b8d0;border-radius:14px;padding:11px 13px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#c2185b;font-size:14px;font-weight:700">&#x1F338; PDD MISS 전체 기록</span><span style="font-size:11px;color:#c2185b">열기 &#x203A;</span></div>';
   if(isAdmin) return full+sm+'</div>';
   if(share){ return full+sm+'</div>'; }
   return '<div onclick="alert(\'\\uD83D\\uDD27 업데이트 테스트 중입니다\')" style="cursor:pointer;background:#f6eef1;border:1px solid #e3c9d4;border-radius:14px;padding:12px 13px;margin-bottom:10px;opacity:.85"><div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#a86985;font-size:14px;font-weight:700">&#x1F338; PDD MISS 기록</span><span style="font-size:10px;background:#bbb;color:#fff;padding:2px 9px;border-radius:20px">준비중</span></div></div>';
@@ -12683,7 +12683,7 @@ function _pddRenderPopup(){
   var delAll=(admin&&list.length)?'<button onclick="deletePddLogAll()" style="width:100%;margin-top:8px;padding:9px;background:#fff;color:#c62828;border:1px solid #ef9a9a;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">전체 삭제</button>':'';
   var popup='<div id="pdd-log-popup" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:20100;display:flex;align-items:flex-end;justify-content:center">'
     +'<div style="background:#fff;width:100%;max-width:480px;max-height:94%;border-radius:18px 18px 0 0;overflow:auto;padding:14px">'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:15px;font-weight:800;color:#c2185b">&#x1F338; PDD MISS 기록 확인 ('+list.length+'건)</span><button onclick="var p=document.getElementById(\'pdd-log-popup\');if(p)p.remove()" style="border:none;background:#eee;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer">&#x2715; 닫기</button></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:15px;font-weight:800;color:#c2185b">&#x1F338; PDD MISS 전체 기록 ('+list.length+'건)</span><button onclick="var p=document.getElementById(\'pdd-log-popup\');if(p)p.remove()" style="border:none;background:#eee;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer">&#x2715; 닫기</button></div>'
     +monthTab
     +'<div style="font-size:11px;color:#c2185b;background:#fdf0f5;border-radius:8px;padding:5px 10px;margin-bottom:10px;display:inline-block">&#x1F4C5; 정산월 &#xB7; '+per.label+'</div>'
     +shareBar+_pddNotice()+rows+delAll+'</div></div>';
