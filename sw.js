@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v341 — 분실차감 품명·운송장 가독성 강화
-const CACHE_NAME = 'teamflex-v341';
+// TeamFlex Service Worker v342 — 분실차감 품명(굵게)·운송장(📦 강조) 가독성
+const CACHE_NAME = 'teamflex-v342';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
