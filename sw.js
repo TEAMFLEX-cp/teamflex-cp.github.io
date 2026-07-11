@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v339 — 미반납/오배송 사진유실 수정('확인후완료'도 업로드·사진만전송) + 반려버튼
-const CACHE_NAME = 'teamflex-v339';
+// TeamFlex Service Worker v340 — 프백/차감 메뉴 2분리 + 분실차감 내역 페이지(본인/전체공개/관리자 삭제·미과실)
+const CACHE_NAME = 'teamflex-v340';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
