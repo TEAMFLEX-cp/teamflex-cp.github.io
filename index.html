@@ -8211,7 +8211,9 @@ async function mdSendReply(caseId){
   var ta=document.getElementById('md-ta-'+caseId);
   if(!ta)return;
   var txt=(ta.value||'').trim();
-  if(!txt){alert('⚠️ 답변 내용을 입력해주세요!\n답변 없이는 전송할 수 없습니다.');ta.focus();return;}
+  var _hasPh=!!((_mdReplyPhotos[caseId]||[]).length);
+  if(!txt&&!_hasPh){alert('⚠️ 답변 내용을 입력하거나 사진을 첨부해주세요!');ta.focus();return;}
+  if(!txt&&_hasPh){txt='📷 사진 첨부';}
   var {data:cfg}=await sbClient.from('misdelivery_settings').select('reply_mode').eq('id',1).single();
   var mode=(cfg&&cfg.reply_mode)||'approval';
   var btn=ta.nextElementSibling;
@@ -8263,12 +8265,15 @@ async function mdSelfComplete(caseId){
   if(!sbClient||!CU)return;
   if(!confirm('이 인입건을 확인하고 처리완료로 넘길까요?\n(답변 없이 처리완료됩니다)'))return;
   try{
+    var _selfPhotos=await mdUploadReplyPhotos(caseId);
     await sbClient.from('misdelivery_replies').insert({
-      case_id:caseId,reply_text:'✅ 기사 확인 후 처리완료 (답변 없음)',
+      case_id:caseId,reply_text:(_selfPhotos.length?'✅ 기사 확인 후 처리완료 (사진 첨부)':'✅ 기사 확인 후 처리완료 (답변 없음)'),
       replied_by:CU.name,replied_by_id:CU.id,
       approval_status:'approved',posted_to_teams:true,
+      reply_photo_urls:_selfPhotos.length?_selfPhotos:null,
       proxy_writer:CU.name,proxy_role:CU.role,approved_by:CU.name
     });
+    delete _mdReplyPhotos[caseId];
     await sbClient.from('misdelivery_cases').update({status:'approved'}).eq('id',caseId);
     var lc=(_mdCases||[]).find(function(x){return x.id===caseId;});if(lc)lc.status='approved';
     try{var _sibs=(_mdWbSiblings&&_mdWbSiblings[caseId])||[];if(_sibs.length){await sbClient.from('misdelivery_cases').update({status:'approved'}).in('id',_sibs);_sibs.forEach(function(_sid){var _l=(_mdCases||[]).find(function(x){return x.id===_sid;});if(_l)_l.status='approved';});}}catch(_se){console.warn('[sibling clear]',_se);}
@@ -8768,6 +8773,7 @@ function mdOpenDetail(caseId){
       assignRow+
       reopenBtn+
       '<button '+(hasReply?'onclick="mdApproveLatestReply('+c.id+')"':'')+' style="'+apprStyle+'" '+(hasReply?'':'disabled')+'>'+apprLabel+'</button>'+
+      ((isAdmin&&c.status==='replied')?'<button onclick="mdReopenApprovedCase('+c.id+')" style="width:100%;padding:11px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">🔄 반려 · 기사에게 재요청</button>':'')+
       (c._reshare?'<button onclick="mdLossRequest('+c.id+')" style="width:100%;padding:11px;background:#5e35b1;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer;margin-bottom:8px">📉 미처리 분실 (차감 요청)</button>':'')+
       (isAdmin?
         '<div style="display:flex;gap:8px">'+

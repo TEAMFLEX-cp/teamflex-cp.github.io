@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v338 — 공지 자동팝업 사진 표시 + 라이트박스 확대/드래그/다운로드
-const CACHE_NAME = 'teamflex-v338';
+// TeamFlex Service Worker v339 — 미반납/오배송 사진유실 수정('확인후완료'도 업로드·사진만전송) + 반려버튼
+const CACHE_NAME = 'teamflex-v339';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
