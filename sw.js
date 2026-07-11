@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v343 — 프백/차감 네비 + 분실차감: 새공유 회전반짝임·개수, 사유 색뱃지, 기사 확인(확정)→초록
-const CACHE_NAME = 'teamflex-v343';
+// TeamFlex Service Worker v344 — 분실차감: 기사이름 강조바 + 관리자 미확정 강제푸시(전체/기사별)
+const CACHE_NAME = 'teamflex-v344';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
