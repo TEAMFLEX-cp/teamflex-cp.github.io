@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v344 — 분실차감: 기사이름 강조바 + 관리자 미확정 강제푸시(전체/기사별)
-const CACHE_NAME = 'teamflex-v344';
+// TeamFlex Service Worker v345 — 분실차감 확정 진한초록 강조 + 확정건/전원확정 기사 하단 정렬
+const CACHE_NAME = 'teamflex-v345';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
