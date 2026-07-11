@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v342 — 분실차감 품명(굵게)·운송장(📦 강조) 가독성
-const CACHE_NAME = 'teamflex-v342';
+// TeamFlex Service Worker v343 — 프백/차감 네비 + 분실차감: 새공유 회전반짝임·개수, 사유 색뱃지, 기사 확인(확정)→초록
+const CACHE_NAME = 'teamflex-v343';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 

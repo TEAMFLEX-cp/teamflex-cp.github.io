@@ -3094,7 +3094,7 @@ function launchApp(){
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       '<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>'+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
-      '<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백소명</div>'+
+      '<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백/차감</div>'+
       '<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>'+
       '<div class="ni" id="ni-cfg" onclick="openCfgSubMenu()"><span class="nicon">&#x2699;</span>설정</div>';
     go('hm');
@@ -3114,7 +3114,7 @@ function launchApp(){
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       (CU.role==='leader'?'<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>':'')+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
-      (getFeatureCtrl('pback','active')?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백소명</div>':'')+
+      (getFeatureCtrl('pback','active')?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백/차감</div>':'')+
       (getFeatureCtrl('roulette','active')?'<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>':'')+
       '<div class="ni" id="ni-usr-cfg" onclick="openUserSubMenu()"><span class="nicon">&#x2699;&#xFE0F;</span>설정</div>';
     go('hm');
@@ -3555,7 +3555,7 @@ function updateNavDots(){
   var niFr=document.getElementById('ni-fr');
   if(niFr)niFr.innerHTML=ic('&#x1F33F;',_nav.frRemain>0)+'신선'+(_nav.frNew?newL:'')+numB(_nav.frRemain);
   var niPb=document.getElementById('ni-pb');
-  if(niPb)niPb.innerHTML=ic('&#x1F9FE;',_nav.pb>0)+'프백소명'+numB(_nav.pb);
+  if(niPb)niPb.innerHTML=ic('&#x1F9FE;',_nav.pb>0)+'프백/차감'+numB(_nav.pb);
   var niSt=document.getElementById('ni-st'),niAz=document.getElementById('ni-az');
   if(niSt)niSt.innerHTML=ic('&#x1F4B0;')+'정산'+(_nav.stNew?newF:'');
   if(niAz)niAz.innerHTML=ic('&#x1F4B0;')+'정산'+(_nav.stNew?newF:'');
@@ -10438,7 +10438,7 @@ function pgPbackSomyeong(){
   if(!isAdm && !getFeatureCtrl('pback','active')) return '<div class="pb-wrap">'+_bk+'<div class="pb-empty">🧾 프백 소명 기능이 아직 활성화되지 않았습니다.</div></div>';
   return '<div class="pb-wrap">'+_bk+'<div id="pb-root"><div class="pb-empty">불러오는 중…</div></div></div>';
 }
-var PB_SUB='menu'; var LOSS_DATA=null;
+var PB_SUB='menu'; var LOSS_DATA=null; var _LOSS_NEW={};
 function pgPback(){
   if(PB_SUB==='loss'){ setTimeout(lossInit,50); return pgLossPage(); }
   if(PB_SUB==='pback'){ setTimeout(pbInit,50); return pgPbackSomyeong(); }
@@ -10473,17 +10473,45 @@ function lossEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){re
 function _lossFmt(n){return (+n||0).toLocaleString('ko-KR');}
 function _lossDate(s){ s=String(s||''); var m=s.match(/(\d{4})-(\d{2})-(\d{2})/); return m?(parseInt(m[2],10)+'/'+parseInt(m[3],10)):s; }
 function _lossDedup(arr){var seen={},out=[];for(var i=arr.length-1;i>=0;i--){var w=String(arr[i].wb);if(seen[w])continue;seen[w]=1;out.unshift(arr[i]);}return out;}
+function _lossTypeBadge(d){
+  d=String(d||'');
+  var map={'오배송 후 분실':['#c62828','#ffebee'],'스캔 후 분실':['#e65100','#fff3e0'],'신선상품 오배송':['#2e7d32','#e8f5e9'],'회수분실':['#6a1b9a','#f3e5f5']};
+  var c=map[d]||['#546e7a','#eceff1'];
+  return '<span style="display:inline-block;font-size:11px;font-weight:800;color:'+c[0]+';background:'+c[1]+';border-radius:8px;padding:2px 9px">'+lossEsc(d||'분실')+'</span>';
+}
+function _lossInjectCss(){ if(document.getElementById('loss-css'))return; var st=document.createElement('style'); st.id='loss-css'; st.textContent='@keyframes lossSpin{to{transform:rotate(360deg)}}@keyframes lossBlink{0%,100%{opacity:1}50%{opacity:.3}}.loss-nw{position:relative;border-radius:13px;padding:2.5px;overflow:hidden;margin-bottom:7px}.loss-nw::before{content:"";position:absolute;top:-60%;left:-60%;width:220%;height:220%;background:conic-gradient(#ffd54f,#ff4081,#7c4dff,#29b6f6,#ffd54f);animation:lossSpin 2.4s linear infinite;z-index:0}.loss-nw>.loss-in{position:relative;z-index:1;border-radius:11px;background:#fff}.loss-nwb{animation:lossBlink 1s ease-in-out infinite}'; (document.head||document.documentElement).appendChild(st); }
+function _lossSeenKey(){ return 'loss_seen_'+norm_name_js((CU&&CU.name)||''); }
+function _lossGetSeen(){ try{ return JSON.parse(localStorage.getItem(_lossSeenKey())||'[]'); }catch(e){ return []; } }
+function _lossSetSeen(wbs){ try{ localStorage.setItem(_lossSeenKey(), JSON.stringify(wbs)); }catch(e){} }
+function _lossIsNew(wb){ return !!_LOSS_NEW[String(wb)]; }
+async function lossConfirm(wb){
+  if(!sbClient) return;
+  try{
+    var r=await sbClient.from('app_settings').select('value').eq('key','loss_deduction_log').maybeSingle();
+    var v=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):null;
+    if(v) LOSS_DATA=v;
+  }catch(e){}
+  var rec=(LOSS_DATA.records||[]).find(function(x){return String(x.wb)===String(wb);});
+  if(!rec) return;
+  rec.confirmed=true; rec.confirmed_at=new Date().toISOString(); rec.confirmed_by=(CU&&CU.name)||'';
+  LOSS_DATA.updated_at=new Date().toISOString();
+  try{ await sbClient.from('app_settings').upsert({key:'loss_deduction_log',value:JSON.stringify(LOSS_DATA)},{onConflict:'key'}); }
+  catch(e){ alert('확정 저장 실패: '+((e&&e.message)||e)); return; }
+  lossRender();
+}
 function lossRender(){
   var root=document.getElementById('loss-root'); if(!root) return;
+  _lossInjectCss();
   var d=LOSS_DATA||{records:[]};
   var recs=_lossDedup(d.records||[]);
   var active=recs.filter(function(x){return x.status!=='nofault';});
   var isAdm=CU&&CU.role==='admin';
   var me=norm_name_js((CU&&CU.name)||'');
   var totCnt=active.length, totAmt=active.reduce(function(s,x){return s+(+x.amount||0);},0);
+  var cfCnt=active.filter(function(x){return x.confirmed===true;}).length;
   var nDrv=Object.keys(active.reduce(function(o,x){o[x.driver_name||'?']=1;return o;},{})).length;
   var monLbl=(d.month||'').replace('-','.');
-  var html='<div style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:12px;padding:11px 12px;margin-bottom:13px"><div style="font-size:11px;color:#6a1b9a;font-weight:800;margin-bottom:7px">📢 '+lossEsc(monLbl)+' 분실·파손 차감 현황 (전체 공개)</div><div style="display:flex;gap:6px"><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#999">건수</div><div style="font-size:16px;font-weight:800;color:#4a148c">'+totCnt+'건</div></div><div style="flex:1.3;background:#fff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#999">총 차감</div><div style="font-size:16px;font-weight:800;color:#c2185b">'+_lossFmt(totAmt)+'원</div></div><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#999">대상</div><div style="font-size:16px;font-weight:800;color:#4a148c">'+nDrv+'명</div></div></div></div>';
+  var html='<div style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:12px;padding:11px 12px;margin-bottom:13px"><div style="font-size:11px;color:#6a1b9a;font-weight:800;margin-bottom:7px">📢 '+lossEsc(monLbl)+' 분실·파손 차감 현황 (전체 공개)</div><div style="display:flex;gap:6px"><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#999">건수</div><div style="font-size:16px;font-weight:800;color:#4a148c">'+totCnt+'건</div></div><div style="flex:1.3;background:#fff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#999">총 차감</div><div style="font-size:16px;font-weight:800;color:#c2185b">'+_lossFmt(totAmt)+'원</div></div><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#999">확정</div><div style="font-size:16px;font-weight:800;color:#2e7d32">'+cfCnt+'/'+totCnt+'</div></div></div></div>';
   if(!recs.length){ root.innerHTML=html+'<div class="pb-empty" style="margin-top:8px">등록된 분실 차감 내역이 없습니다.</div>'; return; }
   if(isAdm){
     html+='<div style="font-size:12px;font-weight:800;color:#333;margin:4px 2px 8px">전체 내역 <span style="color:#999;font-weight:600">· 관리자(삭제/미과실)</span></div>';
@@ -10498,27 +10526,61 @@ function lossRender(){
     var mine=recs.filter(function(x){return norm_name_js(x.driver_name||'')===me;});
     var mineAct=mine.filter(function(x){return x.status!=='nofault';});
     var mineSum=mineAct.reduce(function(s,x){return s+(+x.amount||0);},0);
+    var seen=_lossGetSeen(); _LOSS_NEW={}; var newCnt=0;
+    mine.forEach(function(x){ if(x.status!=='nofault' && x.confirmed!==true && seen.indexOf(String(x.wb))<0){ _LOSS_NEW[String(x.wb)]=true; newCnt++; } });
     if(!mine.length){ html+='<div style="background:#e8f5e9;border-radius:12px;padding:22px 14px;text-align:center;color:#2e7d32;font-size:13px;font-weight:700;margin-top:8px">✅ 내 분실 차감 내역이 없습니다</div>'; }
     else{
+      if(newCnt>0){ html+='<div style="text-align:center;margin:2px 2px 11px"><span class="loss-nwb" style="display:inline-block;background:#fff3cd;color:#e65100;border:1.5px solid #ffb74d;border-radius:20px;padding:6px 15px;font-size:12.5px;font-weight:900">🆕 새로 공유된 '+newCnt+'건! 확인해주세요</span></div>'; }
       html+='<div style="display:flex;justify-content:space-between;align-items:center;margin:4px 2px 8px"><span style="font-size:13px;font-weight:800;color:#1565c0">📌 내 차감 내역</span><span style="font-size:12px;font-weight:800;color:#c2185b">'+mineAct.length+'건 · '+_lossFmt(mineSum)+'원</span></div>';
       mine.forEach(function(x){ html+=lossRowMine(x); });
+      var allWbs=mine.map(function(x){return String(x.wb);});
+      setTimeout(function(){ _lossSetSeen(allWbs); },1500);
     }
   }
   root.innerHTML=html;
 }
+
 function lossRowMine(x){
   var nf=(x.status==='nofault');
-  return '<div style="background:'+(nf?'#f5f5f5':'#e8f1fd')+';border:1.5px solid '+(nf?'#ddd':'#90caf9')+';border-radius:9px;padding:9px 10px;margin-bottom:6px;'+(nf?'opacity:.6':'')+'"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:#607d8b;font-weight:700">'+_lossDate(x.date)+' · '+lossEsc(x.detail||'')+'</span><span style="font-size:13px;font-weight:800;color:'+(nf?'#999':'#c2185b')+'">'+(nf?'미과실 제외':_lossFmt(x.amount)+'원')+'</span></div><div style="font-size:12.5px;color:#263238;font-weight:700;margin-top:4px;line-height:1.4">'+lossEsc(String(x.product||'').slice(0,70))+'</div><div style="font-size:11.5px;color:#37474f;font-weight:600;margin-top:3px">📦 운송장 '+lossEsc(x.wb)+' · '+lossEsc(x.camp||'')+'</div></div>';
+  var cf=(x.confirmed===true);
+  var isNew=(!cf && !nf && _lossIsNew(x.wb));
+  var badge=_lossTypeBadge(x.detail);
+  var amtHtml=nf?'미과실 제외':_lossFmt(x.amount)+'원';
+  var bg,bd,amtC;
+  if(cf){bg='#e8f5e9';bd='#66bb6a';amtC='#2e7d32';}
+  else if(nf){bg='#f5f5f5';bd='#dddddd';amtC='#999999';}
+  else {bg='#e8f1fd';bd='#90caf9';amtC='#c2185b';}
+  var foot;
+  if(cf) foot='<div style="margin-top:7px;text-align:center;background:#c8e6c9;color:#1b5e20;border-radius:7px;padding:6px;font-size:12px;font-weight:800">✅ 확정 완료</div>';
+  else if(nf) foot='';
+  else foot='<button onclick="lossConfirm(\''+lossEsc(x.wb)+'\')" style="width:100%;margin-top:7px;padding:9px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer">✅ 확인 (확정)</button>';
+  var inner='<div style="background:'+bg+';border:1.5px solid '+bd+';border-radius:11px;padding:9px 11px'+(nf?';opacity:.6':'')+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:#607d8b;font-weight:700">'+_lossDate(x.date)+'</span><span style="font-size:13px;font-weight:800;color:'+amtC+'">'+amtHtml+'</span></div>'
+    +'<div style="margin-top:6px">'+badge+(cf?' <span style="font-size:10px;color:#2e7d32;font-weight:800">✅ 확정</span>':'')+'</div>'
+    +'<div style="font-size:12.5px;color:#263238;font-weight:700;margin-top:5px;line-height:1.4">'+lossEsc(String(x.product||'').slice(0,70))+'</div>'
+    +'<div style="font-size:11.5px;color:#37474f;font-weight:600;margin-top:3px">📦 운송장 <b>'+lossEsc(x.wb)+'</b> · '+lossEsc(x.camp||'')+'</div>'
+    +foot+'</div>';
+  if(isNew) return '<div class="loss-nw"><div class="loss-in">'+inner+'</div></div>';
+  return '<div style="margin-bottom:7px">'+inner+'</div>';
 }
+
 function lossRowAdmin(x){
-  var nf=(x.status==='nofault');
+  var nf=(x.status==='nofault'); var cf=(x.confirmed===true);
+  var badge=_lossTypeBadge(x.detail);
+  var bg=nf?'#f5f5f5':(cf?'#e8f5e9':'#ffffff');
+  var bd=nf?'#dddddd':(cf?'#66bb6a':'#e6e6ea');
   var btns='<div style="display:flex;gap:6px;margin-top:7px">'
-    +(nf
-      ?'<button onclick="lossSetNofault(\''+lossEsc(x.wb)+'\',false)" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">↩ 과실 복구</button>'
-      :'<button onclick="lossSetNofault(\''+lossEsc(x.wb)+'\',true)" style="flex:1;padding:6px;background:#fff8e1;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">✔ 미과실 처리</button>')
+    +(nf?'<button onclick="lossSetNofault(\''+lossEsc(x.wb)+'\',false)" style="flex:1;padding:6px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">↩ 과실 복구</button>':'<button onclick="lossSetNofault(\''+lossEsc(x.wb)+'\',true)" style="flex:1;padding:6px;background:#fff8e1;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">✔ 미과실 처리</button>')
     +'<button onclick="lossDelete(\''+lossEsc(x.wb)+'\')" style="flex:1;padding:6px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">🗑 삭제</button></div>';
-  return '<div style="background:'+(nf?'#f5f5f5':'#fff')+';border:1px solid '+(nf?'#ddd':'#e6e6ea')+';border-radius:9px;padding:9px 10px;margin-bottom:6px;'+(nf?'opacity:.65':'')+'"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:#607d8b;font-weight:700">'+_lossDate(x.date)+' · '+lossEsc(x.detail||'')+'</span><span style="font-size:13px;font-weight:800;color:'+(nf?'#999':'#c2185b')+'">'+_lossFmt(x.amount)+'원'+(nf?' <span style="font-size:10px;color:#43a047">(미과실)</span>':'')+'</span></div><div style="font-size:12.5px;color:#263238;font-weight:700;margin-top:4px;line-height:1.4">'+lossEsc(String(x.product||'').slice(0,70))+'</div><div style="font-size:11.5px;color:#37474f;font-weight:600;margin-top:3px">📦 운송장 '+lossEsc(x.wb)+' · '+lossEsc(x.camp||'')+'</div>'+btns+'</div>';
+  var cfTag=cf?'<span style="font-size:10px;color:#2e7d32;font-weight:800;margin-left:6px">✅ 확정'+(x.confirmed_by?'('+lossEsc(x.confirmed_by)+')':'')+'</span>':'';
+  return '<div style="background:'+bg+';border:1px solid '+bd+';border-radius:9px;padding:9px 10px;margin-bottom:6px'+(nf?';opacity:.65':'')+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:#607d8b;font-weight:700">'+_lossDate(x.date)+cfTag+'</span><span style="font-size:13px;font-weight:800;color:'+(nf?'#999999':'#c2185b')+'">'+_lossFmt(x.amount)+'원'+(nf?' <span style="font-size:10px;color:#43a047">(미과실)</span>':'')+'</span></div>'
+    +'<div style="margin-top:6px">'+badge+'</div>'
+    +'<div style="font-size:12.5px;color:#263238;font-weight:700;margin-top:5px;line-height:1.4">'+lossEsc(String(x.product||'').slice(0,70))+'</div>'
+    +'<div style="font-size:11.5px;color:#37474f;font-weight:600;margin-top:3px">📦 운송장 <b>'+lossEsc(x.wb)+'</b> · '+lossEsc(x.camp||'')+'</div>'
+    +btns+'</div>';
 }
+
 async function _lossSave(){
   if(!LOSS_DATA)return;
   LOSS_DATA.updated_at=new Date().toISOString();
