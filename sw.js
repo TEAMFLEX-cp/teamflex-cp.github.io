@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v337 — PDD박스 이름변경 + 신선 빈데이터시 __ADMIN_BAR__ 노출 버그 수정
-const CACHE_NAME = 'teamflex-v337';
+// TeamFlex Service Worker v338 — 공지 자동팝업 사진 표시 + 라이트박스 확대/드래그/다운로드
+const CACHE_NAME = 'teamflex-v338';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
