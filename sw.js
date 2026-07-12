@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v346 — 신선 PDD miss 판정에 위탁(consignment) 포함(위탁발 미스 제외)
-const CACHE_NAME = 'teamflex-v346';
+// TeamFlex Service Worker v347 — v346 원복(잘못된 consignment 필드로 PDD미스 판정 오류 → 복구)
+const CACHE_NAME = 'teamflex-v347';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
