@@ -12430,8 +12430,8 @@ async function loadFreshStatus(){
       // 신선 미스 = 20시 이후 AND 미배송 < PDD miss
       // (미배송 == PDD miss 는 정상 마감 완료 → 미스 아님)
       if(!_isAfter20) return false;
-      var p=rt.pdd_miss||0, u=rt.undelivered||0;
-      return p>0 && u<p;
+      var p=rt.pdd_miss||0, u=rt.undelivered||0, c=rt.consignment||0;
+      return p>0 && (u+c)<p;   // 위탁도 미배송처럼 정상사유로 인정 → 위탁발 PDD miss 제외
     }
 
     // ── 기사별 그룹핑 ──────────────────────────────────────────────
@@ -12453,7 +12453,7 @@ async function loadFreshStatus(){
       // PDD Miss: 20시 이후 AND 미배송>0 AND 일부만 PDD miss
       // 미스: 20시 이후 AND 미배송 < PDD miss  (미배송==PDD miss는 정상완료)
       // 완료: 미스 아님 AND 스캔=0 AND (미배송=0 OR 20시 이후 최종)
-      var isPddMissCard=_isAfter20&&pdd>0&&und<pdd;
+      var isPddMissCard=_isAfter20&&pdd>0&&(und+csg)<pdd;
       var isCompleteCard=!isPddMissCard&&scn===0;  // 완료=스캔0(반품 혼입 위탁 제외) — 20시前 검증된 방식
       var pfxAll=[],ps={};
       wRoutes.forEach(function(rt){(rt.route||'').split(/[,\s]+/).filter(Boolean).forEach(function(p){var pf=p.slice(0,4);if(!ps[pf]){ps[pf]=1;pfxAll.push(pf);}});});
@@ -12550,7 +12550,7 @@ async function loadFreshStatus(){
     // 완료: 스캔=0 AND 위탁=0 AND (미배송=0 OR 미배송=PDD miss) — 20시 전/후 모두 적용
     var incompleteW=allWorkers.filter(function(w){
       var u=_wUnd(w),p=_wPdd(w),s=_wScn(w);
-      var miss=_isAfter20&&p>0&&u<p;                 // 20시 이후 PDD miss>미배송 → 미스
+      var miss=_isAfter20&&p>0&&(u+_wCsg(w))<p;                 // 20시 이후 PDD miss>미배송 → 미스
       var complete=!miss&&s===0;                     // 완료=스캔0(반품 혼입 위탁 제외)
       return !complete;                              // 미완료(진행중/미스)만
     });
@@ -12572,7 +12572,7 @@ async function loadFreshStatus(){
       // ✅ 신선완료 / 진행중 / PDD MISS 판정
       // 완료: 미배송=0 (위탁/스캔 수량 무관)
       // PDD Miss: 20시 이후 AND 미배송>0 AND 일부만 PDD miss
-      var isPddMissFlag=_isAfter20&&pdd>0&&und<pdd;
+      var isPddMissFlag=_isAfter20&&pdd>0&&(und+csg)<pdd;
       var isComplete=!isPddMissFlag&&scn===0;  // 완료=스캔0(반품 혼입 위탁 제외)
       var routeLabel=_wRouteLabel(w);
       var detId='frdet_'+suffix+'_'+wi2;

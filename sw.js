@@ -1,5 +1,5 @@
-// TeamFlex Service Worker v345 — 분실차감 확정 진한초록 강조 + 확정건/전원확정 기사 하단 정렬
-const CACHE_NAME = 'teamflex-v345';
+// TeamFlex Service Worker v346 — 신선 PDD miss 판정에 위탁(consignment) 포함(위탁발 미스 제외)
+const CACHE_NAME = 'teamflex-v346';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
