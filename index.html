@@ -12140,10 +12140,18 @@ var _rqRefreshTimer = null;
 async function mdLoadRequests(){
   if(!sbClient) return;
   try{
-    var {data,error} = await sbClient.from('requests')
-      .select('*').order('created_at',{ascending:false}).limit(100);
-    if(error) throw error;
-    _rqCases = data||[];
+    var _rall=[],_rfrom=0,_reff=null;
+    while(true){
+      var {data,error} = await sbClient.from('requests').select('*').order('created_at',{ascending:false}).range(_rfrom,_rfrom+999);
+      if(error) throw error;
+      if(!data){break;}
+      _rall=_rall.concat(data);
+      if(_reff===null)_reff=data.length;
+      if(data.length===0||data.length<_reff)break;
+      _rfrom+=data.length;
+      if(_rfrom>50000)break;
+    }
+    _rqCases = _rall;
     mdRenderRequestBadge();
     // 오배송 탭 열려 있으면 카드 UI도 갱신
     if(document.getElementById('md-list')) mdRenderList();
