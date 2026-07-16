@@ -1435,7 +1435,7 @@ async function loadFeatureControls(){
   if(!sbClient) return;
   try{
     var {data} = await sbClient.from('app_settings').select('value').eq('key','feature_controls').maybeSingle();
-    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false}};
+    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false}};
     if(data && data.value){
       var parsed = typeof data.value==='string' ? JSON.parse(data.value) : data.value;
       _featureControls = Object.assign({}, defaults, parsed);
@@ -1443,7 +1443,7 @@ async function loadFeatureControls(){
       _featureControls = defaults;
     }
   } catch(e){
-    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false}};
+    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false}};
   }
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
@@ -1473,7 +1473,7 @@ function getFeatureCtrl(feat, key){
 }
 async function saveFeatureCtrl(feat, key, val){
   if(!sbClient||!CU||CU.role!=='admin') return;
-  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false}};
+  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false}};
   if(!_featureControls[feat]) _featureControls[feat] = {active:true, notify:true};
   _featureControls[feat][key] = val;
   // Supabase 저장 (실패 시 롤백 + 에러 알림)
@@ -3114,7 +3114,7 @@ function launchApp(){
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       (CU.role==='leader'?'<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>':'')+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
-      (getFeatureCtrl('pback','active')?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백/차감</div>':'')+
+      ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백/차감</div>':'')+
       (getFeatureCtrl('roulette','active')?'<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>':'')+
       '<div class="ni" id="ni-usr-cfg" onclick="openUserSubMenu()"><span class="nicon">&#x2699;&#xFE0F;</span>설정</div>';
     go('hm');
@@ -10442,6 +10442,7 @@ var PB_SUB='menu'; var LOSS_DATA=null; var _LOSS_NEW={};
 function pgPback(){
   if(PB_SUB==='loss'){ setTimeout(lossInit,50); return pgLossPage(); }
   if(PB_SUB==='pback'){ setTimeout(pbInit,50); return pgPbackSomyeong(); }
+  if(PB_SUB==='wf'){ setTimeout(wfInit,50); return pgWfPage(); }
   return pgPbackMenu();
 }
 function pbGoSub(x){ PB_SUB=x; var mc=document.getElementById('mc'); if(mc) mc.innerHTML=pgPback(); }
@@ -10453,8 +10454,101 @@ function pgPbackMenu(){
     +'<div style="font-size:11px;color:#7986cb;margin-bottom:16px">원하는 항목을 선택하세요</div>'
     +'<div onclick="pbGoSub(\'pback\')" style="cursor:pointer;background:#fff;border:1px solid #d7dbf0;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(120,130,160,.1)"><span style="font-size:30px">📋</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#3949ab">프레시백 소명 자료</div><div style="font-size:11px;color:#8e99cc;margin-top:2px">프레시백 미회수 소명 제출·확인</div></div><span style="font-size:18px;color:#c5cae9">›</span></div>'
     +'<div onclick="pbGoSub(\'loss\')" style="cursor:pointer;background:#fff;border:1px solid #ce93d8;border-radius:14px;padding:16px 14px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(106,27,154,.1)"><span style="font-size:30px">🔍</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#6a1b9a">분실 차감 내역 확인</div><div style="font-size:11px;color:#ab7bc0;margin-top:2px">분실·파손 차감 내역 (본인 + 전체 요약)</div></div><span style="font-size:18px;color:#e1bee7">›</span></div>'
+    +(((CU&&CU.role==='admin')||getFeatureCtrl('weightfactor','active'))?'<div onclick="pbGoSub(\'wf\')" style="cursor:pointer;background:#fff;border:1px solid #b39ddb;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(94,53,177,.1)"><span style="font-size:30px">📊</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#4527a0">가중요인 확인</div><div style="font-size:11px;color:#9575cd;margin-top:2px">주차별 가중요인 · 내 라우트 상세</div></div><span style="font-size:18px;color:#d1c4e9">›</span></div>':'')
     +'</div>';
 }
+/* ════════ 가중요인 확인 (앱) ════════ */
+function wfEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+var WF_D=null, WF_VIEW='sum', WF_FILT='all';
+var WF_G={0:['#e8f3ec','#2d6040','정상'],1:['#FFF2CC','#806000','1등급'],2:['#FCE4D6','#C55A11','2등급'],3:['#FFC7CE','#9C0006','3등급']};
+function wfG1(v){return v==null?-1:(v<85?3:(v<99?2:0));}
+function wfG2(v){return v==null?-1:(v<85?3:(v<90?2:(v<96?1:0)));}
+function wfChip(t,g){ if(g<0)return '<span style="color:#bbb">-</span>'; var c=WF_G[g]; return '<span style="display:inline-block;background:'+c[0]+';color:'+c[1]+';border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;">'+t+'</span>'; }
+function wfMiss(){ return '<span style="display:inline-block;background:#E5342F;color:#fff;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:800;">미해당</span>'; }
+function wfStat(s){ return s==='미해당'?'<span style="color:#C1121F;font-weight:800;">미해당</span>':'<span style="color:#9aa79d;">해당</span>'; }
+function wfShow(v){ WF_VIEW=v; wfRender(); }
+function wfFilt(f){ WF_FILT=f; wfRender(); }
+function wfDateLabel(title){ var m=String(title||'').match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/); if(m)return (+m[2])+'/'+(+m[3]); return String(title||'').slice(0,12); }
+function wfExpandRoute(rt){ var s=String(rt||'').trim(); if(!s)return []; var m=s.match(/^(\d+)\s*[_\-]?\s*([A-Za-z]+)$/); if(m){return m[2].split('').map(function(ch){return m[1]+'_'+ch.toUpperCase();});} return [s.replace(/\s+/g,'')]; }
+function wfMyRoutes(){
+  var nm=norm_name_js((CU&&CU.name)||''); var set={};
+  try{
+    var key=Object.keys(DW||{}).find(function(k){return norm_name_js(k)===nm;});
+    if(key){ var weeks=DW[key]||{}; var wk=(typeof findCurWeek==='function')?findCurWeek():null; var pick=(wk&&weeks[wk])?weeks[wk]:null;
+      if(!pick){ var ks=Object.keys(weeks).sort(); if(ks.length)pick=weeks[ks[ks.length-1]]; }
+      if(pick){ Object.keys(pick).forEach(function(d){ wfExpandRoute(pick[d]).forEach(function(r){set[r]=1;}); }); } }
+  }catch(e){}
+  if(CU&&CU.route){ wfExpandRoute(CU.route).forEach(function(r){set[r]=1;}); }
+  return Object.keys(set);
+}
+function pgWfPage(){
+  pbInjectStyle();
+  var isAdm=CU&&CU.role==='admin';
+  var bk='<div onclick="pbGoMenu()" style="cursor:pointer;font-size:13px;color:#5e35b1;font-weight:700;padding:12px 14px 4px">‹ 프백/차감</div>';
+  if(!isAdm && !getFeatureCtrl('weightfactor','active')) return '<div class="pb-wrap">'+bk+'<div class="pb-empty">📊 가중요인 확인 기능이 아직 활성화되지 않았습니다.</div></div>';
+  return '<div class="pb-wrap">'+bk+'<div style="padding:2px 12px 16px">'+_featureBar('weightfactor')+'<div id="wf-root"><div class="pb-empty">불러오는 중…</div></div></div></div>';
+}
+async function wfInit(){
+  var root=document.getElementById('wf-root'); if(!root)return;
+  WF_D=null;
+  try{ var q=await sbClient.from('app_settings').select('value').eq('key','weight_factor_data').maybeSingle();
+       if(q&&q.data&&q.data.value){ WF_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+  WF_VIEW='sum'; WF_FILT='all'; wfRender();
+}
+function wfRender(){
+  var root=document.getElementById('wf-root'); if(!root)return;
+  if(!WF_D||!WF_D.blocks||!WF_D.blocks.length){ root.innerHTML='<div class="pb-empty">아직 공유된 가중요인 자료가 없습니다.<br><span style="font-size:11px;color:#999">관리자가 스케줄 프로그램에서 업로드하면 표시됩니다.</span></div>'; return; }
+  root.innerHTML=(WF_VIEW==='mine')?wfMineHtml():wfSumHtml();
+}
+function wfSumHtml(){
+  var b=WF_D.blocks[0]; var rs=b.routes||[];
+  var s1=0,s2=0,n1=0,n2=0,mih=0,cnt=[0,0,0,0];
+  rs.forEach(function(r){ if(r.f1!=null){s1+=r.f1;n1++;} if(r.f2!=null){s2+=r.f2;n2++;} if(r.f1s==='미해당'||r.f2s==='미해당')mih++; var w=Math.max(wfG1(r.f1),wfG2(r.f2)); if(w>=0)cnt[w]++; });
+  var a1=n1?(s1/n1).toFixed(1):'-', a2=n2?(s2/n2).toFixed(1):'-';
+  var list=(WF_FILT==='miss')?rs.filter(function(r){return r.f1s==='미해당'||r.f2s==='미해당';}):rs;
+  var h='<div style="padding:2px 2px 10px;">';
+  h+='<div style="font-size:13px;font-weight:800;color:#243b2e;margin:2px 2px 8px;">'+wfEsc(b.title||'가중요인 해당여부')+'</div>';
+  h+='<div onclick="wfShow(\'mine\')" style="background:#5e35b1;color:#fff;border-radius:10px;padding:11px;text-align:center;font-size:13px;font-weight:800;margin-bottom:10px;cursor:pointer;">🔍 내 라우트 확인하기</div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:8px;">'+
+     '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:11px;color:#8a968d;">가중요인1 평균</div><div style="font-size:23px;font-weight:800;color:#243b2e;">'+a1+'</div></div>'+
+     '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:11px;color:#8a968d;">가중요인2 평균</div><div style="font-size:23px;font-weight:800;color:#243b2e;">'+a2+'</div></div></div>';
+  h+='<div style="display:flex;gap:5px;margin-bottom:8px;">'+['정상|#e8f3ec|#2d6040|'+cnt[0],'1등급|#FFF2CC|#806000|'+cnt[1],'2등급|#FCE4D6|#C55A11|'+cnt[2],'3등급|#FFC7CE|#9C0006|'+cnt[3]].map(function(x){var p=x.split('|');return '<span style="flex:1;text-align:center;background:'+p[1]+';color:'+p[2]+';border-radius:8px;padding:6px 0;font-size:11px;font-weight:700;">'+p[0]+' '+p[3]+'</span>';}).join('')+'</div>';
+  h+='<div style="display:flex;align-items:center;gap:8px;margin:6px 2px;"><div style="font-size:12px;font-weight:800;color:#243b2e;">전체 라우트</div><div style="margin-left:auto;display:flex;gap:5px;">'+['all|전체 '+rs.length,'miss|미해당 '+mih].map(function(x){var p=x.split('|');var on=(WF_FILT===p[0]);return '<span onclick="wfFilt(\''+p[0]+'\')" style="background:'+(on?'#2d6040':'#fff')+';color:'+(on?'#fff':'#5a6b60')+';border:1px solid '+(on?'#2d6040':'#cdddd2')+';border-radius:12px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;">'+p[1]+'</span>';}).join('')+'</div></div>';
+  h+='<div style="background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden;">'+
+     '<div style="display:flex;background:#f4f6f2;padding:6px 12px;font-size:10.5px;color:#8a968d;font-weight:700;"><div style="flex:1;">라우트</div><div style="width:92px;text-align:center;">가중요인1</div><div style="width:92px;text-align:center;">가중요인2</div></div>';
+  list.forEach(function(r){ h+='<div style="display:flex;align-items:center;padding:6px 12px;border-top:1px solid #f2f2f2;font-size:12px;"><div style="flex:1;font-weight:700;color:#37473c;">'+wfEsc(r.route||'')+'</div>'+
+    '<div style="width:92px;text-align:center;">'+(r.f1==null?'-':wfChip(r.f1.toFixed(2),wfG1(r.f1)))+'<div style="font-size:10px;margin-top:1px;">'+wfStat(r.f1s)+'</div></div>'+
+    '<div style="width:92px;text-align:center;">'+(r.f2==null?'-':wfChip(r.f2.toFixed(2),wfG2(r.f2)))+'<div style="font-size:10px;margin-top:1px;">'+wfStat(r.f2s)+'</div></div></div>'; });
+  h+='</div></div>'; return h;
+}
+function wfMineHtml(){
+  var b=WF_D.blocks[0]; var rmap={}; (b.routes||[]).forEach(function(r){rmap[r.route]=r;});
+  var mine=wfMyRoutes().filter(function(r){return rmap[r];});
+  var head='<div style="display:flex;align-items:center;gap:8px;margin:2px 2px 8px;"><span onclick="wfShow(\'sum\')" style="cursor:pointer;font-size:16px;color:#5e35b1;">‹</span><div style="font-size:13px;font-weight:800;color:#243b2e;">내 라우트 · '+mine.length+'개</div></div>';
+  if(!mine.length){ return head+'<div class="pb-empty">스케줄에서 내 라우트를 찾지 못했어요.<br><span style="font-size:11px;color:#999">이번 주 배정이 스케줄에 등록되면 표시됩니다.</span></div>'; }
+  var chips='<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 2px 8px;">'+mine.map(function(r){return '<span style="background:#EEE9FA;color:#4527a0;border-radius:10px;padding:4px 10px;font-size:11.5px;font-weight:800;">'+wfEsc(r)+'</span>';}).join('')+'</div>';
+  var srows='<div style="background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden;margin-bottom:10px;"><div style="display:flex;background:#f4f6f2;padding:6px 12px;font-size:10.5px;color:#8a968d;font-weight:700;"><div style="flex:1;">라우트(주간)</div><div style="width:70px;text-align:center;">가중1</div><div style="width:70px;text-align:center;">가중2</div></div>';
+  mine.forEach(function(rn){var r=rmap[rn];srows+='<div style="display:flex;align-items:center;padding:7px 12px;border-top:1px solid #f2f2f2;font-size:12px;"><div style="flex:1;font-weight:800;color:#37473c;">'+wfEsc(rn)+'</div><div style="width:70px;text-align:center;">'+(r.f1s==='미해당'?wfMiss():wfChip((r.f1!=null?r.f1.toFixed(2):'-'),wfG1(r.f1)))+'</div><div style="width:70px;text-align:center;">'+(r.f2s==='미해당'?wfMiss():wfChip((r.f2!=null?r.f2.toFixed(2):'-'),wfG2(r.f2)))+'</div></div>';});
+  srows+='</div>';
+  return head+chips+srows+wfDailyHtml(mine);
+}
+function wfDailyHtml(mine){
+  var db=(WF_D.blocks||[]).slice(1); if(!db.length) return '';
+  var days=db.map(function(bl){ var m={}; (bl.routes||[]).forEach(function(r){m[r.route]=r;}); return {label:wfDateLabel(bl.title), map:m}; }).reverse();
+  var miss='background:#E5342F;color:#fff;font-weight:800;';
+  var th='<div style="font-size:12.5px;font-weight:800;color:#243b2e;margin:4px 2px;">📅 일자별 상세</div><div style="overflow-x:auto;border:1px solid #e6e6e6;border-radius:10px;background:#fff;"><table style="border-collapse:collapse;font-size:12px;white-space:nowrap;"><thead><tr><th rowspan="2" style="position:sticky;left:0;background:#eef1ec;border:1px solid #e2e2e2;padding:7px 9px;color:#5a6b60;">일자</th>';
+  mine.forEach(function(rn){th+='<th colspan="2" style="border:1px solid #e2e2e2;background:#2d6040;color:#fff;padding:6px 9px;font-weight:800;">'+wfEsc(rn)+'</th>';});
+  th+='</tr><tr>'; mine.forEach(function(){th+='<th style="border:1px solid #e2e2e2;background:#f4f6f2;padding:4px 9px;color:#5a6b60;font-weight:700;">가중1</th><th style="border:1px solid #e2e2e2;background:#f4f6f2;padding:4px 9px;color:#5a6b60;font-weight:700;">가중2</th>';}); th+='</tr></thead><tbody>';
+  days.forEach(function(dy){ th+='<tr><td style="position:sticky;left:0;background:#fff;border:1px solid #e2e2e2;padding:7px 9px;color:#37473c;font-weight:700;">'+wfEsc(dy.label)+'</td>';
+    mine.forEach(function(rn){ var r=dy.map[rn]; if(!r){ th+='<td style="border:1px solid #e2e2e2;text-align:center;color:#ccc;">-</td><td style="border:1px solid #e2e2e2;text-align:center;color:#ccc;">-</td>'; return; }
+      var c1=WF_G[Math.max(0,wfG1(r.f1))],c2=WF_G[Math.max(0,wfG2(r.f2))];
+      th+='<td style="border:1px solid #e2e2e2;text-align:center;padding:6px 9px;'+(r.f1s==='미해당'?miss:'background:'+c1[0]+';color:'+c1[1]+';font-weight:700;')+'">'+(r.f1s==='미해당'?'미해당':(r.f1!=null?r.f1.toFixed(0):'-'))+'</td>';
+      th+='<td style="border:1px solid #e2e2e2;text-align:center;padding:6px 9px;'+(r.f2s==='미해당'?miss:'background:'+c2[0]+';color:'+c2[1]+';font-weight:700;')+'">'+(r.f2s==='미해당'?'미해당':(r.f2!=null?r.f2.toFixed(0):'-'))+'</td>';
+    }); th+='</tr>'; });
+  th+='</tbody></table></div><div style="font-size:10.5px;color:#a7b0a9;margin:6px 2px;">← 좌우로 밀어서 나머지 라우트를 볼 수 있어요</div>';
+  return th;
+}
+
 function pgLossPage(){
   pbInjectStyle();
   return '<div class="pb-wrap"><div onclick="pbGoMenu()" style="cursor:pointer;font-size:13px;color:#5e35b1;font-weight:700;padding:12px 14px 4px">‹ 프백/차감</div><div id="loss-root" style="padding:2px 12px 16px"><div class="pb-empty">불러오는 중…</div></div></div>';
