@@ -1435,7 +1435,7 @@ async function loadFeatureControls(){
   if(!sbClient) return;
   try{
     var {data} = await sbClient.from('app_settings').select('value').eq('key','feature_controls').maybeSingle();
-    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false}};
+    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false}};
     if(data && data.value){
       var parsed = typeof data.value==='string' ? JSON.parse(data.value) : data.value;
       _featureControls = Object.assign({}, defaults, parsed);
@@ -1443,7 +1443,7 @@ async function loadFeatureControls(){
       _featureControls = defaults;
     }
   } catch(e){
-    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false}};
+    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false}};
   }
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
@@ -1473,7 +1473,7 @@ function getFeatureCtrl(feat, key){
 }
 async function saveFeatureCtrl(feat, key, val){
   if(!sbClient||!CU||CU.role!=='admin') return;
-  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false}};
+  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false}};
   if(!_featureControls[feat]) _featureControls[feat] = {active:true, notify:true};
   _featureControls[feat][key] = val;
   // Supabase 저장 (실패 시 롤백 + 에러 알림)
@@ -3114,7 +3114,7 @@ function launchApp(){
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       (CU.role==='leader'?'<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>':'')+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
-      ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백/차감</div>':'')+
+      ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active')||getFeatureCtrl('earlymonth','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백/차감</div>':'')+
       (getFeatureCtrl('roulette','active')?'<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>':'')+
       '<div class="ni" id="ni-usr-cfg" onclick="openUserSubMenu()"><span class="nicon">&#x2699;&#xFE0F;</span>설정</div>';
     go('hm');
@@ -10443,6 +10443,7 @@ function pgPback(){
   if(PB_SUB==='loss'){ setTimeout(lossInit,50); return pgLossPage(); }
   if(PB_SUB==='pback'){ setTimeout(pbInit,50); return pgPbackSomyeong(); }
   if(PB_SUB==='wf'){ setTimeout(wfInit,50); return pgWfPage(); }
+  if(PB_SUB==='emv'){ setTimeout(emvInit,50); return pgEmvPage(); }
   return pgPbackMenu();
 }
 function pbGoSub(x){ PB_SUB=x; var mc=document.getElementById('mc'); if(mc) mc.innerHTML=pgPback(); }
@@ -10455,6 +10456,7 @@ function pgPbackMenu(){
     +'<div onclick="pbGoSub(\'pback\')" style="cursor:pointer;background:#fff;border:1px solid #d7dbf0;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(120,130,160,.1)"><span style="font-size:30px">📋</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#3949ab">프레시백 소명 자료</div><div style="font-size:11px;color:#8e99cc;margin-top:2px">프레시백 미회수 소명 제출·확인</div></div><span style="font-size:18px;color:#c5cae9">›</span></div>'
     +'<div onclick="pbGoSub(\'loss\')" style="cursor:pointer;background:#fff;border:1px solid #ce93d8;border-radius:14px;padding:16px 14px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(106,27,154,.1)"><span style="font-size:30px">🔍</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#6a1b9a">분실 차감 내역 확인</div><div style="font-size:11px;color:#ab7bc0;margin-top:2px">분실·파손 차감 내역 (본인 + 전체 요약)</div></div><span style="font-size:18px;color:#e1bee7">›</span></div>'
     +(((CU&&CU.role==='admin')||getFeatureCtrl('weightfactor','active'))?'<div onclick="pbGoSub(\'wf\')" style="cursor:pointer;background:#fff;border:1px solid #b39ddb;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(94,53,177,.1)"><span style="font-size:30px">📊</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#4527a0">가중요인 확인</div><div style="font-size:11px;color:#9575cd;margin-top:2px">주차별 가중요인 · 내 라우트 상세</div></div><span style="font-size:18px;color:#d1c4e9">›</span></div>':'')
+    +(((CU&&CU.role==='admin')||getFeatureCtrl('earlymonth','active'))?'<div onclick="pbGoSub(\'emv\')" style="cursor:pointer;background:#fff;border:1px solid #80cbc4;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(27,94,90,.1)"><span style="font-size:30px">📦</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#12463f">월초 예상 물량</div><div style="font-size:11px;color:#5a9d95;margin-top:2px">라우트·일자별 예상 수량 · 내 라우트 합산</div></div><span style="font-size:18px;color:#b2dfdb">›</span></div>':'')
     +'</div>';
 }
 /* ════════ 가중요인 확인 (앱) ════════ */
@@ -10481,6 +10483,59 @@ function wfMyRoutes(){
   if(CU&&CU.route){ wfExpandRoute(CU.route).forEach(function(r){set[r]=1;}); }
   return Object.keys(set);
 }
+/* ════════ 월초 예상 물량 (앱) ════════ */
+var EMV_D=null, EMV_VIEW='all';
+function emvHeat(v,mn,mx){var t=(mx>mn)?(v-mn)/(mx-mn):0;if(t<0.2)return['#f4f9f5','#5a6b60'];if(t<0.45)return['#dcefe1','#2d6040'];if(t<0.7)return['#b7ddc0','#1e4a30'];return['#8ecb9d','#14351f'];}
+function emvFullDate(lbl){ var m=String(lbl||'').match(/(\d{1,2})[\/.](\d{1,2})/); if(!m)return ''; var yr=2026; try{ if(EMV_D&&EMV_D.updated){var ym=String(EMV_D.updated).match(/(\d{4})/); if(ym)yr=+ym[1];} }catch(e){} return yr+'-'+('0'+m[1]).slice(-2)+'-'+('0'+m[2]).slice(-2); }
+function emvRoutesOn(fulldate){ var nm=norm_name_js((CU&&CU.name)||''); var set={}; try{ var key=Object.keys(DW||{}).find(function(k){return norm_name_js(k)===nm;}); if(key){ var weeks=DW[key]||{}; Object.keys(weeks).forEach(function(wk){ var day=weeks[wk]; if(day&&day[fulldate]){ wfExpandRoute(day[fulldate]).forEach(function(r){set[r]=1;}); } }); } }catch(e){} return Object.keys(set); }
+function pgEmvPage(){
+  pbInjectStyle();
+  var isAdm=CU&&CU.role==='admin';
+  var bk='<div onclick="pbGoMenu()" style="cursor:pointer;font-size:13px;color:#274b8f;font-weight:700;padding:12px 14px 4px">‹ 프백/차감</div>';
+  if(!isAdm && !getFeatureCtrl('earlymonth','active')) return '<div class="pb-wrap">'+bk+'<div class="pb-empty">📦 월초 예상 물량 기능이 아직 활성화되지 않았습니다.</div></div>';
+  return '<div class="pb-wrap">'+bk+'<div style="padding:2px 12px 16px">'+_featureBar('earlymonth')+'<div id="emv-root"><div class="pb-empty">불러오는 중…</div></div></div></div>';
+}
+async function emvInit(){
+  var root=document.getElementById('emv-root'); if(!root)return; EMV_D=null;
+  try{ var q=await sbClient.from('app_settings').select('value').eq('key','early_month_volume').maybeSingle();
+       if(q&&q.data&&q.data.value){ EMV_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+  EMV_VIEW='all'; emvRender();
+}
+function emvShow(v){ EMV_VIEW=v; emvRender(); }
+function emvRender(){
+  var root=document.getElementById('emv-root'); if(!root)return;
+  if(!EMV_D||!EMV_D.routes||!EMV_D.routes.length){ root.innerHTML='<div class="pb-empty">아직 공유된 월초 예상 물량이 없습니다.<br><span style="font-size:11px;color:#999">관리자가 스케줄 프로그램에서 업로드하면 표시됩니다.</span></div>'; return; }
+  root.innerHTML=(EMV_VIEW==='mine')?emvMineHtml():emvAllHtml();
+}
+function emvAllHtml(){
+  var ds=EMV_D.dates||[], rs=EMV_D.routes||[];
+  var mn=Infinity,mx=-Infinity; rs.forEach(function(r){(r.q||[]).forEach(function(v){if(v<mn)mn=v;if(v>mx)mx=v;});});
+  var h='<div style="font-size:12px;color:#5a6b7a;margin:2px 2px 6px;">'+wfEsc(EMV_D.title||'월초 예상 물량')+' · 라우트·일자별</div>';
+  h+='<div onclick="emvShow(\'mine\')" style="background:#274b8f;color:#fff;border-radius:10px;padding:11px;text-align:center;font-size:13px;font-weight:800;margin-bottom:10px;cursor:pointer;">🔍 내 라우트 확인하기</div>';
+  var th='<div style="overflow-x:auto;border:1px solid #dde3ea;border-radius:10px;background:#fff;"><table style="border-collapse:collapse;font-size:11.5px;white-space:nowrap;"><thead><tr><th style="position:sticky;left:0;background:#eef1f6;border:1px solid #e4e8ee;padding:7px 10px;color:#5a6b7a;z-index:2;">라우트</th>';
+  ds.forEach(function(d){th+='<th style="border:1px solid #e4e8ee;background:#274b8f;color:#fff;padding:7px 9px;font-weight:700;">'+wfEsc(d)+'</th>';});
+  th+='</tr></thead><tbody>';
+  var tot=ds.map(function(){return 0;});
+  rs.forEach(function(r){ th+='<tr><td style="position:sticky;left:0;background:#fff;border:1px solid #eef0f4;padding:6px 10px;font-weight:700;color:#37404c;z-index:1;">'+wfEsc(r.route)+'</td>';
+    (r.q||[]).forEach(function(v,i){var c=emvHeat(v,mn,mx);tot[i]+=(v||0);th+='<td style="border:1px solid #eef0f4;text-align:center;padding:6px 9px;background:'+c[0]+';color:'+c[1]+';font-weight:700;">'+(v||0).toLocaleString()+'</td>';}); th+='</tr>'; });
+  th+='<tr><td style="position:sticky;left:0;background:#334;color:#fff;border:1px solid #445;padding:7px 10px;font-weight:800;z-index:1;">합계</td>';
+  tot.forEach(function(v){th+='<td style="background:#3a4a63;color:#fff;border:1px solid #445;text-align:center;padding:7px 9px;font-weight:800;">'+v.toLocaleString()+'</td>';});
+  th+='</tr></tbody></table></div><div style="font-size:10.5px;color:#a7b0ba;margin:6px 2px;">← 좌우로 밀어 나머지 요일을 볼 수 있어요 · 색이 진할수록 물량 많음</div>';
+  return h+th;
+}
+function emvMineHtml(){
+  var ds=EMV_D.dates||[], rs=EMV_D.routes||[]; var rmap={}; rs.forEach(function(r){rmap[r.route]=r;});
+  var head='<div style="display:flex;align-items:center;gap:8px;margin:2px 2px 8px;"><span onclick="emvShow(\'all\')" style="cursor:pointer;font-size:16px;color:#274b8f;">‹</span><div style="font-size:13px;font-weight:800;color:#243b2e;">내 라우트 · 일자별</div></div>';
+  var sub='<div style="font-size:12px;color:#5a6b7a;margin:0 2px 8px;">해당 일자에 배정된 라우트의 예상 물량을 합산했어요.</div>';
+  var rows=''; var any=false;
+  ds.forEach(function(d,i){ var fd=emvFullDate(d); var routes=emvRoutesOn(fd); var sum=0; routes.forEach(function(rn){var r=rmap[rn]; if(r&&r.q)sum+=(r.q[i]||0);}); if(routes.length)any=true;
+    var badges=routes.length?routes.map(function(rn){return '<span style="background:#e8eef7;color:#274b8f;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:800;margin-right:4px;">'+wfEsc(rn)+'</span>';}).join(''):'<span style="color:#aab4bf;font-size:11px;">배정 없음</span>';
+    rows+='<div style="background:#fff;border:1px solid #e6eaf0;border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="display:flex;align-items:center;"><div style="font-weight:800;color:#37404c;font-size:12.5px;">'+wfEsc(d)+'</div><div style="margin-left:auto;font-size:19px;font-weight:800;color:#1b5e5a;">'+(routes.length?sum.toLocaleString():'-')+'</div></div><div style="margin-top:6px;">'+badges+'</div></div>';
+  });
+  if(!any) return head+'<div class="pb-empty">스케줄에서 내 라우트를 찾지 못했어요.<br><span style="font-size:11px;color:#999">이번 주 배정이 스케줄에 등록되면 표시됩니다.</span></div>';
+  return head+sub+rows;
+}
+
 function pgWfPage(){
   pbInjectStyle();
   var isAdm=CU&&CU.role==='admin';
