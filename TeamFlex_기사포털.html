@@ -3566,7 +3566,7 @@ async function refreshNavBadges(){
   if(_navSeen.md===undefined)_navSeen.md=_nowIso;
   if(sbClient){
     try{ var mr=await sbClient.from('misdelivery_cases').select('id',{count:'exact',head:true}).gt('created_at',_navSeen.md||'1970-01-01'); if(mr&&typeof mr.count==='number')_nav.md=mr.count; }catch(e){}
-    try{ var pq; if(CU.role==='admin'){ pq=sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',pbPeriod()).eq('status','answered'); } else { pq=sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',pbPeriod()).eq('status','pending').eq('driver_name',CU.name); } var pr=await pq; if(pr&&typeof pr.count==='number')_nav.pb=pr.count; }catch(e){}
+    try{ if(CU.role==='admin'){ var pqa=sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',pbPeriod()).eq('status','answered'); var pra=await pqa; if(pra&&typeof pra.count==='number')_nav.pb=pra.count; } else { var prb=await sbClient.from('pback_somyeong').select('driver_name').eq('period',pbPeriod()).eq('status','pending'); if(prb&&!prb.error&&prb.data){ var _pn=norm_name_js(CU.name||''); _nav.pb=prb.data.filter(function(x){return norm_name_js(x.driver_name||'')===_pn;}).length; } } }catch(e){}
     var _td=(typeof kstToday==='function')?kstToday():_nowIso.slice(0,10);
     try{ var rr=await sbClient.from('round2_expected').select('shared_at').eq('shared_date',_td).order('shared_at',{ascending:false}).limit(1); if(rr&&rr.data&&rr.data.length){_nav.frLatest=rr.data[0].shared_at||'';if(_navSeen.fr2===undefined)_navSeen.fr2=_nav.frLatest;_nav.frNew=(_nav.frLatest>(_navSeen.fr2||''));}else{_nav.frNew=false;_nav.frLatest='';} }catch(e){}
     try{ var fq=await sbClient.from('app_settings').select('value').eq('key','fresh_snapshot').limit(1); var rem=0; if(fq&&fq.data&&fq.data.length){var v=fq.data[0].value;var snap=(typeof v==='string')?JSON.parse(v):v;if(snap&&(snap.snapshot_at||'').slice(0,10)===_td&&snap.routes){var _mine=(CU.role!=='admin'&&CU.role!=='leader');var _mn=_mine?norm_name_js(CU.name||''):'';snap.routes.forEach(function(rt){if(_mine&&norm_name_js(rt.worker||'')!==_mn)return;rem+=(rt.scan||0);});}} _nav.frRemain=rem; }catch(e){}
@@ -3699,7 +3699,7 @@ async function _annFetchBrief(){
   window._brfMd=0; window._brfPb=0;
   var _nm=(CU&&CU.name)||'';
   try{ var mr=await sbClient.from('misdelivery_cases').select('id',{count:'exact',head:true}).eq('driver_name',_nm).in('status',['pending','rejected']); if(mr&&typeof mr.count==='number')window._brfMd=mr.count; }catch(e){}
-  try{ var pr=await sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('driver_name',_nm).eq('status','pending'); if(pr&&typeof pr.count==='number')window._brfPb=pr.count; }catch(e){}
+  try{ var pr=await sbClient.from('pback_somyeong').select('driver_name').eq('period',pbPeriod()).eq('status','pending'); if(pr&&!pr.error&&pr.data){ var _pnn=norm_name_js(_nm||''); window._brfPb=pr.data.filter(function(x){return norm_name_js(x.driver_name||'')===_pnn;}).length; } }catch(e){}
 }
 function _brfBanners(){
   var md=window._brfMd||0, pb=window._brfPb||0;
