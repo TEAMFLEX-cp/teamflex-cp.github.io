@@ -3094,7 +3094,7 @@ function launchApp(){
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       '<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>'+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
-      '<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F4CB;</span>리스트확인</div>'+
+      '<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F4CB;</span><span style="color:#e0a400;font-weight:800">리스트확인</span></div>'+
       '<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>'+
       '<div class="ni" id="ni-cfg" onclick="openCfgSubMenu()"><span class="nicon">&#x2699;</span>설정</div>';
     go('hm');
@@ -3114,7 +3114,7 @@ function launchApp(){
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       (CU.role==='leader'?'<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>':'')+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
-      ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F4CB;</span>리스트확인</div>':'')+
+      ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F4CB;</span><span style="color:#e0a400;font-weight:800">리스트확인</span></div>':'')+
       (getFeatureCtrl('roulette','active')?'<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>':'')+
       '<div class="ni" id="ni-usr-cfg" onclick="openUserSubMenu()"><span class="nicon">&#x2699;&#xFE0F;</span>설정</div>';
     go('hm');
@@ -3555,7 +3555,7 @@ function updateNavDots(){
   var niFr=document.getElementById('ni-fr');
   if(niFr)niFr.innerHTML=ic('&#x1F33F;',_nav.frRemain>0)+'신선'+(_nav.frNew?newL:'')+numB(_nav.frRemain);
   var niPb=document.getElementById('ni-pb');
-  if(niPb)niPb.innerHTML=ic('&#x1F4CB;',_nav.pb>0)+'리스트확인'+numB(_nav.pb);
+  if(niPb)niPb.innerHTML=ic('&#x1F4CB;',_nav.pb>0)+'<span style="color:#e0a400;font-weight:800">리스트확인</span>'+numB(_nav.pb);
   var niSt=document.getElementById('ni-st'),niAz=document.getElementById('ni-az');
   if(niSt)niSt.innerHTML=ic('&#x1F4B0;')+'정산'+(_nav.stNew?newF:'');
   if(niAz)niAz.innerHTML=ic('&#x1F4B0;')+'정산'+(_nav.stNew?newF:'');
