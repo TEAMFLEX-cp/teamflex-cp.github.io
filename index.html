@@ -10517,8 +10517,17 @@ function emvAllHtml(){
   ds.forEach(function(d){th+='<th style="border:1px solid #e4e8ee;background:#274b8f;color:#fff;padding:7px 9px;font-weight:700;">'+wfEsc(d)+'</th>';});
   th+='</tr></thead><tbody>';
   var tot=ds.map(function(){return 0;});
-  rs.forEach(function(r){ th+='<tr><td style="position:sticky;left:0;background:#fff;border:1px solid #eef0f4;padding:6px 10px;font-weight:700;color:#37404c;z-index:1;">'+wfEsc(r.route)+'</td>';
-    (r.q||[]).forEach(function(v,i){var c=emvHeat(v,mn,mx);tot[i]+=(v||0);th+='<td style="border:1px solid #eef0f4;text-align:center;padding:6px 9px;background:'+c[0]+';color:'+c[1]+';font-weight:700;">'+(v||0).toLocaleString()+'</td>';}); th+='</tr>'; });
+  var gsum=null, gbase=null;
+  function _flush(){ if(gsum){ th+='<tr><td style="position:sticky;left:0;background:#e9f3ef;border:1px solid #d3e6de;padding:6px 10px;font-weight:800;color:#1b5e5a;z-index:1;">소계</td>'; gsum.forEach(function(v){ th+='<td style="background:#e9f3ef;border:1px solid #d3e6de;text-align:center;padding:6px 9px;font-weight:800;color:#1b5e5a;">'+v.toLocaleString()+'</td>'; }); th+='</tr>'; } }
+  rs.forEach(function(r){
+    var base=String(r.route||'').split(/[_\-]/)[0];
+    if(gbase!==null && base!==gbase){ _flush(); gsum=null; }
+    if(!gsum){ gsum=ds.map(function(){return 0;}); }
+    th+='<tr><td style="position:sticky;left:0;background:#fff;border:1px solid #eef0f4;padding:6px 10px;font-weight:700;color:#37404c;z-index:1;">'+wfEsc(r.route)+'</td>';
+    (r.q||[]).forEach(function(v,i){var c=emvHeat(v,mn,mx);tot[i]+=(v||0);gsum[i]+=(v||0);th+='<td style="border:1px solid #eef0f4;text-align:center;padding:6px 9px;background:'+c[0]+';color:'+c[1]+';font-weight:700;">'+(v||0).toLocaleString()+'</td>';}); th+='</tr>';
+    gbase=base;
+  });
+  _flush();
   th+='<tr><td style="position:sticky;left:0;background:#334;color:#fff;border:1px solid #445;padding:7px 10px;font-weight:800;z-index:1;">합계</td>';
   tot.forEach(function(v){th+='<td style="background:#3a4a63;color:#fff;border:1px solid #445;text-align:center;padding:7px 9px;font-weight:800;">'+v.toLocaleString()+'</td>';});
   th+='</tr></tbody></table></div><div style="font-size:10.5px;color:#a7b0ba;margin:6px 2px;">← 좌우로 밀어 나머지 요일을 볼 수 있어요 · 색이 진할수록 물량 많음</div>';
