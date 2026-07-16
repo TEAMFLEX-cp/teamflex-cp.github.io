@@ -10851,7 +10851,7 @@ async function pbInit(){
   var root=document.getElementById('pb-root'); if(!root||!sbClient)return;
   try{var cfgR=await sbClient.from('app_settings').select('value').eq('key','pback_config').maybeSingle();
       if(cfgR&&cfgR.data&&cfgR.data.value){var v=typeof cfgR.data.value==='string'?JSON.parse(cfgR.data.value):cfgR.data.value;PB_CFG=Object.assign({mode:'approval',form_url:'',period:''},v);}}catch(e){}
-  try{var q=await sbClient.from('pback_somyeong').select('*').eq('period',pbPeriod()).order('pdd_date',{ascending:true});PB_ITEMS=(q&&!q.error&&q.data)?q.data:[];}catch(e){PB_ITEMS=[];}
+  try{var _all=[],_from=0,_eff=null;while(true){var q=await sbClient.from('pback_somyeong').select('*').eq('period',pbPeriod()).order('pdd_date',{ascending:true}).range(_from,_from+999);if(!q||q.error||!q.data){break;}_all=_all.concat(q.data);if(_eff===null)_eff=q.data.length;if(q.data.length===0||q.data.length<_eff)break;_from+=q.data.length;if(_from>50000)break;}PB_ITEMS=_all;}catch(e){PB_ITEMS=[];}
   pbRender();
 }
 function pbMyItems(){var n=norm_name_js((CU&&CU.name)||'');return PB_ITEMS.filter(function(it){return norm_name_js(it.driver_name||'')===n;});}
