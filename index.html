@@ -1435,7 +1435,7 @@ async function loadFeatureControls(){
   if(!sbClient) return;
   try{
     var {data} = await sbClient.from('app_settings').select('value').eq('key','feature_controls').maybeSingle();
-    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false}};
+    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false},sla:{active:false,notify:false}};
     if(data && data.value){
       var parsed = typeof data.value==='string' ? JSON.parse(data.value) : data.value;
       _featureControls = Object.assign({}, defaults, parsed);
@@ -1443,7 +1443,7 @@ async function loadFeatureControls(){
       _featureControls = defaults;
     }
   } catch(e){
-    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false}};
+    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false},sla:{active:false,notify:false}};
   }
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
@@ -1473,7 +1473,7 @@ function getFeatureCtrl(feat, key){
 }
 async function saveFeatureCtrl(feat, key, val){
   if(!sbClient||!CU||CU.role!=='admin') return;
-  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false}};
+  if(!_featureControls) _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false},sla:{active:false,notify:false}};
   if(!_featureControls[feat]) _featureControls[feat] = {active:true, notify:true};
   _featureControls[feat][key] = val;
   // Supabase 저장 (실패 시 롤백 + 에러 알림)
@@ -3114,7 +3114,7 @@ function launchApp(){
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       (CU.role==='leader'?'<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>':'')+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
-      ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active')||getFeatureCtrl('earlymonth','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백/차감</div>':'')+
+      ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F9FE;</span>프백/차감</div>':'')+
       (getFeatureCtrl('roulette','active')?'<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>':'')+
       '<div class="ni" id="ni-usr-cfg" onclick="openUserSubMenu()"><span class="nicon">&#x2699;&#xFE0F;</span>설정</div>';
     go('hm');
@@ -10444,6 +10444,7 @@ function pgPback(){
   if(PB_SUB==='pback'){ setTimeout(pbInit,50); return pgPbackSomyeong(); }
   if(PB_SUB==='wf'){ setTimeout(wfInit,50); return pgWfPage(); }
   if(PB_SUB==='emv'){ setTimeout(emvInit,50); return pgEmvPage(); }
+  if(PB_SUB==='sla'){ setTimeout(slaInit,50); return pgSlaPage(); }
   return pgPbackMenu();
 }
 function pbGoSub(x){ PB_SUB=x; var mc=document.getElementById('mc'); if(mc) mc.innerHTML=pgPback(); }
@@ -10456,7 +10457,8 @@ function pgPbackMenu(){
     +'<div onclick="pbGoSub(\'pback\')" style="cursor:pointer;background:#fff;border:1px solid #d7dbf0;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(120,130,160,.1)"><span style="font-size:30px">📋</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#3949ab">프레시백 소명 자료</div><div style="font-size:11px;color:#8e99cc;margin-top:2px">프레시백 미회수 소명 제출·확인</div></div><span style="font-size:18px;color:#c5cae9">›</span></div>'
     +'<div onclick="pbGoSub(\'loss\')" style="cursor:pointer;background:#fff;border:1px solid #ce93d8;border-radius:14px;padding:16px 14px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(106,27,154,.1)"><span style="font-size:30px">🔍</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#6a1b9a">분실 차감 내역 확인</div><div style="font-size:11px;color:#ab7bc0;margin-top:2px">분실·파손 차감 내역 (본인 + 전체 요약)</div></div><span style="font-size:18px;color:#e1bee7">›</span></div>'
     +(((CU&&CU.role==='admin')||getFeatureCtrl('weightfactor','active'))?'<div onclick="pbGoSub(\'wf\')" style="cursor:pointer;background:#fff;border:1px solid #b39ddb;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(94,53,177,.1)"><span style="font-size:30px">📊</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#4527a0">가중요인 확인</div><div style="font-size:11px;color:#9575cd;margin-top:2px">주차별 가중요인 · 내 라우트 상세</div></div><span style="font-size:18px;color:#d1c4e9">›</span></div>':'')
-    +(((CU&&CU.role==='admin')||getFeatureCtrl('earlymonth','active'))?'<div onclick="pbGoSub(\'emv\')" style="cursor:pointer;background:#fff;border:1px solid #80cbc4;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(27,94,90,.1)"><span style="font-size:30px">📦</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#12463f">월초 예상 물량</div><div style="font-size:11px;color:#5a9d95;margin-top:2px">라우트·일자별 예상 수량 · 내 라우트 합산</div></div><span style="font-size:18px;color:#b2dfdb">›</span></div>':'')
+    +(((CU&&CU.role==='admin')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active'))?'<div onclick="pbGoSub(\'emv\')" style="cursor:pointer;background:#fff;border:1px solid #80cbc4;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(27,94,90,.1)"><span style="font-size:30px">📦</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#12463f">월초 예상 물량</div><div style="font-size:11px;color:#5a9d95;margin-top:2px">라우트·일자별 예상 수량 · 내 라우트 합산</div></div><span style="font-size:18px;color:#b2dfdb">›</span></div>':'')
+    +(((CU&&CU.role==='admin')||getFeatureCtrl('sla','active'))?'<div onclick="pbGoSub(\'sla\')" style="cursor:pointer;background:#fff;border:1px solid #b0a8e0;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(58,45,143,.1)"><span style="font-size:30px">📈</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#2a1d6f">SLA 점수 확인</div><div style="font-size:11px;color:#8579c0;margin-top:2px">월별 SLA 점수 · 전체 평균</div></div><span style="font-size:18px;color:#d1c9ef">›</span></div>':'')
     +'</div>';
 }
 /* ════════ 가중요인 확인 (앱) ════════ */
@@ -10488,6 +10490,62 @@ var EMV_D=null, EMV_VIEW='all';
 function emvHeat(v,mn,mx){var t=(mx>mn)?(v-mn)/(mx-mn):0;if(t<0.2)return['#f4f9f5','#5a6b60'];if(t<0.45)return['#dcefe1','#2d6040'];if(t<0.7)return['#b7ddc0','#1e4a30'];return['#8ecb9d','#14351f'];}
 function emvFullDate(lbl){ var m=String(lbl||'').match(/(\d{1,2})[\/.](\d{1,2})/); if(!m)return ''; var yr=2026; try{ if(EMV_D&&EMV_D.updated){var ym=String(EMV_D.updated).match(/(\d{4})/); if(ym)yr=+ym[1];} }catch(e){} return yr+'-'+('0'+m[1]).slice(-2)+'-'+('0'+m[2]).slice(-2); }
 function emvRoutesOn(fulldate){ var nm=norm_name_js((CU&&CU.name)||''); var set={}; try{ var key=Object.keys(DW||{}).find(function(k){return norm_name_js(k)===nm;}); if(key){ var weeks=DW[key]||{}; Object.keys(weeks).forEach(function(wk){ var day=weeks[wk]; if(day&&day[fulldate]){ wfExpandRoute(day[fulldate]).forEach(function(r){set[r]=1;}); } }); } }catch(e){} return Object.keys(set); }
+/* ════════ SLA 점수 (앱) ════════ */
+var SLA_D=null, SLA_VIEW='month', SLA_SEL=null;
+function slaAvail(){ if(!SLA_D||!SLA_D.months)return []; return Object.keys(SLA_D.months).map(Number).filter(function(n){return !isNaN(n);}).sort(function(a,b){return a-b;}); }
+function slaLatest(){ var a=slaAvail(); return a.length?a[a.length-1]:null; }
+function slaAvg(rows){ var t=[0,0,0,0,0]; rows.forEach(function(r){for(var i=0;i<5;i++)t[i]+=(r[1+i]||0);}); return t.map(function(x){return rows.length?Math.round(x/rows.length*10)/10:0;}); }
+function slaTot(v){ if(v<95)return['#FCE4D6','#C55A11']; if(v<98)return['#FFF2CC','#806000']; return['#e8f3ec','#2d6040']; }
+function slaRsort(rows){ return rows.slice().sort(function(a,b){var pa=String(a[0]).match(/(\d+)/),pb=String(b[0]).match(/(\d+)/);var na=pa?+pa[1]:0,nb=pb?+pb[1]:0;if(na!==nb)return na-nb;return String(a[0])<String(b[0])?-1:1;}); }
+function pgSlaPage(){
+  pbInjectStyle();
+  var isAdm=CU&&CU.role==='admin';
+  var bk='<div onclick="pbGoMenu()" style="cursor:pointer;font-size:13px;color:#3a2d8f;font-weight:700;padding:12px 14px 4px">‹ 프백/차감</div>';
+  if(!isAdm && !getFeatureCtrl('sla','active')) return '<div class="pb-wrap">'+bk+'<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15px;font-weight:700;">📈 SLA 점수 확인 기능이 아직 활성화되지 않았습니다.</div></div>';
+  return '<div class="pb-wrap">'+bk+'<div style="padding:2px 12px 16px">'+_featureBar('sla')+'<div id="sla-root"><div class="pb-empty">불러오는 중…</div></div></div></div>';
+}
+async function slaInit(){
+  var root=document.getElementById('sla-root'); if(!root)return; SLA_D=null;
+  try{ var q=await sbClient.from('app_settings').select('value').eq('key','sla_data').maybeSingle();
+       if(q&&q.data&&q.data.value){ SLA_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+  SLA_VIEW='month'; SLA_SEL=slaLatest(); slaRender();
+}
+function slaShow(v){ if(v==='avg'){SLA_VIEW='avg';} else {SLA_VIEW='month'; SLA_SEL=+v;} slaRender(); }
+function slaRender(){
+  var root=document.getElementById('sla-root'); if(!root)return;
+  if(!SLA_D||!SLA_D.months||!slaAvail().length){ root.innerHTML='<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15px;font-weight:700;line-height:1.7;">아직 공유된 SLA 점수가 없습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">관리자가 스케줄 프로그램에서 전송하면 표시됩니다.</span></div>'; return; }
+  root.innerHTML=slaPills()+((SLA_VIEW==='avg')?slaAvgView():slaMonthView());
+}
+function slaPills(){
+  var av=slaAvail(); var h='<div style="display:flex;flex-wrap:wrap;gap:5px;padding:4px 2px 8px;">';
+  h+='<span onclick="slaShow(\'avg\')" style="background:'+(SLA_VIEW==='avg'?'#3a2d8f':'#fff')+';color:'+(SLA_VIEW==='avg'?'#fff':'#3a2d8f')+';border:1.5px solid #3a2d8f;border-radius:14px;padding:4px 12px;font-size:11px;font-weight:800;cursor:pointer;">전체 평균</span>';
+  for(var m=1;m<=12;m++){var on=(SLA_VIEW==='month'&&SLA_SEL===m);var avl=av.indexOf(m)>=0;
+    h+='<span '+(avl?'onclick="slaShow(\''+m+'\')"':'')+' style="background:'+(on?'#3a2d8f':(avl?'#fff':'#f1f3f6'))+';color:'+(on?'#fff':(avl?'#5a6b7a':'#c2c8d0'))+';border:1px solid '+(on?'#3a2d8f':(avl?'#c9d2de':'#e6e9ee'))+';border-radius:13px;padding:4px 10px;font-size:11px;font-weight:700;'+(avl?'cursor:pointer;':'')+'">'+m+'월</span>';}
+  return h+'</div>';
+}
+function slaCards(a,title){
+  var subs=[['미수행률',a[1],15],['반품 미회수율',a[2],15],['고객만족',a[3],50],['고객불만 발생율',a[4],20]];
+  return '<div style="margin:0 0 8px;background:#fff;border:1px solid #e6e9ee;border-radius:12px;padding:12px 14px;text-align:center;"><div style="font-size:11px;color:#8a95a2;">'+wfEsc(title)+'</div><div style="font-size:34px;font-weight:800;color:#3a2d8f;line-height:1.1;">'+a[0].toFixed(1)+'<span style="font-size:14px;color:#aab;">/100</span></div><div style="display:flex;gap:5px;margin-top:8px;">'+subs.map(function(x){return '<div style="flex:1;background:#f4f5fb;border-radius:8px;padding:6px 2px;"><div style="font-size:9px;color:#8a8fb0;line-height:1.2;">'+x[0]+'</div><div style="font-size:13px;font-weight:800;color:#4a3fa0;margin-top:2px;">'+x[1].toFixed(1)+'<span style="font-size:8.5px;color:#aab;">/'+x[2]+'</span></div></div>';}).join('')+'</div></div>';
+}
+function slaTable(rows){
+  var cols=['미수행','반품','고객만족','고객불만'];
+  var th='<div style="overflow-x:auto;border:1px solid #e6e9ee;border-radius:10px;background:#fff;"><table style="border-collapse:collapse;font-size:11.5px;white-space:nowrap;"><thead><tr><th style="position:sticky;left:0;z-index:2;background:#eef0f7;border:1px solid #e4e8ee;padding:6px 9px;color:#5a6b7a;">라우트</th><th style="background:#3a2d8f;color:#fff;border:1px solid #e4e8ee;padding:6px 10px;">Total</th>'+cols.map(function(c){return '<th style="background:#eef0f7;color:#5a6b7a;border:1px solid #e4e8ee;padding:6px 10px;">'+c+'</th>';}).join('')+'</tr></thead><tbody>';
+  rows.forEach(function(r){var c=slaTot(r[1]||0);th+='<tr><td style="position:sticky;left:0;z-index:1;background:#fff;border:1px solid #eef0f4;padding:5px 9px;font-weight:700;color:#37404c;">'+wfEsc(r[0])+'</td><td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+c[0]+';color:'+c[1]+';font-weight:800;">'+(r[1]||0).toFixed(1)+'</td>'+[r[2],r[3],r[4],r[5]].map(function(v){return '<td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;color:#556;">'+(v||0).toFixed(1)+'</td>';}).join('')+'</tr>';});
+  return th+'</tbody></table></div><div style="font-size:10.5px;color:#a7b0ba;margin:6px 2px;">← 좌우로 밀어서 나머지 지표를 볼 수 있어요</div>';
+}
+function slaMonthView(){
+  var M=SLA_D.months[String(SLA_SEL)]; if(!M)return '';
+  var rows=slaRsort(M.routes||[]); var a=(M.avg&&M.avg.length)?M.avg:slaAvg(rows);
+  return '<div style="font-size:12.5px;font-weight:800;color:#3a2d8f;margin:2px 2px 8px;">'+wfEsc(M.label||(SLA_SEL+'월'))+' SLA <span style="font-size:11px;color:#9aa5b0;font-weight:600;">'+wfEsc(M.range||'')+'</span></div>'+slaCards(a,(M.label||(SLA_SEL+'월'))+' 팀 평균 Total')+slaTable(rows);
+}
+function slaAvgView(){
+  var av=slaAvail(); var map={};
+  av.forEach(function(m){(SLA_D.months[String(m)].routes||[]).forEach(function(r){if(!map[r[0]])map[r[0]]=[0,0,0,0,0,0];for(var i=0;i<5;i++)map[r[0]][i]+=(r[1+i]||0);map[r[0]][5]++;});});
+  var rows=Object.keys(map).map(function(k){var a=map[k];return [k,Math.round(a[0]/a[5]*10)/10,Math.round(a[1]/a[5]*10)/10,Math.round(a[2]/a[5]*10)/10,Math.round(a[3]/a[5]*10)/10,Math.round(a[4]/a[5]*10)/10];});
+  rows=slaRsort(rows); var A=slaAvg(rows);
+  return '<div style="font-size:12.5px;font-weight:800;color:#3a2d8f;margin:2px 2px 8px;">전체 평균 · '+av.length+'개월 누적</div>'+slaCards(A,'전체 평균 Total')+slaTable(rows);
+}
+
 function pgEmvPage(){
   pbInjectStyle();
   var isAdm=CU&&CU.role==='admin';
@@ -10566,7 +10624,7 @@ function wfRender(){
   root.innerHTML=(WF_VIEW==='mine')?wfMineHtml():wfSumHtml();
 }
 function wfSumHtml(){
-  var b=WF_D.blocks[0]; var rs=b.routes||[];
+  var b=WF_D.blocks[0]; var rs=(b.routes||[]).slice().sort(function(a,z){var pa=String(a.route||'').match(/(\d+)/),pz=String(z.route||'').match(/(\d+)/);var na=pa?+pa[1]:0,nz=pz?+pz[1]:0;if(na!==nz)return na-nz;return String(a.route)<String(z.route)?-1:1;});
   var s1=0,s2=0,n1=0,n2=0,mih=0,cnt=[0,0,0,0];
   rs.forEach(function(r){ if(r.f1!=null){s1+=r.f1;n1++;} if(r.f2!=null){s2+=r.f2;n2++;} if(r.f1s==='미해당'||r.f2s==='미해당')mih++; var w=Math.max(wfG1(r.f1),wfG2(r.f2)); if(w>=0)cnt[w]++; });
   var a1=n1?(s1/n1).toFixed(1):'-', a2=n2?(s2/n2).toFixed(1):'-';
