@@ -10504,18 +10504,16 @@ async function emvInit(){
 function emvShow(v){ EMV_VIEW=v; emvRender(); }
 function emvRender(){
   var root=document.getElementById('emv-root'); if(!root)return;
-  if(!EMV_D||!EMV_D.routes||!EMV_D.routes.length){ root.innerHTML='<div class="pb-empty">아직 공유된 월초 예상 물량이 없습니다.<br><span style="font-size:11px;color:#999">관리자가 스케줄 프로그램에서 업로드하면 표시됩니다.</span></div>'; return; }
-  var _eds=EMV_D.dates||[];
-  if(_eds.length){ var _last=emvFullDate(_eds[_eds.length-1]); if(_last){ var _t=new Date(); var _td=_t.getFullYear()+'-'+('0'+(_t.getMonth()+1)).slice(-2)+'-'+('0'+_t.getDate()).slice(-2); if(_td>_last){ root.innerHTML='<div class="pb-empty">이번 월초 예상 물량 기간이 종료되었습니다.<br><span style="font-size:11px;color:#999">다음 자료가 업로드되면 표시됩니다.</span></div>'; return; } } }
+  if(!EMV_D||!EMV_D.routes||!EMV_D.routes.length){ root.innerHTML='<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15.5px;font-weight:700;line-height:1.7;">아직 공유된 월초 예상 물량이 없습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">관리자가 스케줄 프로그램에서 업로드하면 표시됩니다.</span></div>'; return; }
   root.innerHTML=(EMV_VIEW==='mine')?emvMineHtml():emvAllHtml();
   if(EMV_VIEW!=='mine'){ setTimeout(function(){ var b=document.getElementById('emv-bsc'), ti=document.getElementById('emv-tsc-in'); if(b&&ti){ var tbl=b.querySelector('table'); ti.style.width=((tbl?tbl.scrollWidth:b.scrollWidth))+'px'; } },60); }
 }
 function emvAllHtml(){
   var ds=EMV_D.dates||[], rs=EMV_D.routes||[];
   var mn=Infinity,mx=-Infinity; rs.forEach(function(r){(r.q||[]).forEach(function(v){if(v<mn)mn=v;if(v>mx)mx=v;});});
-  var h='<div style="font-size:12px;color:#5a6b7a;margin:2px 2px 6px;">'+wfEsc(EMV_D.title||'월초 예상 물량')+' · 라우트·일자별</div>';
+  var h='<div style="font-size:14px;color:#37404c;font-weight:700;margin:2px 2px 8px;">'+wfEsc(EMV_D.title||'월초 예상 물량')+' · 라우트·일자별</div>';
   h+='<div onclick="emvShow(\'mine\')" style="background:#274b8f;color:#fff;border-radius:10px;padding:11px;text-align:center;font-size:13px;font-weight:800;margin-bottom:10px;cursor:pointer;">🔍 내 라우트 확인하기</div>';
-  var th='<div id="emv-tsc" style="overflow-x:auto;overflow-y:hidden;height:14px;margin-bottom:5px;" onscroll="var b=document.getElementById(\'emv-bsc\');if(b)b.scrollLeft=this.scrollLeft;"><div id="emv-tsc-in" style="height:1px;"></div></div><div id="emv-bsc" style="overflow-x:auto;border:1px solid #dde3ea;border-radius:10px;background:#fff;" onscroll="var t=document.getElementById(\'emv-tsc\');if(t)t.scrollLeft=this.scrollLeft;"><table style="border-collapse:collapse;font-size:11.5px;white-space:nowrap;"><thead><tr><th style="position:sticky;left:0;background:#eef1f6;border:1px solid #e4e8ee;padding:7px 10px;color:#5a6b7a;z-index:2;">라우트</th>';
+  var th='<div id="emv-tsc" style="overflow-x:auto;overflow-y:hidden;height:14px;margin-bottom:5px;" onscroll="var b=document.getElementById(\'emv-bsc\');if(b)b.scrollLeft=this.scrollLeft;"><div id="emv-tsc-in" style="height:1px;"></div></div><div id="emv-bsc" style="overflow-x:auto;border:1px solid #dde3ea;border-radius:10px;background:#fff;" onscroll="var t=document.getElementById(\'emv-tsc\');if(t)t.scrollLeft=this.scrollLeft;"><table style="border-collapse:collapse;font-size:12.5px;white-space:nowrap;"><thead><tr><th style="position:sticky;left:0;background:#eef1f6;border:1px solid #e4e8ee;padding:7px 10px;color:#5a6b7a;z-index:2;">라우트</th>';
   ds.forEach(function(d){th+='<th style="border:1px solid #e4e8ee;background:#274b8f;color:#fff;padding:7px 9px;font-weight:700;">'+wfEsc(d)+'</th>';});
   th+='</tr></thead><tbody>';
   var tot=ds.map(function(){return 0;});
@@ -10535,7 +10533,7 @@ function emvMineHtml(){
     var badges=routes.length?routes.map(function(rn){return '<span style="background:#e8eef7;color:#274b8f;border-radius:8px;padding:2px 8px;font-size:11px;font-weight:800;margin-right:4px;">'+wfEsc(rn)+'</span>';}).join(''):'<span style="color:#aab4bf;font-size:11px;">배정 없음</span>';
     rows+='<div style="background:#fff;border:1px solid #e6eaf0;border-radius:10px;padding:10px 12px;margin-bottom:8px;"><div style="display:flex;align-items:center;"><div style="font-weight:800;color:#37404c;font-size:12.5px;">'+wfEsc(d)+'</div><div style="margin-left:auto;font-size:19px;font-weight:800;color:#1b5e5a;">'+(routes.length?sum.toLocaleString():'-')+'</div></div><div style="margin-top:6px;">'+badges+'</div></div>';
   });
-  if(!any) return head+'<div class="pb-empty">스케줄에서 내 라우트를 찾지 못했어요.<br><span style="font-size:11px;color:#999">이번 주 배정이 스케줄에 등록되면 표시됩니다.</span></div>';
+  if(!any) return head+'<div style="text-align:center;padding:40px 18px;color:#5a6b7a;font-size:15px;font-weight:700;line-height:1.7;">스케줄에서 내 라우트를 찾지 못했어요.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">이번 주 배정이 스케줄에 등록되면 표시됩니다.</span></div>';
   return head+sub+rows;
 }
 
@@ -10583,7 +10581,7 @@ function wfMineHtml(){
   var b=WF_D.blocks[0]; var rmap={}; (b.routes||[]).forEach(function(r){rmap[r.route]=r;});
   var mine=wfMyRoutes().filter(function(r){return rmap[r];});
   var head='<div style="display:flex;align-items:center;gap:8px;margin:2px 2px 8px;"><span onclick="wfShow(\'sum\')" style="cursor:pointer;font-size:16px;color:#5e35b1;">‹</span><div style="font-size:13px;font-weight:800;color:#243b2e;">내 라우트 · '+mine.length+'개</div></div>';
-  if(!mine.length){ return head+'<div class="pb-empty">스케줄에서 내 라우트를 찾지 못했어요.<br><span style="font-size:11px;color:#999">이번 주 배정이 스케줄에 등록되면 표시됩니다.</span></div>'; }
+  if(!mine.length){ return head+'<div style="text-align:center;padding:40px 18px;color:#5a6b7a;font-size:15px;font-weight:700;line-height:1.7;">스케줄에서 내 라우트를 찾지 못했어요.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">이번 주 배정이 스케줄에 등록되면 표시됩니다.</span></div>'; }
   var chips='<div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 2px 8px;">'+mine.map(function(r){return '<span style="background:#EEE9FA;color:#4527a0;border-radius:10px;padding:4px 10px;font-size:11.5px;font-weight:800;">'+wfEsc(r)+'</span>';}).join('')+'</div>';
   var srows='<div style="background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden;margin-bottom:10px;"><div style="display:flex;background:#f4f6f2;padding:6px 12px;font-size:10.5px;color:#8a968d;font-weight:700;"><div style="flex:1;">라우트(주간)</div><div style="width:70px;text-align:center;">가중1</div><div style="width:70px;text-align:center;">가중2</div></div>';
   mine.forEach(function(rn){var r=rmap[rn];srows+='<div style="display:flex;align-items:center;padding:7px 12px;border-top:1px solid #f2f2f2;font-size:12px;"><div style="flex:1;font-weight:800;color:#37473c;">'+wfEsc(rn)+'</div><div style="width:70px;text-align:center;">'+(r.f1s==='미해당'?wfMiss():wfChip((r.f1!=null?r.f1.toFixed(2):'-'),wfG1(r.f1)))+'</div><div style="width:70px;text-align:center;">'+(r.f2s==='미해당'?wfMiss():wfChip((r.f2!=null?r.f2.toFixed(2):'-'),wfG2(r.f2)))+'</div></div>';});
