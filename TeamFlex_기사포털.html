@@ -10520,7 +10520,7 @@ function emvAllHtml(){
   var gsum=null, gbase=null;
   function _flush(){ if(gsum){ th+='<tr><td style="position:sticky;left:0;background:#ffe0a0;border:1px solid #e6bd5f;padding:6px 10px;font-weight:800;color:#7a4a00;z-index:1;">소계</td>'; gsum.forEach(function(v){ th+='<td style="background:#ffedc2;border:1px solid #e6bd5f;text-align:center;padding:6px 9px;font-weight:800;color:#7a4a00;">'+v.toLocaleString()+'</td>'; }); th+='</tr>'; } }
   rs.forEach(function(r){
-    var _pp=String(r.route||'').split(/[_\-]/); var base=_pp[0]+'_'+((function(x){x=(x||'').toUpperCase();return (x==='A'||x==='B')?'AB':((x==='C'||x==='D')?'CD':x);})(_pp[1]));
+    var base=(r.g!=null?('g'+r.g):String(r.route||'').replace(/[_\-].*$/,''));
     if(gbase!==null && base!==gbase){ _flush(); gsum=null; }
     if(!gsum){ gsum=ds.map(function(){return 0;}); }
     th+='<tr><td style="position:sticky;left:0;background:#fff;border:1px solid #eef0f4;padding:6px 10px;font-weight:700;color:#37404c;z-index:1;">'+wfEsc(r.route)+'</td>';
