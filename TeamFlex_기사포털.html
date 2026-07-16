@@ -10493,7 +10493,7 @@ function pgEmvPage(){
   var isAdm=CU&&CU.role==='admin';
   var bk='<div onclick="pbGoMenu()" style="cursor:pointer;font-size:13px;color:#274b8f;font-weight:700;padding:12px 14px 4px">‹ 프백/차감</div>';
   if(!isAdm && !getFeatureCtrl('earlymonth','active')) return '<div class="pb-wrap">'+bk+'<div class="pb-empty">📦 월초 예상 물량 기능이 아직 활성화되지 않았습니다.</div></div>';
-  return '<div class="pb-wrap">'+bk+'<div style="padding:2px 12px 16px">'+_featureBar('earlymonth')+'<div id="emv-root"><div class="pb-empty">불러오는 중…</div></div></div></div>';
+  return '<div class="pb-wrap"><style>@keyframes emvGlow{0%,100%{box-shadow:0 0 5px 1px rgba(120,180,255,.55),inset 0 0 0 2px rgba(255,255,255,.18);}50%{box-shadow:0 0 16px 4px rgba(120,180,255,.95),inset 0 0 0 2px rgba(255,255,255,.4);}}@keyframes emvSweep{0%{left:-60%;}60%,100%{left:130%;}}.emv-shine{position:relative;overflow:hidden;animation:emvGlow 1.6s ease-in-out infinite;}.emv-shine::after{content:"";position:absolute;top:0;left:-60%;width:38%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-20deg);animation:emvSweep 2.3s linear infinite;pointer-events:none;}</style>'+bk+'<div style="padding:2px 12px 16px">'+_featureBar('earlymonth')+'<div id="emv-root"><div class="pb-empty">불러오는 중…</div></div></div></div>';
 }
 async function emvInit(){
   var root=document.getElementById('emv-root'); if(!root)return; EMV_D=null;
@@ -10512,7 +10512,7 @@ function emvAllHtml(){
   var ds=EMV_D.dates||[], rs=EMV_D.routes||[];
   var mn=Infinity,mx=-Infinity; rs.forEach(function(r){(r.q||[]).forEach(function(v){if(v<mn)mn=v;if(v>mx)mx=v;});});
   var h='<div style="font-size:14px;color:#37404c;font-weight:700;margin:2px 2px 8px;">'+wfEsc(EMV_D.title||'월초 예상 물량')+' · 라우트·일자별</div>';
-  h+='<div onclick="emvShow(\'mine\')" style="background:#274b8f;color:#fff;border-radius:10px;padding:11px;text-align:center;font-size:13px;font-weight:800;margin-bottom:10px;cursor:pointer;">🔍 내 라우트 확인하기</div>';
+  h+='<div onclick="emvShow(\'mine\')" class="emv-shine" style="background:#274b8f;color:#fff;border:2px solid #7cc0ff;border-radius:10px;padding:12px;text-align:center;font-size:13.5px;font-weight:800;margin-bottom:10px;cursor:pointer;">📅 내 스케줄의 수량 확인하기</div>';
   var th='<div id="emv-tsc" style="overflow-x:auto;overflow-y:hidden;height:14px;margin-bottom:5px;" onscroll="var b=document.getElementById(\'emv-bsc\');if(b)b.scrollLeft=this.scrollLeft;"><div id="emv-tsc-in" style="height:1px;"></div></div><div id="emv-bsc" style="overflow-x:auto;border:1px solid #dde3ea;border-radius:10px;background:#fff;" onscroll="var t=document.getElementById(\'emv-tsc\');if(t)t.scrollLeft=this.scrollLeft;"><table style="border-collapse:collapse;font-size:12.5px;white-space:nowrap;"><thead><tr><th style="position:sticky;left:0;background:#eef1f6;border:1px solid #e4e8ee;padding:7px 10px;color:#5a6b7a;z-index:2;">라우트</th>';
   ds.forEach(function(d){th+='<th style="border:1px solid #e4e8ee;background:#274b8f;color:#fff;padding:7px 9px;font-weight:700;">'+wfEsc(d)+'</th>';});
   th+='</tr></thead><tbody>';
