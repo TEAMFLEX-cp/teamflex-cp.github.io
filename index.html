@@ -10496,6 +10496,7 @@ function slaAvail(){ if(!SLA_D||!SLA_D.months)return []; return Object.keys(SLA_
 function slaLatest(){ var a=slaAvail(); return a.length?a[a.length-1]:null; }
 function slaAvg(rows){ var t=[0,0,0,0,0]; rows.forEach(function(r){for(var i=0;i<5;i++)t[i]+=(r[1+i]||0);}); return t.map(function(x){return rows.length?Math.round(x/rows.length*10)/10:0;}); }
 function slaTot(v){ if(v<95)return['#FCE4D6','#C55A11']; if(v<98)return['#FFF2CC','#806000']; return['#e8f3ec','#2d6040']; }
+function slaMc(v,mx){ if(v==null)return['#ffffff','#556']; var t=v/mx; if(t>=0.995)return['#eef6f0','#2d6040']; if(t>=0.98)return['#FFF7DA','#8a6a00']; if(t>=0.96)return['#FFEBBD','#8a5300']; if(t>=0.93)return['#FBDDC9','#b4530f']; return['#FFC7CE','#9C0006']; }
 function slaRsort(rows){ return rows.slice().sort(function(a,b){var pa=String(a[0]).match(/(\d+)/),pb=String(b[0]).match(/(\d+)/);var na=pa?+pa[1]:0,nb=pb?+pb[1]:0;if(na!==nb)return na-nb;return String(a[0])<String(b[0])?-1:1;}); }
 function pgSlaPage(){
   pbInjectStyle();
@@ -10530,7 +10531,7 @@ function slaCards(a,title){
 function slaTable(rows){
   var cols=['미수행','반품','고객만족','고객불만'];
   var th='<div style="overflow-x:auto;border:1px solid #e6e9ee;border-radius:10px;background:#fff;"><table style="border-collapse:collapse;font-size:11.5px;white-space:nowrap;"><thead><tr><th style="position:sticky;left:0;z-index:2;background:#eef0f7;border:1px solid #e4e8ee;padding:6px 9px;color:#5a6b7a;">라우트</th><th style="background:#3a2d8f;color:#fff;border:1px solid #e4e8ee;padding:6px 10px;">Total</th>'+cols.map(function(c){return '<th style="background:#eef0f7;color:#5a6b7a;border:1px solid #e4e8ee;padding:6px 10px;">'+c+'</th>';}).join('')+'</tr></thead><tbody>';
-  rows.forEach(function(r){var c=slaTot(r[1]||0);th+='<tr><td style="position:sticky;left:0;z-index:1;background:#fff;border:1px solid #eef0f4;padding:5px 9px;font-weight:700;color:#37404c;">'+wfEsc(r[0])+'</td><td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+c[0]+';color:'+c[1]+';font-weight:800;">'+(r[1]||0).toFixed(1)+'</td>'+[r[2],r[3],r[4],r[5]].map(function(v){return '<td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;color:#556;">'+(v||0).toFixed(1)+'</td>';}).join('')+'</tr>';});
+  rows.forEach(function(r){var c=slaTot(r[1]||0);th+='<tr><td style="position:sticky;left:0;z-index:1;background:#fff;border:1px solid #eef0f4;padding:5px 9px;font-weight:700;color:#37404c;">'+wfEsc(r[0])+'</td><td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+c[0]+';color:'+c[1]+';font-weight:800;">'+(r[1]||0).toFixed(1)+'</td>'+[r[2],r[3],r[4],r[5]].map(function(v,i){var mc=slaMc(v,[15,15,50,20][i]);return '<td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+mc[0]+';color:'+mc[1]+';font-weight:700;">'+(v||0).toFixed(1)+'</td>';}).join('')+'</tr>';});
   return th+'</tbody></table></div><div style="font-size:10.5px;color:#a7b0ba;margin:6px 2px;">← 좌우로 밀어서 나머지 지표를 볼 수 있어요</div>';
 }
 function slaMonthView(){
