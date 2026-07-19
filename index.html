@@ -4234,7 +4234,7 @@ function pgHome(){
       '</div>'+
     '</div>'+
     '</div>'+
-    (typeof tqHomeBanner==='function'?tqHomeBanner():'')+weatherCard+inspHomeCard()+_ftBtnHTML();
+    (typeof tqHomeBanner==='function'?tqHomeBanner():'')+weatherCard+hcHomeBanner()+inspHomeCard()+_ftBtnHTML();
 }
 // ── WEATHER ──────────────────────────────────────────────────────────
 var _weatherCache=null;var _weatherCacheDate='';var _hourlyOpen=[false,false];
@@ -7054,6 +7054,7 @@ function pgSettings(){
   var curAdminId=cfg.adminId||ROOT_ADMIN.id;
   var curAdminPw=cfg.adminPw||ROOT_ADMIN.pw;
   return '<div class="stit">&#x2699; 시스템 설정</div>'+
+    hcSettingsCard()+
     // ── Supabase 진단 (테스트 전용 — 삭제됨) ──
 
     // ── 관리자 계정 ──
@@ -13212,6 +13213,287 @@ async function deletePddLogAll(){
   }catch(e){alert('삭제 실패: '+e.message);}
 }
 
+
+</script>
+<script>
+/* ============ 근골격계질환 증상조사(건강체크) ============ */
+var _hcMineLoaded=false,_hcMine=null,_hcProf=null,_hcRoute='';
+function hcMonth(){return (typeof kstToday==='function'?kstToday():new Date().toISOString().slice(0,10)).slice(0,7);}
+function hcMonthLabel(m){var p=(m||hcMonth()).split('-');return p[0]+'년 '+parseInt(p[1],10)+'월';}
+function hcActive(){if(!_featureControls){try{getFeatureCtrl('healthcheck','active');}catch(e){}return false;}return (_featureControls['healthcheck']||{}).active===true;}
+function hcNorm(nm){return (typeof norm_name_js==='function')?norm_name_js(nm||''):String(nm||'').trim();}
+function hcKey(m,nm){return 'hsurvey:'+m+':'+hcNorm(nm);}
+function hcEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+async function hcLoadMine(){
+  if(!sbClient||!CU){_hcMineLoaded=true;return;}
+  try{var r=await sbClient.from('app_settings').select('value').eq('key',hcKey(hcMonth(),CU.name)).maybeSingle();
+    _hcMine=(r&&r.data&&r.data.value)?JSON.parse(r.data.value):null;}catch(e){_hcMine=null;}
+  try{var p=await sbClient.from('app_settings').select('value').eq('key','hsurvey_prof:'+hcNorm(CU.name)).maybeSingle();
+    _hcProf=(p&&p.data&&p.data.value)?JSON.parse(p.data.value):null;}catch(e){}
+  try{var t=(typeof kstToday==='function'?kstToday():'');var rt=await sbClient.from('weekly_schedules').select('route').eq('driver_name',CU.name).eq('work_date',t).limit(1).maybeSingle();
+    if(rt&&rt.data&&rt.data.route)_hcRoute=rt.data.route;}catch(e){}
+  _hcMineLoaded=true;
+  try{if(CUR_TAB==='hm'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();}}catch(e){}
+}
+function hcHomeBanner(){
+  if(!CU||CU.role==='admin')return '';
+  if(!hcActive())return '';
+  if(!_hcMineLoaded){setTimeout(hcLoadMine,60);return '';}
+  if(_hcMine){setTimeout(hcNameBadge,120);return '';}
+  return '<div onclick="hcOpenInput()" style="cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:15px;margin-bottom:12px;background:linear-gradient(135deg,#e8443b,#f6714a);color:#fff;animation:hglow 1.8s infinite">'+
+    '<div style="display:flex;align-items:center;gap:11px"><div style="font-size:29px">&#x1FA7A;</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:900">이달의 건강 자가체크</div>'+
+    '<div style="font-size:11.5px;opacity:.95;margin-top:3px">근골격계 증상조사 &middot; 월 1회 &middot; 약 2분</div></div>'+
+    '<div style="background:rgba(255,255,255,.25);border-radius:11px;padding:9px 12px;font-size:12.5px;font-weight:900;white-space:nowrap">작성 &#x25B6;</div></div></div>';
+}
+function hcNameBadge(){try{var h=document.getElementById('han');if(h&&!document.getElementById('hc-badge')){h.insertAdjacentHTML('afterend','<span id="hc-badge" style="display:inline-flex;align-items:center;gap:3px;background:#eaf3de;color:#3b6d11;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;margin-left:7px;vertical-align:middle">건강체크 &#x2713;</span>');}}catch(e){}}
+
+function hcOverlay(id){var o=document.getElementById(id);if(!o){o=document.createElement('div');o.id=id;o.style.cssText='position:fixed;inset:0;z-index:99993;background:#eef3f8;overflow:auto;-webkit-overflow-scrolling:touch';document.body.appendChild(o);}o.style.display='block';try{document.body.style.overflow='hidden';}catch(e){}return o;}
+function hcClose(id){var o=document.getElementById(id);if(o){o.style.display='none';o.innerHTML='';}try{document.body.style.overflow='';}catch(e){}}
+function hcBar(title,closefn){return '<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 12px;background:#16306e"><button onclick="'+closefn+'" style="background:#2a4fa0;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer">&#x2190; 나가기</button><div style="color:#fff;font-weight:800;font-size:15px">'+title+'</div></div>';}
+
+function hcChips(group,vals,multi,sel){sel=sel||[];if(!Array.isArray(sel))sel=[sel];
+  return '<div class="hcqg" data-g="'+group+'" data-multi="'+(multi?1:0)+'" style="display:flex;flex-wrap:wrap;gap:7px">'+
+    vals.map(function(v){var on=sel.indexOf(v)>=0;
+      return '<span class="hcchip'+(on?' on':'')+'" data-v="'+hcEsc(v)+'" onclick="hcTog(this)" style="border:1.5px solid '+(on?'#3f8fe0':'#d6e3ee')+';background:'+(on?'#e7f2ff':'#fff')+';color:'+(on?'#155a9e':'#4a6076')+';border-radius:20px;padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer;user-select:none">'+hcEsc(v)+'</span>';
+    }).join('')+'</div>';}
+function hcTog(el){var g=el.parentNode;var multi=g.getAttribute('data-multi')==='1';
+  if(!multi){[].forEach.call(g.children,function(c){c.classList.remove('on');c.style.border='1.5px solid #d6e3ee';c.style.background='#fff';c.style.color='#4a6076';});el.classList.add('on');el.style.border='1.5px solid #3f8fe0';el.style.background='#e7f2ff';el.style.color='#155a9e';}
+  else{var on=el.classList.toggle('on');el.style.border='1.5px solid '+(on?'#3f8fe0':'#d6e3ee');el.style.background=on?'#e7f2ff':'#fff';el.style.color=on?'#155a9e':'#4a6076';}
+  if(g.getAttribute('data-g')==='painYN'){var d=document.getElementById('hc-parts');if(d)d.style.display=(el.getAttribute('data-v').indexOf('예')>=0?'block':'none');}
+  if(g.getAttribute('data-g').indexOf('partOn_')===0){var pid='hc-pd-'+g.getAttribute('data-g').slice(7);var pd=document.getElementById(pid);if(pd)pd.style.display=(el.getAttribute('data-v')==='해당'&&el.classList.contains('on')?'block':'none');}
+}
+function hcGV(root,g){var el=root.querySelector('.hcqg[data-g="'+g+'"]');if(!el)return el===null?'':'';var on=[].filter.call(el.children,function(c){return c.classList.contains('on');}).map(function(c){return c.getAttribute('data-v');});return on;}
+function hcSV(root,id){var el=root.querySelector('#'+id);return el?el.value:'';}
+
+function hcSelect(id,opts,sel){return '<select id="'+id+'" class="hcpk" style="-webkit-appearance:none;appearance:none;border:1px solid #cfe6fb;background:#eaf4ff;color:#1f6fb0;font-weight:800;font-size:13px;border-radius:8px;padding:9px 24px 9px 10px">'+opts.map(function(o){return '<option'+(o===sel?' selected':'')+'>'+o+'</option>';}).join('')+'</select>';}
+
+var HC_PARTS=['목','어깨','팔/팔꿈치','손/손목/손가락','허리','다리/발'];
+function hcPartDetail(idx,name){var pid='p'+idx;
+  return '<div style="border:1px solid #e3ecf5;border-radius:12px;padding:11px 12px;margin-top:9px">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><b style="font-size:13px;color:#173a5c">'+name+'</b>'+
+    hcChips('partOn_'+pid,['해당'],1,[])+'</div>'+
+    '<div id="hc-pd-'+pid+'" style="display:none">'+
+    '<div style="font-size:11.5px;font-weight:800;color:#5a6b7a;margin:6px 0 5px">1. 구체적 부위</div>'+hcChips('p'+idx+'_side',['오른쪽','왼쪽','양쪽'],0,[])+
+    '<div style="font-size:11.5px;font-weight:800;color:#5a6b7a;margin:8px 0 5px">2. 지속 기간</div>'+hcChips('p'+idx+'_dur',['1일 미만','1일–1주','1주–1달','1–6개월','6개월+'],0,[])+
+    '<div style="font-size:11.5px;font-weight:800;color:#5a6b7a;margin:8px 0 5px">3. 통증 강도</div>'+hcChips('p'+idx+'_str',['약함','중간','심함','매우심함'],0,[])+
+    '<div style="font-size:11.5px;font-weight:800;color:#5a6b7a;margin:8px 0 5px">4. 지난 1년 빈도</div>'+hcChips('p'+idx+'_frq',['6개월 1번','2–3달 1번','1달 1번','1주 1번','매일'],0,[])+
+    '<div style="font-size:11.5px;font-weight:800;color:#5a6b7a;margin:8px 0 5px">5. 지난 1주일에도?</div>'+hcChips('p'+idx+'_wk',['아니오','예'],0,[])+
+    '<div style="font-size:11.5px;font-weight:800;color:#5a6b7a;margin:8px 0 5px">6. 지난 1년 조치</div>'+hcChips('p'+idx+'_act',['병원·한의원','약국치료','병가·산재','작업전환','해당없음'],0,[])+
+    '</div></div>';
+}
+
+function hcOpenInput(){
+  var pf=_hcProf||{};var nm=CU?CU.name:'';var rt=_hcRoute||(pf.route||'');
+  var cardS='background:#fff;border-radius:16px;padding:14px 15px;margin:0 4px 12px;box-shadow:0 3px 10px rgba(40,90,150,.08)';
+  var h4S='margin:0 0 10px;font-size:14px;color:#123a5e;font-weight:800';
+  var lblS='font-size:11.5px;color:#7c93a8;font-weight:700;margin-bottom:4px;display:block';
+  var valS='background:#eaf4ff;border:1px solid #cfe6fb;border-radius:9px;padding:9px 11px;font-size:13.5px;font-weight:700;color:#1f6fb0';
+  var qS='font-size:13px;font-weight:800;color:#25405c;margin:2px 0 8px';
+  var yrs=['0년','1년','2년','3년','4년','5년','6년+'],mos=['0개월','1개월','2개월','3개월','4개월','5개월','6개월','7개월','8개월','9개월','10개월','11개월'];
+  var html=hcBar('&#x1FA7A; 이달의 건강 자가체크','if(confirm(\'작성을 취소할까요?\'))hcClose(\'hc-inp\')')+
+   '<div style="padding:12px 8px 40px">'+
+   '<div style="display:flex;align-items:center;gap:10px;margin:0 6px 12px">'+
+     '<div style="flex:1"><div style="font-size:17px;font-weight:800;color:#0d3d6b">'+hcEsc(nm)+' 님</div><div style="font-size:11.5px;color:#7c93a8;font-weight:700;margin-top:2px">근골격계 증상조사 &middot; '+hcMonthLabel()+'</div></div>'+
+     '<div class="clk" onclick="hcOpenSign()" id="hc-sigbox" style="flex:0 0 118px;border:1.5px dashed #cbdaea;border-radius:11px;background:#fff;padding:5px 8px 6px;text-align:center;cursor:pointer"><div style="font-size:9px;color:#8a9bab;font-weight:800">본인 서명</div><div id="hc-sigval" style="font-size:12px;color:#c33;font-weight:800;margin-top:4px">탭하여 서명</div></div>'+
+   '</div>'+
+   '<div style="'+cardS+'"><h4 style="'+h4S+'">1. 기본 정보</h4>'+
+     '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">성명</label><div style="'+valS+'">'+hcEsc(nm)+'</div></div><div style="flex:1"><label style="'+lblS+'">담당 라우트</label><div style="'+valS+'">'+hcEsc(rt||'-')+'</div></div></div>'+
+     '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">연령</label><input id="hc-age" type="number" inputmode="numeric" placeholder="예: 41" value="'+hcEsc(pf.age||'')+'" style="width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:14px;font-weight:700;color:#173a5c;outline:none"></div><div style="flex:1"><label style="'+lblS+'">작업부서</label><div style="'+valS+'">배송직</div></div></div>'+
+     '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">성별</label>'+hcChips('gender',['남','여'],0,pf.gender?[pf.gender]:[])+'</div><div style="flex:1"><label style="'+lblS+'">결혼여부</label>'+hcChips('married',['기혼','미혼'],0,pf.married?[pf.married]:[])+'</div></div>'+
+     '<label style="'+lblS+'">현 직장(배송) 경력 &middot; 선택</label><div style="display:flex;align-items:center;gap:6px">'+hcSelect('hc-cy',yrs,pf.career_y||'3년')+hcSelect('hc-cm',mos,pf.career_m||'2개월')+'<span style="font-size:12px;color:#5a6b7a;font-weight:700">째 근무</span></div>'+
+   '</div>'+
+   '<div style="'+cardS+'"><h4 style="'+h4S+'">2. 작업 내용</h4>'+
+     '<label style="'+lblS+'">현재 작업내용</label><div style="'+valS+';margin-bottom:9px">택배 배송</div>'+
+     '<label style="'+lblS+'">현재 작업기간(경력에서 자동)</label><div style="'+valS+';margin-bottom:9px" id="hc-nowdur">경력과 동일</div>'+
+     '<label style="'+lblS+'">1일 근무시간 &middot; 선택</label><div style="margin-bottom:9px">'+hcSelect('hc-hours',['7시간','8시간','9시간','10시간','11시간','12시간'],pf.hours||'9시간')+'</div>'+
+     '<label style="'+lblS+'">휴식(식사 제외) &middot; 선택</label><div style="display:flex;align-items:center;gap:6px;margin-bottom:9px">'+hcSelect('hc-restm',['10분','20분','30분','40분','50분','60분'],pf.restm||'30분')+'<span style="font-size:12px;color:#5a6b7a;font-weight:700">씩</span>'+hcSelect('hc-restc',['1회','2회','3회','4회'],pf.restc||'2회')+'</div>'+
+     '<label style="'+lblS+'">이전 작업내용 &middot; 입력</label><input id="hc-prevw" type="text" placeholder="예: 물류 상하차" value="'+hcEsc(pf.prevw||'')+'" style="width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:14px;outline:none;margin-bottom:9px">'+
+     '<label style="'+lblS+'">이전 작업기간 &middot; 선택</label><div style="display:flex;align-items:center;gap:6px">'+hcSelect('hc-py',yrs,pf.prevy||'1년')+hcSelect('hc-pm',mos,pf.prevm||'0개월')+'<span style="font-size:12px;color:#5a6b7a;font-weight:700">동안 했음</span></div>'+
+   '</div>'+
+   '<div style="'+cardS+'"><h4 style="'+h4S+'">&#8544;. 기본 문항</h4>'+
+     '<div style="'+qS+'">Q1. 규칙적 여가·취미활동 (중복 가능)</div>'+hcChips('q1',['컴퓨터·게임','악기연주','뜨개질·붓글씨','스포츠','해당없음'],1,[])+
+     '<div style="'+qS+';margin-top:14px">Q2. 하루 평균 가사노동시간</div>'+hcChips('q2',['거의 안함','1시간 미만','1–2시간','2–3시간','3시간 이상'],0,[])+
+     '<div style="'+qS+';margin-top:14px">Q3. 의사 진단 질병(류머티스·당뇨·루프스·통풍·알코올)</div>'+hcChips('q3',['아니오','예'],0,[])+
+     '<div style="margin-top:7px">'+hcChips('q3list',['류머티스 관절염','당뇨병','루프스병','통풍','알코올중독'],1,[])+'</div>'+
+     '<div style="margin-top:6px">'+hcChips('q3state',['완치','치료·관찰중'],0,[])+'</div>'+
+     '<div style="'+qS+';margin-top:14px">Q4. 과거 사고 상해 부위</div>'+hcChips('q4',['아니오','예'],0,[])+
+     '<div style="margin-top:7px">'+hcChips('q4list',['손·손목','팔·팔꿈치','어깨','목','허리','다리·발'],1,[])+'</div>'+
+     '<div style="'+qS+';margin-top:14px">Q5. 현재 일의 육체적 부담 정도</div>'+hcChips('q5',['전혀 안힘듦','견딜만함','약간 힘듦','힘듦','매우 힘듦'],0,[])+
+   '</div>'+
+   '<div style="'+cardS+'"><h4 style="'+h4S+'">&#8545;. 지난 1년 통증 조사</h4>'+
+     '<div style="'+qS+'">지난 1년간 목·어깨·팔·손·허리·다리 중 통증·불편을 느낀 적이 있나요?</div>'+hcChips('painYN',['아니오 (없음)','예 (있음)'],0,[])+
+     '<div id="hc-parts" style="display:none;margin-top:6px"><div style="font-size:11.5px;color:#8a9bab;font-weight:700;margin:4px 0 2px">아픈 부위의 [해당]을 켜면 세부 문항이 열립니다.</div>'+
+     HC_PARTS.map(function(n,i){return hcPartDetail(i,n);}).join('')+'</div>'+
+   '</div>'+
+   '<button onclick="hcSubmit()" style="display:block;width:calc(100% - 8px);margin:6px 4px 30px;background:#caa200;color:#3b2d00;border:0;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer">제출하기 &#x2713;</button>'+
+   '</div>';
+  var o=hcOverlay('hc-inp');o.innerHTML=html;o.scrollTop=0;
+}
+
+var _hcSig='';
+function hcOpenSign(){var o=hcOverlay('hc-sign');
+  o.style.background='rgba(0,0,0,.55)';o.style.display='flex';o.style.alignItems='center';o.style.justifyContent='center';o.style.padding='16px';
+  o.innerHTML='<div style="background:#fff;border-radius:16px;max-width:340px;width:100%;padding:14px" onclick="event.stopPropagation()">'+
+    '<div style="display:flex;align-items:center;margin-bottom:8px"><b style="font-size:14px;color:#173a5c">본인 서명</b><button onclick="hcClose(\'hc-sign\')" style="margin-left:auto;border:0;background:#eef2f7;border-radius:8px;width:30px;height:30px;font-size:15px;color:#5a6b7a;cursor:pointer">&#x2715;</button></div>'+
+    '<div style="font-size:12px;color:#7c93a8;font-weight:700;margin-bottom:7px">아래 칸에 손가락(마우스)으로 서명해 주세요</div>'+
+    '<canvas id="hc-sc" style="width:100%;height:150px;border:1.5px dashed #cbdaea;border-radius:11px;background:#fbfdff;touch-action:none"></canvas>'+
+    '<div style="display:flex;gap:8px;margin-top:10px"><button onclick="hcSigClear()" style="flex:0 0 90px;border:1px solid #cfd9e4;background:#f4f8fc;color:#5a6b7a;border-radius:11px;padding:11px;font-size:13px;font-weight:800;cursor:pointer">지우기</button>'+
+    '<button onclick="hcSigOk()" style="flex:1;border:0;background:#caa200;color:#3b2d00;border-radius:11px;padding:11px;font-size:14px;font-weight:800;cursor:pointer">서명 완료 &#x2713;</button></div></div>';
+  o.onclick=function(e){if(e.target===o)hcClose('hc-sign');};
+  setTimeout(hcSigInit,30);
+}
+var _hsx,_hsdraw=false,_hshas=false;
+function hcSigInit(){var c=document.getElementById('hc-sc');if(!c)return;var r=c.getBoundingClientRect();c.width=r.width*2;c.height=300;_hsx=c.getContext('2d');_hsx.scale(2,2);_hsx.lineWidth=2.4;_hsx.lineCap='round';_hsx.strokeStyle='#1f3a5c';_hshas=false;
+  function pos(e){var b=c.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return{x:t.clientX-b.left,y:t.clientY-b.top};}
+  c.onmousedown=function(e){_hsdraw=true;_hshas=true;var p=pos(e);_hsx.beginPath();_hsx.moveTo(p.x,p.y);e.preventDefault();};
+  c.onmousemove=function(e){if(!_hsdraw)return;var p=pos(e);_hsx.lineTo(p.x,p.y);_hsx.stroke();e.preventDefault();};
+  window.addEventListener('mouseup',function(){_hsdraw=false;});
+  c.ontouchstart=c.onmousedown;c.ontouchmove=c.onmousemove;c.ontouchend=function(){_hsdraw=false;};
+}
+function hcSigClear(){var c=document.getElementById('hc-sc');if(c&&_hsx){_hsx.clearRect(0,0,c.width,c.height);_hshas=false;}}
+function hcSigOk(){if(!_hshas){showToast('서명을 그려주세요',false);return;}_hcSig=document.getElementById('hc-sc').toDataURL('image/png');var b=document.getElementById('hc-sigval');if(b){b.innerHTML='<img src="'+_hcSig+'" style="width:100%;height:26px;object-fit:contain">';b.style.color='#1f4e79';}hcClose('hc-sign');showToast('서명이 입력됐어요',true);}
+
+function hcSubmit(){
+  var root=document.getElementById('hc-inp');if(!root)return;
+  var age=(root.querySelector('#hc-age')||{}).value||'';
+  var gender=hcGV(root,'gender')[0]||'';var married=hcGV(root,'married')[0]||'';
+  if(!age){showToast('연령을 입력해 주세요',false);return;}
+  if(!gender){showToast('성별을 선택해 주세요',false);return;}
+  if(!_hcSig){showToast('본인 서명을 입력해 주세요',false);return;}
+  var parts={};
+  HC_PARTS.forEach(function(n,i){var on=hcGV(root,'partOn_p'+i);if(on.indexOf('해당')>=0){parts[n]={side:hcGV(root,'p'+i+'_side')[0]||'',dur:hcGV(root,'p'+i+'_dur')[0]||'',str:hcGV(root,'p'+i+'_str')[0]||'',frq:hcGV(root,'p'+i+'_frq')[0]||'',wk:hcGV(root,'p'+i+'_wk')[0]||'',act:hcGV(root,'p'+i+'_act')[0]||''};}});
+  var cy=hcSV(root,'hc-cy'),cm=hcSV(root,'hc-cm');
+  var sub={name:CU.name,route:_hcRoute||'',month:hcMonth(),age:age,gender:gender,married:married,
+    career_y:cy,career_m:cm,work_now:'택배 배송',work_dur:cy+' '+cm+'째',
+    hours:hcSV(root,'hc-hours'),restm:hcSV(root,'hc-restm'),restc:hcSV(root,'hc-restc'),
+    prevw:(root.querySelector('#hc-prevw')||{}).value||'',prevy:hcSV(root,'hc-py'),prevm:hcSV(root,'hc-pm'),
+    q1:hcGV(root,'q1'),q2:hcGV(root,'q2')[0]||'',q3:hcGV(root,'q3')[0]||'',q3list:hcGV(root,'q3list'),q3state:hcGV(root,'q3state')[0]||'',
+    q4:hcGV(root,'q4')[0]||'',q4list:hcGV(root,'q4list'),q5:hcGV(root,'q5')[0]||'',
+    painYN:(hcGV(root,'painYN')[0]||'').indexOf('예')>=0?'예':'아니오',parts:parts,sig:_hcSig,submitted_at:new Date().toISOString()};
+  var btn=root.querySelector('button[onclick="hcSubmit()"]');if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+  (async function(){
+    try{
+      await sbClient.from('app_settings').upsert({key:hcKey(hcMonth(),CU.name),value:JSON.stringify(sub)},{onConflict:'key'});
+      var prof={age:age,gender:gender,married:married,career_y:cy,career_m:cm,hours:sub.hours,restm:sub.restm,restc:sub.restc,prevw:sub.prevw,prevy:sub.prevy,prevm:sub.prevm,route:_hcRoute||''};
+      await sbClient.from('app_settings').upsert({key:'hsurvey_prof:'+hcNorm(CU.name),value:JSON.stringify(prof)},{onConflict:'key'});
+      _hcMine=sub;_hcProf=prof;
+      hcClose('hc-inp');showToast('건강체크가 제출됐어요. 감사합니다!',true);
+      if(CUR_TAB==='hm'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();}
+    }catch(e){showToast('제출 실패: '+(e.message||e),false);if(btn){btn.disabled=false;btn.textContent='제출하기 ✓';}}
+  })();
+}
+
+/* ---------- 서식(원본) 렌더 ---------- */
+function hcChk(on){return on?'&#9632;':'&#9633;';}
+function hcFormHTML(s){s=s||{};
+  function ck(v,t){return hcChk(v===t)+t;}
+  var pain=s.parts||{};
+  var head='<div style="text-align:right;font-size:8px;color:#888">[별지 제2호서식] (2018. 2. 9. 신설)</div>'+
+    '<div style="text-align:center;font-weight:800;font-size:14px;margin:4px 0 1px">근골격계질환 증상조사표</div>'+
+    '<div style="text-align:center;color:#666;font-size:9px;margin-bottom:7px">(제4조 관련)</div>';
+  var t1='<table style="border-collapse:collapse;width:100%;font-size:10.5px"><tr>'+
+    '<td class="hdc">성 명</td><td>'+hcEsc(s.name)+'</td><td class="hdc">연 령</td><td>만 '+hcEsc(s.age)+'세</td></tr>'+
+    '<tr><td class="hdc">성 별</td><td>'+ck(s.gender,'남')+' '+ck(s.gender,'여')+'</td><td class="hdc">현 직장경력</td><td>'+hcEsc(s.career_y)+' '+hcEsc(s.career_m)+'째</td></tr>'+
+    '<tr><td class="hdc">작업부서</td><td>배송직</td><td class="hdc">결혼여부</td><td>'+ck(s.married,'기혼')+' '+ck(s.married,'미혼')+'</td></tr>'+
+    '<tr><td class="hdc">담당 라우트</td><td colspan="3">'+hcEsc(s.route||'-')+'</td></tr>'+
+    '<tr><td class="hdc">현재 작업내용</td><td colspan="3">택배 배송</td></tr>'+
+    '<tr><td class="hdc">현재 작업기간</td><td colspan="3">'+hcEsc(s.work_dur||'')+' 하고 있음</td></tr>'+
+    '<tr><td class="hdc">1일 근무시간</td><td colspan="3">'+hcEsc(s.hours)+' 근무 / 휴식 '+hcEsc(s.restm)+'씩 '+hcEsc(s.restc)+'</td></tr>'+
+    '<tr><td class="hdc">이전 작업내용</td><td colspan="3">'+hcEsc(s.prevw||'')+'</td></tr>'+
+    '<tr><td class="hdc">이전 작업기간</td><td colspan="3">'+hcEsc(s.prevy)+' '+hcEsc(s.prevm)+' 동안 했음</td></tr></table>';
+  function multi(list,v){return (list||[]).indexOf(v)>=0;}
+  var t2='<table style="border-collapse:collapse;width:100%;font-size:10px">'+
+    '<tr><td style="width:6%">1</td><td>여가·취미: '+hcChk(multi(s.q1,'컴퓨터·게임'))+'컴퓨터 '+hcChk(multi(s.q1,'악기연주'))+'악기 '+hcChk(multi(s.q1,'뜨개질·붓글씨'))+'뜨개질 '+hcChk(multi(s.q1,'스포츠'))+'스포츠 '+hcChk(multi(s.q1,'해당없음'))+'없음</td></tr>'+
+    '<tr><td>2</td><td>가사노동: '+ck(s.q2,'거의 안함')+' '+ck(s.q2,'1시간 미만')+' '+ck(s.q2,'1–2시간')+' '+ck(s.q2,'2–3시간')+' '+ck(s.q2,'3시간 이상')+'</td></tr>'+
+    '<tr><td>3</td><td>진단 질병: '+ck(s.q3,'아니오')+' '+ck(s.q3,'예')+' '+((s.q3==='예')?('('+(s.q3list||[]).join(',')+' / '+hcEsc(s.q3state)+')'):'')+'</td></tr>'+
+    '<tr><td>4</td><td>과거 상해: '+ck(s.q4,'아니오')+' '+ck(s.q4,'예')+' '+((s.q4==='예')?('('+(s.q4list||[]).join(', ')+')'):'')+'</td></tr>'+
+    '<tr><td>5</td><td>육체적 부담: '+ck(s.q5,'전혀 안힘듦')+' '+ck(s.q5,'견딜만함')+' '+ck(s.q5,'약간 힘듦')+' '+ck(s.q5,'힘듦')+' '+ck(s.q5,'매우 힘듦')+'</td></tr></table>';
+  var cols=HC_PARTS;
+  function row(lbl,f){return '<tr><td>'+lbl+'</td>'+cols.map(function(c){var p=pain[c];return '<td>'+(p?hcEsc(p[f]||''):'')+'</td>';}).join('')+'</tr>';}
+  var t3='<div class="sec">&#8545;. 지난 1년 통증 &nbsp; '+ck(s.painYN,'아니오')+' &nbsp; '+ck(s.painYN,'예')+'</div>'+
+    '<div style="overflow-x:auto"><table style="border-collapse:collapse;min-width:520px;font-size:9.5px">'+
+    '<tr><th class="hdc" style="width:110px">통증 부위 →</th>'+cols.map(function(c){return '<th>'+c.replace('/','/<br>')+'</th>';}).join('')+'</tr>'+
+    row('1. 구체적 부위','side')+row('2. 지속 기간','dur')+row('3. 통증 강도','str')+row('4. 지난1년 빈도','frq')+row('5. 지난1주','wk')+row('6. 조치','act')+
+    '</table></div>';
+  var sig=s.sig?('<img src="'+s.sig+'" style="height:30px;vertical-align:middle">'):hcEsc(s.name);
+  var note='<div class="sec" style="margin-top:6px">유의사항</div><div style="font-size:8.5px;color:#444;line-height:1.5;padding:2px 3px">- 부담작업을 수행하는 근로자가 직접 읽어보고 문항을 체크합니다.<br>- 증상을 과대 또는 과소 평가 해서는 안 됩니다.<br>- 증상조사 결과는 근골격계질환의 이환을 부정·입증하는 근거·반증자료로 사용될 수 없습니다.</div>';
+  return '<style>.hcfv td,.hcfv th{border:1px solid #444;padding:4px 5px;vertical-align:top}.hcfv .hdc{background:#f0f0f0;font-weight:800;text-align:center}.hcfv .sec{background:#eef4fb;font-weight:800;padding:4px 5px;border:1px solid #444;font-size:10px;margin-top:4px}</style>'+
+    '<div class="hcfv" style="background:#fff;color:#222;line-height:1.5;padding:12px;width:380px">'+head+
+    '<div style="font-weight:800;font-size:10px;margin:2px 0 2px">I. 아래 사항을 직접 기입해 주시기 바랍니다.</div>'+t1+t2+t3+
+    '<div style="text-align:right;margin-top:8px;font-size:10px">본인 서명: <b>'+sig+'</b></div>'+note+'</div>';
+}
+var _hcz=1;
+function hcOpenForm(name,month){
+  hcOverlay('hc-form');var o=document.getElementById('hc-form');
+  o.innerHTML=hcBar('&#x1F4C4; '+hcEsc(name)+' · 서식','hcClose(\'hc-form\')')+
+    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-bottom:1px solid #eef2f7;position:sticky;top:48px;z-index:4">'+
+    '<span style="font-size:12px;font-weight:800;color:#5a6b7a">'+hcMonthLabel(month)+'</span>'+
+    '<span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button onclick="hcZoom(-1)" style="border:1px solid #cfd9e4;background:#f4f8fc;border-radius:8px;width:34px;height:34px;font-size:18px;font-weight:800;color:#2f6fb0;cursor:pointer">&minus;</button><span id="hc-zl" style="font-size:12px;font-weight:800;color:#5a6b7a;width:40px;text-align:center">100%</span><button onclick="hcZoom(1)" style="border:1px solid #cfd9e4;background:#f4f8fc;border-radius:8px;width:34px;height:34px;font-size:18px;font-weight:800;color:#2f6fb0;cursor:pointer">+</button></span></div>'+
+    '<div style="padding:10px;overflow:auto"><div id="hc-zw" style="transform-origin:top left;transition:transform .12s">'+
+    (_hcFormCache||'<div style="padding:30px;text-align:center;color:#888">불러오는 중...</div>')+'</div></div>'+
+    '<div style="display:flex;gap:8px;padding:10px 12px 20px"><button onclick="window.print()" style="flex:1;border:0;border-radius:11px;padding:12px;font-size:12.5px;font-weight:800;color:#fff;background:#2f6fb0;cursor:pointer">&#x1F5A8; 인쇄</button><button onclick="hcExportXlsx()" style="flex:1;border:0;border-radius:11px;padding:12px;font-size:12.5px;font-weight:800;color:#fff;background:#1d7a46;cursor:pointer">Excel</button></div>';
+  _hcz=1;
+  (async function(){
+    try{var r=await sbClient.from('app_settings').select('value').eq('key',hcKey(month,name)).maybeSingle();
+      var s=(r&&r.data&&r.data.value)?JSON.parse(r.data.value):{name:name};
+      _hcFormSub=s;var zw=document.getElementById('hc-zw');if(zw)zw.innerHTML=hcFormHTML(s);}catch(e){}
+  })();
+}
+var _hcFormCache='',_hcFormSub=null;
+function hcZoom(d){_hcz=Math.min(2.4,Math.max(0.7,_hcz+d*0.2));var zw=document.getElementById('hc-zw');if(zw)zw.style.transform='scale('+_hcz+')';var zl=document.getElementById('hc-zl');if(zl)zl.textContent=Math.round(_hcz*100)+'%';}
+function hcExportXlsx(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모듈 로딩 중, 잠시 후 다시',false);return;}var s=_hcFormSub||{};var rows=[['항목','값'],['성명',s.name],['연령',s.age],['성별',s.gender],['라우트',s.route],['경력',(s.career_y||'')+' '+(s.career_m||'')],['1일근무',s.hours],['휴식',(s.restm||'')+' '+(s.restc||'')],['Q5 부담',s.q5],['통증',s.painYN]];Object.keys(s.parts||{}).forEach(function(k){var p=s.parts[k];rows.push([k,[p.side,p.str,p.frq,p.act].join(' / ')]);});var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'증상조사');XLSX.writeFile(wb,'건강체크_'+(s.name||'')+'_'+hcMonth()+'.xlsx');}catch(e){showToast('내보내기 실패',false);}}
+
+/* ---------- 관리자 ---------- */
+function hcSettingsCard(){if(!CU||CU.role!=='admin')return '';
+  return '<div class="card"><div class="ctit">&#x1FA7A; 근골격계 건강체크 관리</div>'+
+    _featureBar('healthcheck')+
+    '<div style="font-size:12px;color:#666;margin:2px 0 10px">월 1회 근골격계 증상조사. 활성 시 미작성 기사 홈에 배너가 노출됩니다.</div>'+
+    '<button onclick="hcOpenAdmin()" style="width:100%;padding:11px;background:#1f6fb0;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer">&#x1F4CA; 이달 종합 보기 / 출력</button></div>';
+}
+var _hcAdminMonth='';
+function hcRoster(){try{var db=getDB();return Object.values(db).filter(function(d){return d&&d.role!=='admin'&&d.name&&!d.name.includes('/');}).map(function(d){return d.name;});}catch(e){return [];}}
+function hcOpenAdmin(){_hcAdminMonth=hcMonth();hcOverlay('hc-adm');document.getElementById('hc-adm').innerHTML=hcBar('&#x1F4CA; 건강체크 종합','hcClose(\'hc-adm\')')+'<div id="hc-adm-body" style="padding:12px 8px 40px"><div style="padding:40px;text-align:center;color:#888">불러오는 중...</div></div>';hcAdminLoad();}
+function hcAdminLoad(){
+  (async function(){
+    var months=[],rows=[];
+    try{var mr=await sbClient.from('app_settings').select('key').like('key','hsurvey:%');(mr.data||[]).forEach(function(x){var p=x.key.split(':');if(p.length>=3){var m=p[1];if(months.indexOf(m)<0)months.push(m);}});}catch(e){}
+    if(months.indexOf(hcMonth())<0)months.push(hcMonth());months.sort();
+    try{var r=await sbClient.from('app_settings').select('key,value').like('key','hsurvey:'+_hcAdminMonth+':%');rows=(r.data||[]).map(function(x){try{return JSON.parse(x.value);}catch(e){return null;}}).filter(Boolean);}catch(e){}
+    hcAdminRender(months,rows);
+  })();
+}
+function hcAdminRender(months,rows){
+  var body=document.getElementById('hc-adm-body');if(!body)return;
+  var roster=hcRoster();
+  var subNames={};rows.forEach(function(s){subNames[hcNorm(s.name)]=s;});
+  var submitted=rows.slice();
+  var missing=roster.filter(function(n){return !subNames[hcNorm(n)];});
+  var partCnt={};HC_PARTS.forEach(function(p){partCnt[p]=0;});rows.forEach(function(s){Object.keys(s.parts||{}).forEach(function(p){if(partCnt[p]!=null)partCnt[p]++;});});
+  var painCnt=rows.filter(function(s){return s.painYN==='예';}).length;
+  var mx=Math.max(1,Math.max.apply(null,HC_PARTS.map(function(p){return partCnt[p];})));
+  var mchips=months.map(function(m){var on=m===_hcAdminMonth;return '<span onclick="hcAdminMonth(\''+m+'\')" style="background:'+(on?'#3f8fe0':'#fff')+';border:1.5px solid '+(on?'#3f8fe0':'#d6e3ee')+';color:'+(on?'#fff':'#5a6b7a')+';border-radius:20px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer">'+parseInt(m.split('-')[1],10)+'월<span style="color:'+(on?'#fff':'#e05a5a')+'"> ●</span></span>';}).join('');
+  var stat='<div style="display:flex;gap:8px;margin:0 4px 12px"><div style="flex:1;background:#fff;border-radius:14px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#1f6fb0">'+submitted.length+'</div><div style="font-size:11px;color:#7c93a8;font-weight:700">제출</div></div>'+
+    '<div style="flex:1;background:#fff;border-radius:14px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#c0392b">'+missing.length+'</div><div style="font-size:11px;color:#7c93a8;font-weight:700">미제출</div></div>'+
+    '<div style="flex:1;background:#fff;border-radius:14px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:800;color:#c0392b">'+painCnt+'</div><div style="font-size:11px;color:#7c93a8;font-weight:700">통증 호소</div></div></div>';
+  var bars=HC_PARTS.map(function(p){var c=partCnt[p];var w=Math.round(c/mx*100);var col=w>=70?'#e05a5a':w>=45?'#ef8a4a':w>=25?'#efb24a':'#7fae2f';return '<div style="display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12px"><span style="width:78px;color:#3a5068;font-weight:700">'+p+'</span><span style="flex:1;background:#eef3f8;border-radius:8px;height:16px;overflow:hidden"><span style="display:block;height:100%;border-radius:8px;width:'+w+'%;background:'+col+'"></span></span><span style="width:26px;text-align:right;font-weight:800;color:#3a5068">'+c+'</span></div>';}).join('');
+  var subList=submitted.length?submitted.map(function(s){var pain=s.painYN==='예';var parts=Object.keys(s.parts||{}).join('·')||'이상없음';return '<div onclick="hcOpenForm(\''+hcEsc(s.name)+'\',\''+_hcAdminMonth+'\')" style="display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid #eef3f8;cursor:pointer"><span style="width:34px;height:34px;border-radius:50%;background:#e7f2ff;color:#1f6fb0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px">'+hcEsc((s.name||'').slice(0,1))+'</span><span style="flex:1;font-size:13px;font-weight:700;color:#173a5c">'+hcEsc(s.name)+'<small style="display:block;color:#8a9bab;font-weight:600;font-size:11px">'+hcEsc(s.route||'')+' · '+hcEsc(parts)+'</small></span><span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:'+(pain?'#fdeaea':'#eaf3de')+';color:'+(pain?'#a23030':'#3b6d11')+'">'+(pain?'통증':'양호')+'</span></div>';}).join(''):'<div style="padding:16px;text-align:center;color:#9aa;font-size:12px">제출자가 없습니다</div>';
+  var misList=missing.length?missing.map(function(n){return '<div style="display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid #eef3f8"><span style="width:34px;height:34px;border-radius:50%;background:#f1f0ea;color:#8a7a3a;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px">'+hcEsc(n.slice(0,1))+'</span><span style="flex:1;font-size:13px;font-weight:700;color:#173a5c">'+hcEsc(n)+'</span><button onclick="hcPushOne(\''+hcEsc(n)+'\')" style="border:1.5px solid #f0b0aa;background:#fdeeec;color:#c0392b;font-size:11.5px;font-weight:800;border-radius:20px;padding:6px 12px;cursor:pointer">&#x1F514; 푸시</button></div>';}).join(''):'<div style="padding:16px;text-align:center;color:#3b6d11;font-size:12px">전원 제출 완료 👍</div>';
+  body.innerHTML='<div style="display:flex;gap:7px;flex-wrap:wrap;margin:0 4px 12px">'+mchips+'</div>'+stat+
+    '<div class="card"><div class="ctit">부위별 통증 호소 (인원)</div>'+bars+'</div>'+
+    '<div class="card"><div class="ctit">제출자 ('+submitted.length+') <span style="font-size:11px;color:#9aa;font-weight:700">· 탭하면 서식</span></div>'+subList+'</div>'+
+    '<div class="card"><div class="ctit">미제출자 ('+missing.length+') '+(missing.length?'<button onclick="hcPushAll()" style="float:right;border:0;background:#e8443b;color:#fff;font-size:11px;font-weight:800;border-radius:20px;padding:5px 12px;cursor:pointer">🔔 전체 푸시</button>':'')+'</div>'+misList+'</div>'+
+    '<div style="display:flex;gap:8px;margin:0 4px 12px"><button onclick="window.print()" style="flex:1;border:0;border-radius:11px;padding:12px;font-size:12.5px;font-weight:800;color:#fff;background:#2f6fb0;cursor:pointer">&#x1F5A8; 인쇄</button><button onclick="hcExportAll()" style="flex:1;border:0;border-radius:11px;padding:12px;font-size:12.5px;font-weight:800;color:#fff;background:#1d7a46;cursor:pointer">Excel 종합</button></div>';
+}
+function hcAdminMonth(m){_hcAdminMonth=m;hcAdminLoad();}
+function hcPushOne(name){if(typeof sendPushToAll==='function'){sendPushToAll('🩺 이달의 건강체크','아직 근골격계 건강체크 작성 전이에요. 홈에서 2분이면 완료됩니다.','hc_'+Date.now(),name);}showToast('🔔 '+name+' 기사에게 알림을 보냈어요',true);}
+function hcPushAll(){var body=document.getElementById('hc-adm-body');var names=[];body.querySelectorAll('button[onclick^="hcPushOne"]').forEach(function(b){var m=b.getAttribute('onclick').match(/hcPushOne\('(.+?)'\)/);if(m)names.push(m[1]);});names.forEach(function(n){if(typeof sendPushToAll==='function')sendPushToAll('🩺 이달의 건강체크','아직 근골격계 건강체크 작성 전이에요. 홈에서 2분이면 완료됩니다.','hc_'+Date.now()+'_'+n,n);});showToast('🔔 미제출 '+names.length+'명에게 알림을 보냈어요',true);}
+function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모듈 로딩 중',false);return;}
+  (async function(){var r=await sbClient.from('app_settings').select('value').like('key','hsurvey:'+_hcAdminMonth+':%');var rows=(r.data||[]).map(function(x){try{return JSON.parse(x.value);}catch(e){return null;}}).filter(Boolean);
+    var aoa=[['성명','라우트','연령','성별','경력','1일근무','휴식','Q5부담','통증','통증부위']];rows.forEach(function(s){aoa.push([s.name,s.route,s.age,s.gender,(s.career_y||'')+(s.career_m||''),s.hours,(s.restm||'')+(s.restc||''),s.q5,s.painYN,Object.keys(s.parts||{}).join('·')]);});
+    var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),_hcAdminMonth);XLSX.writeFile(wb,'건강체크_종합_'+_hcAdminMonth+'.xlsx');})();
+  }catch(e){showToast('내보내기 실패',false);}}
 
 </script>
 </body></html>
