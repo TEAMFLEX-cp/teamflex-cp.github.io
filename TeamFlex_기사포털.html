@@ -3701,7 +3701,7 @@ async function _annFetchBrief(){
   try{ await _annLoadMyReads(); }catch(e){}
   window._brfMd=0; window._brfPb=0;
   var _nm=(CU&&CU.name)||'';
-  try{ var mr=await sbClient.from('misdelivery_cases').select('id',{count:'exact',head:true}).eq('driver_name',_nm).in('status',['pending','rejected']); if(mr&&typeof mr.count==='number')window._brfMd=mr.count; }catch(e){}
+  try{ var mr=await sbClient.from('misdelivery_cases').select('id',{count:'exact',head:true}).eq('driver_name',_nm).eq('status','pending'); if(mr&&typeof mr.count==='number')window._brfMd=mr.count; }catch(e){}
   try{ var pr=await sbClient.from('pback_somyeong').select('driver_name').eq('period',pbPeriod()).eq('status','pending'); if(pr&&!pr.error&&pr.data){ var _pnn=norm_name_js(_nm||''); window._brfPb=pr.data.filter(function(x){return norm_name_js(x.driver_name||'')===_pnn;}).length; } }catch(e){}
 }
 function _brfBanners(){
@@ -13287,6 +13287,7 @@ function hcPartDetail(idx,name){var pid='p'+idx;
     '</div></div>';
 }
 
+function hcSyncDur(){var cy=document.getElementById('hc-cy'),cm=document.getElementById('hc-cm'),d=document.getElementById('hc-nowdur');if(d&&cy&&cm)d.textContent=cy.value+' '+cm.value+'째 근무 중';}
 function hcOpenInput(){
   var pf=_hcProf||{};var nm=CU?CU.name:'';var rt=_hcRoute||(pf.route||'');
   var cardS='background:#fff;border-radius:16px;padding:14px 15px;margin:0 4px 12px;box-shadow:0 3px 10px rgba(40,90,150,.08)';
@@ -13294,7 +13295,7 @@ function hcOpenInput(){
   var lblS='font-size:11.5px;color:#7c93a8;font-weight:700;margin-bottom:4px;display:block';
   var valS='background:#eaf4ff;border:1px solid #cfe6fb;border-radius:9px;padding:9px 11px;font-size:13.5px;font-weight:700;color:#1f6fb0';
   var qS='font-size:13px;font-weight:800;color:#25405c;margin:2px 0 8px';
-  var yrs=['0년','1년','2년','3년','4년','5년','6년+'],mos=['0개월','1개월','2개월','3개월','4개월','5개월','6개월','7개월','8개월','9개월','10개월','11개월'];
+  var yrs=(function(){var a=[];for(var _y=0;_y<=30;_y++)a.push(_y+'년');return a;})(),mos=['0개월','1개월','2개월','3개월','4개월','5개월','6개월','7개월','8개월','9개월','10개월','11개월'];
   var html=hcBar('&#x1FA7A; 이달의 건강 자가체크','if(confirm(\'작성을 취소할까요?\'))hcClose(\'hc-inp\')')+
    '<div style="padding:12px 8px 40px">'+
    '<div style="display:flex;align-items:center;gap:10px;margin:0 6px 12px">'+
@@ -13302,14 +13303,14 @@ function hcOpenInput(){
      '<div class="clk" onclick="hcOpenSign()" id="hc-sigbox" style="flex:0 0 118px;border:1.5px dashed #cbdaea;border-radius:11px;background:#fff;padding:5px 8px 6px;text-align:center;cursor:pointer"><div style="font-size:9px;color:#8a9bab;font-weight:800">본인 서명</div><div id="hc-sigval" style="font-size:12px;color:#c33;font-weight:800;margin-top:4px">탭하여 서명</div></div>'+
    '</div>'+
    '<div style="'+cardS+'"><h4 style="'+h4S+'">1. 기본 정보</h4>'+
-     '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">성명</label><div style="'+valS+'">'+hcEsc(nm)+'</div></div><div style="flex:1"><label style="'+lblS+'">담당 라우트</label><div style="'+valS+'">'+hcEsc(rt||'-')+'</div></div></div>'+
+     '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">성명</label><div style="'+valS+'">'+hcEsc(nm)+'</div></div><div style="flex:1"><label style="'+lblS+'">담당 라우트</label><input id="hc-route" type="text" value="'+hcEsc(rt||'')+'" placeholder="예: 316A" style="width:100%;padding:9px 11px;border:1.5px solid #cfe6fb;border-radius:9px;font-size:13.5px;font-weight:700;color:#1f6fb0;outline:none;box-sizing:border-box"></div></div>'+
      '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">연령</label><input id="hc-age" type="number" inputmode="numeric" placeholder="예: 41" value="'+hcEsc(pf.age||'')+'" style="width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:14px;font-weight:700;color:#173a5c;outline:none"></div><div style="flex:1"><label style="'+lblS+'">작업부서</label><div style="'+valS+'">배송직</div></div></div>'+
      '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">성별</label>'+hcChips('gender',['남','여'],0,pf.gender?[pf.gender]:[])+'</div><div style="flex:1"><label style="'+lblS+'">결혼여부</label>'+hcChips('married',['기혼','미혼'],0,pf.married?[pf.married]:[])+'</div></div>'+
      '<label style="'+lblS+'">현 직장(배송) 경력 &middot; 선택</label><div style="display:flex;align-items:center;gap:6px">'+hcSelect('hc-cy',yrs,pf.career_y||'3년')+hcSelect('hc-cm',mos,pf.career_m||'2개월')+'<span style="font-size:12px;color:#5a6b7a;font-weight:700">째 근무</span></div>'+
    '</div>'+
    '<div style="'+cardS+'"><h4 style="'+h4S+'">2. 작업 내용</h4>'+
      '<label style="'+lblS+'">현재 작업내용</label><div style="'+valS+';margin-bottom:9px">택배 배송</div>'+
-     '<label style="'+lblS+'">현재 작업기간(경력에서 자동)</label><div style="'+valS+';margin-bottom:9px" id="hc-nowdur">경력과 동일</div>'+
+     '<label style="'+lblS+'">현재 작업기간(경력에서 자동)</label><div style="'+valS+';margin-bottom:9px" id="hc-nowdur">'+(pf.career_y||'3년')+' '+(pf.career_m||'2개월')+'째 근무 중</div>'+
      '<label style="'+lblS+'">1일 근무시간 &middot; 선택</label><div style="margin-bottom:9px">'+hcSelect('hc-hours',['7시간','8시간','9시간','10시간','11시간','12시간'],pf.hours||'9시간')+'</div>'+
      '<label style="'+lblS+'">휴식(식사 제외) &middot; 선택</label><div style="display:flex;align-items:center;gap:6px;margin-bottom:9px">'+hcSelect('hc-restm',['10분','20분','30분','40분','50분','60분'],pf.restm||'30분')+'<span style="font-size:12px;color:#5a6b7a;font-weight:700">씩</span>'+hcSelect('hc-restc',['1회','2회','3회','4회'],pf.restc||'2회')+'</div>'+
      '<label style="'+lblS+'">이전 작업내용 &middot; 입력</label><input id="hc-prevw" type="text" placeholder="예: 물류 상하차" value="'+hcEsc(pf.prevw||'')+'" style="width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:14px;outline:none;margin-bottom:9px">'+
@@ -13332,7 +13333,7 @@ function hcOpenInput(){
    '</div>'+
    '<button onclick="hcSubmit()" style="display:block;width:calc(100% - 8px);margin:6px 4px 30px;background:#caa200;color:#3b2d00;border:0;border-radius:14px;padding:15px;font-size:15px;font-weight:800;cursor:pointer">제출하기 &#x2713;</button>'+
    '</div>';
-  var o=hcOverlay('hc-inp');o.innerHTML=html;o.scrollTop=0;
+  var o=hcOverlay('hc-inp');o.innerHTML=html;o.scrollTop=0;setTimeout(function(){var cy=document.getElementById('hc-cy'),cm=document.getElementById('hc-cm');if(cy)cy.onchange=hcSyncDur;if(cm)cm.onchange=hcSyncDur;hcSyncDur();},60);
 }
 
 var _hcSig='';
@@ -13368,7 +13369,7 @@ function hcSubmit(){
   var parts={};
   HC_PARTS.forEach(function(n,i){var on=hcGV(root,'partOn_p'+i);if(on.indexOf('해당')>=0){parts[n]={side:hcGV(root,'p'+i+'_side')[0]||'',dur:hcGV(root,'p'+i+'_dur')[0]||'',str:hcGV(root,'p'+i+'_str')[0]||'',frq:hcGV(root,'p'+i+'_frq')[0]||'',wk:hcGV(root,'p'+i+'_wk')[0]||'',act:hcGV(root,'p'+i+'_act')[0]||''};}});
   var cy=hcSV(root,'hc-cy'),cm=hcSV(root,'hc-cm');
-  var sub={name:CU.name,route:_hcRoute||'',month:hcMonth(),age:age,gender:gender,married:married,
+  var sub={name:CU.name,route:(root.querySelector('#hc-route')||{}).value||_hcRoute||'',month:hcMonth(),age:age,gender:gender,married:married,
     career_y:cy,career_m:cm,work_now:'택배 배송',work_dur:cy+' '+cm+'째',
     hours:hcSV(root,'hc-hours'),restm:hcSV(root,'hc-restm'),restc:hcSV(root,'hc-restc'),
     prevw:(root.querySelector('#hc-prevw')||{}).value||'',prevy:hcSV(root,'hc-py'),prevm:hcSV(root,'hc-pm'),
@@ -13379,7 +13380,7 @@ function hcSubmit(){
   (async function(){
     try{
       await sbClient.from('app_settings').upsert({key:hcKey(hcMonth(),CU.name),value:JSON.stringify(sub)},{onConflict:'key'});
-      var prof={age:age,gender:gender,married:married,career_y:cy,career_m:cm,hours:sub.hours,restm:sub.restm,restc:sub.restc,prevw:sub.prevw,prevy:sub.prevy,prevm:sub.prevm,route:_hcRoute||''};
+      var prof={age:age,gender:gender,married:married,career_y:cy,career_m:cm,hours:sub.hours,restm:sub.restm,restc:sub.restc,prevw:sub.prevw,prevy:sub.prevy,prevm:sub.prevm,route:sub.route};
       await sbClient.from('app_settings').upsert({key:'hsurvey_prof:'+hcNorm(CU.name),value:JSON.stringify(prof)},{onConflict:'key'});
       _hcMine=sub;_hcProf=prof;
       hcClose('hc-inp');showToast('건강체크가 제출됐어요. 감사합니다!',true);
