@@ -4883,7 +4883,33 @@ async function submitAnn(){
 var _annPhotos=[];
 function annSplit(b){b=b||'';var m=b.indexOf('[[TFIMG]]');if(m<0)return{t:b,imgs:[]};return{t:b.slice(0,m).replace(/\s+$/,''),imgs:b.slice(m+9).split('|').filter(Boolean)};}
 function annImgRow(imgs){if(!imgs||!imgs.length)return '';var h='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';imgs.forEach(function(u){h+='<img src="'+u+'" onclick="annLightbox(\''+u+'\')" style="width:calc(50% - 4px);max-height:230px;object-fit:cover;border-radius:10px;cursor:pointer;border:1px solid #e6e6ea">';});h+='</div>';return h;}
-function annLightbox(u){var o=document.createElement('div');o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;flex-direction:column';o.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;flex:0 0 auto"><div style="display:flex;gap:8px"><button class="alb-b" data-a="out">−</button><button class="alb-b" data-a="in">＋</button></div><div style="display:flex;gap:8px"><button class="alb-b" data-a="dl">⬇ 다운로드</button><button class="alb-b" data-a="close">✕</button></div></div><div class="alb-wrap" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;align-items:center;justify-content:center"><img class="alb-img" src="'+u+'" style="display:block;max-width:100%;max-height:100%;object-fit:contain;cursor:zoom-in"></div>';document.body.appendChild(o);var img=o.querySelector('.alb-img'),wrap=o.querySelector('.alb-wrap'),z=1;function apply(){if(z<=1){img.style.width='';img.style.height='';img.style.maxWidth='100%';img.style.maxHeight='100%';img.style.cursor='zoom-in';}else{img.style.maxWidth='none';img.style.maxHeight='none';img.style.width=(wrap.clientWidth*z)+'px';img.style.height='auto';img.style.cursor='zoom-out';}}function setZoom(nz){z=Math.max(1,Math.min(5,nz));apply();}img.onclick=function(e){e.stopPropagation();setZoom(z>1?1:2.5);};o.querySelectorAll('.alb-b').forEach(function(b){b.style.cssText='background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.32);border-radius:20px;padding:8px 15px;font-size:15px;font-weight:800;cursor:pointer;line-height:1';b.onclick=async function(e){e.stopPropagation();var a=b.getAttribute('data-a');if(a==='in')setZoom(z+0.6);else if(a==='out')setZoom(z-0.6);else if(a==='close')o.remove();else if(a==='dl'){try{var r=await fetch(u,{mode:'cors'});var bl=await r.blob();var el=document.createElement('a');el.href=URL.createObjectURL(bl);el.download=(u.split('/').pop().split('?')[0])||'photo.jpg';document.body.appendChild(el);el.click();el.remove();setTimeout(function(){URL.revokeObjectURL(el.href);},4000);}catch(err){window.open(u,'_blank');}}};});wrap.onclick=function(ev){if(ev.target===wrap)o.remove();};}
+function annLightbox(u){
+  var o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;flex-direction:column';
+  o.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;flex:0 0 auto;position:relative;z-index:3"><div style="display:flex;gap:8px"><button class="alb-b" data-a="out">−</button><button class="alb-b" data-a="in">＋</button><button class="alb-b" data-a="reset">1:1</button></div><div style="display:flex;gap:8px"><button class="alb-b" data-a="dl">⬇</button><button class="alb-b" data-a="close">✕</button></div></div>'
+    +'<div class="alb-wrap" style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none"><img class="alb-img" src="'+u+'" style="display:block;max-width:100%;max-height:100%;object-fit:contain;will-change:transform;transform-origin:center center;user-select:none;-webkit-user-drag:none"></div>'
+    +'<div style="text-align:center;color:rgba(255,255,255,.55);font-size:12px;padding:7px 10px 10px">두 손가락으로 확대·축소 · 드래그로 이동 · 더블탭 확대</div>';
+  document.body.appendChild(o);
+  var img=o.querySelector('.alb-img'),wrap=o.querySelector('.alb-wrap');
+  if(typeof attachPinchZoom==='function')attachPinchZoom(img); else {img._s=1;img._tx=0;img._ty=0;}
+  function apply(){img.style.transform='translate('+(img._tx||0)+'px,'+(img._ty||0)+'px) scale('+(img._s||1)+')';}
+  var md=false,mx=0,my=0;
+  img.addEventListener('mousedown',function(e){if((img._s||1)<=1)return;md=true;mx=e.clientX-(img._tx||0);my=e.clientY-(img._ty||0);e.preventDefault();});
+  window.addEventListener('mousemove',function(e){if(!md)return;img._tx=e.clientX-mx;img._ty=e.clientY-my;apply();});
+  window.addEventListener('mouseup',function(){md=false;});
+  wrap.addEventListener('wheel',function(e){e.preventDefault();img._s=Math.min(6,Math.max(1,(img._s||1)+(e.deltaY<0?0.25:-0.25)));if(img._s<=1){img._tx=0;img._ty=0;}apply();},{passive:false});
+  o.querySelectorAll('.alb-b').forEach(function(b){
+    b.style.cssText='background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.32);border-radius:20px;padding:8px 15px;font-size:15px;font-weight:800;cursor:pointer;line-height:1';
+    b.onclick=async function(e){e.stopPropagation();var a=b.getAttribute('data-a');
+      if(a==='in'){img._s=Math.min(6,(img._s||1)+0.5);apply();}
+      else if(a==='out'){img._s=Math.max(1,(img._s||1)-0.5);if(img._s<=1){img._tx=0;img._ty=0;}apply();}
+      else if(a==='reset'){img._s=1;img._tx=0;img._ty=0;apply();}
+      else if(a==='close'){o.remove();}
+      else if(a==='dl'){try{var r=await fetch(u,{mode:'cors'});var bl=await r.blob();var el=document.createElement('a');el.href=URL.createObjectURL(bl);el.download=(u.split('/').pop().split('?')[0])||'photo.jpg';document.body.appendChild(el);el.click();el.remove();setTimeout(function(){URL.revokeObjectURL(el.href);},4000);}catch(err){window.open(u,'_blank');}}
+    };
+  });
+  wrap.addEventListener('click',function(ev){if(ev.target===wrap&&(img._s||1)<=1)o.remove();});
+}
 function annPickPhoto(cam){var inp=document.getElementById('ann-file-inp');if(!inp)return;if(cam)inp.setAttribute('capture','camera');else inp.removeAttribute('capture');inp.value='';inp.click();}
 function annHandlePhoto(input){var files=Array.from(input.files||[]);if(!files.length)return;files.forEach(function(f){_annPhotos.push(f);});annRenderPreview();}
 function annRemovePhoto(i){_annPhotos.splice(i,1);annRenderPreview();}
