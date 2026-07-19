@@ -13432,7 +13432,110 @@ function hcFormHTML(s){s=s||{};
     '<div style="text-align:right;margin-top:8px;font-size:10px">본인 서명: <b>'+sig+'</b></div>'+note+'</div>';
 }
 var _hcz=1;
-function hcCleanWin(sub,ap){var w=window.open('','_blank');if(!w){showToast('팝업 차단을 해제해 주세요',false);return;}var html='<html><head><meta charset="utf-8"><title>근골격계 증상조사표 - '+(sub.name||'')+'</title>'+'<style>body{margin:16px;font-family:"Malgun Gothic",sans-serif}@media print{body{margin:0}}</style></head><body>'+hcFormHTML(sub)+'</body></html>';w.document.write(html);w.document.close();if(ap){setTimeout(function(){try{w.focus();w.print();}catch(e){}},500);}}
+function hcRxEsc(x){return String(x).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function hcMarkInline(text, tokens){(tokens||[]).forEach(function(tk){if(!tk)return;var re=new RegExp('□(\\s*)'+hcRxEsc(tk));text=text.replace(re,'■$1'+tk);});return text;}
+function hcNorm2(x){return String(x||'').replace(/[\s□■·,]/g,'');}
+function hcMarkBox(cellText, targetFull){var tn=targetFull?hcNorm2(targetFull):'';return cellText.split('\n').map(function(ln){if(tn&&hcNorm2(ln)===tn)return '<b>'+ln.replace('□','■')+'</b>';return ln;}).join('<br>');}
+
+var HC_MDUR={'1일 미만':'1일 미만','1일–1주':'1일 - 1주일 미만','1주–1달':'1주일 - 1달 미만','1–6개월':'1달 - 6개월 미만','6개월+':'6개월 이상'};
+var HC_MSTR={'약함':'약한 통증','중간':'중간 통증','심함':'심한 통증','매우심함':'매우 심한 통증'};
+var HC_MFRQ={'6개월 1번':'6개월에 1번','2–3달 1번':'2-3달에 1번','1달 1번':'1달에 1번','1주 1번':'1주일에 1번','매일':'매일'};
+var HC_MACT={'병원·한의원':'병원·한의원 치료','약국치료':'약국치료','병가·산재':'병가, 산재','작업전환':'작업 전환','해당없음':'해당사항 없음'};
+var HC_Q1={'컴퓨터·게임':'게임','악기연주':'피아노','뜨개질·붓글씨':'뜨개질','스포츠':'테니스','해당없음':'해당사항'};
+var HC_Q2={'거의 안함':'거의','1시간 미만':'1시간','1–2시간':'1-2시간','2–3시간':'2-3시간','3시간 이상':'3시간'};
+var HC_Q4P={'손·손목':'손/손가락/손목','팔·팔꿈치':'팔/팔꿈치','어깨':'어깨','목':'목','허리':'허리','다리·발':'다리/발'};
+var HC_Q5={'전혀 안힘듦':'전혀','견딜만함':'견딜만','약간 힘듦':'약간','힘듦':'힘듦','매우 힘듦':'매우'};
+
+var C_SIDE='□오른쪽 \n□왼쪽 \n□양쪽';
+var C_DUR='□ 1일 미만\n□1일 - 1주일 미만 \n□1주일 - 1달 미만\n□ 1달 - 6개월 미만\n□ 6개월 이상 ';
+var C_STR='□ 약한 통증\n□중간 통증 \n□심한 통증\n□ 매우 심한 통증';
+var C_FRQ='□ 6개월에 1번\n□ 2-3달에 1번 \n□ 1달에 1번\n□ 1주일에 1번\n□ 매일 ';
+var C_WK='□ 아니오\n□ 예';
+var C_ACT='□ 병원·한의원 치료 \n□약국치료 \n□병가, 산재 \n□작업 전환\n□해당사항 없음   \n기타 (              )';
+
+function hcOfficialForm(s){
+  s=s||{};
+  function E(x){return hcEsc(x);}
+  var ck=function(v,t){return (v===t)?'■':'□';};
+  var parts=s.parts||{};
+  var PN=['목','어깨','팔/팔꿈치','손/손목/손가락','허리','다리/발'];
+  // 성별/결혼
+  var sexLine=hcMarkInline(' □ 남            □ 여',[s.gender==='남'?'남':(s.gender==='여'?'여':'')]);
+  var marLine=hcMarkInline('□ 기혼 □ 미혼',[s.married==='기혼'?'기혼':(s.married==='미혼'?'미혼':'')]);
+  // Q1~5
+  var q1=hcMarkInline('□ 게임 등 컴퓨터 관련 활동   □ 피아노, 드럼펫 등 악기연주  □ 뜨개질, 붓글씨 등 □ 테니스, 축구, 농구, 골프 등 스포츠 활동  □ 해당사항 없음',(s.q1||[]).map(function(v){return HC_Q1[v];}));
+  var q2=hcMarkInline('□ 거의 하지 않는다   □ 1시간 미만   □ 1-2시간 미만  □ 2-3시간 미만  □ 3시간 이상',[HC_Q2[s.q2]]);
+  var q3tok=[s.q3==='아니오'?'아니오':(s.q3==='예'?'예':'')];if(s.q3state)q3tok.push(s.q3state==='완치'?'완치':'치료나');
+  var q3=hcMarkInline('□ 아니오    □ 예(‘예’인 경우 현재상태는 ?      □ 완치      □ 치료나 관찰 중)',q3tok);
+  var q4tok=[s.q4==='아니오'?'아니오':(s.q4==='예'?'예':'')].concat((s.q4list||[]).map(function(v){return HC_Q4P[v];}));
+  var q4=hcMarkInline('□ 아니오  □ 예(‘예’인 경우 상해 부위? □손/손가락/손목 □팔/팔꿈치 □어깨 □목 □허리 □다리/발)',q4tok);
+  var q5=hcMarkInline('□ 전혀 힘들지 않음    □ 견딜만 함    □ 약간 힘듦    □ 힘듦     □ 매우 힘듦',[HC_Q5[s.q5]]);
+  var painNo=ck(s.painYN,'아니오'), painYes=ck(s.painYN,'예');
+  // 표 셀
+  function cell(kind,d){
+    if(!d)d={};
+    if(kind==='side')return d.side?hcMarkBox(C_SIDE,d.side):C_SIDE.replace(/\n/g,'<br>');
+    if(kind==='dur')return hcMarkBox(C_DUR,HC_MDUR[d.dur]);
+    if(kind==='str')return hcMarkBox(C_STR,HC_MSTR[d.str]);
+    if(kind==='frq')return hcMarkBox(C_FRQ,HC_MFRQ[d.frq]);
+    if(kind==='wk')return hcMarkBox(C_WK,d.wk);
+    if(kind==='act')return hcMarkBox(C_ACT,HC_MACT[d.act]);
+    return '';
+  }
+  function prow(lbl,kind){return '<tr><td class="ql">'+lbl+'</td>'+PN.map(function(p,i){var d=parts[p];if(kind==='side'&&i===0)return '<td></td>';return '<td>'+cell(kind,d)+'</td>';}).join('')+'</tr>';}
+  var sig=s.sig?('<img src="'+s.sig+'" style="height:30px;vertical-align:middle">'):E(s.name);
+  var css='<style>.hcof{width:760px;margin:0 auto;font-family:"Malgun Gothic","맑은 고딕",sans-serif;color:#000;font-size:11px;line-height:1.35}'
+    +'.hcof table{border-collapse:collapse;width:100%}'
+    +'.hcof td,.hcof th{border:1px solid #000;padding:3px 5px;vertical-align:middle}'
+    +'.hcof .lb{background:#f2f2f2;font-weight:700;text-align:center;white-space:nowrap}'
+    +'.hcof .tt{text-align:center;font-size:19px;font-weight:800;letter-spacing:2px;margin:2px 0}'
+    +'.hcof .sub{text-align:center;font-size:11px;margin-bottom:6px}'
+    +'.hcof .sec{font-weight:700;margin:9px 0 3px}'
+    +'.hcof .qq td{padding:5px 6px}'
+    +'.hcof .ql{background:#f7f7f7;font-weight:700;width:150px;vertical-align:top;font-size:10px}'
+    +'.hcof .pt td,.hcof .pt th{text-align:center;vertical-align:top;font-size:9.5px}'
+    +'.hcof .pt th{background:#eef4fb}'
+    +'.hcof b{color:#c00}'
+    +'</style>';
+  var top='<div style="text-align:right;font-size:9px">[별지 제2호서식] (2018. 2. 9. 신설)</div>'
+    +'<div class="tt">근골격계질환 증상조사표</div><div class="sub">(제4조 관련)</div>'
+    +'<div class="sec">I. 아래 사항을 직접 기입해 주시기 바랍니다.</div>';
+  var t1='<table>'
+    +'<tr><td class="lb" style="width:90px">성 명</td><td style="width:230px">'+E(s.name)+'</td><td class="lb" style="width:90px">연 령</td><td>만( '+E(s.age)+' )세</td></tr>'
+    +'<tr><td class="lb">성 별</td><td>'+sexLine+'</td><td class="lb">현 직장경력</td><td>( '+E(s.career_y).replace(/[^0-9]/g,'')+' )년  ( '+E(s.career_m).replace(/[^0-9]/g,'')+' )개월째 근무 중</td></tr>'
+    +'<tr><td class="lb">작업부서</td><td>배송직</td><td class="lb">결혼여부</td><td>'+marLine+'</td></tr>'
+    +'<tr><td class="lb" colspan="1">담당 라우트</td><td colspan="3">담당 ( '+E(s.route)+' ) 라우트</td></tr>'
+    +'<tr><td class="lb" rowspan="2">현재하고 있는 작업</td><td colspan="3">작 업 내 용 : &nbsp;'+E(s.work_now||'택배 배송')+'</td></tr>'
+    +'<tr><td colspan="3">작 업 기 간 : &nbsp;'+E(s.career_y).replace(/[^0-9]/g,'')+' 년 &nbsp;'+E(s.career_m).replace(/[^0-9]/g,'')+' 개월째 하고 있음</td></tr>'
+    +'<tr><td class="lb">1일 근무시간</td><td colspan="3">( '+E(s.hours).replace(/[^0-9]/g,'')+' )시간 근무 중, 휴식시간(식사시간 제외) ( '+E(s.restm).replace(/[^0-9]/g,'')+' )분씩 ( '+E(s.restc).replace(/[^0-9]/g,'')+' )회 휴식</td></tr>'
+    +'<tr><td class="lb" rowspan="2">현작업 전 작업</td><td colspan="3">작 업 내 용 : &nbsp;'+E(s.prevw||'')+'</td></tr>'
+    +'<tr><td colspan="3">작 업 기 간 : ( '+E(s.prevy).replace(/[^0-9]/g,'')+' )년 ( '+E(s.prevm).replace(/[^0-9]/g,'')+' )개월 동안 했음</td></tr>'
+    +'</table>';
+  var t2='<table class="qq" style="margin-top:6px">'
+    +'<tr><td>1. 규칙적인(한번에 30분 이상, 1주일에 적어도 2-3회 이상) 여가 및 취미활동을 하고 계시는 곳에 표기하십시오.<br>'+q1+'</td></tr>'
+    +'<tr><td>2. 귀하의 하루 평균 가사노동시간(밥하기, 빨래하기, 청소하기, 2살 미만 아이 돌보기) 등은 얼마나 됩니까?<br>'+q2+'</td></tr>'
+    +'<tr><td>3. 귀하는 의사로부터 다음과 같은 질병에 대해 진단을 받은 적이 있습니까? (해당 질병에 체크)<br>(보기: □ 류머티스 관절염  □ 당뇨병  □ 루프스병  □ 통풍  □ 알코올중독)<br>'+q3+'</td></tr>'
+    +'<tr><td>4. 과거에 운동 중 혹은 사고(교통사고, 넘어짐, 추락 등)로 인해 손/손가락, 팔/팔꿈치, 어깨, 목, 허리, 다리/발 부위를 다친 적이 있습니까?<br>'+q4+'</td></tr>'
+    +'<tr><td>5. 현재 하시는 일의 육체적 부담 정도는 어느 정도라고 생각합니까?<br>'+q5+'</td></tr>'
+    +'</table>';
+  var t3intro='<div class="sec">II. 지난 1년 동안 손/손가락/손목, 팔/팔꿈치, 어깨, 목, 허리, 다리/발 중 어느 한 부위에서 작업과 관련하여 통증·불편함을 느끼신 적이 있습니까?</div>'
+    +'<div style="margin:3px 0">'+painNo+' 아니오(수고하셨습니다. 설문을 다 마치셨습니다.)  &nbsp;&nbsp; '+painYes+' 예(아래 표의 통증부위에 체크하고, 세로로 내려가며 해당사항에 체크해 주십시오)</div>';
+  var head='<tr><th style="width:150px">통증 부위</th>'+PN.map(function(p){return '<th>'+p+'</th>';}).join('')+'</tr>';
+  var t3='<table class="pt">'+head
+    +prow('1. 통증의 구체적 부위는?','side')
+    +prow('2. 한번 아프면 통증이 얼마나 지속됩니까?','dur')
+    +prow('3. 통증의 정도는 어느 정도입니까?','str')
+    +'<tr><td class="ql">&lt;보기&gt;</td><td colspan="6" style="text-align:left;font-size:9px">약한 통증: 약간 불편하나 작업 열중 시 못 느낌 / 중간 통증: 작업 중 통증 있으나 귀가 후 휴식하면 괜찮음 / 심한 통증: 작업 중 통증이 심하고 귀가 후에도 지속 / 매우 심한 통증: 통증으로 작업·일상생활 곤란</td></tr>'
+    +prow('4. 지난 1년간 얼마나 자주 경험하셨습니까?','frq')
+    +prow('5. 지난 1주일 동안에도 증상이 있었습니까?','wk')
+    +prow('6. 지난 1년간 통증으로 어떤 일이 있었습니까?','act')
+    +'</table>';
+  var note='<div class="sec">유의사항</div><div style="font-size:9.5px;line-height:1.5">- 부담작업을 수행하는 근로자가 직접 읽어보고 문항을 체크합니다.<br>- 증상조사표를 작성할 경우 증상을 과대 또는 과소 평가 해서는 안됩니다.<br>- 증상조사 결과는 근골격계질환의 이환을 부정 또는 입증하는 근거나 반증자료로 활용할 수 없습니다.</div>';
+  var foot='<div style="text-align:right;margin-top:10px">작성월: '+E(hcMonthLabel(s.month))+' &nbsp;&nbsp; 본인 서명: <b style="color:#000">'+sig+'</b></div>';
+  return css+'<div class="hcof">'+top+t1+t2+t3intro+t3+note+foot+'</div>';
+}
+
+function hcCleanWin(sub,ap){var w=window.open('','_blank');if(!w){showToast('팝업 차단을 해제해 주세요',false);return;}var html='<html><head><meta charset="utf-8"><title>근골격계 증상조사표 - '+(sub.name||'')+'</title>'+'<style>body{margin:16px;font-family:"Malgun Gothic",sans-serif}@media print{body{margin:0}}</style></head><body>'+hcOfficialForm(sub)+'</body></html>';w.document.write(html);w.document.close();if(ap){setTimeout(function(){try{w.focus();w.print();}catch(e){}},500);}}
 function hcPdf(){if(_hcFormSub)hcCleanWin(_hcFormSub,true);else showToast('불러오는 중이에요',false);}
 function hcPreview(){if(_hcFormSub)hcCleanWin(_hcFormSub,false);else showToast('불러오는 중이에요',false);}
 function hcOpenForm(name,month){
@@ -13448,7 +13551,7 @@ function hcOpenForm(name,month){
   (async function(){
     try{var r=await sbClient.from('app_settings').select('value').eq('key',hcKey(month,name)).maybeSingle();
       var s=(r&&r.data&&r.data.value)?JSON.parse(r.data.value):{name:name};
-      _hcFormSub=s;var zw=document.getElementById('hc-zw');if(zw)zw.innerHTML=hcFormHTML(s);}catch(e){}
+      _hcFormSub=s;var zw=document.getElementById('hc-zw');if(zw)zw.innerHTML=hcOfficialForm(s);}catch(e){}
   })();
 }
 var _hcFormCache='',_hcFormSub=null;
