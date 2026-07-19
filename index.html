@@ -13220,7 +13220,7 @@ async function deletePddLogAll(){
 </script>
 <script>
 /* ============ 근골격계질환 증상조사(건강체크) ============ */
-var _hcMineLoaded=false,_hcMine=null,_hcProf=null,_hcRoute='';
+var _hcMineLoaded=false,_hcMine=null,_hcProf=null,_hcRoute='',_hcAge='';
 function hcMonth(){return (typeof kstToday==='function'?kstToday():new Date().toISOString().slice(0,10)).slice(0,7);}
 function hcMonthLabel(m){var p=(m||hcMonth()).split('-');return p[0]+'년 '+parseInt(p[1],10)+'월';}
 function hcActive(){if(!_featureControls){try{getFeatureCtrl('healthcheck','active');}catch(e){}return false;}return (_featureControls['healthcheck']||{}).active===true;}
@@ -13228,14 +13228,16 @@ function hcNorm(nm){return (typeof norm_name_js==='function')?norm_name_js(nm||'
 function hcKey(m,nm){return 'hsurvey:'+m+':'+hcNorm(nm);}
 function hcEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
+function hcAgeFromBirth(b){b=String(b||'').replace(/\D/g,'');if(b.length!==6)return '';var yy=parseInt(b.slice(0,2),10),mm=parseInt(b.slice(2,4),10),dd=parseInt(b.slice(4,6),10);if(!mm||!dd)return '';var yr=yy<=25?2000+yy:1900+yy;var now=new Date();var age=now.getFullYear()-yr;var m=now.getMonth()+1,d=now.getDate();if(m<mm||(m===mm&&d<dd))age--;return (age>0&&age<110)?age:'';}
 async function hcLoadMine(){
   if(!sbClient||!CU){_hcMineLoaded=true;return;}
   try{var r=await sbClient.from('app_settings').select('value').eq('key',hcKey(hcMonth(),CU.name)).maybeSingle();
     _hcMine=(r&&r.data&&r.data.value)?JSON.parse(r.data.value):null;}catch(e){_hcMine=null;}
   try{var p=await sbClient.from('app_settings').select('value').eq('key','hsurvey_prof:'+hcNorm(CU.name)).maybeSingle();
     _hcProf=(p&&p.data&&p.data.value)?JSON.parse(p.data.value):null;}catch(e){}
-  try{var t=(typeof kstToday==='function'?kstToday():'');var rt=await sbClient.from('weekly_schedules').select('route').eq('driver_name',CU.name).eq('work_date',t).limit(1).maybeSingle();
-    if(rt&&rt.data&&rt.data.route)_hcRoute=rt.data.route;}catch(e){}
+  try{var t=(typeof kstToday==='function'?kstToday():'');var rt=await sbClient.from('weekly_schedules').select('work_date,route').eq('driver_name',CU.name).gte('work_date',t).order('work_date').limit(12);
+    if(rt&&rt.data&&rt.data.length){var _fd=rt.data[0].work_date;var _rs=[];rt.data.forEach(function(x){if(x.work_date===_fd&&x.route&&_rs.indexOf(x.route)<0)_rs.push(x.route);});_hcRoute=_rs.join(', ');}}catch(e){}
+  try{var _br=await sbClient.from('drivers').select('birth_date').eq('name',CU.name).limit(1).maybeSingle();if(_br&&_br.data&&_br.data.birth_date)_hcAge=hcAgeFromBirth(_br.data.birth_date);}catch(e){}
   _hcMineLoaded=true;
   try{if(CUR_TAB==='hm'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();}}catch(e){}
 }
@@ -13304,7 +13306,7 @@ function hcOpenInput(){
    '</div>'+
    '<div style="'+cardS+'"><h4 style="'+h4S+'">1. 기본 정보</h4>'+
      '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">성명</label><div style="'+valS+'">'+hcEsc(nm)+'</div></div><div style="flex:1"><label style="'+lblS+'">담당 라우트</label><input id="hc-route" type="text" value="'+hcEsc(rt||'')+'" placeholder="예: 316A" style="width:100%;padding:9px 11px;border:1.5px solid #cfe6fb;border-radius:9px;font-size:13.5px;font-weight:700;color:#1f6fb0;outline:none;box-sizing:border-box"></div></div>'+
-     '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">연령</label><input id="hc-age" type="number" inputmode="numeric" placeholder="예: 41" value="'+hcEsc(pf.age||'')+'" style="width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:14px;font-weight:700;color:#173a5c;outline:none"></div><div style="flex:1"><label style="'+lblS+'">작업부서</label><div style="'+valS+'">배송직</div></div></div>'+
+     '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">연령</label>'+(_hcAge?('<div style="'+valS+'">만 '+_hcAge+'세</div><input type="hidden" id="hc-age" value="'+_hcAge+'">'):('<input id="hc-age" type="number" inputmode="numeric" placeholder="예: 41" value="'+hcEsc(pf.age||'')+'" style="width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:9px;font-size:14px;font-weight:700;color:#173a5c;outline:none">'))+'</div><div style="flex:1"><label style="'+lblS+'">작업부서</label><div style="'+valS+'">배송직</div></div></div>'+
      '<div style="display:flex;gap:8px;margin-bottom:9px"><div style="flex:1"><label style="'+lblS+'">성별</label>'+hcChips('gender',['남','여'],0,pf.gender?[pf.gender]:[])+'</div><div style="flex:1"><label style="'+lblS+'">결혼여부</label>'+hcChips('married',['기혼','미혼'],0,pf.married?[pf.married]:[])+'</div></div>'+
      '<label style="'+lblS+'">현 직장(배송) 경력 &middot; 선택</label><div style="display:flex;align-items:center;gap:6px">'+hcSelect('hc-cy',yrs,pf.career_y||'3년')+hcSelect('hc-cm',mos,pf.career_m||'2개월')+'<span style="font-size:12px;color:#5a6b7a;font-weight:700">째 근무</span></div>'+
    '</div>'+
