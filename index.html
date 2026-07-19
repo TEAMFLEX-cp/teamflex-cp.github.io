@@ -13235,8 +13235,9 @@ async function hcLoadMine(){
     _hcMine=(r&&r.data&&r.data.value)?JSON.parse(r.data.value):null;}catch(e){_hcMine=null;}
   try{var p=await sbClient.from('app_settings').select('value').eq('key','hsurvey_prof:'+hcNorm(CU.name)).maybeSingle();
     _hcProf=(p&&p.data&&p.data.value)?JSON.parse(p.data.value):null;}catch(e){}
-  try{var t=(typeof kstToday==='function'?kstToday():'');var rt=await sbClient.from('weekly_schedules').select('work_date,route').eq('driver_name',CU.name).gte('work_date',t).order('work_date').limit(12);
-    if(rt&&rt.data&&rt.data.length){var _fd=rt.data[0].work_date;var _rs=[];rt.data.forEach(function(x){if(x.work_date===_fd&&x.route&&_rs.indexOf(x.route)<0)_rs.push(x.route);});_hcRoute=_rs.join(', ');}}catch(e){}
+  try{var _cut=new Date();_cut.setDate(_cut.getDate()-14);var _cs=_cut.getFullYear()+'-'+('0'+(_cut.getMonth()+1)).slice(-2)+'-'+('0'+_cut.getDate()).slice(-2);
+    var rt=await sbClient.from('weekly_schedules').select('route').eq('driver_name',CU.name).gte('work_date',_cs).order('route').limit(400);
+    if(rt&&rt.data&&rt.data.length){var _rs=[];rt.data.forEach(function(x){if(x.route&&_rs.indexOf(x.route)<0)_rs.push(x.route);});_rs.sort();_hcRoute=_rs.join(', ');}}catch(e){}
   try{var _br=await sbClient.from('drivers').select('birth_date').eq('name',CU.name).limit(1).maybeSingle();if(_br&&_br.data&&_br.data.birth_date)_hcAge=hcAgeFromBirth(_br.data.birth_date);}catch(e){}
   _hcMineLoaded=true;
   try{if(CUR_TAB==='hm'){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();}}catch(e){}
