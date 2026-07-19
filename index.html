@@ -13432,6 +13432,9 @@ function hcFormHTML(s){s=s||{};
     '<div style="text-align:right;margin-top:8px;font-size:10px">본인 서명: <b>'+sig+'</b></div>'+note+'</div>';
 }
 var _hcz=1;
+function hcCleanWin(sub,ap){var w=window.open('','_blank');if(!w){showToast('팝업 차단을 해제해 주세요',false);return;}var html='<html><head><meta charset="utf-8"><title>근골격계 증상조사표 - '+(sub.name||'')+'</title>'+'<style>body{margin:16px;font-family:"Malgun Gothic",sans-serif}@media print{body{margin:0}}</style></head><body>'+hcFormHTML(sub)+'</body></html>';w.document.write(html);w.document.close();if(ap){setTimeout(function(){try{w.focus();w.print();}catch(e){}},500);}}
+function hcPdf(){if(_hcFormSub)hcCleanWin(_hcFormSub,true);else showToast('불러오는 중이에요',false);}
+function hcPreview(){if(_hcFormSub)hcCleanWin(_hcFormSub,false);else showToast('불러오는 중이에요',false);}
 function hcOpenForm(name,month){
   hcOverlay('hc-form');var o=document.getElementById('hc-form');
   o.innerHTML=hcBar('&#x1F4C4; '+hcEsc(name)+' · 서식','hcClose(\'hc-form\')')+
@@ -13440,7 +13443,7 @@ function hcOpenForm(name,month){
     '<span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button onclick="hcZoom(-1)" style="border:1px solid #cfd9e4;background:#f4f8fc;border-radius:8px;width:34px;height:34px;font-size:18px;font-weight:800;color:#2f6fb0;cursor:pointer">&minus;</button><span id="hc-zl" style="font-size:12px;font-weight:800;color:#5a6b7a;width:40px;text-align:center">100%</span><button onclick="hcZoom(1)" style="border:1px solid #cfd9e4;background:#f4f8fc;border-radius:8px;width:34px;height:34px;font-size:18px;font-weight:800;color:#2f6fb0;cursor:pointer">+</button></span></div>'+
     '<div style="padding:10px;overflow:auto"><div id="hc-zw" style="transform-origin:top left;transition:transform .12s">'+
     (_hcFormCache||'<div style="padding:30px;text-align:center;color:#888">불러오는 중...</div>')+'</div></div>'+
-    '<div style="display:flex;gap:8px;padding:10px 12px 20px"><button onclick="window.print()" style="flex:1;border:0;border-radius:11px;padding:12px;font-size:12.5px;font-weight:800;color:#fff;background:#2f6fb0;cursor:pointer">&#x1F5A8; 인쇄</button><button onclick="hcExportXlsx()" style="flex:1;border:0;border-radius:11px;padding:12px;font-size:12.5px;font-weight:800;color:#fff;background:#1d7a46;cursor:pointer">Excel</button></div>';
+    '<div style="display:flex;gap:8px;padding:10px 12px 20px"><button onclick="hcPdf()" style="flex:1;border:0;border-radius:11px;padding:12px;font-size:12.5px;font-weight:800;color:#fff;background:#c0392b;cursor:pointer">&#x1F4C4; PDF</button><button onclick="hcExportXlsx()" style="flex:1;border:0;border-radius:11px;padding:12px;font-size:12.5px;font-weight:800;color:#fff;background:#1d7a46;cursor:pointer">Excel</button><button onclick="hcPreview()" style="flex:1;border:0;border-radius:11px;padding:12px;font-size:12.5px;font-weight:800;color:#fff;background:#2f6fb0;cursor:pointer">&#x1F50D; 서식 미리보기</button></div>';
   _hcz=1;
   (async function(){
     try{var r=await sbClient.from('app_settings').select('value').eq('key',hcKey(month,name)).maybeSingle();
