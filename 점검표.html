@@ -173,6 +173,10 @@ function drawDay(){
   // 휴무 토글
   h+='<div style="display:flex;align-items:center;justify-content:space-between;background:#f3f6fc;border:1px solid #e0e7f5;border-radius:11px;padding:10px 12px;margin-bottom:12px"><div><div style="font-size:13px;font-weight:800;color:#1a3a7a">🛌 휴무</div><div style="font-size:10px;color:#8a93a8">운행 안 한 날 → 미운행(미)으로 기록</div></div>'+
      '<div onclick="toggleOff()" style="width:44px;height:24px;background:'+(EDITST.off?'#1565c0':'#d3d8e2')+';border-radius:12px;position:relative;cursor:pointer"><span style="position:absolute;'+(EDITST.off?'right':'left')+':2px;top:2px;width:20px;height:20px;background:#fff;border-radius:50%"></span></div></div>';
+   // 상단 빠른 버튼 (전체 양호 · 저장)
+   h+='<div style="display:flex;gap:8px;margin-bottom:12px">'+
+      (!EDITST.off?'<button class="btn b-blue" style="flex:1;margin:0" onclick="quickAllOk()">⚡ 전체 양호</button>':'')+
+      '<button class="btn b-blue" style="flex:1;margin:0" onclick="saveDay()">💾 저장</button></div>';
   if(!EDITST.off){
     var lastCat='';
     for(var i=0;i<ITEMS.length;i++){
