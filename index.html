@@ -8703,6 +8703,7 @@ function mdViewPhoto(url){
 }
 
 // ── 오배송 상세 모달 ──────────────────────────────────────────────────
+function rtnWarnBox(){return '<style>@keyframes rtnPulse{0%,100%{box-shadow:0 0 0 0 rgba(226,59,59,.32)}50%{box-shadow:0 0 12px 3px rgba(226,59,59,.40)}}</style>'+'<div style="margin:10px 0 12px;border:2px solid #e23b3b;border-radius:12px;overflow:hidden;animation:rtnPulse 1.6s ease-in-out infinite">'+'<div style="background:#e23b3b;color:#fff;font-size:12.5px;font-weight:800;padding:8px 11px;line-height:1.3">&#x26A0;&#xFE0F; 작성 전 반드시 확인</div>'+'<div style="background:#fff4f3;padding:10px 12px">'+'<div style="font-size:13px;font-weight:800;color:#b0271f;line-height:1.55">캠프 반납 완료 / 모든 처리 완료 후에 작성해 주시기 바랍니다.</div>'+'<div style="margin-top:8px;background:#ffe4e0;border-radius:8px;padding:8px 10px;font-size:12px;font-weight:800;color:#96241d;line-height:1.55">특히, 반납해야 되는 경우 반납을 하고 나서 작성해 주시기 바랍니다.</div>'+'</div></div>';}
 function mdOpenDetail(caseId){
   var c=(_mdCases||[]).find(function(x){return x.id===caseId;});
   if(!c)return;
@@ -8767,7 +8768,7 @@ function mdOpenDetail(caseId){
     }
     replyHtml='<div style="border-top:1px solid #f0f0f0;padding-top:14px;margin-top:4px">'+
       rejectNotice+
-      '<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px">'+(c.status==='rejected'?'✏️ 처리 내용 재작성':'💬 처리 내용 입력')+'</div>'+
+      rtnWarnBox()+'<div style="font-size:12px;font-weight:700;color:#555;margin-bottom:8px">'+(c.status==='rejected'?'✏️ 처리 내용 재작성':'💬 처리 내용 입력')+'</div>'+
       '<textarea id="md-ta-'+c.id+'" class="md-ta" placeholder="처리 내용을 입력하세요..." style="width:100%;min-height:80px;box-sizing:border-box"></textarea>'+
       '<div style="display:flex;gap:8px;margin-top:8px">'+
         '<button type="button" onclick="mdTriggerPhoto('+c.id+',true)" style="flex:1;padding:9px 4px;background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📷 촬영</button>'+
@@ -11896,7 +11897,7 @@ function rqRetForm(kind){
   return '<div class="rq-card">'+
     '<div id="rq-ret-'+kind+'-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
-    '<label class="rq-label">📋 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
+    rtnWarnBox()+'<label class="rq-label">📋 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
     '<textarea class="rq-paste" id="rq-ret-'+kind+'-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호 자동 분리 (여러 건 가능)" oninput="window._rqRetRaw[\''+kind+'\']=this.value;rqUpdateRetPreview(\''+kind+'\')">'+rqEsc(raw)+'</textarea>'+
     '<div class="rq-hint" id="rq-ret-'+kind+'-hint">'+(pairs.length?('✅ '+pairs.length+'건 인식'):'운송장·주문번호를 붙여넣으면 자동 분리됩니다')+'</div>'+
     '<label class="rq-label" style="margin-top:6px">📷 사진 <span class="rq-req">필수</span></label>'+
