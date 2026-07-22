@@ -783,6 +783,42 @@ function _unreadSchedLog(){
   return _getSchedLog().filter(function(e){return!e.read;}).length;
 }
 
+// ── 공유 변경이력 (Supabase) — 팀장·조장이 수정하면 관리자 기기에서도 보이게 ──
+//    app_settings.key='sched_change_log' 에 JSON 배열로 누적. 관리자가 '전체 삭제' 하기 전까지 유지.
+var _SHARED_LOG_MAX=300;
+var _sharedSchedLogCache=null;
+// 편집한 기기에서 1건 기록 (실제 수정자 = CU.name)
+async function _pushSharedSchedChange(workDate,route,oldDriver,newDriver){
+  if(!sbClient||!CU)return;
+  if((oldDriver||'')===(newDriver||''))return;
+  try{
+    var cur=[];
+    var r=await sbClient.from('app_settings').select('value').eq('key','sched_change_log').maybeSingle();
+    if(r&&r.data&&r.data.value){var v=r.data.value;cur=(typeof v==='string')?JSON.parse(v):v;}
+    if(!Array.isArray(cur))cur=[];
+    cur.unshift({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      at:new Date().toISOString(),workDate:workDate||'',route:route||'',
+      oldDriver:oldDriver||'',newDriver:newDriver||'',
+      changedBy:CU.name||'',role:CU.role||''});
+    if(cur.length>_SHARED_LOG_MAX)cur=cur.slice(0,_SHARED_LOG_MAX);
+    await sbClient.from('app_settings').upsert({key:'sched_change_log',value:JSON.stringify(cur)},{onConflict:'key'});
+    _sharedSchedLogCache=cur;
+  }catch(e){console.warn('[_pushSharedSchedChange]',e);}
+}
+async function _loadSharedSchedLog(){
+  if(!sbClient)return [];
+  try{
+    var r=await sbClient.from('app_settings').select('value').eq('key','sched_change_log').maybeSingle();
+    if(r&&r.data&&r.data.value){var v=r.data.value;var a=(typeof v==='string')?JSON.parse(v):v;_sharedSchedLogCache=Array.isArray(a)?a:[];return _sharedSchedLogCache;}
+  }catch(e){console.warn('[_loadSharedSchedLog]',e);}
+  return [];
+}
+async function _clearSharedSchedLog(){
+  if(!sbClient)return;
+  try{await sbClient.from('app_settings').upsert({key:'sched_change_log',value:'[]'},{onConflict:'key'});_sharedSchedLogCache=[];}
+  catch(e){console.warn('[_clearSharedSchedLog]',e);}
+}
+
 // ── SUPABASE ──────────────────────────────────────────────────────────
 var SB_URL='https://czpinyfirgvkhdfnvkls.supabase.co';
 var SB_KEY='sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
@@ -1366,6 +1402,46 @@ function canEditSched(){if(!CU)return false;var cfg=getCfg();var p=cfg.schedPerm
 function canWriteAnn(){if(!CU)return false;var cfg=getCfg();var p=cfg.annPerm||['admin','leader'];if(p.indexOf('admin')>=0&&CU.role==='admin')return true;if(p.indexOf('leader')>=0&&CU.role==='leader')return true;if(p.indexOf('sub')>=0&&CU.role==='sub')return true;return false;}
 function canEdit(){return canEditSched();}
 function canAnn(){return canWriteAnn();}
+// ── 스케줄 수정 권한: 미래 기간 + 과거/해당주차 잠금 (설정값 그대로 적용) ──
+function _ymd(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function _ymdAdd(ymd,days){var p=(ymd||'').split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);d.setDate(d.getDate()+days);return _ymd(d);}
+// 팀장·조장 미래 수정 가능 기간(일). 관리자는 무제한.
+function _schedFwdDays(){var cfg=getCfg();var v=cfg.schedEditDays;if(v==='1년'||v==='year'||v===365||v==='365')return 365;var n=parseInt(v);return (n&&n>0)?n:90;}
+// 과거/해당주차 잠금 경계(YYYY-MM-DD). 이 날짜보다 과거인 work_date는 팀장·조장 수정 불가. null=제한없음
+function _schedPastBoundary(){
+  var cfg=getCfg();var v=cfg.schedMinLockDays;
+  if(v===undefined||v===null||v===''||v===0||v==='0')return null;
+  var t=new Date();t.setHours(0,0,0,0);
+  if(v==='week'){
+    // 🔒 해당주차 금지: 이번 주차(일~토) 전체 + 다음 주차 일요일까지 잠금 → 다음주 월요일부터 허용
+    var sun=new Date(t);sun.setDate(t.getDate()-t.getDay());
+    var nextMon=new Date(sun);nextMon.setDate(sun.getDate()+8);
+    return _ymd(nextMon);
+  }
+  var n=parseInt(v)||0;if(n<=0)return null;
+  var b=new Date(t);b.setDate(t.getDate()-n); // n일 이전(포함)부터 과거는 잠금
+  return _ymd(b);
+}
+// 특정 work_date를 현재 사용자가 수정 가능한가 → '' 수정가능 / 'role','past','future' 잠금사유
+function schedLockReason(workDate){
+  if(!CU||!canEditSched())return 'role';
+  if(CU.role==='admin')return '';           // 관리자 무제한
+  if(workDate){
+    var pb=_schedPastBoundary();
+    if(pb && workDate<pb)return 'past';
+    var t=new Date();t.setHours(0,0,0,0);
+    var lim=new Date(t);lim.setDate(t.getDate()+_schedFwdDays());
+    if(workDate>_ymd(lim))return 'future';
+  }
+  return '';
+}
+function _schedLockMsg(reason){
+  if(reason==='role')return '스케줄 수정 권한이 없습니다.';
+  if(reason==='future')return '설정된 수정 가능 기간(팀장·조장 '+_schedFwdDays()+'일) 이후는 수정할 수 없습니다.';
+  var cfg=getCfg();
+  if(cfg.schedMinLockDays==='week')return '이번 주차 및 이전 스케줄은 수정할 수 없습니다.\n(다음 주차부터 수정 가능 · 관리자 전용)';
+  return '지난 스케줄은 수정할 수 없습니다. (관리자 전용)';
+}
 function todStr(){return kstToday();}
 function tomStr(){var d=new Date(kstToday()+'T12:00:00+09:00');d.setDate(d.getDate()+1);return kstDateStr(d);}
 
@@ -4938,13 +5014,25 @@ function pgSchedLog(){
       '</div>';
   }
   var isAdmin=CU.role==='admin';
-  var log=_getSchedLog();
+  // 관리자: 공유 변경이력(모든 수정자·기기) + 로컬 병합. 최초 진입 시 비동기 로드 후 재렌더.
+  var localLog=_getSchedLog();
+  var log;
+  if(isAdmin){
+    if(_sharedSchedLogCache===null){
+      _loadSharedSchedLog().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='sl')mc.innerHTML=pgSchedLog();});
+      log=localLog.slice();
+    }else{
+      log=_mergeSchedLogs(_sharedSchedLogCache,localLog);
+    }
+  }else{
+    log=localLog;
+  }
   // 최신순 정렬
   log.sort(function(a,b){return (b.at||'')>(a.at||'')?1:(b.at||'')<(a.at||'')?-1:0;});
-  // 열람 처리: 모두 read=true 로 표시
+  // 열람 처리(로컬 기준): 로컬 항목만 read 표시/저장
   var updated=false;
-  log.forEach(function(e){if(!e.read){e.read=true;updated=true;}});
-  if(updated){_saveSchedLog(log);updateNavDots();}
+  localLog.forEach(function(e){if(!e.read){e.read=true;updated=true;}});
+  if(updated){_saveSchedLog(localLog);updateNavDots();}
 
   // 시각 포맷 헬퍼
   function fmtAt(iso){
@@ -5013,8 +5101,10 @@ function pgSchedLog(){
       var adminFooter='';
       if(e.changedBy){
         var whoLabel=e.changedBy==='PC'?'PC 스케줄 프로그램':e.changedBy;
+        var _rt=e.role?({admin:'관리자',leader:'팀장',sub:'조장',driver:'기사'}[e.role]||''):'';
+        var _rtHtml=_rt?'<span style="background:#1E3A5A;color:#A3E4FF;font-size:10px;font-weight:800;padding:1px 7px;border-radius:10px;margin-left:6px">'+_rt+'</span>':'';
         adminFooter='<div style="margin-top:8px;padding-top:7px;border-top:1px solid #1E3A5A;font-size:11px;color:#7AAAC8">'
-          +'<span style="margin-right:8px">🖊 변경자: <b style="color:#90CAF9">'+whoLabel+'</b></span>'
+          +'<span style="margin-right:8px">🖊 변경자: <b style="color:#90CAF9">'+whoLabel+'</b>'+_rtHtml+'</span>'
           +'</div>';
       }
       return '<div style="background:linear-gradient(135deg,#1A3A5C 0%,#152E4A 100%);border:1px solid #2A5A8A;border-radius:14px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.25)">'
@@ -5039,9 +5129,17 @@ function pgSchedLog(){
     +cards;
 }
 
+function _mergeSchedLogs(shared,local){
+  var out=[],seen={};
+  function k(e){return (e.at||'').slice(0,16)+'|'+(e.workDate||'')+'|'+(e.route||'')+'|'+(e.newDriver||'');}
+  (shared||[]).forEach(function(e){var kk=k(e);if(seen[kk])return;seen[kk]=1;out.push(Object.assign({},e,{read:true}));});
+  (local||[]).forEach(function(e){var kk=k(e);if(seen[kk])return;seen[kk]=1;out.push(e);});
+  return out;
+}
 function clearSchedLog(){
   if(!CU||!confirm('변경이력을 모두 삭제할까요?'))return;
   _saveSchedLog([]);
+  if(CU.role==='admin'){_clearSharedSchedLog();_sharedSchedLogCache=[];}
   updateNavDots();
   document.getElementById('mc').innerHTML=pgSchedLog();
 }
@@ -5124,13 +5222,16 @@ function moveSchedWeek(delta){
 }
 function toggleEdit(){
   if(!EDIT_MODE && CU && CU.role!=='admin'){
-    // 팀장/조장: 90일째가 포함된 주차부터 수정 불가 (그 전주차까지만 허용)
-    var wkDate=new Date(SCHED_WK);
-    var todayD=new Date();todayD.setHours(0,0,0,0);
-    // 오늘+90일이 속한 주의 일요일(week_start) 계산
-    var limitDate=new Date(todayD);limitDate.setDate(todayD.getDate()+90);
-    var limitSunday=new Date(limitDate);limitSunday.setDate(limitDate.getDate()-limitDate.getDay());
-    if(wkDate>=limitSunday){alert('90일이상의 업무 수정은 제한되어있습니다.');return;}
+    if(!canEditSched()){alert(_schedLockMsg('role'));return;}
+    // 관리자 설정(수정 가능 기간 + 과거/해당주차 잠금)을 그대로 적용.
+    // 현재 보고 있는 주차의 7일이 전부 잠겨 있으면 편집 진입 자체를 막는다.
+    var allLocked=true, lastReason='past';
+    for(var _i=0;_i<7;_i++){
+      var _rz=schedLockReason(_ymdAdd(SCHED_WK,_i));
+      if(!_rz){allLocked=false;break;}
+      lastReason=_rz;
+    }
+    if(allLocked){alert(_schedLockMsg(lastReason));return;}
   }
   EDIT_MODE=!EDIT_MODE;
   document.getElementById('mc').innerHTML=pgFullSched();
@@ -5163,10 +5264,17 @@ function pgFullSched(){
       (EDIT_MODE?'&#x2714; 완료':'&#x270F; 수정')+'</button>';
   }
   var refreshBtn='<button id="sched-refresh-btn" onclick="schedRefresh()" style="background:#1565C0;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px;">&#x1F504; 새로고침</button>';
+  // 변경이력 바로가기 (관리자·팀장·조장)
+  var logBtn='';
+  if(CU&&(CU.role==='admin'||CU.role==='leader'||CU.role==='sub')){
+    var _un=(typeof _unreadSchedLog==='function')?_unreadSchedLog():0;
+    var _dot=_un?'<span style="position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;line-height:15px;background:#e53935;color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:0 3px">'+(_un>9?'9+':_un)+'</span>':'';
+    logBtn='<button onclick="go(\'sl\')" style="position:relative;background:#455a64;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px">&#x1F4CB; 변경이력'+_dot+'</button>';
+  }
   var h='<div class="sched-sticky-nav">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
       '<div style="font-size:15px;font-weight:800;color:#1a237e">&#x1F4C5; 전체 스케줄</div>'+
-      '<div style="display:flex;align-items:center;">'+editBtn+refreshBtn+'</div>'+
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:2px">'+editBtn+logBtn+refreshBtn+'</div>'+
     '</div>'+
     nav+
     '</div>';
@@ -5328,6 +5436,8 @@ function openEditCell(td){
   var lk=td.getAttribute('data-lk');
   var rt=td.getAttribute('data-rt');
   var dt=td.getAttribute('data-dt');
+  var _rz=schedLockReason(dt);
+  if(_rz){alert(_schedLockMsg(_rz));return;}
   EC_STATE={wk:wk,lk:lk,route:rt,date:dt};
   document.getElementById('ec-route').textContent=rt;
   document.getElementById('ec-date').textContent=dt;
@@ -5345,6 +5455,8 @@ function openEditCell(td){
 }
 function closeEditCell(){document.getElementById('edit-cell-modal').style.display='none';}
 function saveEditCell(){
+  var _rz=schedLockReason(EC_STATE&&EC_STATE.date);
+  if(_rz){alert(_schedLockMsg(_rz));closeEditCell();return;}
   var newName=document.getElementById('ec-name').value.trim();
   if(!newName){document.getElementById('ec-err').textContent='이름을 입력해주세요.';return;}
   var ovr=getSchedOvr();
@@ -5375,6 +5487,11 @@ function saveEditCell(){
   requestAnimationFrame(initSchedScrollSync);
   // UI 갱신 완료 후 서버 저장 (비동기 — 완료/실패 토스트 표시)
   sbSaveSchedOvr(key, newName);
+  // 변경이력: 로컬 + 공유(관리자 열람용) 동시 기록 — 실제 수정자로 기록
+  if(newName!==orig){
+    try{_addSchedChange(EC_STATE.date,EC_STATE.route,orig,newName,CU?CU.name:'');}catch(e){}
+    try{_pushSharedSchedChange(EC_STATE.date,EC_STATE.route,orig,newName);}catch(e){}
+  }
 }
 
 // ── SETTLEMENT ────────────────────────────────────────────────────────
