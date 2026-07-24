@@ -13267,9 +13267,12 @@ function _ddlMissCardHtml(log,ddl,kdate,kmon,nowK){
       +'<span style="font-size:13px;font-weight:700;color:#2a2f36">'+rqEsc(nm)+'</span>'+_cbadge(monCnt(nm))+'</div>';
   });
   if(cells.length%2===1) cells.push('<div style="padding:6px 12px;border-top:1px solid #f4e7c9;border-left:1px solid #f4e7c9"></div>');
+  var _dd=vis.map(function(e){return e.date;}).sort().slice(-1)[0]||kdate;
+  var _dp=String(_dd).split('-');
+  var _dispDate=String(parseInt(_dp[1],10))+'월 '+String(parseInt(_dp[2],10))+'일';
   return '<div style="background:#fff;border:1px solid #f1d493;border-radius:14px;overflow:hidden;margin-bottom:10px">'
     +'<div style="background:#fff3dc;padding:7px 12px;display:flex;align-items:center;gap:6px">'
-    +'<span style="font-size:12.5px;font-weight:700;color:#8a5300">&#x1F551; 팀플 마감 시간 미준수 <span style="color:#b06a00">'+rqEsc(ddl)+'</span> <span style="color:#a9895a;font-weight:400">( '+mLbl+'월 기준 )</span></span></div>'
+    +'<span style="font-size:12.5px;font-weight:700;color:#8a5300">&#x1F551; 팀플 마감 시간 미준수 <span style="color:#b06a00">'+rqEsc(ddl)+'</span> <span style="color:#a9895a;font-weight:400">( '+_dispDate+' 해당일 기준 )</span></span></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr">'+cells.join('')+'</div></div>';
 }
 function openFrDeadlinePopup(){
