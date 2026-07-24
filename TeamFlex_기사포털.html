@@ -13255,14 +13255,14 @@ function _ddlMissCardHtml(log,ddl,kdate,kmon,nowK){
   var mLbl=String(parseInt(kmon.slice(5),10));
   function monCnt(nm){return log.filter(function(e){return e.name===nm&&(e.date||'').slice(0,7)===kmon;}).length;}
   var rows=people.map(function(nm){
-    return '<div style="display:flex;align-items:center;padding:12px 14px;border-top:1px solid #f4e7c9">'
-      +'<span style="font-size:15px;font-weight:700;color:#2a2f36;flex:1">'+rqEsc(nm)+'</span>'
-      +'<span style="font-size:12px;font-weight:700;color:#6e4300;background:#f6d488;border:1px solid #e9bf63;padding:4px 11px;border-radius:20px;margin-right:9px">미준수</span>'
-      +'<span style="font-size:13px;font-weight:700;color:#b06a00">'+mLbl+'월 '+monCnt(nm)+'회</span></div>';
+    return '<div style="display:flex;align-items:center;padding:6px 14px;border-top:1px solid #f4e7c9">'
+      +'<span style="font-size:13.5px;font-weight:700;color:#2a2f36;flex:1">'+rqEsc(nm)+'</span>'
+      +'<span style="font-size:11px;font-weight:700;color:#6e4300;background:#f6d488;border:1px solid #e9bf63;padding:2px 9px;border-radius:20px;margin-right:8px">미준수</span>'
+      +'<span style="font-size:12px;font-weight:700;color:#b06a00">'+mLbl+'월 '+monCnt(nm)+'회</span></div>';
   }).join('');
   return '<div style="background:#fff;border:1px solid #f1d493;border-radius:14px;overflow:hidden;margin-bottom:10px">'
-    +'<div style="background:#fff3dc;padding:11px 12px;display:flex;align-items:center;gap:7px">'
-    +'<span style="font-size:13.5px;font-weight:700;color:#8a5300">&#x1F551; 팀플 마감 시간 미준수 <span style="color:#b06a00">'+rqEsc(ddl)+'</span></span></div>'
+    +'<div style="background:#fff3dc;padding:7px 12px;display:flex;align-items:center;gap:7px">'
+    +'<span style="font-size:12.5px;font-weight:700;color:#8a5300">&#x1F551; 팀플 마감 시간 미준수 <span style="color:#b06a00">'+rqEsc(ddl)+'</span></span></div>'
     +rows+'</div>';
 }
 function openFrDeadlinePopup(){
