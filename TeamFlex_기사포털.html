@@ -13254,16 +13254,23 @@ function _ddlMissCardHtml(log,ddl,kdate,kmon,nowK){
   });
   var mLbl=String(parseInt(kmon.slice(5),10));
   function monCnt(nm){return log.filter(function(e){return e.name===nm&&(e.date||'').slice(0,7)===kmon;}).length;}
-  var rows=people.map(function(nm){
-    return '<div style="display:flex;align-items:center;padding:6px 14px;border-top:1px solid #f4e7c9">'
-      +'<span style="font-size:13.5px;font-weight:700;color:#2a2f36;flex:1">'+rqEsc(nm)+'</span>'
-      +'<span style="font-size:11px;font-weight:700;color:#6e4300;background:#f6d488;border:1px solid #e9bf63;padding:2px 9px;border-radius:20px;margin-right:8px">미준수</span>'
-      +'<span style="font-size:12px;font-weight:700;color:#b06a00">'+mLbl+'월 '+monCnt(nm)+'회</span></div>';
-  }).join('');
+  function _cbadge(c){
+    var s;
+    if(c>=4) s='background:#e24b4a;color:#fff;border:1px solid #c93a39';
+    else if(c===3) s='background:#f0932f;color:#fff;border:1px solid #d97b1a';
+    else if(c===2) s='background:#f6c96a;color:#5a3a00;border:1px solid #e3ad3f';
+    else s='background:#faecc9;color:#8a5300;border:1px solid #ecd7a0';
+    return '<span style="font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;'+s+'">'+c+'회</span>';
+  }
+  var cells=people.map(function(nm,i){
+    return '<div style="padding:6px 12px;border-top:1px solid #f4e7c9;'+((i%2===1)?'border-left:1px solid #f4e7c9;':'')+'display:flex;align-items:center;justify-content:space-between">'
+      +'<span style="font-size:13px;font-weight:700;color:#2a2f36">'+rqEsc(nm)+'</span>'+_cbadge(monCnt(nm))+'</div>';
+  });
+  if(cells.length%2===1) cells.push('<div style="padding:6px 12px;border-top:1px solid #f4e7c9;border-left:1px solid #f4e7c9"></div>');
   return '<div style="background:#fff;border:1px solid #f1d493;border-radius:14px;overflow:hidden;margin-bottom:10px">'
-    +'<div style="background:#fff3dc;padding:7px 12px;display:flex;align-items:center;gap:7px">'
-    +'<span style="font-size:12.5px;font-weight:700;color:#8a5300">&#x1F551; 팀플 마감 시간 미준수 <span style="color:#b06a00">'+rqEsc(ddl)+'</span></span></div>'
-    +rows+'</div>';
+    +'<div style="background:#fff3dc;padding:7px 12px;display:flex;align-items:center;gap:6px">'
+    +'<span style="font-size:12.5px;font-weight:700;color:#8a5300">&#x1F551; 팀플 마감 시간 미준수 <span style="color:#b06a00">'+rqEsc(ddl)+'</span> <span style="color:#a9895a;font-weight:400">( '+mLbl+'월 기준 )</span></span></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr">'+cells.join('')+'</div></div>';
 }
 function openFrDeadlinePopup(){
   var cur=(window._FR_DDL||'19:50'); var pp=cur.split(':'); var hh=pp[0]||'19', mm=pp[1]||'50';
