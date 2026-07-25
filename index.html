@@ -13243,10 +13243,7 @@ function _ddlMissCardHtml(log,ddl,kdate,kmon,nowK,isAdm){
   if(!Array.isArray(log))log=[];
   var vis=log.filter(function(e){
     if(!e||!e.date||!e.name)return false;
-    if(isAdm){ return (e.date||'').slice(0,7)===kmon; } // 관리자: 이번 달 미준수 기록 만료 없이 상시 표시
-    var d=new Date(e.date+'T00:00:00Z');
-    var cutoff=new Date(d.getTime()+(24+18)*3600000); // 발생 다음날 18:00까지 (기사 노출)
-    return nowK.getTime()<=cutoff.getTime();
+    return (e.date||'')===kdate; // 발생한 당일에만 그날 미준수 인원 표시 (관리자·기사 동일). 날 지나면 사라짐. 뱃지는 그달 누적.
   });
   if(!vis.length)return '';
   var seen={},people=[];
