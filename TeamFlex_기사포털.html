@@ -12805,7 +12805,7 @@ async function loadFreshStatus(){
       if(_dl.data&&_dl.data[0]){var _dv=_dl.data[0].value;_ddlLog=(typeof _dv==='string')?JSON.parse(_dv):_dv;if(!Array.isArray(_ddlLog))_ddlLog=[];}
     }catch(_de){}
     window._FR_DDL=_ddl;
-    var _ddlCard=_ddlMissCardHtml(_ddlLog,_ddl,_kdate,_kmon,_nowK);
+    var _ddlCard=_ddlMissCardHtml(_ddlLog,_ddl,_kdate,_kmon,_nowK,isAdmin);
     var html=frKwPopupHtml+frTimePopupHtml+frNPH+'__ADMIN_BAR__'+
       '<div class="stit">&#x1F33F; 신선 현황</div>'+frKwBtn+
       _pddBtn+_ddlCard+r2Banner;
@@ -13239,12 +13239,13 @@ function _pddPeriod(off){
 }
 function _pddWon(n){return (n||0).toLocaleString('ko-KR')+'원';}
 // ── 팀플 마감 시간 미준수 카드 + 관리자 마감시간 설정 팝업 ──────────────
-function _ddlMissCardHtml(log,ddl,kdate,kmon,nowK){
+function _ddlMissCardHtml(log,ddl,kdate,kmon,nowK,isAdm){
   if(!Array.isArray(log))log=[];
   var vis=log.filter(function(e){
     if(!e||!e.date||!e.name)return false;
+    if(isAdm){ return (e.date||'').slice(0,7)===kmon; } // 관리자: 이번 달 미준수 기록 만료 없이 상시 표시
     var d=new Date(e.date+'T00:00:00Z');
-    var cutoff=new Date(d.getTime()+(24+18)*3600000); // 발생 다음날 18:00까지
+    var cutoff=new Date(d.getTime()+(24+18)*3600000); // 발생 다음날 18:00까지 (기사 노출)
     return nowK.getTime()<=cutoff.getTime();
   });
   if(!vis.length)return '';
