@@ -6318,6 +6318,11 @@ function pgAdminSettle(){
     if(md){all.push(Object.assign({name:name},md));}
   });
   all=all.filter(function(d){return d&&d.name;});
+  // [최신 업로드 기준] 해당 월에 settle_detail(데스크톱 정산프로그램 최신 연동)이 하나라도 있으면
+  //   그 월은 settle_detail 명단만 표시 → 옛 monthly_stats/하드코딩 잔재(예: 관리자(병국)=qudrnr81) 자동 제외.
+  //   settle_detail이 없는 옛 달은 종전대로 전체 표시.
+  var _hasSD=all.some(function(d){return d&&d._from_settle_detail;});
+  if(_hasSD){ all=all.filter(function(d){return d&&d._from_settle_detail;}); }
   all.sort(function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');});
   var total=all.reduce(function(s,d){return s+(d.net_pay||0);},0);
   var totalRev=all.reduce(function(s,d){return s+(d.total_rev||0);},0);
