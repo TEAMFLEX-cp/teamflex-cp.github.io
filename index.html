@@ -13248,7 +13248,9 @@ function _ddlMissCardHtml(log,ddl,kdate,kmon,nowK,isAdm){
   if(!Array.isArray(log))log=[];
   var vis=log.filter(function(e){
     if(!e||!e.date||!e.name)return false;
-    return (e.date||'')===kdate; // 발생한 당일에만 그날 미준수 인원 표시 (관리자·기사 동일). 날 지나면 사라짐. 뱃지는 그달 누적.
+    var d=new Date(e.date+'T00:00:00Z');
+    var cutoff=new Date(d.getTime()+(24+16)*3600000); // 발생 다음날 16:00까지 표시 (관리자·기사 동일). 뱃지는 그달 누적.
+    return nowK.getTime()<=cutoff.getTime();
   });
   if(!vis.length)return '';
   var seen={},people=[];
