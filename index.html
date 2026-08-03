@@ -8628,6 +8628,16 @@ async function mdAssignDriver(caseId){
   var sel=document.getElementById('md-assign-'+caseId);
   if(!sel||!sel.value){alert('지정할 기사를 선택하세요.');return;}
   var name=sel.value;
+  if(name==='__ALL__'){
+    if(!confirm('이 건을 전체 기사에게 알림 발송할까요?'))return;
+    var _cAll=(typeof _mdCases!=='undefined'&&_mdCases)?_mdCases.find(function(x){return x.id===caseId;}):null;
+    var _bodyAll=(_cAll&&(_cAll.issue_content||''))||'전체 확인이 필요한 건이 있습니다.';
+    try{ if(typeof sendPushToAll==='function') sendPushToAll('📦 [전체 알림] 오배송/회수 확인', _bodyAll, 'md_'+caseId); }catch(e){}
+    if(typeof showToast==='function')showToast('✔ 전체 기사에게 발송했습니다',true);
+    var _mAll=document.getElementById('md-detail-modal');if(_mAll){_mAll.style.display='none';}
+    if(typeof _mdOpenCaseId!=='undefined')_mdOpenCaseId=null;
+    return;
+  }
   var info=(getDB()||{})[name]||{};
   var did=info.id||'';
   var driver_id=(did&&did.indexOf('@')<0)?did+'@df':did;
@@ -8648,6 +8658,27 @@ async function mdAssignDriver(caseId){
     if(typeof _mdOpenCaseId!=='undefined')_mdOpenCaseId=null;
     if(typeof mdLoadCases==='function')mdLoadCases();
   }catch(e){alert('기사 지정 실패: '+((e&&e.message)||e));}
+}
+
+// 오배송으로 잘못 들어온 [공지] 건 등을 공지사항으로 전환 (관리자 전용, 실수 방지 확인)
+async function mdConvertToNotice(caseId){
+  var role=(CU&&CU.role)||'';
+  if(role!=='admin'){alert('관리자만 공지 전환이 가능합니다.');return;}
+  var c=(typeof _mdCases!=='undefined'&&_mdCases)?_mdCases.find(function(x){return x.id===caseId;}):null;
+  if(!c){alert('건을 찾을 수 없습니다.');return;}
+  if(!confirm('이 건을 공지사항으로 전환할까요?\n(오배송 목록에서 빠지고 전체 공지로 등록·발송됩니다)'))return;
+  var body=(c.issue_content||'').trim();
+  var title=(body.split('\n')[0]||'공지사항').replace(/^\[공지\]\s*/,'').slice(0,60)||'공지사항';
+  var imgs=[];try{imgs=(typeof c.image_urls==='string')?JSON.parse(c.image_urls||'[]'):(c.image_urls||[]);}catch(e){imgs=[];}
+  if(!Array.isArray(imgs))imgs=[];
+  try{
+    sbSaveAnn({title:'[공지] '+title, content:body, images:imgs, important:true, author:(CU&&CU.name)||'관리자'});
+    await sbClient.from('misdelivery_cases').update({status:'deleted'}).eq('id',caseId);
+    if(typeof showToast==='function')showToast('✔ 공지사항으로 전환했습니다',true);
+    var m=document.getElementById('md-detail-modal');if(m){m.style.display='none';}
+    if(typeof _mdOpenCaseId!=='undefined')_mdOpenCaseId=null;
+    if(typeof mdLoadCases==='function')mdLoadCases();
+  }catch(e){alert('공지 전환 실패: '+((e&&e.message)||e));}
 }
 
 // ── 기사 답변 사진 업로드 ─────────────────────────────────────────────
@@ -8927,7 +8958,8 @@ function mdOpenDetail(caseId){
     var apprLabel=(c.status==='replied')?'✅ 승인 (팀즈답글 게시)':(c.status==='rejected')?'✅ 기존 답변 재승인':'✅ 승인 (팀즈답글) — 기사 답변 후 활성화';
     var _adb=getDB();
     var _adnames=Object.keys(_adb).filter(function(n){return _adb[n]&&(_adb[n].status||'')!=='inactive';}).sort();
-    var _adopts='<option value="">기사 선택…</option>'+_adnames.map(function(n){return '<option value="'+mdEsc(n)+'"'+(n===c.driver_name?' selected':'')+'>'+mdEsc(n)+'</option>';}).join('');
+    var _hasDrv=_adnames.indexOf(c.driver_name)>=0;
+    var _adopts='<option value="__ALL__" style="color:#e65100;font-weight:800;background:#fff3e0">📢 전체 기사 (ALL)</option><option value=""'+(_hasDrv?'':' selected')+'>기사 선택…</option>'+_adnames.map(function(n){return '<option value="'+mdEsc(n)+'"'+(n===c.driver_name?' selected':'')+'>'+mdEsc(n)+'</option>';}).join('');
     var assignRow='<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px"><span style="font-size:12px;color:#5c6bc0;font-weight:700;white-space:nowrap">👤 기사 지정</span><select id="md-assign-'+c.id+'" style="flex:1;min-width:0;padding:8px;border:1px solid #cfd8dc;border-radius:8px;font-size:13px">'+_adopts+'</select><button onclick="mdAssignDriver('+c.id+')" style="padding:8px 12px;background:#5c6bc0;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">지정</button></div>';
     // [승인취소] 처리완료(approved) 건을 관리자만 "재요청"으로 되돌리기 → 기사 다시 답변 가능
     var reopenBtn=(isAdmin&&c.status==='approved')?
@@ -8943,6 +8975,7 @@ function mdOpenDetail(caseId){
           '<button onclick="mdMarkNotSent('+c.id+')" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📤 미전송완료</button>'+
           '<button onclick="mdDeleteCase('+c.id+')" style="flex:1;padding:10px;background:#ffebee;color:#c62828;border:1.5px solid #c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑️ 삭제</button>'+
         '</div>':'')+
+      (isAdmin?'<div style="border-top:1px dashed #e0e0e6;margin-top:14px;padding-top:12px"><button onclick="mdConvertToNotice('+c.id+')" style="width:100%;padding:11px;background:#fff;color:#c65a00;border:1.5px solid #ffcf99;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">📢 공지사항으로 전환</button></div>':'')+
     '</div>';
   }
   var el=document.getElementById('md-detail-modal');
