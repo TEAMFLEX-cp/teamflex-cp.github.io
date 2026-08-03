@@ -8663,7 +8663,7 @@ async function mdAssignDriver(caseId){
 // 오배송으로 잘못 들어온 [공지] 건 등을 공지사항으로 전환 (관리자 전용, 실수 방지 확인)
 async function mdConvertToNotice(caseId){
   var role=(CU&&CU.role)||'';
-  if(role!=='admin'){alert('관리자만 공지 전환이 가능합니다.');return;}
+  if(role!=='admin'&&role!=='leader'){alert('관리자·팀장만 공지 전환이 가능합니다.');return;}
   var c=(typeof _mdCases!=='undefined'&&_mdCases)?_mdCases.find(function(x){return x.id===caseId;}):null;
   if(!c){alert('건을 찾을 수 없습니다.');return;}
   if(!confirm('이 건을 공지사항으로 전환할까요?\n(오배송 목록에서 빠지고 전체 공지로 등록·발송됩니다)'))return;
@@ -8975,7 +8975,7 @@ function mdOpenDetail(caseId){
           '<button onclick="mdMarkNotSent('+c.id+')" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📤 미전송완료</button>'+
           '<button onclick="mdDeleteCase('+c.id+')" style="flex:1;padding:10px;background:#ffebee;color:#c62828;border:1.5px solid #c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑️ 삭제</button>'+
         '</div>':'')+
-      (isAdmin?'<div style="border-top:1px dashed #e0e0e6;margin-top:14px;padding-top:12px"><button onclick="mdConvertToNotice('+c.id+')" style="width:100%;padding:11px;background:#fff;color:#c65a00;border:1.5px solid #ffcf99;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">📢 공지사항으로 전환</button></div>':'')+
+      ((isAdmin||isLeader)?'<div style="border-top:1px dashed #e0e0e6;margin-top:14px;padding-top:12px"><button onclick="mdConvertToNotice('+c.id+')" style="width:100%;padding:11px;background:#fff;color:#c65a00;border:1.5px solid #ffcf99;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">📢 공지사항으로 전환</button></div>':'')+
     '</div>';
   }
   var el=document.getElementById('md-detail-modal');
