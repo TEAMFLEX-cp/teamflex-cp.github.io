@@ -8712,6 +8712,29 @@ function mdRemovePhoto(caseId,idx){
   var prev=document.getElementById('md-fpreview-'+caseId);
   if(prev){prev.innerHTML='';(_mdReplyPhotos[caseId]||[]).forEach(function(f,i){var fr=new FileReader();fr.onload=function(e){var d=document.createElement('div');d.style.cssText='position:relative;display:inline-block;margin:2px';d.innerHTML='<img src="'+e.target.result+'" style="width:70px;height:55px;object-fit:cover;border-radius:8px"><button onclick="mdRemovePhoto('+caseId+','+i+')" style="position:absolute;top:-5px;right:-5px;background:#c62828;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;line-height:1;padding:0">✕</button>';prev.appendChild(d);};fr.readAsDataURL(f);});}
 }
+function _mdCompressImage(file){
+  return new Promise(function(resolve){
+    try{
+      if(!file||!/^image\//.test(file.type||'')){resolve(file);return;}
+      var url=URL.createObjectURL(file);
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var MAX=1280,w=img.naturalWidth,h=img.naturalHeight;
+          if(Math.max(w,h)>MAX){var r=MAX/Math.max(w,h);w=Math.round(w*r);h=Math.round(h*r);}
+          var cv=document.createElement('canvas');cv.width=w;cv.height=h;
+          cv.getContext('2d').drawImage(img,0,0,w,h);
+          cv.toBlob(function(blob){
+            URL.revokeObjectURL(url);
+            resolve((blob&&blob.size>0&&blob.size<(file.size||Infinity))?blob:file);
+          },'image/jpeg',0.72);
+        }catch(e){URL.revokeObjectURL(url);resolve(file);}
+      };
+      img.onerror=function(){URL.revokeObjectURL(url);resolve(file);};
+      img.src=url;
+    }catch(e){resolve(file);}
+  });
+}
 async function mdUploadReplyPhotos(caseId){
   var files=(_mdReplyPhotos[caseId]||[]);
   if(!files.length)return[];
@@ -8719,13 +8742,11 @@ async function mdUploadReplyPhotos(caseId){
   var failCount=0;
   for(var i=0;i<files.length;i++){
     var file=files[i];
-    // 확장자 추출 (MIME 타입 우선, 없으면 파일명, 없으면 jpg)
-    var ext='jpg';
-    if(file.type){ext=file.type.split('/').pop().replace('jpeg','jpg');}
-    else if(file.name&&file.name.includes('.')){ext=file.name.split('.').pop()||'jpg';}
-    var path='reply-photos/'+caseId+'/'+Date.now()+'-'+i+'.'+ext;
+    // [egress 절감] 업로드 전 압축(긴변 1280px·JPEG 0.72 → 보통 300~500KB). 앱 표시·팀즈 게시 동일, 전송량만 감소.
+    var up=await _mdCompressImage(file);
+    var path='reply-photos/'+caseId+'/'+Date.now()+'-'+i+'.jpg';
     try{
-      var {data,error}=await sbClient.storage.from('photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:true});
+      var {data,error}=await sbClient.storage.from('photos').upload(path,up,{contentType:'image/jpeg',upsert:true});
       if(!error){
         var {data:ud}=sbClient.storage.from('photos').getPublicUrl(path);
         if(ud&&ud.publicUrl)urls.push(ud.publicUrl);
