@@ -9605,6 +9605,7 @@ function ghYM(){var d=new Date(Date.now()+9*3600000);return d.getUTCFullYear()+'
 function ghMonthLabel(){var d=new Date(Date.now()+9*3600000);return (d.getUTCMonth()+1)+'월';}
 var GH_GAMES=[
   {v:'ballsort',ic:'🧪',t:'구슬 모으기',g:'linear-gradient(135deg,#3a2a83,#6b53d4)',rank:true},
+  {v:'sudoku',ic:'🔢',t:'스도쿠',g:'linear-gradient(135deg,#3949ab,#5c6bc0)',rank:true},
   {v:'roulette',ic:'🎯',t:'팀플 운빨',d:'마블 룰렛 행운 추첨',g:'linear-gradient(135deg,#b71c5e,#7b1fa2)',rank:false},
   {v:'tetris',ic:'🟦',t:'테트리스',g:'linear-gradient(135deg,#1565c0,#42a5f5)',rank:true},
   {v:'flap',ic:'🚚',t:'팀플 점프',g:'linear-gradient(135deg,#0277bd,#26c6da)',rank:true},
@@ -9701,7 +9702,7 @@ function ghEnterHub(){try{ghFlushPlay();}catch(e){}if(GH.raf){try{cancelAnimatio
 function ghRemoveKeys(){try{document.removeEventListener('keydown',g48Key);document.removeEventListener('keydown',gFlapKey);document.removeEventListener('keydown',gStackKey);document.removeEventListener('keydown',gTetKey);document.removeEventListener('keydown',gRunKey);document.removeEventListener('keydown',gJumpKey);document.removeEventListener('keyup',gJumpKeyUp);document.removeEventListener('keydown',gMatchKey);document.removeEventListener('keydown',gTowerKey);document.removeEventListener('keydown',gTimberKey);document.removeEventListener('keydown',gKnifeKey);}catch(e){}}
 function ghOpen(v){if(v==='roulette'){if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;GH.view='roulette';GH.gamePlaying='roulette';GH.gameStart=Date.now();var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgArcade();setTimeout(arcInit,40);}return;}ghStartGame(v);}
 function ghStartGame(g){ghInjectStyle();ghAudio();if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}GH.raf=0;}GH.gen++;ghRemoveKeys();GH.view=g;GH.gamePlaying=g;GH.gameStart=Date.now();var pop=document.getElementById('gh-pop');if(!pop)return;var _IFR={ballsort:'구슬모으기.html'};if(_IFR[g]){pop.innerHTML='<div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:9px 12px;background:#0d1117"><button onclick="ghEnterHub()" style="background:#2a2f3d;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer">← 나가기</button><div style="color:#fff;font-weight:700">'+ghGameInfo(g).ic+' '+ghGameInfo(g).t+'</div></div><iframe src="'+_IFR[g]+'?ts='+Date.now()+'" style="width:100%;height:calc(100vh - 54px);border:none;display:block;background:#161b22"></iframe>';pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}return;}pop.innerHTML=ghGameShell(g);pop.style.display='block';pop.scrollTop=0;try{document.body.style.overflow='hidden';}catch(e){}
-  setTimeout(function(){if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();else if(g==='runner')gRunStart();else if(g==='jump')gJumpStart();else if(g==='match')gMatchStart();else if(g==='tower')gTowerStart();else if(g==='timber')gTimberStart();else if(g==='knife')gKnifeStart();else if(g==='sichuan')gSichuanStart();},40);}
+  setTimeout(function(){if(g==='sudoku')gSudokuStart();else if(g==='2048')g48Start();else if(g==='flap')gFlapStart();else if(g==='stack')gStackStart();else if(g==='tetris')gTetStart();else if(g==='suika')gSuikaStart();else if(g==='omok')gOmokStart();else if(g==='runner')gRunStart();else if(g==='jump')gJumpStart();else if(g==='match')gMatchStart();else if(g==='tower')gTowerStart();else if(g==='timber')gTimberStart();else if(g==='knife')gKnifeStart();else if(g==='sichuan')gSichuanStart();},40);}
 function ghBack(){ghEnterHub();}
 /* ── 게임 완전 정리: 모든 루프/타이머/오디오/상태 해제 (본앱 렉 방지) ── */
 function ghKill(){
@@ -9862,7 +9863,7 @@ function ghGameShell(g){var m=ghGameMeta(g);
     +'<div id="g-board" style="margin:18px auto 0;max-width:460px;width:100%"></div>'
   +'</div>';
 }
-function ghFmtScore(game,score){if(game==='match'||game==='sichuan'){return (100000/Math.max(1,score)).toFixed(1)+'초';}if(game==='jump'){return score+'층';}return score;}
+function ghFmtScore(game,score){if(game==='match'||game==='sichuan'){return (100000/Math.max(1,score)).toFixed(1)+'초';}if(game==='jump'){return score+'층';}if(game==='sudoku'){return score+'단계';}return score;}
 function ghRenderBoard(g){var el=document.getElementById('g-board');if(!el)return;var arr=GH.board[g];var me=String(ghUid());
   var html='<div style="font-weight:800;font-size:13px;margin-bottom:8px;color:#ffd54f">🏆 '+ghMonthLabel()+' 랭킹 TOP 20</div>';
   if(GH.loadingB)html+='<div style="color:#90a4ae;font-size:12px">불러오는 중…</div>';
@@ -9874,6 +9875,61 @@ function ghRenderBoard(g){var el=document.getElementById('g-board');if(!el)retur
       html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;background:'+(mine?'#4a3b00':'#ffffff10')+';border:1px solid '+(mine?'#ffd54f':'#ffffff14')+'"><span style="font-size:14px;min-width:22px;text-align:center">'+rk+'</span><span style="font-weight:'+(mine?'900':'600')+';font-size:13px;color:'+(mine?'#fff59d':'#eceff1')+'">'+x.uname+(mine?' (나)':'')+'</span><span style="margin-left:auto;font-weight:900;font-size:14px;color:#ffd54f">'+ghFmtScore(g,x.score)+'</span></div>';});
     html+='</div>';}
   el.innerHTML=html;
+}
+/* ════════ 게임: 스도쿠 (스테이지·5단위 난이도·월별 이어하기) ════════ */
+var SUD={stage:1,puz:[],sol:[],given:[],sel:-1,mist:0,gen:0};
+function _sudMonKey(){return 'sud_stage_'+((typeof ghMonthLabel==='function')?ghMonthLabel():new Date().toISOString().slice(0,7));}
+function _sudResumeStage(){try{var v=parseInt(localStorage.getItem(_sudMonKey()),10);return (v&&v>0)?v:1;}catch(e){return 1;}}
+function _sudSaveStage(s){try{localStorage.setItem(_sudMonKey(),String(s));}catch(e){}}
+function _sudShuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function _sudOk(bd,r,c,n){var x,y;for(x=0;x<9;x++){if(bd[r*9+x]===n)return false;if(bd[x*9+c]===n)return false;}var br=Math.floor(r/3)*3,bc=Math.floor(c/3)*3;for(y=0;y<3;y++)for(x=0;x<3;x++){if(bd[(br+y)*9+(bc+x)]===n)return false;}return true;}
+function _sudFill(bd){for(var i=0;i<81;i++){if(bd[i]===0){var r=Math.floor(i/9),c=i%9,nums=_sudShuffle([1,2,3,4,5,6,7,8,9]);for(var k=0;k<9;k++){var n=nums[k];if(_sudOk(bd,r,c,n)){bd[i]=n;if(_sudFill(bd))return true;bd[i]=0;}}return false;}}return true;}
+function _sudDifficulty(stage){var tier=Math.floor((stage-1)/5);var rem=36+tier*3;return rem>54?54:rem;}
+function _sudDifLabel(stage){var t=Math.floor((stage-1)/5);return ['쉬움','보통','어려움','고수','전문가','마스터'][t>5?5:t];}
+function _sudGen(stage){var sol=[];for(var q=0;q<81;q++)sol.push(0);_sudFill(sol);var puz=sol.slice();var rem=_sudDifficulty(stage);var idx=[];for(var w=0;w<81;w++)idx.push(w);_sudShuffle(idx);for(var k=0;k<rem;k++){puz[idx[k]]=0;}return {sol:sol,puz:puz};}
+function gSudokuStart(){SUD.gen=(GH.gen||0);SUD.stage=_sudResumeStage();_sudLoadStage();}
+function _sudLoadStage(){var g=_sudGen(SUD.stage);SUD.sol=g.sol;SUD.puz=g.puz.slice();SUD.given=g.puz.map(function(v){return v!==0;});SUD.sel=-1;SUD.mist=0;_sudSaveStage(SUD.stage);_sudRender();}
+function _sudSelect(i){if(SUD.given[i])return;SUD.sel=i;_sudRender();}
+function _sudInput(n){if(SUD.sel<0||SUD.given[SUD.sel])return;if(n===0){SUD.puz[SUD.sel]=0;}else{SUD.puz[SUD.sel]=n;if(SUD.sol[SUD.sel]!==n){SUD.mist++;try{ghSfx('over');}catch(e){}}else{try{ghSfx('merge');}catch(e){}}}_sudRender();_sudCheckWin();}
+function _sudCheckWin(){for(var i=0;i<81;i++){if(SUD.puz[i]!==SUD.sol[i])return;}try{ghSfx('merge');}catch(e){}var cleared=SUD.stage;SUD.stage++;_sudSaveStage(SUD.stage);try{if(typeof ghSave==='function')ghSave('sudoku',cleared);}catch(e){}_sudWinScreen(cleared);}
+function _sudRender(){
+  if(SUD.gen!==(GH.gen||0))return;
+  var st=document.getElementById('g-stage');
+  if(st)st.innerHTML='<div style="color:#fff;font-weight:900;font-size:16px">스테이지 '+SUD.stage+' &middot; <span style="color:#ffd54f">'+_sudDifLabel(SUD.stage)+'</span></div><div style="color:#90a4ae;font-size:12px;margin-top:3px">실수 '+SUD.mist+'회 &middot; 5스테이지마다 난이도 상승 &middot; 진행 자동 저장(이달)</div>';
+  var b=document.getElementById('g-board');if(!b)return;
+  var selR=SUD.sel>=0?Math.floor(SUD.sel/9):-1,selC=SUD.sel>=0?SUD.sel%9:-1,selV=SUD.sel>=0?SUD.puz[SUD.sel]:0;
+  var h='<div style="display:grid;grid-template-columns:repeat(9,1fr);background:#0d1117;border:2px solid #eceff1;border-radius:6px;overflow:hidden;max-width:380px;margin:0 auto">';
+  for(var i=0;i<81;i++){
+    var r=Math.floor(i/9),c=i%9,v=SUD.puz[i],given=SUD.given[i];
+    var wrong=(v!==0&&v!==SUD.sol[i]);
+    var isSel=(i===SUD.sel);
+    var peer=(selR>=0&&(r===selR||c===selC||(Math.floor(r/3)===Math.floor(selR/3)&&Math.floor(c/3)===Math.floor(selC/3))));
+    var same=(selV>0&&v===selV&&!wrong);
+    var bg=isSel?'#3949ab':(same?'#1a3a6b':(peer?'#1a2130':'#161b22'));
+    var col=given?'#eceff1':(wrong?'#ff5252':'#64b5f6');
+    var bl=(c%3===0)?'2px':'1px',bt=(r%3===0)?'2px':'1px';
+    h+='<div onclick="_sudSelect('+i+')" style="aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:'+(given?'900':'700')+';color:'+col+';background:'+bg+';border-left:'+bl+' solid #37474f;border-top:'+bt+' solid #37474f;cursor:'+(given?'default':'pointer')+'">'+(v||'')+'</div>';
+  }
+  h+='</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(9,1fr);gap:5px;max-width:380px;margin:12px auto 0">';
+  for(var n=1;n<=9;n++){h+='<button onclick="_sudInput('+n+')" style="aspect-ratio:1/1.15;background:#263043;color:#fff;border:1px solid #3a4763;border-radius:8px;font-size:18px;font-weight:800;cursor:pointer">'+n+'</button>';}
+  h+='</div>';
+  h+='<div style="display:flex;gap:8px;max-width:380px;margin:8px auto 0">'
+    +'<button onclick="_sudInput(0)" style="flex:1;padding:10px;background:#37474f;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer">지우기</button>'
+    +'<button onclick="_sudLoadStage()" style="flex:1;padding:10px;background:#5d4037;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer">새 판</button>'
+    +'</div>';
+  b.innerHTML=h;
+}
+function _sudWinScreen(cleared){
+  var st=document.getElementById('g-stage');if(st)st.innerHTML='';
+  var b=document.getElementById('g-board');if(!b)return;
+  b.innerHTML='<div style="text-align:center;padding:38px 16px;color:#fff">'
+    +'<div style="font-size:44px;margin-bottom:8px">&#x1F389;</div>'
+    +'<div style="font-size:22px;font-weight:900;color:#ffd54f;margin-bottom:6px">스테이지 '+cleared+' 클리어!</div>'
+    +'<div style="font-size:13px;color:#90a4ae;margin-bottom:20px">다음: 스테이지 '+SUD.stage+' ('+_sudDifLabel(SUD.stage)+')</div>'
+    +'<button onclick="_sudLoadStage()" style="padding:12px 28px;background:#3949ab;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">다음 스테이지 &rarr;</button>'
+    +'<div style="margin-top:14px"><button onclick="ghBack()" style="padding:9px 18px;background:transparent;border:1px solid #ffffff33;border-radius:10px;color:#cfd8dc;font-size:13px;cursor:pointer">게임 목록으로 (진행 저장됨)</button></div>'
+    +'</div>';
 }
 /* ════════ 게임1: 2048 ════════ */
 var G48={g:[],sc:0,over:false};
