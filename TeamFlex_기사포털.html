@@ -11727,19 +11727,27 @@ function pbLoadPdfJs(cb){
 function _pbPeriod(dk){var m=String(dk).match(/(\d{4})-(\d{2})-(\d{2})/);if(!m)return '';var y=+m[1],mo=+m[2],d=+m[3],py=y,pm=mo;if(d>=26){pm=mo+1;if(pm>12){pm=1;py=y+1;}}return py+'-'+('0'+pm).slice(-2);}
 function _pbHash(s){var h=5381;for(var i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;return ('0000000'+h.toString(16)).slice(-8);}
 function _pbImgToJpeg(img){return new Promise(function(res){try{
-  var w=img.width,h=img.height,src=img.data,kind=img.kind,i,j;
+  if(!img){res(null);return;}
+  var w=img.width,h=img.height,i,j;
+  if(!w||!h){res(null);return;}
   var cv=document.createElement('canvas');cv.width=w;cv.height=h;var ctx=cv.getContext('2d');
-  var id=ctx.createImageData(w,h),d=id.data;
-  if(kind===2){for(i=0,j=0;i<w*h;i++,j+=4){d[j]=src[i*3];d[j+1]=src[i*3+1];d[j+2]=src[i*3+2];d[j+3]=255;}}
-  else if(kind===1){for(i=0,j=0;i<w*h;i++,j+=4){d[j]=d[j+1]=d[j+2]=src[i];d[j+3]=255;}}
-  else{d.set(src.subarray(0,w*h*4));}
-  ctx.putImageData(id,0,0);cv.toBlob(function(b){res(b);},'image/jpeg',0.72);
+  if(img.bitmap){            // 브라우저 pdf.js: 디코드된 이미지가 ImageBitmap으로 옴
+    ctx.drawImage(img.bitmap,0,0,w,h);
+  } else if(img.data){       // 원시 배열(kind 2=RGB, 1=Gray, 그 외 RGBA)
+    var src=img.data,kind=img.kind,id=ctx.createImageData(w,h),d=id.data;
+    if(kind===2){for(i=0,j=0;i<w*h;i++,j+=4){d[j]=src[i*3];d[j+1]=src[i*3+1];d[j+2]=src[i*3+2];d[j+3]=255;}}
+    else if(kind===1){for(i=0,j=0;i<w*h;i++,j+=4){d[j]=d[j+1]=d[j+2]=src[i];d[j+3]=255;}}
+    else{d.set(src.subarray(0,w*h*4));}
+    ctx.putImageData(id,0,0);
+  } else { res(null); return; }
+  cv.toBlob(function(b){res(b);},'image/jpeg',0.72);
 }catch(e){res(null);}});}
 async function _pbUpload(blob,path){
   if(!blob)return '';
-  try{await fetch(SB_URL+'/storage/v1/object/pback-images/'+path,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'image/jpeg','x-upsert':'true'},body:blob});}catch(e){}
+  try{var r=await fetch(SB_URL+'/storage/v1/object/pback-images/'+path,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'image/jpeg','x-upsert':'true'},body:blob});if(!(r&&(r.ok||r.status===200||r.status===201))){_pbUplErr='업로드 HTTP '+(r?r.status:'?');return '';}}catch(e){_pbUplErr='업로드 예외: '+(e&&e.message||e);return '';}
   return SB_URL+'/storage/v1/object/public/pback-images/'+path;
 }
+var _pbUplErr='';
 async function _pbExtract(buf){
   var pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;var OPS=pdfjsLib.OPS;var out=[];
   function mul(a,b){return [a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];}
@@ -11779,7 +11787,7 @@ async function _pbDoPdf(file){
         if(e.share){try{var sh=typeof e.share==='string'?JSON.parse(e.share):e.share;(sh||[]).forEach(function(s){(s.routes||[]).forEach(function(rt){put(rt,s.driver);});});}catch(ex){}}
       });
     }catch(e){}
-    var recs=[],skipped=0,no=0,photoOk=0,unmk=[];
+    var recs=[],skipped=0,no=0,photoOk=0,imgMade=0,unmk=[];_pbUplErr='';
     for(var i=0;i<rows.length;i++){no++;var r=rows[i];
       var _mk=r.pdd_date+'|'+String(r.route).replace(/_/g,'').toUpperCase();
       var drv=dmap[_mk]||'';
@@ -11787,19 +11795,22 @@ async function _pbDoPdf(file){
       var per=_pbPeriod(r.pdd_date);if(!per)continue;
       var src=per+'|'+r.pdd_date+'|'+r.route+'|'+drv+'|'+no;var key=_pbHash(src);
       var mu='',du='';
-      if(r.miss){var b=await _pbImgToJpeg(r.miss);if(b){mu=await _pbUpload(b,per+'/'+key+'_miss.jpg');photoOk++;}}
-      if(r.deliver){var b2=await _pbImgToJpeg(r.deliver);if(b2){du=await _pbUpload(b2,per+'/'+key+'_deliver.jpg');photoOk++;}}
+      if(r.miss){var b=await _pbImgToJpeg(r.miss);if(b){imgMade++;mu=await _pbUpload(b,per+'/'+key+'_miss.jpg');if(mu)photoOk++;}}
+      if(r.deliver){var b2=await _pbImgToJpeg(r.deliver);if(b2){imgMade++;du=await _pbUpload(b2,per+'/'+key+'_deliver.jpg');if(du)photoOk++;}}
       recs.push({period:per,pdd_date:r.pdd_date,driver_name:drv,type:r.type,camp:r.camp,route:r.route,photo_miss_url:mu,photo_deliver_url:du,status:'pending',src_key:src});
       if(st)st.textContent='사진 처리·업로드 중… ('+(i+1)+'/'+rows.length+')';
     }
-    var diag='📄 PDF 처리 결과\n\n추출 행: '+rows.length+'\n날짜: '+dates.join(', ')+'\n스케줄 행(그 날짜): '+schRows+'\n기사 매칭: '+recs.length+'건\n미매칭 제외: '+skipped+'건\n사진 추출: '+photoOk+'장';
+    var diag='📄 PDF 처리 결과\n\n추출 행: '+rows.length+'\n기사 매칭: '+recs.length+'건 / 미매칭 '+skipped+'\n사진 변환: '+imgMade+'장\n사진 업로드 성공: '+photoOk+'장';
+    if(_pbUplErr)diag+='\n업로드 오류: '+_pbUplErr;
     if(unmk.length)diag+='\n미매칭 키 예: '+unmk.join(' , ');
     if(!recs.length){alert(diag+'\n\n❌ 매칭 0건.\n'+(schRows===0?'→ 그 날짜의 스케줄이 앱(weekly_schedules)에 없습니다. 과거 주차라 앱에 없을 수 있어요.':'→ 스케줄은 '+schRows+'행 있는데 라우트 키가 안 맞습니다. 위 미매칭 키 형식 확인 필요.'));if(st)st.textContent='❌ 매칭 0건';return;}
     var ins=await sbClient.from('pback_somyeong').upsert(recs,{onConflict:'src_key',ignoreDuplicates:true});
     if(ins&&ins.error){alert(diag+'\n\n❌ 저장 실패:\n'+(ins.error.message||'')+'\n(code: '+(ins.error.code||'')+')');if(st)st.textContent='❌ 저장 실패: '+ins.error.message;return;}
+    var updCnt=0;
+    for(var u=0;u<recs.length;u++){var rc=recs[u];if(!rc.photo_miss_url&&!rc.photo_deliver_url)continue;try{await sbClient.from('pback_somyeong').update({photo_miss_url:rc.photo_miss_url,photo_deliver_url:rc.photo_deliver_url}).eq('src_key',rc.src_key);updCnt++;}catch(e){}if(st)st.textContent='기존 건 사진 반영… ('+(u+1)+'/'+recs.length+')';}
     var cnt=0,per0=(recs[0]&&recs[0].period)||'';try{var chk=await sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',per0);cnt=(chk&&chk.count)||0;}catch(e){}
-    alert(diag+'\n\n✅ 저장 완료 (중복은 무시)\n현재 '+per0+' 총 '+cnt+'건 등록됨');
-    if(st)st.textContent='✅ 완료 · '+recs.length+'건 (사진 '+photoOk+'장, 미매칭 '+skipped+')';
+    alert(diag+'\n\n✅ 저장 완료\n기존 건 사진 반영: '+updCnt+'건\n현재 '+per0+' 총 '+cnt+'건 등록됨');
+    if(st)st.textContent='✅ 완료 · 사진업로드 '+photoOk+' / 반영 '+updCnt+' / 미매칭 '+skipped;
     try{showToast('✅ 프백 소명 '+recs.length+'건',true);}catch(e){}
     pbInit();
   }catch(e){alert('📄 PDF 처리 오류\n\n'+((e&&e.stack)||(e&&e.message)||e));if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}
