@@ -11404,6 +11404,16 @@ async function _lossDoImport(file){
         C_ID=_lossFindCol(hdr,['ID','아이디']),C_NAME=_lossFindCol(hdr,['이름','성명','기사명']),
         C_DET=_lossFindCol(hdr,['상세']),C_AMT=_lossFindCol(hdr,['차감금액','금액']),
         C_WB=_lossFindCol(hdr,['운송장번호','운송장']),C_PRD=_lossFindCol(hdr,['상품명(상세)','상품명']);
+    // ID→이름 매핑 (drivers 테이블: login_id/driver_id → name)
+    var idMap={};
+    try{
+      var drvR=await sbClient.from('drivers').select('name,login_id,driver_id');
+      if(drvR&&drvR.data){drvR.data.forEach(function(d){
+        if(!d.name)return;
+        if(d.login_id)idMap[String(d.login_id).replace(/@df$/i,'').trim()]=d.name;
+        if(d.driver_id)idMap[String(d.driver_id).replace(/@df$/i,'').trim()]=d.name;
+      });}
+    }catch(e){}
     var newRecs=[];
     for(var r=hi+1;r<rows.length;r++){
       var row=rows[r]; if(!row)continue;
@@ -11413,7 +11423,7 @@ async function _lossDoImport(file){
       var wbs=String(wbno).trim();
       var did=String(g(C_ID)||'').trim().replace(/@df$/i,'').trim();
       var xn=C_NAME>=0?String(g(C_NAME)||'').trim():'';
-      var name=xn||did||'미지정';
+      var name=xn||idMap[did]||did||'미지정';
       var amt=parseInt(String(g(C_AMT)==null?'':g(C_AMT)).replace(/[^0-9.-]/g,''),10)||0;
       newRecs.push({wb:wbs,date:_lossFmtImp(g(C_DATE)),camp:String(g(C_CAMP)||''),driver_id:did,driver_name:name,detail:String(g(C_DET)||''),amount:amt,product:String(g(C_PRD)||''),batch:String(g(C_BAT)||'')});
     }
@@ -11435,6 +11445,12 @@ async function _lossDoImport(file){
       bywb[k]=rec;
     });
     var merged=Object.keys(bywb).map(function(k){return bywb[k];});
+    // 기존/신규 레코드 중 이름이 ID로 남아있으면 이름으로 보정
+    merged.forEach(function(rec){
+      var dn=String(rec.driver_name||'').trim();
+      var di=String(rec.driver_id||'').trim();
+      if(di&&idMap[di]&&(dn===''||dn==='미지정'||dn===di)){rec.driver_name=idMap[di];}
+    });
     var payload={month:finalMonth,updated_at:new Date().toISOString(),records:merged};
     try{ await sbClient.from('app_settings').upsert({key:'loss_deduction_log_backup',value:JSON.stringify(prev||{month:'',records:[]})},{onConflict:'key'}); }catch(e){}
     await sbClient.from('app_settings').upsert({key:'loss_deduction_log',value:JSON.stringify(payload)},{onConflict:'key'});
