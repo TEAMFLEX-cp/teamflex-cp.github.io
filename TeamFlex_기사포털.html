@@ -1020,7 +1020,7 @@ async function syncFromSupabase(){
         if(!weekMap[ws])weekMap[ws]={start:ws,end:r.week_end,data:[]};
         weekMap[ws].data.push({
           date:r.work_date,route:r.route,routeRaw:r.route_raw||r.route,
-          driverName:r.driver_name,
+          driverName:r.driver_name,share:r.share,
           grpLeaders:typeof r.grp_leaders==='string'?JSON.parse(r.grp_leaders||'[]'):r.grp_leaders||[],
           isBackup:r.is_backup||false,drvSuffix:r.drv_suffix||''
         });
@@ -1042,20 +1042,43 @@ async function syncFromSupabase(){
         Object.keys(DW).forEach(function(dn){if(DW[dn])delete DW[dn][ws];});
         raw.data.forEach(function(e){
           var lk=e.grpLeaders.join('|');
-          if(!lg[lk]){lg[lk]={l:e.grpLeaders,routes:{},order:[]};lkOrder.push(lk);}
+          if(!lg[lk]){lg[lk]={l:e.grpLeaders,pairs:{},order:[]};lkOrder.push(lk);}
           var rr=e.routeRaw||e.route;
-          if(!lg[lk].routes[rr]){lg[lk].routes[rr]={};lg[lk].order.push(rr);}
-          lg[lk].routes[rr][e.date]=e.driverName;
-          // DW
-          var dn=e.driverName;
-          if(!DW[dn])DW[dn]={};
-          if(!DW[dn][ws])DW[dn][ws]={};
-          if(!DW[dn][ws][e.date])DW[dn][ws][e.date]=rr;
-          else if(DW[dn][ws][e.date].indexOf(rr)<0)DW[dn][ws][e.date]+=','+rr;
+          if(!lg[lk].pairs[rr]){lg[lk].pairs[rr]={};lg[lk].order.push(rr);}
+          if(!lg[lk].pairs[rr][e.date])lg[lk].pairs[rr][e.date]=[];
+          function _dwAdd(dn,sub){if(!dn)return;if(!DW[dn])DW[dn]={};if(!DW[dn][ws])DW[dn][ws]={};if(!DW[dn][ws][e.date])DW[dn][ws][e.date]=sub;else if(DW[dn][ws][e.date].indexOf(sub)<0)DW[dn][ws][e.date]+=','+sub;}
+          var shareData=null;
+          if(e.share){try{shareData=typeof e.share==='string'?JSON.parse(e.share):e.share;}catch(ex){}}
+          if(shareData&&shareData.length>0){
+            shareData.forEach(function(s){
+              var drv=s.driver||'';var routes=s.routes||[rr];
+              routes.forEach(function(subRt){
+                var pr={r:subRt,d:drv};
+                if(!lg[lk].pairs[rr][e.date].some(function(p){return p.r===pr.r&&p.d===pr.d;}))lg[lk].pairs[rr][e.date].push(pr);
+                _dwAdd(drv,subRt);
+              });
+            });
+          } else {
+            var pr2={r:rr,d:e.driverName};
+            if(!lg[lk].pairs[rr][e.date].some(function(p){return p.r===pr2.r&&p.d===pr2.d;}))lg[lk].pairs[rr][e.date].push(pr2);
+            _dwAdd(e.driverName,rr);
+          }
         });
         var groups=lkOrder.map(function(lk){
           var g=lg[lk];
-          return {l:g.l,rt:g.order.map(function(rr){return {r:rr,d:g.routes[rr]};})};
+          return {l:g.l,rt:g.order.map(function(rr){
+            var pairsMap=g.pairs[rr];var dSimple={},shMulti={};
+            Object.keys(pairsMap).forEach(function(dt){
+              var prs=pairsMap[dt];
+              var names=prs.map(function(p){return norm_name_js(p.d);});
+              var uniq=names.filter(function(n,i){return n&&names.indexOf(n)===i;});
+              dSimple[dt]=uniq[0]||'';
+              if(uniq.length>1||(prs.length>1&&uniq.length===1))shMulti[dt]=prs;
+            });
+            var rt={r:rr,d:dSimple};
+            if(Object.keys(shMulti).length>0)rt.sh=shMulti;
+            return rt;
+          })};
         });
         AW[ws]={s:raw.start,e:raw.end,dt:dates,dl:dlbls,g:groups};
       });
