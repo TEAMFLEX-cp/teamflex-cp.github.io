@@ -11704,10 +11704,99 @@ function pbDriverHtml(){
   if(cant.length){h+='<div class="pb-droph" style="color:#546e7a" onclick="PB_DCANT_OPEN=!PB_DCANT_OPEN;pbRender()"><span>🚫 소명불가 ('+cant.length+')</span><span>'+(PB_DCANT_OPEN?'▴':'▾')+'</span></div>';if(PB_DCANT_OPEN)h+=cant.map(pbRowHtml).join('');}
   return '<div style="margin-bottom:12px"><div style="font-size:18px;font-weight:800;color:#1b5e20">🧾 프백 소명 — 내 목록</div><div style="font-size:12px;color:#888;margin-top:2px">'+pbPeriodLabel()+' · '+pbRange()+'</div>'+pbDeadlineBanner()+pbWarnBox()+'</div>'+h;
 }
+/* ══════ [관리자] 본사 프레시백 PDF 업로드 → 사진추출·기사매칭·저장·pback_somyeong 생성 ══════ */
+function _pbUploadCard(){
+  return '<div style="background:#fff;border:1px solid #b7e0c4;border-radius:12px;padding:11px 13px;margin-bottom:10px">'
+    +'<div style="font-size:12.5px;font-weight:800;color:#1b5e20;margin-bottom:3px">📥 본사 프레시백 PDF 업로드 <span style="font-weight:600;color:#999">(사진 자동 추출·기사 매칭)</span></div>'
+    +'<div style="font-size:11px;color:#999;margin-bottom:8px">PDF의 라우트·날짜로 근무표 기사와 매칭 → 소명 대상 생성 (중복 무시)</div>'
+    +'<input type="file" id="pb-pdf-file" accept="application/pdf,.pdf" style="display:none" onchange="pbImportPdf(this.files[0]);this.value=\'\'">'
+    +'<button onclick="document.getElementById(\'pb-pdf-file\').click()" style="width:100%;padding:10px;background:#1b5e20;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">📎 PDF 파일 선택</button>'
+    +'<div id="pb-upl-status" style="font-size:11.5px;color:#666;margin-top:7px;line-height:1.5"></div></div>';
+}
+function pbLoadPdfJs(cb){
+  if(window.pdfjsLib){cb(true);return;}
+  var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  sc.onload=function(){try{window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}catch(e){}cb(true);};
+  sc.onerror=function(){cb(false);};document.head.appendChild(sc);
+}
+function _pbPeriod(dk){var m=String(dk).match(/(\d{4})-(\d{2})-(\d{2})/);if(!m)return '';var y=+m[1],mo=+m[2],d=+m[3],py=y,pm=mo;if(d>=26){pm=mo+1;if(pm>12){pm=1;py=y+1;}}return py+'-'+('0'+pm).slice(-2);}
+function _pbHash(s){var h=5381;for(var i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;return ('0000000'+h.toString(16)).slice(-8);}
+function _pbImgToJpeg(img){return new Promise(function(res){try{
+  var w=img.width,h=img.height,src=img.data,kind=img.kind,i,j;
+  var cv=document.createElement('canvas');cv.width=w;cv.height=h;var ctx=cv.getContext('2d');
+  var id=ctx.createImageData(w,h),d=id.data;
+  if(kind===2){for(i=0,j=0;i<w*h;i++,j+=4){d[j]=src[i*3];d[j+1]=src[i*3+1];d[j+2]=src[i*3+2];d[j+3]=255;}}
+  else if(kind===1){for(i=0,j=0;i<w*h;i++,j+=4){d[j]=d[j+1]=d[j+2]=src[i];d[j+3]=255;}}
+  else{d.set(src.subarray(0,w*h*4));}
+  ctx.putImageData(id,0,0);cv.toBlob(function(b){res(b);},'image/jpeg',0.72);
+}catch(e){res(null);}});}
+async function _pbUpload(blob,path){
+  if(!blob)return '';
+  try{await fetch(SB_URL+'/storage/v1/object/pback-images/'+path,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'image/jpeg','x-upsert':'true'},body:blob});}catch(e){}
+  return SB_URL+'/storage/v1/object/public/pback-images/'+path;
+}
+async function _pbExtract(buf){
+  var pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;var OPS=pdfjsLib.OPS;var out=[];
+  function mul(a,b){return [a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];}
+  for(var pi=1;pi<=pdf.numPages;pi++){
+    var page=await pdf.getPage(pi);
+    var tc=await page.getTextContent();var byY={};
+    tc.items.forEach(function(it){if(!it.str.trim())return;var y=Math.round(it.transform[5]/6)*6;(byY[y]=byY[y]||[]).push([it.transform[4],it.str]);});
+    var rows=Object.keys(byY).map(Number).sort(function(a,b){return b-a;}).map(function(y){return byY[y].sort(function(a,b){return a[0]-b[0];}).map(function(p){return p[1];}).join(' ').replace(/\s+/g,' ').trim();}).filter(function(s){return /2026/.test(s)&&s.split(' ').length>=5;});
+    var trows=rows.map(function(s){var p=s.split(' ');var pdd=p.slice(0,3).join(' ');var dm=pdd.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);var dk=dm?(dm[1]+'-'+('0'+dm[2]).slice(-2)+'-'+('0'+dm[3]).slice(-2)):'';return {pdd_date:dk,type:p[3]||'',camp:p[4]||'',route:p[5]||''};});
+    var ops=await page.getOperatorList();var ctm=[1,0,0,1,0,0],stack=[],imgs=[];
+    for(var i=0;i<ops.fnArray.length;i++){var fn=ops.fnArray[i],ar=ops.argsArray[i];
+      if(fn===OPS.save)stack.push(ctm.slice());
+      else if(fn===OPS.restore)ctm=stack.pop()||[1,0,0,1,0,0];
+      else if(fn===OPS.transform)ctm=mul(ctm,ar);
+      else if(fn===OPS.paintImageXObject)imgs.push({name:ar[0],x:ctm[4],y:ctm[5]});}
+    imgs.sort(function(a,b){return b.y-a.y||a.x-b.x;});
+    var imgData=[];for(var k=0;k<imgs.length;k++){imgData.push(await new Promise(function(res){try{page.objs.get(imgs[k].name,res);}catch(e){res(null);}}));}
+    for(var ri=0;ri<trows.length;ri++)out.push(Object.assign({},trows[ri],{miss:imgData[ri*2]||null,deliver:imgData[ri*2+1]||null}));
+  }
+  return out;
+}
+function pbImportPdf(file){if(!file)return;var st=document.getElementById('pb-upl-status');if(st)st.textContent='PDF 모듈 준비 중…';pbLoadPdfJs(function(ok){if(!ok){if(st)st.textContent='❌ PDF 모듈 로드 실패';return;}_pbDoPdf(file);});}
+async function _pbDoPdf(file){
+  var st=document.getElementById('pb-upl-status');
+  try{
+    if(st)st.textContent='PDF 분석 중…';
+    var rows=await _pbExtract(await file.arrayBuffer());
+    if(!rows.length){if(st)st.textContent='❌ PDF에서 소명 행(날짜·라우트)을 못 찾았어요.';return;}
+    var dates=Array.from(new Set(rows.map(function(r){return r.pdd_date;}).filter(Boolean)));
+    var dmap={};
+    try{var q=await sbClient.from('weekly_schedules').select('work_date,route,route_raw,driver_name,share').in('work_date',dates);
+      (q.data||[]).forEach(function(e){
+        function put(rt,dn){if(!rt||!dn)return;dmap[e.work_date+'|'+String(rt).replace(/_/g,'').toUpperCase()]=norm_name_js(dn);}
+        put(e.route,e.driver_name);put(e.route_raw,e.driver_name);
+        if(e.share){try{var sh=typeof e.share==='string'?JSON.parse(e.share):e.share;(sh||[]).forEach(function(s){(s.routes||[]).forEach(function(rt){put(rt,s.driver);});});}catch(ex){}}
+      });
+    }catch(e){}
+    var recs=[],skipped=0,no=0;
+    for(var i=0;i<rows.length;i++){no++;var r=rows[i];
+      var drv=dmap[r.pdd_date+'|'+String(r.route).replace(/_/g,'').toUpperCase()]||'';
+      if(!drv){skipped++;continue;}
+      var per=_pbPeriod(r.pdd_date);if(!per)continue;
+      var src=per+'|'+r.pdd_date+'|'+r.route+'|'+drv+'|'+no;var key=_pbHash(src);
+      var mu='',du='';
+      if(r.miss){var b=await _pbImgToJpeg(r.miss);if(b)mu=await _pbUpload(b,per+'/'+key+'_miss.jpg');}
+      if(r.deliver){var b2=await _pbImgToJpeg(r.deliver);if(b2)du=await _pbUpload(b2,per+'/'+key+'_deliver.jpg');}
+      recs.push({period:per,pdd_date:r.pdd_date,driver_name:drv,type:r.type,camp:r.camp,route:r.route,photo_miss_url:mu,photo_deliver_url:du,status:'pending',src_key:src});
+      if(st)st.textContent='사진 처리·업로드 중… ('+(i+1)+'/'+rows.length+')';
+    }
+    if(!recs.length){if(st)st.textContent='❌ 근무표에서 매칭된 기사가 없어요 (건너뜀 '+skipped+'건). 해당 주차 스케줄이 앱에 있는지 확인하세요.';return;}
+    var ins=await sbClient.from('pback_somyeong').upsert(recs,{onConflict:'src_key',ignoreDuplicates:true});
+    if(ins&&ins.error){if(st)st.textContent='❌ 저장 실패: '+ins.error.message;return;}
+    if(st)st.textContent='✅ 완료 · '+recs.length+'건 생성'+(skipped?(' (미매칭 '+skipped+'건 제외)'):'');
+    try{showToast('✅ 프백 소명 '+recs.length+'건 생성',true);}catch(e){}
+    pbInit();
+  }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}
+}
 function pbAdminHtml(){
   var c=pbCounts(PB_ITEMS),mode=PB_CFG.mode||'approval',urlok=!!(PB_CFG.form_url);
   var act=getFeatureCtrl('pback','active'),noti=getFeatureCtrl('pback','notify');
   var h='<style>.pb-card{padding:11px 13px!important;margin-bottom:8px!important}.pb-card h4{font-size:14px!important;margin-bottom:1px!important}.pb-card .sub{margin-bottom:7px!important;font-size:11px!important}.pb-droph{padding:9px 12px!important;margin:5px 0!important}.pb-aprow{padding:9px 12px!important}.pb-pill{padding:6px 10px!important}.pb-dl{padding:11px!important}</style>';
+  h+=_pbUploadCard();
   h+='<div style="margin-bottom:8px"><div style="font-size:16px;font-weight:800;color:#1b5e20">⚙️ 프백 소명 · 관리자</div><div style="font-size:11px;color:#888;margin-top:1px">'+pbPeriodLabel()+' · 기간 '+pbRange()+'</div>'+pbDeadlineBanner()+'</div>';
   h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">'+'<div style="background:#fff;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#37474f">'+c.total+'</div><div style="font-size:10px;color:#90a4ae">대상</div></div>'+'<div style="background:#fff;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#2d6040">'+c.submitted+'</div><div style="font-size:10px;color:#90a4ae">제출완료</div></div>'+'<div style="background:#fff;border-radius:10px;padding:8px 3px;text-align:center"><div style="font-size:19px;font-weight:800;color:#546e7a">'+c.cant+'</div><div style="font-size:10px;color:#90a4ae">소명불가</div></div>'+'<div onclick="PB_UNSUB_OPEN=!PB_UNSUB_OPEN;pbRender()" style="background:#fff5f5;border:1px solid #f0c0c0;border-radius:10px;padding:8px 3px;text-align:center;cursor:pointer"><div style="font-size:19px;font-weight:800;color:#c62828">'+c.unsub+'</div><div style="font-size:10px;color:#c62828">미제출 '+(PB_UNSUB_OPEN?'▴':'▾')+'</div></div>'+'</div>';
   if(PB_UNSUB_OPEN)h+=pbUnsubListHtml();
