@@ -230,6 +230,24 @@ table.ft th.sun-col{background:#f8bbd0;color:#880e4f}
 /* EDIT BAR */
 .edit-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
 .sched-sticky-nav{position:sticky;top:0;z-index:50;background:#f0f2f5;padding:10px 0 8px;margin-bottom:12px;border-bottom:2px solid #dde1f0;box-shadow:0 3px 8px rgba(0,0,0,.10)}
+.sxbtn{flex:1;border:none;border-radius:11px;padding:9px 2px;font-size:11.5px;font-weight:800;color:#fff;cursor:pointer;white-space:nowrap;position:relative;overflow:hidden;transition:transform .12s ease}
+.sxbtn:active{transform:scale(.94)}
+.sxbtn.b1{background:linear-gradient(135deg,#4054c8,#2f3e9e);box-shadow:0 3px 8px rgba(48,62,158,.4)}
+.sxbtn.b2{background:linear-gradient(135deg,#7b4fd6,#5a2fb0);box-shadow:0 3px 8px rgba(90,47,176,.4)}
+.sxbtn.b3{background:linear-gradient(135deg,#12b5a3,#00897b);box-shadow:0 3px 8px rgba(0,137,123,.4)}
+.sxbtn.b4{background:linear-gradient(135deg,#ef4d5a,#c62828);box-shadow:0 3px 8px rgba(198,40,40,.4)}
+.sxbtn::after{content:"";position:absolute;top:0;left:-70%;width:50%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-20deg);animation:sxShine 3.2s ease-in-out infinite}
+@keyframes sxShine{0%,60%{left:-70%}80%,100%{left:130%}}
+.sxEditWrap{flex:2.4;position:relative;border-radius:12px;padding:2px;overflow:hidden;box-shadow:0 3px 8px rgba(0,0,0,.18);cursor:pointer;transition:transform .12s ease}
+.sxEditWrap:active{transform:scale(.96)}
+.sxEditWrap::before{content:"";position:absolute;inset:-45%;background:conic-gradient(from 0deg,#ffd54f,#ff8a3d,#ff5a63,#ba68c8,#4aa3f0,#12b5a3,#ffd54f);animation:sxSpin 3s linear infinite}
+@keyframes sxSpin{to{transform:rotate(360deg)}}
+.sxEditInner{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;background:#eaf3ff;color:#1a3a6b;border-radius:10px;padding:9px 2px;font-size:13px;font-weight:900}
+.sxEditInner.on{background:linear-gradient(135deg,#2e7d32,#1b5e20);color:#fff}
+.sxLog{flex:1;position:relative;border:none;border-radius:11px;padding:10px 2px;font-size:11.5px;font-weight:800;color:#fff;background:linear-gradient(135deg,#5a6b78,#3f515c);cursor:pointer;box-shadow:0 3px 8px rgba(63,81,92,.4);transition:transform .12s ease}
+.sxLog:active{transform:scale(.94)}
+.sxBadge{position:absolute;top:-6px;right:-3px;min-width:17px;height:17px;line-height:17px;background:#e53935;color:#fff;border-radius:9px;font-size:9px;font-weight:900;padding:0 4px;box-shadow:0 0 0 2px #fff;animation:sxPulse 1.3s ease-in-out infinite}
+@keyframes sxPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
 .btn-edit{padding:8px 20px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
 .btn-edit.off{background:#3949ab;color:#fff}
 .btn-edit.on{background:#2e7d32;color:#fff}
@@ -5467,24 +5485,23 @@ function pgFullSched(){
     var _dot=_un?'<span style="position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;line-height:15px;background:#e53935;color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:0 3px">'+(_un>9?'9+':_un)+'</span>':'';
     logBtn='<button onclick="go(\'sl\')" style="position:relative;background:#455a64;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px">&#x1F4CB; 변경이력'+_dot+'</button>';
   }
-  var _cell='flex:1;border:none;border-radius:9px;padding:8px 2px;font-size:11.5px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.18)';
   var _wrap='max-width:460px;margin:0 auto';
   var _sxExp=(CU&&CU.role==='admin')?(
     '<input type="file" id="sx-tbl-file" accept=".xlsx,.xls" style="display:none" onchange="schedUploadTable(this.files[0]);this.value=\'\'">'+
-    '<div style="'+_wrap+';display:flex;gap:5px;margin-bottom:5px">'+
-      '<button style="'+_cell+';background:#3949ab" onclick="schedDownloadTable()">📊 표다운</button>'+
-      '<button style="'+_cell+';background:#5e35b1" onclick="document.getElementById(\'sx-tbl-file\').click()">📤 표업로드</button>'+
-      '<button style="'+_cell+';background:#00897b" onclick="schedDownloadList()">📋 리스트</button>'+
-      '<button style="'+_cell+';background:#c62828" onclick="schedDownloadChanged()">🔴 변경분</button>'+
+    '<div style="'+_wrap+';display:flex;gap:6px;margin-bottom:6px">'+
+      '<button class="sxbtn b1" onclick="schedDownloadTable()">📊 표다운</button>'+
+      '<button class="sxbtn b2" onclick="document.getElementById(\'sx-tbl-file\').click()">📤 표업로드</button>'+
+      '<button class="sxbtn b3" onclick="schedDownloadList()">📋 리스트</button>'+
+      '<button class="sxbtn b4" onclick="schedDownloadChanged()">🔴 변경분</button>'+
     '</div>'+
     '<div id="sx-status" style="'+_wrap+';text-align:center;font-size:11px;color:#00695c;font-weight:700;margin-bottom:5px"></div>'
   ):'';
   var _canEd=(typeof canEdit==='function')?canEdit():(CU&&CU.role==='admin');
   var _isAdm=CU&&CU.role==='admin';
   var _unL=(typeof _unreadSchedLog==='function')?_unreadSchedLog():0;
-  var _editH=_canEd?('<button class="btn-edit '+(EDIT_MODE?'on':'off')+'" style="flex:2.4;border-radius:9px;padding:9px 2px;font-size:13px;font-weight:800;cursor:pointer" onclick="toggleEdit()">'+(EDIT_MODE?'✔ 완료':'✏ 수정')+'</button>'):'';
-  var _logH=_isAdm?('<button style="position:relative;flex:1;background:#455a64;color:#fff;border:none;border-radius:9px;padding:9px 2px;font-size:11.5px;font-weight:700;cursor:pointer" onclick="go(\'sl\')">📋 변경이력'+(_unL?'<span style="position:absolute;top:-5px;right:-2px;min-width:16px;height:16px;line-height:16px;background:#e53935;color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:0 3px">'+(_unL>9?'9+':_unL)+'</span>':'')+'</button>'):'';
-  var _sxAct=(_editH||_logH)?('<div style="'+_wrap+';display:flex;gap:5px;margin-bottom:8px">'+_editH+_logH+'</div>'):'';
+  var _editH=_canEd?('<div class="sxEditWrap" onclick="toggleEdit()"><div class="sxEditInner'+(EDIT_MODE?' on':'')+'">'+(EDIT_MODE?'✔️ 완료':'✏️ 수정')+'</div></div>'):'';
+  var _logH=_isAdm?('<button class="sxLog" onclick="go(\'sl\')">📋 변경이력'+(_unL?'<span class="sxBadge">'+(_unL>9?'9+':_unL)+'</span>':'')+'</button>'):'';
+  var _sxAct=(_editH||_logH)?('<div style="'+_wrap+';display:flex;gap:6px;margin-bottom:8px">'+_editH+_logH+'</div>'):'';
   var h='<div class="sched-sticky-nav">'+_sxExp+_sxAct+nav+'</div>';
 
   // Detect today / sat / sun columns
