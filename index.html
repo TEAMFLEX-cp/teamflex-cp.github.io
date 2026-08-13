@@ -5467,14 +5467,19 @@ function pgFullSched(){
     var _dot=_un?'<span style="position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;line-height:15px;background:#e53935;color:#fff;border-radius:8px;font-size:9px;font-weight:800;padding:0 3px">'+(_un>9?'9+':_un)+'</span>':'';
     logBtn='<button onclick="go(\'sl\')" style="position:relative;background:#455a64;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-left:6px">&#x1F4CB; 변경이력'+_dot+'</button>';
   }
-  var h='<div class="sched-sticky-nav">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
-      '<div style="font-size:15px;font-weight:800;color:#1a237e">&#x1F4C5; 전체 스케줄</div>'+
-      '<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:2px">'+((CU&&CU.role==='admin')?('<input type="file" id="sx-tbl-file" accept=".xlsx,.xls" style="display:none" onchange="schedUploadTable(this.files[0]);this.value=\'\'">'+'<button onclick="schedDownloadTable()" style="background:#3949ab;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📊 표↓</button>'+'<button onclick="document.getElementById(\'sx-tbl-file\').click()" style="background:#5e35b1;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📤 표↑</button>'+'<button onclick="schedDownloadList()" style="background:#00695c;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📋 리스트</button>'+'<button onclick="schedDownloadChanged()" style="background:#c62828;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">🔴 변경분</button>'):'')+editBtn+logBtn+refreshBtn+'</div>'+
-      ((CU&&CU.role==='admin')?'<div id="sx-status" style="text-align:right;font-size:11px;color:#00695c;font-weight:700;margin-bottom:4px"></div>':'')+
+  var _hbtn='border:none;border-radius:9px;padding:6px 13px;font-size:12.5px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.18);white-space:nowrap';
+  var _sxExp=(CU&&CU.role==='admin')?(
+    '<input type="file" id="sx-tbl-file" accept=".xlsx,.xls" style="display:none" onchange="schedUploadTable(this.files[0]);this.value=\'\'">'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:6px">'+
+      '<button style="'+_hbtn+';background:#3949ab" onclick="schedDownloadTable()">📊 표 다운</button>'+
+      '<button style="'+_hbtn+';background:#5e35b1" onclick="document.getElementById(\'sx-tbl-file\').click()">📤 표 업로드</button>'+
+      '<button style="'+_hbtn+';background:#00897b" onclick="schedDownloadList()">📋 리스트</button>'+
+      '<button style="'+_hbtn+';background:#c62828" onclick="schedDownloadChanged()">🔴 변경분</button>'+
     '</div>'+
-    nav+
-    '</div>';
+    '<div id="sx-status" style="text-align:center;font-size:11px;color:#00695c;font-weight:700;margin-bottom:5px"></div>'
+  ):'';
+  var _sxAct=(editBtn||logBtn)?('<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:8px">'+editBtn+logBtn+'</div>'):'';
+  var h='<div class="sched-sticky-nav">'+_sxExp+_sxAct+nav+'</div>';
 
   // Detect today / sat / sun columns
   var todayColIdx=-1;
