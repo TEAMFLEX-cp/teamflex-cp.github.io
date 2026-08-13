@@ -5371,6 +5371,38 @@ async function _sxDoTableUp(file){
     if(typeof schedRefresh==='function')schedRefresh();
   }catch(e){if(st)st.textContent='';alert('표 업로드 오류: '+((e&&e.message)||e));}
 }
+/* ── 변경분만 다운로드 (변경이력 → 이전기사 휴무 / 새기사 출근) ── */
+function schedDownloadChanged(){if(!(CU&&CU.role==='admin'))return;var st=document.getElementById('sx-status');if(st)st.textContent='엑셀 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='엑셀 모듈 로드 실패';return;}_sxDoChanged();});}
+async function _sxDoChanged(){
+  var st=document.getElementById('sx-status');
+  try{
+    var ws0=SCHED_WK;var wm=String(ws0).match(/(\d{4})-(\d{2})-(\d{2})/);var wsD=wm?new Date(+wm[1],+wm[2]-1,+wm[3]):null;
+    var weekDates={};if(wsD){for(var i=0;i<7;i++){var d=new Date(wsD.getTime()+i*86400000);weekDates[d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)]=1;}}
+    var log=[];try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_change_log').maybeSingle();if(r&&r.data&&r.data.value){var v=r.data.value;log=(typeof v==='string')?JSON.parse(v):v;}}catch(e){}
+    if(!Array.isArray(log))log=[];
+    var scoped=log.filter(function(c){return weekDates[c.workDate];});
+    if(!scoped.length){alert('이 주차('+_sxWeekLabel(ws0)+')의 변경 건이 없습니다.');if(st)st.textContent='';return;}
+    // net 처리: (날짜|라우트)별 최초 oldDriver, 최종 newDriver
+    var net={};
+    scoped.forEach(function(c){var key=c.workDate+'|'+c.route;var at=c.at||'';if(!net[key]){net[key]={workDate:c.workDate,route:c.route,oldDriver:c.oldDriver||'',newDriver:c.newDriver||'',oldAt:at,newAt:at};}else{if(at>net[key].newAt){net[key].newDriver=c.newDriver||'';net[key].newAt=at;}if(at<net[key].oldAt){net[key].oldDriver=c.oldDriver||'';net[key].oldAt=at;}}});
+    var didmap=await _sxDidMap();
+    var aoa=[['업무일','사업자등록번호','캠프명','웨이브','아이디','업무상태','회전','업무라우트']];var n=0;
+    Object.keys(net).sort().forEach(function(key){var c=net[key];if((c.oldDriver||'')===(c.newDriver||''))return;
+      var routes=_sxSplitRt(c.route||'');var first=routes[0]||'';var night=_sxIsNight(first);var baseRt=first.replace(/\s*\(.*?\)/g,'').trim();
+      var camp=baseRt.charAt(0)==='8'?'일산8':'일산3';var wave=night?_SX_CFG.night_wave:_SX_CFG.day_wave;var rot=night?_SX_CFG.night_rot:_SX_CFG.day_rot;var routeStr=routes.join(',');
+      if(c.oldDriver){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,c.oldDriver,''),'휴무','','']);n++;}
+      if(c.newDriver){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,c.newDriver,''),_SX_CFG.status,rot,routeStr]);n++;}
+    });
+    if(aoa.length<2){alert('순변경(net)이 없습니다. (원복된 변경만 있음)');if(st)st.textContent='';return;}
+    var wb=XLSX.utils.book_new();var sh=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
+    sh['!cols']=[{wch:18},{wch:16},{wch:8},{wch:8},{wch:16},{wch:8},{wch:14},{wch:22}];
+    for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}
+    XLSX.utils.book_append_sheet(wb,sh,'변경리스트');
+    XLSX.writeFile(wb,_sxWeekLabel(ws0)+'_변경리스트.xlsx');
+    if(st)st.textContent='✅ 변경분 '+n+'행 다운로드';
+    try{showToast('✅ 변경분 다운로드 ('+n+'행)',true);}catch(e){}
+  }catch(e){if(st)st.textContent='';alert('변경분 생성 오류: '+((e&&e.message)||e));}
+}
 function toggleEdit(){
   if(!EDIT_MODE && CU && CU.role!=='admin'){
     if(!canEditSched()){alert(_schedLockMsg('role'));return;}
@@ -5425,7 +5457,7 @@ function pgFullSched(){
   var h='<div class="sched-sticky-nav">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
       '<div style="font-size:15px;font-weight:800;color:#1a237e">&#x1F4C5; 전체 스케줄</div>'+
-      '<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:2px">'+((CU&&CU.role==='admin')?('<input type="file" id="sx-tbl-file" accept=".xlsx,.xls" style="display:none" onchange="schedUploadTable(this.files[0]);this.value=\'\'">'+'<button onclick="schedDownloadTable()" style="background:#3949ab;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📊 표↓</button>'+'<button onclick="document.getElementById(\'sx-tbl-file\').click()" style="background:#5e35b1;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📤 표↑</button>'+'<button onclick="schedDownloadList()" style="background:#00695c;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📋 리스트</button>'):'')+editBtn+logBtn+refreshBtn+'</div>'+
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:2px">'+((CU&&CU.role==='admin')?('<input type="file" id="sx-tbl-file" accept=".xlsx,.xls" style="display:none" onchange="schedUploadTable(this.files[0]);this.value=\'\'">'+'<button onclick="schedDownloadTable()" style="background:#3949ab;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📊 표↓</button>'+'<button onclick="document.getElementById(\'sx-tbl-file\').click()" style="background:#5e35b1;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📤 표↑</button>'+'<button onclick="schedDownloadList()" style="background:#00695c;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📋 리스트</button>'+'<button onclick="schedDownloadChanged()" style="background:#c62828;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">🔴 변경분</button>'):'')+editBtn+logBtn+refreshBtn+'</div>'+
       ((CU&&CU.role==='admin')?'<div id="sx-status" style="text-align:right;font-size:11px;color:#00695c;font-weight:700;margin-bottom:4px"></div>':'')+
     '</div>'+
     nav+
