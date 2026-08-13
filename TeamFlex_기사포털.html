@@ -5381,7 +5381,7 @@ async function _sxDoChanged(){
     var log=[];try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_change_log').maybeSingle();if(r&&r.data&&r.data.value){var v=r.data.value;log=(typeof v==='string')?JSON.parse(v):v;}}catch(e){}
     if(!Array.isArray(log))log=[];
     var scoped=log.filter(function(c){return weekDates[c.workDate];});
-    if(!scoped.length){alert('이 주차('+_sxWeekLabel(ws0)+')의 변경 건이 없습니다.');if(st)st.textContent='';return;}
+    if(!scoped.length){var _sd=Array.from(new Set(log.map(function(c){return c.workDate;}).filter(Boolean))).sort().slice(-10).join(', ');alert('이 주차('+_sxWeekLabel(ws0)+')의 변경 건이 없습니다.\n\n전체 변경이력: '+log.length+'건\n변경된 날짜: '+(_sd||'없음')+'\n\n※ 변경분은 지금 보고 있는 주차의 변경만 담습니다. 변경한 날짜가 포함된 주차로 이동 후 눌러주세요.');if(st)st.textContent='';return;}
     // net 처리: (날짜|라우트)별 최초 oldDriver, 최종 newDriver
     var net={};
     scoped.forEach(function(c){var key=c.workDate+'|'+c.route;var at=c.at||'';if(!net[key]){net[key]={workDate:c.workDate,route:c.route,oldDriver:c.oldDriver||'',newDriver:c.newDriver||'',oldAt:at,newAt:at};}else{if(at>net[key].newAt){net[key].newDriver=c.newDriver||'';net[key].newAt=at;}if(at<net[key].oldAt){net[key].oldDriver=c.oldDriver||'';net[key].oldAt=at;}}});
