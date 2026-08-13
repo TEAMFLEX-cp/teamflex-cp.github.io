@@ -11222,6 +11222,7 @@ function lossRender(){
   var html=_lossMonPills()+'<div style="background:#f3e5f5;border:1px solid #ce93d8;border-radius:12px;padding:11px 12px;margin-bottom:13px"><div style="font-size:11px;color:#6a1b9a;font-weight:800;margin-bottom:7px">📢 '+lossEsc(monLbl)+' 분실·파손 차감 현황 (전체 공개)</div><div style="display:flex;gap:6px"><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#999">건수</div><div style="font-size:16px;font-weight:800;color:#4a148c">'+totCnt+'건</div></div><div style="flex:1.3;background:#fff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#999">총 차감</div><div style="font-size:16px;font-weight:800;color:#c2185b">'+_lossFmt(totAmt)+'원</div></div><div style="flex:1;background:#fff;border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px;color:#999">확정</div><div style="font-size:16px;font-weight:800;color:#2e7d32">'+cfCnt+'/'+totCnt+'</div></div></div></div>';
   if(!recs.length){ root.innerHTML=html+'<div class="pb-empty" style="margin-top:8px">등록된 분실 차감 내역이 없습니다.</div>'; return; }
   if(isAdm){
+    html+=_lossAdminUploadCard();
     var allUncf={}; active.forEach(function(x){if(x.confirmed!==true)allUncf[x.driver_name||'']=1;}); var nUncf=Object.keys(allUncf).filter(Boolean).length;
     html+='<div style="font-size:12px;font-weight:800;color:#333;margin:4px 2px 8px">전체 내역 <span style="color:#999;font-weight:600">· 관리자(삭제/미과실) · 미확정 위, 확정 아래</span></div>';
     if(nUncf>0) html+='<button onclick="lossPushUnconfirmed()" style="width:100%;margin:2px 2px 11px;padding:11px;background:#e65100;color:#fff;border:none;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">🔔 미확정 '+nUncf+'명에게 확인 요청 푸시</button>';
@@ -11321,6 +11322,113 @@ async function lossDelete(wb){
   if(!confirm('이 건을 삭제할까요? (되돌릴 수 없음)'))return;
   LOSS_DATA.records=(LOSS_DATA.records||[]).filter(function(x){return String(x.wb)!==String(wb);});
   await _lossSave(); lossRender();
+}
+// ── [관리자] 분실차감 엑셀 앱 업로드 + 취소(되돌리기) ──
+function _lossAdminUploadCard(){
+  return '<div style="background:#fff;border:1px solid #ce93d8;border-radius:12px;padding:11px 12px;margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:800;color:#6a1b9a;margin-bottom:3px">📥 분실차감 엑셀 업로드 <span style="font-weight:600;color:#999">(본사 양식 · 스케줄 프로그램과 동일 적용)</span></div>'
+    +'<div style="font-size:11px;color:#999;margin-bottom:8px">운송장 기준 합산 · 기존 확정/미과실 상태 유지 · 새 달이면 자동 초기화</div>'
+    +'<input type="file" id="loss-file" accept=".xlsx,.xls" style="display:none" onchange="lossImportExcel(this.files[0]);this.value=\'\'">'
+    +'<div style="display:flex;gap:8px">'
+      +'<button onclick="document.getElementById(\'loss-file\').click()" style="flex:2;padding:10px;background:#6a1b9a;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">📎 엑셀 파일 선택</button>'
+      +'<button onclick="lossUndoImport()" style="flex:1;padding:10px;background:#fff;color:#c62828;border:1px solid #ef9a9a;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">↩️ 되돌리기</button>'
+    +'</div>'
+    +'<div id="loss-upl-status" style="font-size:11.5px;color:#666;margin-top:7px;line-height:1.5"></div>'
+    +'</div>';
+}
+function _lossNz(v){return String(v==null?'':v).replace(/\s/g,'').replace(/\n/g,'').trim();}
+function _lossFindCol(hdr,keys){var i,j;for(i=0;i<keys.length;i++){for(j=0;j<hdr.length;j++){if(hdr[j]===keys[i])return j;}}for(i=0;i<keys.length;i++){for(j=0;j<hdr.length;j++){if(keys[i]&&hdr[j].indexOf(keys[i])>=0)return j;}}return -1;}
+function _lossFmtImp(v){
+  if(v==null)return '';
+  if(v instanceof Date&&!isNaN(v.getTime())){return v.getUTCFullYear()+'-'+('0'+(v.getUTCMonth()+1)).slice(-2)+'-'+('0'+v.getUTCDate()).slice(-2);}
+  if(typeof v==='number'){var dt=new Date(Date.UTC(1899,11,30)+Math.round(v)*86400000);if(!isNaN(dt.getTime()))return dt.getUTCFullYear()+'-'+('0'+(dt.getUTCMonth()+1)).slice(-2)+'-'+('0'+dt.getUTCDate()).slice(-2);}
+  var s=String(v).trim();var m=s.match(/(\d{4})[-.\/](\d{1,2})[-.\/](\d{1,2})/);if(m)return m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2);
+  return s;
+}
+function _lossDeriveMonthImp(recs){
+  var mm='',yy='',i;
+  for(i=0;i<recs.length;i++){var b=String(recs[i].batch||'');var m=b.match(/(\d{1,2})\s*월/);if(m&&!mm)mm=m[1];var ym=String(recs[i].date||'').match(/^(\d{4})-(\d{2})/);if(ym&&!yy)yy=ym[1];if(mm&&yy)break;}
+  if(mm&&yy)return yy+'-'+('0'+parseInt(mm,10)).slice(-2);
+  for(i=0;i<recs.length;i++){var ym2=String(recs[i].date||'').match(/^(\d{4})-(\d{2})/);if(ym2)return ym2[1]+'-'+ym2[2];}
+  return '';
+}
+function lossImportExcel(file){
+  if(!file)return;
+  var st=document.getElementById('loss-upl-status'); if(st)st.textContent='엑셀 모듈 준비 중…';
+  hcLoadXLSX(function(ok){ if(!ok){ if(st)st.textContent='❌ 엑셀 모듈을 불러오지 못했습니다.'; return; } _lossDoImport(file); });
+}
+async function _lossDoImport(file){
+  var st=document.getElementById('loss-upl-status');
+  try{
+    if(st)st.textContent='읽는 중…';
+    var buf=await file.arrayBuffer();
+    var wb=XLSX.read(new Uint8Array(buf),{type:'array',cellDates:true});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+    var hi=-1,hdr=[],i;
+    for(i=0;i<Math.min(12,rows.length);i++){ if(!rows[i])continue; var cells=rows[i].map(_lossNz); if(cells.some(function(c){return c.indexOf('운송장')>=0;})){hi=i;hdr=cells;break;} }
+    if(hi<0){ if(st)st.textContent='❌ 헤더(운송장번호)를 찾지 못했습니다. 본사 분실·파손 엑셀이 맞는지 확인하세요.'; return; }
+    var C_BAT=_lossFindCol(hdr,['구분']),C_DATE=_lossFindCol(hdr,['날짜','일자']),C_CAMP=_lossFindCol(hdr,['캠프']),
+        C_ID=_lossFindCol(hdr,['ID','아이디']),C_NAME=_lossFindCol(hdr,['이름','성명','기사명']),
+        C_DET=_lossFindCol(hdr,['상세']),C_AMT=_lossFindCol(hdr,['차감금액','금액']),
+        C_WB=_lossFindCol(hdr,['운송장번호','운송장']),C_PRD=_lossFindCol(hdr,['상품명(상세)','상품명']);
+    var newRecs=[];
+    for(var r=hi+1;r<rows.length;r++){
+      var row=rows[r]; if(!row)continue;
+      var g=function(idx){return (idx>=0&&idx<row.length)?row[idx]:null;};
+      var wbno=g(C_WB); if(wbno==null||String(wbno).trim()==='')continue;
+      if(typeof wbno==='number'&&wbno===Math.floor(wbno))wbno=wbno.toFixed(0);
+      var wbs=String(wbno).trim();
+      var did=String(g(C_ID)||'').trim().replace(/@df$/i,'').trim();
+      var xn=C_NAME>=0?String(g(C_NAME)||'').trim():'';
+      var name=xn||did||'미지정';
+      var amt=parseInt(String(g(C_AMT)==null?'':g(C_AMT)).replace(/[^0-9.-]/g,''),10)||0;
+      newRecs.push({wb:wbs,date:_lossFmtImp(g(C_DATE)),camp:String(g(C_CAMP)||''),driver_id:did,driver_name:name,detail:String(g(C_DET)||''),amount:amt,product:String(g(C_PRD)||''),batch:String(g(C_BAT)||'')});
+    }
+    if(!newRecs.length){ if(st)st.textContent='❌ 유효한 행(운송장)이 없습니다.'; return; }
+    var cr=await sbClient.from('app_settings').select('value').eq('key','loss_deduction_log').maybeSingle();
+    var prev=(cr&&cr.data&&cr.data.value)?(typeof cr.data.value==='string'?JSON.parse(cr.data.value):cr.data.value):null;
+    var curMonth=(prev&&prev.month)||'',curRecords=(prev&&prev.records)||[];
+    var newMonth=_lossDeriveMonthImp(newRecs),monthReset=false;
+    if(curMonth&&newMonth&&curMonth!==newMonth){ curRecords=[]; monthReset=true; }
+    var finalMonth=newMonth||curMonth||new Date(Date.now()+9*3600000).toISOString().slice(0,7);
+    var bywb={}; curRecords.forEach(function(x){bywb[String(x.wb)]=x;});
+    var added=0,updated=0;
+    newRecs.forEach(function(rec){
+      var k=String(rec.wb),old=bywb[k];
+      if(old){ updated++;
+        Object.keys(old).forEach(function(f){ if(['wb','date','camp','driver_id','driver_name','detail','amount','product','batch'].indexOf(f)<0)rec[f]=old[f]; });
+        if((!rec.driver_name||rec.driver_name===rec.driver_id||rec.driver_name==='미지정')&&old.driver_name&&old.driver_name!==old.driver_id){rec.driver_name=old.driver_name;}
+      } else added++;
+      bywb[k]=rec;
+    });
+    var merged=Object.keys(bywb).map(function(k){return bywb[k];});
+    var payload={month:finalMonth,updated_at:new Date().toISOString(),records:merged};
+    try{ await sbClient.from('app_settings').upsert({key:'loss_deduction_log_backup',value:JSON.stringify(prev||{month:'',records:[]})},{onConflict:'key'}); }catch(e){}
+    await sbClient.from('app_settings').upsert({key:'loss_deduction_log',value:JSON.stringify(payload)},{onConflict:'key'});
+    if(typeof LOSS_HIST!=='object'||!LOSS_HIST)LOSS_HIST={};
+    LOSS_HIST[finalMonth]={month:finalMonth,records:merged,updated_at:payload.updated_at};
+    try{ await sbClient.from('app_settings').upsert({key:'loss_deduction_history',value:JSON.stringify(LOSS_HIST||{})},{onConflict:'key'}); }catch(e){}
+    LOSS_CUR=finalMonth; LOSS_SEL=finalMonth; LOSS_DATA=LOSS_HIST[finalMonth];
+    lossRender();
+    var _stt=document.getElementById('loss-upl-status');
+    if(_stt)_stt.textContent='✅ 완료 · 신규 '+added+'건, 갱신 '+updated+'건'+(monthReset?(' · '+finalMonth+' 새 달 시작'):'')+' (중복 운송장 1건 합산)';
+    try{showToast('✅ 분실차감 업로드 완료',true);}catch(e){}
+  }catch(e){ var _s=document.getElementById('loss-upl-status'); if(_s)_s.textContent='❌ 오류: '+((e&&e.message)||e); }
+}
+async function lossUndoImport(){
+  if(!confirm('직전 업로드를 취소하고 이전 상태로 되돌릴까요?'))return;
+  try{
+    var r=await sbClient.from('app_settings').select('value').eq('key','loss_deduction_log_backup').maybeSingle();
+    var bk=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):null;
+    if(!bk||!bk.records||!bk.records.length){ alert('되돌릴 백업이 없습니다. (아직 앱에서 업로드한 적이 없거나 백업이 비어있음)'); return; }
+    await sbClient.from('app_settings').upsert({key:'loss_deduction_log',value:JSON.stringify(bk)},{onConflict:'key'});
+    if(typeof LOSS_HIST!=='object'||!LOSS_HIST)LOSS_HIST={};
+    if(bk.month){ LOSS_HIST[bk.month]={month:bk.month,records:bk.records,updated_at:bk.updated_at||new Date().toISOString()}; try{ await sbClient.from('app_settings').upsert({key:'loss_deduction_history',value:JSON.stringify(LOSS_HIST)},{onConflict:'key'}); }catch(e){}
+      LOSS_CUR=bk.month; LOSS_SEL=bk.month; LOSS_DATA=LOSS_HIST[bk.month]; }
+    lossRender();
+    alert('✅ 이전 상태로 되돌렸습니다.');
+  }catch(e){ alert('되돌리기 실패: '+((e&&e.message)||e)); }
 }
 async function pbInit(){
   var root=document.getElementById('pb-root'); if(!root||!sbClient)return;
