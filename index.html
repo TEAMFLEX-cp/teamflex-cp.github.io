@@ -11749,6 +11749,7 @@ async function _pbExtract(buf){
     tc.items.forEach(function(it){if(!it.str.trim())return;var y=Math.round(it.transform[5]/6)*6;(byY[y]=byY[y]||[]).push([it.transform[4],it.str]);});
     var rows=Object.keys(byY).map(Number).sort(function(a,b){return b-a;}).map(function(y){return byY[y].sort(function(a,b){return a[0]-b[0];}).map(function(p){return p[1];}).join(' ').replace(/\s+/g,' ').trim();}).filter(function(s){return /2026/.test(s)&&s.split(' ').length>=5;});
     var trows=rows.map(function(s){var p=s.split(' ');var pdd=p.slice(0,3).join(' ');var dm=pdd.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);var dk=dm?(dm[1]+'-'+('0'+dm[2]).slice(-2)+'-'+('0'+dm[3]).slice(-2)):'';return {pdd_date:dk,type:p[3]||'',camp:p[4]||'',route:p[5]||''};});
+    try{var _vp=page.getViewport({scale:0.2});var _rcv=document.createElement('canvas');_rcv.width=Math.max(1,Math.ceil(_vp.width));_rcv.height=Math.max(1,Math.ceil(_vp.height));await page.render({canvasContext:_rcv.getContext('2d'),viewport:_vp}).promise;}catch(e){}
     var ops=await page.getOperatorList();var ctm=[1,0,0,1,0,0],stack=[],imgs=[];
     for(var i=0;i<ops.fnArray.length;i++){var fn=ops.fnArray[i],ar=ops.argsArray[i];
       if(fn===OPS.save)stack.push(ctm.slice());
@@ -11756,7 +11757,7 @@ async function _pbExtract(buf){
       else if(fn===OPS.transform)ctm=mul(ctm,ar);
       else if(fn===OPS.paintImageXObject)imgs.push({name:ar[0],x:ctm[4],y:ctm[5]});}
     imgs.sort(function(a,b){return b.y-a.y||a.x-b.x;});
-    var imgData=[];for(var k=0;k<imgs.length;k++){imgData.push(await new Promise(function(res){try{page.objs.get(imgs[k].name,res);}catch(e){res(null);}}));}
+    var imgData=[];for(var k=0;k<imgs.length;k++){imgData.push(await new Promise(function(res){var done=false;var to=setTimeout(function(){if(!done){done=true;res(null);}},5000);try{page.objs.get(imgs[k].name,function(im){if(!done){done=true;clearTimeout(to);res(im);}});}catch(e){if(!done){done=true;clearTimeout(to);res(null);}}}));}
     for(var ri=0;ri<trows.length;ri++)out.push(Object.assign({},trows[ri],{miss:imgData[ri*2]||null,deliver:imgData[ri*2+1]||null}));
   }
   return out;
@@ -11777,23 +11778,26 @@ async function _pbDoPdf(file){
         if(e.share){try{var sh=typeof e.share==='string'?JSON.parse(e.share):e.share;(sh||[]).forEach(function(s){(s.routes||[]).forEach(function(rt){put(rt,s.driver);});});}catch(ex){}}
       });
     }catch(e){}
-    var recs=[],skipped=0,no=0;
+    var recs=[],skipped=0,no=0,photoOk=0;
     for(var i=0;i<rows.length;i++){no++;var r=rows[i];
       var drv=dmap[r.pdd_date+'|'+String(r.route).replace(/_/g,'').toUpperCase()]||'';
       if(!drv){skipped++;continue;}
       var per=_pbPeriod(r.pdd_date);if(!per)continue;
       var src=per+'|'+r.pdd_date+'|'+r.route+'|'+drv+'|'+no;var key=_pbHash(src);
       var mu='',du='';
-      if(r.miss){var b=await _pbImgToJpeg(r.miss);if(b)mu=await _pbUpload(b,per+'/'+key+'_miss.jpg');}
-      if(r.deliver){var b2=await _pbImgToJpeg(r.deliver);if(b2)du=await _pbUpload(b2,per+'/'+key+'_deliver.jpg');}
+      if(r.miss){var b=await _pbImgToJpeg(r.miss);if(b){mu=await _pbUpload(b,per+'/'+key+'_miss.jpg');photoOk++;}}
+      if(r.deliver){var b2=await _pbImgToJpeg(r.deliver);if(b2){du=await _pbUpload(b2,per+'/'+key+'_deliver.jpg');photoOk++;}}
       recs.push({period:per,pdd_date:r.pdd_date,driver_name:drv,type:r.type,camp:r.camp,route:r.route,photo_miss_url:mu,photo_deliver_url:du,status:'pending',src_key:src});
       if(st)st.textContent='사진 처리·업로드 중… ('+(i+1)+'/'+rows.length+')';
     }
-    if(!recs.length){if(st)st.textContent='❌ 근무표에서 매칭된 기사가 없어요 (건너뜀 '+skipped+'건). 해당 주차 스케줄이 앱에 있는지 확인하세요.';return;}
+    var diag='📄 PDF 처리 결과\n\n추출 행: '+rows.length+'\n기사 매칭: '+recs.length+'건\n미매칭 제외: '+skipped+'건\n사진 추출: '+photoOk+'장';
+    if(!recs.length){alert(diag+'\n\n❌ 매칭된 기사가 없습니다.\n해당 주차(8/5~8/11 등) 스케줄이 앱에 있어야 라우트→기사 매칭이 됩니다.');if(st)st.textContent='❌ 매칭 0건 (건너뜀 '+skipped+')';return;}
     var ins=await sbClient.from('pback_somyeong').upsert(recs,{onConflict:'src_key',ignoreDuplicates:true});
-    if(ins&&ins.error){if(st)st.textContent='❌ 저장 실패: '+ins.error.message;return;}
-    if(st)st.textContent='✅ 완료 · '+recs.length+'건 생성'+(skipped?(' (미매칭 '+skipped+'건 제외)'):'');
-    try{showToast('✅ 프백 소명 '+recs.length+'건 생성',true);}catch(e){}
+    if(ins&&ins.error){alert(diag+'\n\n❌ 저장 실패:\n'+(ins.error.message||'')+'\n(code: '+(ins.error.code||'')+')');if(st)st.textContent='❌ 저장 실패: '+ins.error.message;return;}
+    var cnt=0,per0=(recs[0]&&recs[0].period)||'';try{var chk=await sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',per0);cnt=(chk&&chk.count)||0;}catch(e){}
+    alert(diag+'\n\n✅ 저장 완료 (중복은 무시)\n현재 '+per0+' 총 '+cnt+'건 등록됨');
+    if(st)st.textContent='✅ 완료 · '+recs.length+'건 (사진 '+photoOk+'장, 미매칭 '+skipped+')';
+    try{showToast('✅ 프백 소명 '+recs.length+'건',true);}catch(e){}
     pbInit();
   }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}
 }
