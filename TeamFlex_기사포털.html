@@ -1042,10 +1042,11 @@ async function syncFromSupabase(){
         Object.keys(DW).forEach(function(dn){if(DW[dn])delete DW[dn][ws];});
         raw.data.forEach(function(e){
           var lk=e.grpLeaders.join('|');
-          if(!lg[lk]){lg[lk]={l:e.grpLeaders,pairs:{},order:[]};lkOrder.push(lk);}
+          if(!lg[lk]){lg[lk]={l:e.grpLeaders,pairs:{},names:{},order:[]};lkOrder.push(lk);}
           var rr=e.routeRaw||e.route;
-          if(!lg[lk].pairs[rr]){lg[lk].pairs[rr]={};lg[lk].order.push(rr);}
+          if(!lg[lk].pairs[rr]){lg[lk].pairs[rr]={};lg[lk].names[rr]={};lg[lk].order.push(rr);}
           if(!lg[lk].pairs[rr][e.date])lg[lk].pairs[rr][e.date]=[];
+          if(e.driverName)lg[lk].names[rr][e.date]=e.driverName;
           function _dwAdd(dn,sub){if(!dn)return;if(!DW[dn])DW[dn]={};if(!DW[dn][ws])DW[dn][ws]={};if(!DW[dn][ws][e.date])DW[dn][ws][e.date]=sub;else if(DW[dn][ws][e.date].indexOf(sub)<0)DW[dn][ws][e.date]+=','+sub;}
           var shareData=null;
           if(e.share){try{shareData=typeof e.share==='string'?JSON.parse(e.share):e.share;}catch(ex){}}
@@ -1070,10 +1071,10 @@ async function syncFromSupabase(){
             var pairsMap=g.pairs[rr];var dSimple={},shMulti={};
             Object.keys(pairsMap).forEach(function(dt){
               var prs=pairsMap[dt];
-              var names=prs.map(function(p){return norm_name_js(p.d);});
-              var uniq=names.filter(function(n,i){return n&&names.indexOf(n)===i;});
-              dSimple[dt]=uniq[0]||'';
-              if(uniq.length>1||(prs.length>1&&uniq.length===1))shMulti[dt]=prs;
+              var byNorm={},order=[];
+              prs.forEach(function(p){var n=norm_name_js(p.d);if(n&&!byNorm[n]){byNorm[n]=p.d;order.push(n);}});
+              dSimple[dt]=(g.names[rr]&&g.names[rr][dt])||(order.length?byNorm[order[0]]:'');
+              if(order.length>=2)shMulti[dt]=prs;
             });
             var rt={r:rr,d:dSimple};
             if(Object.keys(shMulti).length>0)rt.sh=shMulti;
@@ -1263,9 +1264,10 @@ async function schedRefresh(){
       var gls=e.grp_leaders?(typeof e.grp_leaders==='string'?JSON.parse(e.grp_leaders||'[]'):(e.grp_leaders||[])):[];
       var lk=gls.join('|');
       var rr=e.route_raw||e.route;
-      if(!lg[lk]){lg[lk]={l:gls,pairs:{},order:[]};lkOrder.push(lk);}
-      if(!lg[lk].pairs[rr]){lg[lk].pairs[rr]={};lg[lk].order.push(rr);}
+      if(!lg[lk]){lg[lk]={l:gls,pairs:{},names:{},order:[]};lkOrder.push(lk);}
+      if(!lg[lk].pairs[rr]){lg[lk].pairs[rr]={};lg[lk].names[rr]={};lg[lk].order.push(rr);}
       if(!lg[lk].pairs[rr][e.work_date])lg[lk].pairs[rr][e.work_date]=[];
+      if(e.driver_name)lg[lk].names[rr][e.work_date]=e.driver_name;
       // share 컬럼 사용 (PC프로그램이 저장한 기사별 라우트 배정)
       var shareData=null;
       if(e.share){try{shareData=typeof e.share==='string'?JSON.parse(e.share):e.share;}catch(ex){}}
@@ -1312,10 +1314,10 @@ async function schedRefresh(){
         var dSimple={};var shMulti={};
         Object.keys(pairsMap).forEach(function(dt){
           var pairs=pairsMap[dt];
-          var names=pairs.map(function(p){return norm_name_js(p.d);});
-          var uniq=names.filter(function(n,i){return n&&names.indexOf(n)===i;});
-          dSimple[dt]=uniq[0]||'';
-          if(uniq.length>1||(pairs.length>1&&uniq.length===1))shMulti[dt]=pairs;
+          var byNorm={},order=[];
+          pairs.forEach(function(p){var n=norm_name_js(p.d);if(n&&!byNorm[n]){byNorm[n]=p.d;order.push(n);}});
+          dSimple[dt]=(lg[lk].names[rr]&&lg[lk].names[rr][dt])||(order.length?byNorm[order[0]]:'');
+          if(order.length>=2)shMulti[dt]=pairs;
         });
         var rt={r:rr,d:dSimple};
         if(Object.keys(shMulti).length>0)rt.sh=shMulti;
@@ -5548,7 +5550,7 @@ async function saveSplitAssign(){
   });
   if(anyEmpty){document.getElementById('ec-err').textContent='모든 라우트에 기사를 지정해주세요.';return;}
   var byDrv={};assign.forEach(function(a){(byDrv[a.name]=byDrv[a.name]||[]).push(a.sub);});
-  var share=Object.keys(byDrv).map(function(dn){return {driver:dn,rot:'1회전',routes:byDrv[dn].sort()};});
+  var share=Object.keys(byDrv).map(function(dn){return {driver:dn,rot:'1회전,2회전',routes:byDrv[dn].sort()};});
   var mainDriver=assign[0].name;
   var route=EC_STATE.route,dt=EC_STATE.date,ws=EC_STATE.wk;
   var summary=allSame?mainDriver:assign.map(function(a){return a.sub+':'+a.name;}).join(' / ');
