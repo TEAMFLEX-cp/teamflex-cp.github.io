@@ -11189,7 +11189,7 @@ function emvRender(){
   var _uc=(CU&&CU.role==='admin')?_uplCard('emv','월초 예상 물량','#1B5E5A'):'';
   if(!EMV_D||!EMV_D.routes||!EMV_D.routes.length){ root.innerHTML=_uc+'<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15.5px;font-weight:700;line-height:1.7;">아직 공유된 월초 예상 물량이 없습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">관리자가 스케줄 프로그램에서 업로드하면 표시됩니다.</span></div>'; return; }
   var _eds=EMV_D.dates||[];
-  if(_eds.length){ var _last=emvFullDate(_eds[_eds.length-1]); if(_last){ var _t=new Date(); var _td=_t.getFullYear()+'-'+('0'+(_t.getMonth()+1)).slice(-2)+'-'+('0'+_t.getDate()).slice(-2); if(_td>_last){ root.innerHTML='<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15px;font-weight:700;line-height:1.7;">이번 월초 예상 물량 기간이 종료되었습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">다음 자료가 업로드되면 표시됩니다.</span></div>'; return; } } }
+  if(_eds.length){ var _last=emvFullDate(_eds[_eds.length-1]); if(_last){ var _t=new Date(); var _td=_t.getFullYear()+'-'+('0'+(_t.getMonth()+1)).slice(-2)+'-'+('0'+_t.getDate()).slice(-2); if(_td>_last){ root.innerHTML=_uc+'<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15px;font-weight:700;line-height:1.7;">이번 월초 예상 물량 기간이 종료되었습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">다음 자료가 업로드되면 표시됩니다.</span></div>'; return; } } }
   root.innerHTML=_uc+((EMV_VIEW==='mine')?emvMineHtml():emvAllHtml());
   if(EMV_VIEW!=='mine'){ setTimeout(function(){ var b=document.getElementById('emv-bsc'), ti=document.getElementById('emv-tsc-in'); if(b&&ti){ var tbl=b.querySelector('table'); ti.style.width=((tbl?tbl.scrollWidth:b.scrollWidth))+'px'; } },60); }
 }
