@@ -11762,7 +11762,7 @@ async function _pbExtract(buf){
   }
   return out;
 }
-function pbImportPdf(file){if(!file)return;var st=document.getElementById('pb-upl-status');if(st)st.textContent='PDF 모듈 준비 중…';pbLoadPdfJs(function(ok){if(!ok){if(st)st.textContent='❌ PDF 모듈 로드 실패';return;}_pbDoPdf(file);});}
+function pbImportPdf(file){if(!file)return;var st=document.getElementById('pb-upl-status');if(st)st.textContent='PDF 모듈 준비 중…';pbLoadPdfJs(function(ok){if(!ok){alert('❌ PDF 모듈(pdf.js)을 불러오지 못했습니다. 인터넷/차단 확인.');if(st)st.textContent='❌ PDF 모듈 로드 실패';return;}_pbDoPdf(file);});}
 async function _pbDoPdf(file){
   var st=document.getElementById('pb-upl-status');
   try{
@@ -11770,18 +11770,20 @@ async function _pbDoPdf(file){
     var rows=await _pbExtract(await file.arrayBuffer());
     if(!rows.length){if(st)st.textContent='❌ PDF에서 소명 행(날짜·라우트)을 못 찾았어요.';return;}
     var dates=Array.from(new Set(rows.map(function(r){return r.pdd_date;}).filter(Boolean)));
-    var dmap={};
+    var dmap={},schRows=0;
     try{var q=await sbClient.from('weekly_schedules').select('work_date,route,route_raw,driver_name,share').in('work_date',dates);
+      schRows=(q.data||[]).length;
       (q.data||[]).forEach(function(e){
         function put(rt,dn){if(!rt||!dn)return;dmap[e.work_date+'|'+String(rt).replace(/_/g,'').toUpperCase()]=norm_name_js(dn);}
         put(e.route,e.driver_name);put(e.route_raw,e.driver_name);
         if(e.share){try{var sh=typeof e.share==='string'?JSON.parse(e.share):e.share;(sh||[]).forEach(function(s){(s.routes||[]).forEach(function(rt){put(rt,s.driver);});});}catch(ex){}}
       });
     }catch(e){}
-    var recs=[],skipped=0,no=0,photoOk=0;
+    var recs=[],skipped=0,no=0,photoOk=0,unmk=[];
     for(var i=0;i<rows.length;i++){no++;var r=rows[i];
-      var drv=dmap[r.pdd_date+'|'+String(r.route).replace(/_/g,'').toUpperCase()]||'';
-      if(!drv){skipped++;continue;}
+      var _mk=r.pdd_date+'|'+String(r.route).replace(/_/g,'').toUpperCase();
+      var drv=dmap[_mk]||'';
+      if(!drv){skipped++;if(unmk.length<4)unmk.push(_mk);continue;}
       var per=_pbPeriod(r.pdd_date);if(!per)continue;
       var src=per+'|'+r.pdd_date+'|'+r.route+'|'+drv+'|'+no;var key=_pbHash(src);
       var mu='',du='';
@@ -11790,8 +11792,9 @@ async function _pbDoPdf(file){
       recs.push({period:per,pdd_date:r.pdd_date,driver_name:drv,type:r.type,camp:r.camp,route:r.route,photo_miss_url:mu,photo_deliver_url:du,status:'pending',src_key:src});
       if(st)st.textContent='사진 처리·업로드 중… ('+(i+1)+'/'+rows.length+')';
     }
-    var diag='📄 PDF 처리 결과\n\n추출 행: '+rows.length+'\n기사 매칭: '+recs.length+'건\n미매칭 제외: '+skipped+'건\n사진 추출: '+photoOk+'장';
-    if(!recs.length){alert(diag+'\n\n❌ 매칭된 기사가 없습니다.\n해당 주차(8/5~8/11 등) 스케줄이 앱에 있어야 라우트→기사 매칭이 됩니다.');if(st)st.textContent='❌ 매칭 0건 (건너뜀 '+skipped+')';return;}
+    var diag='📄 PDF 처리 결과\n\n추출 행: '+rows.length+'\n날짜: '+dates.join(', ')+'\n스케줄 행(그 날짜): '+schRows+'\n기사 매칭: '+recs.length+'건\n미매칭 제외: '+skipped+'건\n사진 추출: '+photoOk+'장';
+    if(unmk.length)diag+='\n미매칭 키 예: '+unmk.join(' , ');
+    if(!recs.length){alert(diag+'\n\n❌ 매칭 0건.\n'+(schRows===0?'→ 그 날짜의 스케줄이 앱(weekly_schedules)에 없습니다. 과거 주차라 앱에 없을 수 있어요.':'→ 스케줄은 '+schRows+'행 있는데 라우트 키가 안 맞습니다. 위 미매칭 키 형식 확인 필요.'));if(st)st.textContent='❌ 매칭 0건';return;}
     var ins=await sbClient.from('pback_somyeong').upsert(recs,{onConflict:'src_key',ignoreDuplicates:true});
     if(ins&&ins.error){alert(diag+'\n\n❌ 저장 실패:\n'+(ins.error.message||'')+'\n(code: '+(ins.error.code||'')+')');if(st)st.textContent='❌ 저장 실패: '+ins.error.message;return;}
     var cnt=0,per0=(recs[0]&&recs[0].period)||'';try{var chk=await sbClient.from('pback_somyeong').select('id',{count:'exact',head:true}).eq('period',per0);cnt=(chk&&chk.count)||0;}catch(e){}
@@ -11799,7 +11802,7 @@ async function _pbDoPdf(file){
     if(st)st.textContent='✅ 완료 · '+recs.length+'건 (사진 '+photoOk+'장, 미매칭 '+skipped+')';
     try{showToast('✅ 프백 소명 '+recs.length+'건',true);}catch(e){}
     pbInit();
-  }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}
+  }catch(e){alert('📄 PDF 처리 오류\n\n'+((e&&e.stack)||(e&&e.message)||e));if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}
 }
 function pbAdminHtml(){
   var c=pbCounts(PB_ITEMS),mode=PB_CFG.mode||'approval',urlok=!!(PB_CFG.form_url);
