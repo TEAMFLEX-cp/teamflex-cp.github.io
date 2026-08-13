@@ -689,15 +689,23 @@ textarea.ann-input:focus{border-color:#1565c0}
       <div class="mt">&#x270F;&#xFE0F; 기사 변경</div>
       <div style="font-size:13px;color:#666;margin-bottom:4px">라우트: <b id="ec-route"></b></div>
       <div style="font-size:13px;color:#666;margin-bottom:16px">날짜: <b id="ec-date"></b></div>
+      <div id="ec-single-wrap">
       <div class="fg">
         <label>기사 이름</label>
         <input type="text" id="ec-name" list="ec-driver-list" placeholder="이름 입력 또는 선택">
         <datalist id="ec-driver-list"></datalist>
       </div>
+      </div>
+      <div id="ec-split-wrap" style="display:none"></div>
+      <button id="ec-split-toggle" onclick="ecToggleSplit()" style="display:none;width:100%;margin-top:2px;padding:9px;background:#EAF2FB;color:#1565C0;border:1px dashed #64B5F6;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">&#x1F500; 분할 배정 (나눠서 각각 지정)</button>
       <div class="errmsg" id="ec-err"></div>
-      <div style="display:flex;gap:8px;margin-top:4px">
+      <div id="ec-foot-single" style="display:flex;gap:8px;margin-top:10px">
         <button class="btn-s" style="flex:1" onclick="closeEditCell()">취소</button>
         <button class="btn-p" style="flex:2" onclick="saveEditCell()">변경 저장</button>
+      </div>
+      <div id="ec-foot-split" style="display:none;gap:8px;margin-top:10px">
+        <button class="btn-s" style="flex:1" onclick="ecCancelSplit()">&larr; 하나로</button>
+        <button class="btn-p" style="flex:2" onclick="saveSplitAssign()">분할 저장</button>
       </div>
     </div>
   </div>
@@ -5386,8 +5394,8 @@ function pgFullSched(){
           var shareJson=JSON.stringify(shareList).replace(/"/g,'&quot;');
           var routeDisp=route;
           cells+='<td class="dname share-cell'+(tdCC?' '+tdCC:'')+'"'+rowspanAttr
-            +' onclick="openSharePopup(this)"'
-            +' data-route="'+escQ(routeDisp)+'" data-dt="'+dt+'" data-share="'+shareJson+'">'
+            +(EDIT_MODE?' onclick="openSplitCell(this)"':' onclick="openSharePopup(this)"')
+            +' data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-route="'+escQ(routeDisp)+'" data-dt="'+dt+'" data-share="'+shareJson+'">'
             +'<span style="font-size:10px;font-weight:700;color:#E65100">쉐어</span>'
             +'<span class="share-badge">'+shareList.length+'</span>'
             +'</td>';
@@ -5459,10 +5467,111 @@ function openEditCell(td){
   var dl=document.getElementById('ec-driver-list');
   dl.innerHTML=ALL_NAMES.map(function(n){return '<option value="'+n+'">';}).join('');
   document.getElementById('ec-err').textContent='';
+  EC_STATE.presplit=null;EC_STATE.splitSubs=null;
+  ecResetSplitUI();
+  var _sp=_ecSplittable(rt);
+  var _tgl=document.getElementById('ec-split-toggle');
+  if(_tgl)_tgl.style.display=_sp?'block':'none';
   document.getElementById('edit-cell-modal').style.display='';
   setTimeout(function(){document.getElementById('ec-name').focus();},100);
 }
 function closeEditCell(){document.getElementById('edit-cell-modal').style.display='none';}
+// ── 분할 배정 (104CD → 104C/104D 각각 기사 지정, share 컬럼 기록) ──
+function _ecSplittable(route){var m=(route||'').match(/^(\d+)([A-Za-z]{2,})$/);if(!m)return null;var base=m[1],letters=m[2].toUpperCase().split('');return {base:base,letters:letters,subs:letters.map(function(ch){return base+ch;})};}
+function ecResetSplitUI(){
+  var sw=document.getElementById('ec-split-wrap');if(sw){sw.style.display='none';sw.innerHTML='';}
+  var single=document.getElementById('ec-single-wrap');if(single)single.style.display='';
+  var fs=document.getElementById('ec-foot-single');if(fs)fs.style.display='flex';
+  var fp=document.getElementById('ec-foot-split');if(fp){fp.style.display='none';fp.innerHTML='<button class="btn-s" style="flex:1" onclick="ecCancelSplit()">&larr; 하나로</button><button class="btn-p" style="flex:2" onclick="saveSplitAssign()">분할 저장</button>';}
+}
+function ecToggleSplit(){
+  var sp=_ecSplittable(EC_STATE.route);
+  var subs=(EC_STATE.splitSubs&&EC_STATE.splitSubs.length)?EC_STATE.splitSubs:(sp?sp.subs:null);
+  if(!subs||!subs.length)return;
+  var cur=(document.getElementById('ec-name')&&document.getElementById('ec-name').value.trim())||'';
+  var pre=EC_STATE.presplit||{};
+  var rowsHtml=subs.map(function(sub){
+    var v=pre[sub]||cur||'';
+    return '<div class="fg" style="margin-bottom:8px"><label style="font-weight:800;color:#1565C0">'+sub+'</label>'
+      +'<input type="text" class="ec-split-input" data-sub="'+sub+'" list="ec-driver-list" value="'+escQ(v)+'" placeholder="'+sub+' 담당 기사"></div>';
+  }).join('');
+  var sw=document.getElementById('ec-split-wrap');
+  sw.innerHTML='<div style="font-size:12px;color:#888;margin-bottom:8px">&#x1F500; 라우트를 나눠서 각각 기사를 지정하세요</div>'+rowsHtml;
+  sw.style.display='block';
+  document.getElementById('ec-single-wrap').style.display='none';
+  document.getElementById('ec-split-toggle').style.display='none';
+  document.getElementById('ec-foot-single').style.display='none';
+  document.getElementById('ec-foot-split').style.display='flex';
+  document.getElementById('ec-err').textContent='';
+}
+function ecCancelSplit(){ecResetSplitUI();var t=document.getElementById('ec-split-toggle');if(t)t.style.display=_ecSplittable(EC_STATE.route)?'block':'none';}
+async function saveSplitAssign(){
+  var _rz=schedLockReason(EC_STATE&&EC_STATE.date);
+  if(_rz){alert(_schedLockMsg(_rz));closeEditCell();return;}
+  var inputs=document.querySelectorAll('#ec-split-wrap .ec-split-input');
+  var assign=[],firstName=null,allSame=true,anyEmpty=false;
+  inputs.forEach(function(inp){
+    var sub=inp.getAttribute('data-sub');var nm=(inp.value||'').trim();
+    if(!nm)anyEmpty=true;
+    if(firstName===null)firstName=nm;else if(nm!==firstName)allSame=false;
+    assign.push({sub:sub,name:nm});
+  });
+  if(anyEmpty){document.getElementById('ec-err').textContent='모든 라우트에 기사를 지정해주세요.';return;}
+  var byDrv={};assign.forEach(function(a){(byDrv[a.name]=byDrv[a.name]||[]).push(a.sub);});
+  var share=Object.keys(byDrv).map(function(dn){return {driver:dn,rot:'1회전',routes:byDrv[dn].sort()};});
+  var mainDriver=assign[0].name;
+  var route=EC_STATE.route,dt=EC_STATE.date,ws=EC_STATE.wk;
+  var summary=allSame?mainDriver:assign.map(function(a){return a.sub+':'+a.name;}).join(' / ');
+  closeEditCell();
+  await sbSaveSplit(ws,route,dt,allSame?null:share,mainDriver);
+  try{_pushSharedSchedChange(dt,route,'',summary);}catch(e){}
+  try{if(typeof schedRefresh==='function')schedRefresh();}catch(e){}
+}
+async function sbSaveSplit(ws,rr,dt,share,mainDriver){
+  if(!sbClient){showToast('⚠ 서버 연결 없음 — 저장 실패',false);return;}
+  try{
+    var payload={synced_at:new Date().toISOString()};
+    if(mainDriver)payload.driver_name=mainDriver;
+    payload.share=share?JSON.stringify(share):null;
+    var res=await sbClient.from('weekly_schedules').update(payload).eq('week_start',ws).eq('work_date',dt).eq('route_raw',rr);
+    if(res&&res.error){showToast('❌ 저장 실패: '+res.error.message,false);}
+    else{showToast(share?'✅ 분할 배정 완료':'✅ 합치기 완료',true);}
+  }catch(e){showToast('❌ 저장 실패: '+(e.message||String(e)),false);}
+}
+// 편집모드에서 쉐어(분할) 셀 탭 → 분할 수정 진입
+function openSplitCell(td){
+  if(!EDIT_MODE)return;
+  var wk=td.getAttribute('data-wk'),lk=td.getAttribute('data-lk'),route=td.getAttribute('data-route'),dt=td.getAttribute('data-dt');
+  var _rz=schedLockReason(dt);if(_rz){alert(_schedLockMsg(_rz));return;}
+  ecEditExistingSplit(wk,lk,route,dt,td.getAttribute('data-share'));
+}
+// 쉐어(분할) 셀에서 분할 수정/합치기 진입
+function ecEditExistingSplit(wk,lk,route,dt,pairsJson){
+  var pairs=[];try{pairs=JSON.parse(pairsJson||'[]');}catch(e){}
+  var pre={},subs=[];pairs.forEach(function(p){if(p.r){pre[p.r]=norm_name_js(p.d||'');if(subs.indexOf(p.r)<0)subs.push(p.r);}});
+  subs.sort();
+  EC_STATE={wk:wk,lk:lk,route:route,date:dt,presplit:pre,splitSubs:subs};
+  document.getElementById('ec-route').textContent=route;
+  document.getElementById('ec-date').textContent=dt;
+  var dl=document.getElementById('ec-driver-list');if(dl)dl.innerHTML=ALL_NAMES.map(function(n){return '<option value="'+n+'">';}).join('');
+  document.getElementById('ec-err').textContent='';
+  document.getElementById('ec-split-toggle').style.display='none';
+  document.getElementById('edit-cell-modal').style.display='';
+  ecToggleSplit();
+  var fp=document.getElementById('ec-foot-split');
+  if(fp)fp.innerHTML='<button class="btn-s" style="flex:1" onclick="closeEditCell()">취소</button>'
+    +'<button class="btn-s" style="flex:1;background:#FFF3E0;color:#E65100;border:1px solid #FFB74D" onclick="mergeFromSplitModal()">🔗 합치기</button>'
+    +'<button class="btn-p" style="flex:1.4" onclick="saveSplitAssign()">분할 저장</button>';
+}
+function mergeFromSplitModal(){
+  var inputs=document.querySelectorAll('#ec-split-wrap .ec-split-input');
+  var nm='';for(var i=0;i<inputs.length;i++){var v=(inputs[i].value||'').trim();if(v){nm=v;break;}}
+  if(!nm){nm=(prompt('합칠 담당 기사 이름')||'').trim();}
+  if(!nm){document.getElementById('ec-err').textContent='합칠 기사 이름을 입력하세요.';return;}
+  var route=EC_STATE.route,dt=EC_STATE.date,ws=EC_STATE.wk;
+  closeEditCell();
+  sbSaveSplit(ws,route,dt,null,nm).then(function(){try{_pushSharedSchedChange(dt,route,'',nm+' (합치기)');}catch(e){}try{if(typeof schedRefresh==='function')schedRefresh();}catch(e){}});
+}
 function saveEditCell(){
   var _rz=schedLockReason(EC_STATE&&EC_STATE.date);
   if(_rz){alert(_schedLockMsg(_rz));closeEditCell();return;}
