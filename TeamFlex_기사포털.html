@@ -10996,6 +10996,130 @@ function slaAvg(rows){ var t=[0,0,0,0,0]; rows.forEach(function(r){for(var i=0;i
 function slaTot(v){ if(v<95)return['#FCE4D6','#C55A11']; if(v<98)return['#FFF2CC','#806000']; return['#e8f3ec','#2d6040']; }
 function slaMc(v,mx){ if(v==null)return['#ffffff','#556']; var t=v/mx; if(t>=0.995)return['#eef6f0','#2d6040']; if(t>=0.98)return['#FFF7DA','#8a6a00']; if(t>=0.96)return['#FFEBBD','#8a5300']; if(t>=0.93)return['#FBDDC9','#b4530f']; return['#FFC7CE','#9C0006']; }
 function slaRsort(rows){ return rows.slice().sort(function(a,b){var pa=String(a[0]).match(/(\d+)/),pb=String(b[0]).match(/(\d+)/);var na=pa?+pa[1]:0,nb=pb?+pb[1]:0;if(na!==nb)return na-nb;return String(a[0])<String(b[0])?-1:1;}); }
+/* ══════ [관리자] 앱에서 엑셀 업로드 → 스케줄 프로그램과 동일 적용 (SLA/월초물량/가중요인) ══════ */
+function _uplCard(id,label,color){
+  color=color||'#3a2d8f';
+  return '<div style="background:#fff;border:1px solid #dcd6f0;border-radius:12px;padding:11px 12px;margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:800;color:'+color+';margin-bottom:3px">📥 '+label+' 엑셀 업로드 <span style="font-weight:600;color:#999">(본사 양식 · 스케줄 프로그램과 동일 적용)</span></div>'
+    +'<input type="file" id="'+id+'-file" accept=".xlsx,.xls" style="display:none" onchange="'+id+'Import(this.files[0]);this.value=\'\'">'
+    +'<div style="display:flex;gap:8px">'
+      +'<button onclick="document.getElementById(\''+id+'-file\').click()" style="flex:2;padding:10px;background:'+color+';color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">📎 엑셀 파일 선택</button>'
+      +'<button onclick="'+id+'Undo()" style="flex:1;padding:10px;background:#fff;color:#c62828;border:1px solid #ef9a9a;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">↩️ 되돌리기</button>'
+    +'</div><div id="'+id+'-upl-status" style="font-size:11.5px;color:#666;margin-top:7px;line-height:1.5"></div></div>';
+}
+function _uplStamp(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+async function _uplSaveBackup(key,bkKey,valObj){
+  try{var cr=await sbClient.from('app_settings').select('value').eq('key',key).maybeSingle();var prev=(cr&&cr.data&&cr.data.value!=null)?cr.data.value:null;if(prev!=null)await sbClient.from('app_settings').upsert({key:bkKey,value:(typeof prev==='string'?prev:JSON.stringify(prev))},{onConflict:'key'});}catch(e){}
+  await sbClient.from('app_settings').upsert({key:key,value:JSON.stringify(valObj)},{onConflict:'key'});
+}
+async function _uplUndo(key,bkKey,reloadFn){
+  if(!confirm('직전 업로드를 취소하고 이전 상태로 되돌릴까요?'))return;
+  try{var r=await sbClient.from('app_settings').select('value').eq('key',bkKey).maybeSingle();var bk=(r&&r.data&&r.data.value!=null)?r.data.value:null;if(bk==null){alert('되돌릴 백업이 없습니다. (앱에서 업로드한 적이 없음)');return;}
+    await sbClient.from('app_settings').upsert({key:key,value:(typeof bk==='string'?bk:JSON.stringify(bk))},{onConflict:'key'});
+    if(reloadFn)await reloadFn(); alert('✅ 이전 상태로 되돌렸습니다.');
+  }catch(e){alert('되돌리기 실패: '+((e&&e.message)||e));}
+}
+function _uplRows(buf){var wb=XLSX.read(new Uint8Array(buf),{type:'array',cellDates:true});var ws=wb.Sheets[wb.SheetNames[0]];return XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});}
+function _uplCell(rows){return function(r,c){var row=rows[r-1];return row&&row[c-1]!=null?row[c-1]:'';};}
+function _uplMaxCol(rows){return Math.max.apply(null,rows.map(function(r){return r?r.length:0;}));}
+/* ---- SLA 파서 (본사 Vendor/Route Score 양식) ---- */
+function _parseSLA(rows,fname){
+  var cell=_uplCell(rows),mr=rows.length,isHq=false;
+  for(var r=1;r<=Math.min(mr,20);r++){var t=String(cell(r,2));if(t.indexOf('Vendor Score')>=0||t.indexOf('Route Score')>=0){isHq=true;break;}}
+  if(!isHq)return null;
+  function norm(rt){return String(rt).replace(/^(\d+)([A-Za-z])$/,'$1_$2');}
+  function rk(rt){var m=String(rt).match(/(\d+)_?([A-Za-z]*)/);return m?[parseInt(m[1],10),m[2]]:[99999,String(rt)];}
+  var hdr=8,found=false;for(var r=1;r<=Math.min(mr,15)&&!found;r++){for(var c=1;c<=15;c++){if(String(cell(r,c)).trim()==='Route'){hdr=r;found=true;break;}}}
+  var mnum=null;for(var r=1;r<hdr;r++){for(var c=2;c<=6;c++){var lab=String(cell(r,c-1));var v=String(cell(r,c));var mm=v.match(/(\d{4})[.\s]*(\d{1,2})[.\s]*(\d{1,2})/);if(lab.indexOf('End')>=0&&mm)mnum=parseInt(mm[2],10);}}
+  if(mnum==null){var fm=String(fname||'').match(/(\d+)\s*월/);mnum=fm?parseInt(fm[1],10):(new Date().getMonth()+1);}
+  var routes=[],avg=null;
+  for(var r=hdr+1;r<=mr;r++){var cat=String(cell(r,2)).trim();var rt=cell(r,8);
+    var num=function(c){var f=parseFloat(cell(r,c));return isNaN(f)?null:Math.round(f*10)/10;};
+    var vals=[num(11),num(12),num(13),num(14),num(15)];
+    if(cat==='Vendor Score')avg=vals.map(function(x){return x==null?0:x;});
+    else if(cat==='Route Score'&&rt)routes.push([norm(String(rt).trim())].concat(vals.map(function(x){return x==null?0:x;})));}
+  routes.sort(function(a,b){var ra=rk(a[0]),rb=rk(b[0]);return ra[0]-rb[0]||(ra[1]<rb[1]?-1:ra[1]>rb[1]?1:0);});
+  if(!avg)avg=[0,1,2,3,4].map(function(i){return routes.length?Math.round(routes.reduce(function(s,rr){return s+rr[1+i];},0)/routes.length*10)/10:0;});
+  var months={};months[String(mnum)]={label:mnum+'월',range:'',avg:avg,routes:routes};return months;
+}
+function slaImport(file){if(!file)return;var st=document.getElementById('sla-upl-status');if(st)st.textContent='엑셀 모듈 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='❌ 엑셀 모듈 로드 실패';return;}_slaDo(file);});}
+async function _slaDo(file){var st=document.getElementById('sla-upl-status');
+  try{if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var months=_parseSLA(rows,file.name);
+    if(!months||!Object.keys(months).length){if(st)st.textContent='❌ SLA 데이터를 못 찾았어요. 본사 SLA 엑셀(Vendor/Route Score)인지 확인하세요.';return;}
+    var cr=await sbClient.from('app_settings').select('value').eq('key','sla_data').maybeSingle();
+    var cur=(cr&&cr.data&&cr.data.value)?(typeof cr.data.value==='string'?JSON.parse(cr.data.value):cr.data.value):null;
+    var mm=(cur&&cur.months&&typeof cur.months==='object')?cur.months:{};
+    Object.keys(months).forEach(function(k){mm[k]=months[k];});
+    var payload={updated:_uplStamp(),months:mm};
+    await _uplSaveBackup('sla_data','sla_data_backup',payload);
+    var k0=Object.keys(months)[0];
+    if(st)st.textContent='✅ 완료 · '+Object.keys(months).map(function(k){return k+'월';}).join(', ')+' ('+months[k0].routes.length+'개 라우트)';
+    SLA_D=payload;SLA_VIEW='month';SLA_SEL=slaLatest();slaRender();try{showToast('✅ SLA 업로드 완료',true);}catch(e){}
+  }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
+function slaUndo(){_uplUndo('sla_data','sla_data_backup',slaInit);}
+/* ---- 월초 예상 물량 파서 ---- */
+var _EMV_COMBOS=[["104CD",["104_C","104_D"]],["111CD",["111_C","111_D"]],["112AB",["112_A","112_B"]],["112CD",["112_C","112_D"]],["113ABC",["113_A","113_B","113_C"]],["113D/115D",["113_D","115_D"]],["114D/115A",["114_D","115_A"]],["115BC",["115_B","115_C"]],["206BC",["206_B","206_C"]],["209AB",["209_A","209_B"]],["211AB",["211_A","211_B"]],["301AD",["301_A","301_D"]],["301BC",["301_B","301_C"]],["302AB",["302_A","302_B"]],["302CD",["302_C","302_D"]],["304AB",["304_A","304_B"]],["304CD",["304_C","304_D"]],["311AB",["311_A","311_B"]],["311CD",["311_C","311_D"]],["312AB",["312_A","312_B"]],["312CD",["312_C","312_D"]],["316AD",["316_A","316_D"]],["316B",["316_B"]],["316C",["316_C"]],["803B/805B",["803_B","805_B"]],["808CD",["808_C","808_D"]]];
+function _parseEMV(rows){
+  var cell=_uplCell(rows),mr=rows.length,mc=_uplMaxCol(rows);
+  var hdr=1,found=false;for(var r=1;r<=Math.min(mr,10)&&!found;r++){var vals=[];for(var c=1;c<=Math.min(mc,14);c++)vals.push(String(cell(r,c)).trim());if(vals.indexOf('Route')>=0){hdr=r;found=true;}}
+  var rcol=4;for(var c=1;c<=mc;c++){if(String(cell(hdr,c)).trim()==='Route'){rcol=c;break;}}
+  var dcol0=rcol+1,dates=[];for(var c=dcol0;c<=mc;c++){var v=cell(hdr,c);if(v==null||String(v).trim()===''){break;}dates.push(String(v).trim());}
+  var routes=[],g=0,open=false;
+  for(var r=hdr+1;r<=mr;r++){var rt=cell(r,rcol);var rts=rt!=null?String(rt).trim():'';
+    if(rts===''||rts==='Total'||rts==='Route'||rts==='예상 위탁 물량'||rts==='예상위탁물량'){if(open){g++;open=false;}continue;}
+    var q=[];for(var i=0;i<dates.length;i++){var cv=cell(r,dcol0+i);var n=parseFloat(cv);q.push(isNaN(n)?0:Math.round(n));}
+    var camp=rcol>1?String(cell(r,rcol-1)).trim():'';var wv=String(cell(r,1)).trim();var nm=(wv.indexOf('W1')>=0||wv.indexOf('야간')>=0)?'야':'주';
+    routes.push({route:rts.replace(/^(\d+)([A-Za-z])$/,'$1_$2'),camp:camp,nm:nm,q:q,g:g});open=true;}
+  return {dates:dates,routes:_emvRegroup(routes)};
+}
+function _emvRegroup(routes){
+  var order={},legpos={};_EMV_COMBOS.forEach(function(cm,gi){cm[1].forEach(function(l,li){order[l]=gi;legpos[l]=li;});});
+  var known=routes.filter(function(r){return order[r.route]!=null;});
+  var unknown=routes.filter(function(r){return order[r.route]==null;});
+  known.sort(function(a,b){return order[a.route]-order[b.route]||legpos[a.route]-legpos[b.route];});
+  unknown.sort(function(a,b){return String(a.route)<String(b.route)?-1:1;});
+  var out=[];known.forEach(function(r){var x=Object.assign({},r);x.g=order[r.route];out.push(x);});
+  var base=_EMV_COMBOS.length;unknown.forEach(function(r,k){var x=Object.assign({},r);x.g=base+k;out.push(x);});
+  return out;
+}
+function emvImport(file){if(!file)return;var st=document.getElementById('emv-upl-status');if(st)st.textContent='엑셀 모듈 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='❌ 엑셀 모듈 로드 실패';return;}_emvDo(file);});}
+async function _emvDo(file){var st=document.getElementById('emv-upl-status');
+  try{if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var d=_parseEMV(rows);
+    if(!d.dates.length||!d.routes.length){if(st)st.textContent='❌ 데이터를 못 찾았어요. (Route/일자 헤더 확인)';return;}
+    var payload={updated:_uplStamp(),dates:d.dates,routes:d.routes};
+    await _uplSaveBackup('early_month_volume','early_month_volume_backup',payload);
+    if(st)st.textContent='✅ 완료 · '+d.dates.length+'일 · '+d.routes.length+'개 라우트';
+    EMV_D=payload;EMV_VIEW='all';emvRender();try{showToast('✅ 월초물량 업로드 완료',true);}catch(e){}
+  }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
+function emvUndo(){_uplUndo('early_month_volume','early_month_volume_backup',emvInit);}
+/* ---- 가중요인 파서 ---- */
+function _parseWF(rows){
+  var cell=_uplCell(rows),mr=rows.length,mc=_uplMaxCol(rows);
+  var hdrRow=5,found=false;for(var r=1;r<=Math.min(mr,15)&&!found;r++){for(var c=1;c<=Math.min(mc,8);c++){if(String(cell(r,c)).trim().toLowerCase()==='wave'){hdrRow=r;found=true;break;}}}
+  var dataR0=hdrRow+1,titleRow=hdrRow-2>=1?hdrRow-2:1;
+  var blocks=[];for(var c=1;c<=mc;c++){if(String(cell(hdrRow,c)).trim().toLowerCase()==='wave')blocks.push(c);}
+  if(!blocks.length)blocks=[1];
+  var all=[];
+  blocks.forEach(function(s){
+    var title='';for(var tc=s;tc<s+7;tc++){var tv=cell(titleRow,tc);if(tv&&String(tv).trim()&&String(tv).trim()!=='Title'){title=String(tv).trim();break;}}
+    var br=[];
+    for(var r=dataR0;r<=mr;r++){var rt=cell(r,s+2);if(rt==null||rt==='')continue;
+      var num=function(c){var f=parseFloat(String(cell(r,c)).replace('%','').trim());return isNaN(f)?null:Math.round(f*100)/100;};
+      br.push({wave:cell(r,s),camp:cell(r,s+1),route:String(rt),f1:num(s+3),f1s:String(cell(r,s+4)).trim()||null,f2:num(s+5),f2s:String(cell(r,s+6)).trim()||null});}
+    all.push({title:title,routes:br});
+  });
+  return all;
+}
+function wfImport(file){if(!file)return;var st=document.getElementById('wf-upl-status');if(st)st.textContent='엑셀 모듈 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='❌ 엑셀 모듈 로드 실패';return;}_wfDo(file);});}
+async function _wfDo(file){var st=document.getElementById('wf-upl-status');
+  try{if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var blocks=_parseWF(rows);
+    if(!blocks.length||!blocks[0].routes.length){if(st)st.textContent='❌ 데이터를 못 찾았어요. (Wave/Route 헤더 확인)';return;}
+    var payload={updated:_uplStamp(),blocks:blocks};
+    await _uplSaveBackup('weight_factor_data','weight_factor_data_backup',payload);
+    if(st)st.textContent='✅ 완료 · '+blocks.length+'개 주차블록 · '+blocks[0].routes.length+'개 라우트';
+    WF_D=payload;wfRender();try{showToast('✅ 가중요인 업로드 완료',true);}catch(e){}
+  }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
+function wfUndo(){_uplUndo('weight_factor_data','weight_factor_data_backup',wfInit);}
 function pgSlaPage(){
   pbInjectStyle();
   var isAdm=CU&&CU.role==='admin';
@@ -11012,8 +11136,9 @@ async function slaInit(){
 function slaShow(v){ if(v==='avg'){SLA_VIEW='avg';} else {SLA_VIEW='month'; SLA_SEL=+v;} slaRender(); }
 function slaRender(){
   var root=document.getElementById('sla-root'); if(!root)return;
-  if(!SLA_D||!SLA_D.months||!slaAvail().length){ root.innerHTML='<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15px;font-weight:700;line-height:1.7;">아직 공유된 SLA 점수가 없습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">관리자가 스케줄 프로그램에서 전송하면 표시됩니다.</span></div>'; return; }
-  root.innerHTML=slaPills()+((SLA_VIEW==='avg')?slaAvgView():slaMonthView());
+  var _uc=(CU&&CU.role==='admin')?_uplCard('sla','SLA 점수'):'';
+  if(!SLA_D||!SLA_D.months||!slaAvail().length){ root.innerHTML=_uc+'<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15px;font-weight:700;line-height:1.7;">아직 공유된 SLA 점수가 없습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">관리자가 스케줄 프로그램에서 전송하면 표시됩니다.</span></div>'; return; }
+  root.innerHTML=_uc+slaPills()+((SLA_VIEW==='avg')?slaAvgView():slaMonthView());
 }
 function slaPills(){
   var av=slaAvail(); var h='<div style="display:flex;flex-wrap:wrap;gap:5px;padding:4px 2px 8px;">';
@@ -11061,10 +11186,11 @@ async function emvInit(){
 function emvShow(v){ EMV_VIEW=v; emvRender(); }
 function emvRender(){
   var root=document.getElementById('emv-root'); if(!root)return;
-  if(!EMV_D||!EMV_D.routes||!EMV_D.routes.length){ root.innerHTML='<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15.5px;font-weight:700;line-height:1.7;">아직 공유된 월초 예상 물량이 없습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">관리자가 스케줄 프로그램에서 업로드하면 표시됩니다.</span></div>'; return; }
+  var _uc=(CU&&CU.role==='admin')?_uplCard('emv','월초 예상 물량','#1B5E5A'):'';
+  if(!EMV_D||!EMV_D.routes||!EMV_D.routes.length){ root.innerHTML=_uc+'<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15.5px;font-weight:700;line-height:1.7;">아직 공유된 월초 예상 물량이 없습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">관리자가 스케줄 프로그램에서 업로드하면 표시됩니다.</span></div>'; return; }
   var _eds=EMV_D.dates||[];
   if(_eds.length){ var _last=emvFullDate(_eds[_eds.length-1]); if(_last){ var _t=new Date(); var _td=_t.getFullYear()+'-'+('0'+(_t.getMonth()+1)).slice(-2)+'-'+('0'+_t.getDate()).slice(-2); if(_td>_last){ root.innerHTML='<div style="text-align:center;padding:44px 18px;color:#5a6b7a;font-size:15px;font-weight:700;line-height:1.7;">이번 월초 예상 물량 기간이 종료되었습니다.<br><span style="font-size:12.5px;color:#98a3af;font-weight:600;">다음 자료가 업로드되면 표시됩니다.</span></div>'; return; } } }
-  root.innerHTML=(EMV_VIEW==='mine')?emvMineHtml():emvAllHtml();
+  root.innerHTML=_uc+((EMV_VIEW==='mine')?emvMineHtml():emvAllHtml());
   if(EMV_VIEW!=='mine'){ setTimeout(function(){ var b=document.getElementById('emv-bsc'), ti=document.getElementById('emv-tsc-in'); if(b&&ti){ var tbl=b.querySelector('table'); ti.style.width=((tbl?tbl.scrollWidth:b.scrollWidth))+'px'; } },60); }
 }
 function emvAllHtml(){
@@ -11121,8 +11247,9 @@ async function wfInit(){
 }
 function wfRender(){
   var root=document.getElementById('wf-root'); if(!root)return;
-  if(!WF_D||!WF_D.blocks||!WF_D.blocks.length){ root.innerHTML='<div class="pb-empty">아직 공유된 가중요인 자료가 없습니다.<br><span style="font-size:11px;color:#999">관리자가 스케줄 프로그램에서 업로드하면 표시됩니다.</span></div>'; return; }
-  root.innerHTML=(WF_VIEW==='mine')?wfMineHtml():wfSumHtml();
+  var _uc=(CU&&CU.role==='admin')?_uplCard('wf','가중요인','#5e35b1'):'';
+  if(!WF_D||!WF_D.blocks||!WF_D.blocks.length){ root.innerHTML=_uc+'<div class="pb-empty">아직 공유된 가중요인 자료가 없습니다.<br><span style="font-size:11px;color:#999">관리자가 스케줄 프로그램에서 업로드하면 표시됩니다.</span></div>'; return; }
+  root.innerHTML=_uc+((WF_VIEW==='mine')?wfMineHtml():wfSumHtml());
 }
 function wfSumHtml(){
   var b=WF_D.blocks[0]; var rs=(b.routes||[]).slice().sort(function(a,z){var pa=String(a.route||'').match(/(\d+)/),pz=String(z.route||'').match(/(\d+)/);var na=pa?+pa[1]:0,nz=pz?+pz[1]:0;if(na!==nz)return na-nz;return String(a.route)<String(z.route)?-1:1;});
