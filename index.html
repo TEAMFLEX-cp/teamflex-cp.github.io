@@ -5325,6 +5325,52 @@ async function _sxDoList(){
     try{showToast('✅ 리스트 다운로드 ('+rows.length+'행)',true);}catch(e){}
   }catch(e){if(st)st.textContent='';alert('리스트 생성 오류: '+((e&&e.message)||e));}
 }
+/* ── 스케줄 표 다운로드/업로드 (캠프·라우트·날짜 그리드, 왕복 호환) ── */
+function schedDownloadTable(){if(!(CU&&CU.role==='admin'))return;var st=document.getElementById('sx-status');if(st)st.textContent='엑셀 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='엑셀 모듈 로드 실패';return;}_sxDoTableDown();});}
+async function _sxDoTableDown(){
+  var st=document.getElementById('sx-status');
+  try{
+    var ws0=SCHED_WK;
+    var q=await sbClient.from('weekly_schedules').select('work_date,route,route_raw,driver_name,grp_leaders,share').eq('week_start',ws0);
+    var data=(q&&q.data)||[];
+    if(!data.length){alert('이 주차 스케줄 데이터가 없습니다.');if(st)st.textContent='';return;}
+    var dates=Array.from(new Set(data.map(function(r){return r.work_date;}))).sort();
+    var byKey={},order=[];
+    data.forEach(function(r){var gl=r.grp_leaders;if(typeof gl==='string'){try{gl=JSON.parse(gl);}catch(e){gl=[];}}gl=gl||[];var lk=gl.join('·');var rr=r.route_raw||r.route||'';var key=lk+'|||'+rr;if(!byKey[key]){byKey[key]={leader:lk,camp:(String(rr).charAt(0)==='8'?'일산8':'일산3'),route:rr,d:{}};order.push(key);}if(r.driver_name)byKey[key].d[r.work_date]=r.driver_name;});
+    var hdr=['팀장·조장','캠프','라우트'].concat(dates.map(function(d){return _sxDateVal(d);}));
+    var aoa=[hdr];
+    order.forEach(function(key){var o=byKey[key];var row=[o.leader,o.camp,o.route];dates.forEach(function(d){row.push(o.d[d]||'');});aoa.push(row);});
+    var wb=XLSX.utils.book_new();var sh=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
+    for(var c=3;c<hdr.length;c++){var ad=XLSX.utils.encode_cell({r:0,c:c});if(sh[ad])sh[ad].z='m/d';}
+    sh['!cols']=[{wch:16},{wch:8},{wch:12}].concat(dates.map(function(){return {wch:11};}));
+    XLSX.utils.book_append_sheet(wb,sh,'스케줄표');
+    XLSX.writeFile(wb,_sxWeekLabel(ws0)+'_스케줄표.xlsx');
+    if(st)st.textContent='✅ 표 다운로드 ('+order.length+'행)';
+  }catch(e){if(st)st.textContent='';alert('표 다운로드 오류: '+((e&&e.message)||e));}
+}
+function _sxCellDate(v){if(v instanceof Date&&!isNaN(v.getTime()))return v.getFullYear()+'-'+('0'+(v.getMonth()+1)).slice(-2)+'-'+('0'+v.getDate()).slice(-2);var s=String(v||'');var m=s.match(/(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+'-'+m[2]+'-'+m[3];return '';}
+function schedUploadTable(file){if(!file)return;if(!(CU&&CU.role==='admin'))return;var st=document.getElementById('sx-status');if(st)st.textContent='엑셀 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='엑셀 모듈 로드 실패';return;}_sxDoTableUp(file);});}
+async function _sxDoTableUp(file){
+  var st=document.getElementById('sx-status');
+  try{
+    var buf=await file.arrayBuffer();var wb=XLSX.read(new Uint8Array(buf),{type:'array',cellDates:true});var ws=wb.Sheets[wb.SheetNames[0]];
+    var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+    if(!rows.length){alert('빈 파일입니다.');if(st)st.textContent='';return;}
+    var hdr=rows[0]||[];var dateCols=[];for(var c=3;c<hdr.length;c++){var ds=_sxCellDate(hdr[c]);if(ds)dateCols.push({c:c,date:ds});}
+    if(!dateCols.length){alert('날짜 헤더(4열부터)를 못 찾았어요. 이 앱에서 받은 표 형식이 맞는지 확인하세요.');if(st)st.textContent='';return;}
+    var ws0=SCHED_WK;
+    if(!confirm('업로드한 표로 '+_sxWeekLabel(ws0)+' 주차의 기사 배정을 덮어씁니다.\n('+dateCols.length+'일 × 라우트) 계속할까요?'))return;
+    var upd=0,miss=0,cell=0;
+    for(var r=1;r<rows.length;r++){var row=rows[r];if(!row)continue;var route=String(row[2]==null?'':row[2]).trim();if(!route)continue;
+      for(var k=0;k<dateCols.length;k++){var dc=dateCols[k];var drv=String(row[dc.c]==null?'':row[dc.c]).trim();if(!drv)continue;cell++;
+        try{var res=await sbClient.from('weekly_schedules').update({driver_name:drv,synced_at:new Date().toISOString()}).eq('week_start',ws0).eq('work_date',dc.date).eq('route_raw',route);if(res&&res.error)miss++;else upd++;}catch(e){miss++;}
+        if(st)st.textContent='반영 중… ('+cell+')';}
+    }
+    alert('✅ 표 업로드 완료\n반영: '+upd+'셀'+(miss?(' / 실패 '+miss):'')+'\n\n※ 분할(share)은 그대로 유지됩니다.');
+    if(st)st.textContent='✅ 표 반영 '+upd+'셀';
+    if(typeof schedRefresh==='function')schedRefresh();
+  }catch(e){if(st)st.textContent='';alert('표 업로드 오류: '+((e&&e.message)||e));}
+}
 function toggleEdit(){
   if(!EDIT_MODE && CU && CU.role!=='admin'){
     if(!canEditSched()){alert(_schedLockMsg('role'));return;}
@@ -5379,7 +5425,7 @@ function pgFullSched(){
   var h='<div class="sched-sticky-nav">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
       '<div style="font-size:15px;font-weight:800;color:#1a237e">&#x1F4C5; 전체 스케줄</div>'+
-      '<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:2px">'+((CU&&CU.role==='admin')?'<button onclick="schedDownloadList()" style="background:#00695c;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📋 리스트</button>':'')+editBtn+logBtn+refreshBtn+'</div>'+
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:2px">'+((CU&&CU.role==='admin')?('<input type="file" id="sx-tbl-file" accept=".xlsx,.xls" style="display:none" onchange="schedUploadTable(this.files[0]);this.value=\'\'">'+'<button onclick="schedDownloadTable()" style="background:#3949ab;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📊 표↓</button>'+'<button onclick="document.getElementById(\'sx-tbl-file\').click()" style="background:#5e35b1;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📤 표↑</button>'+'<button onclick="schedDownloadList()" style="background:#00695c;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:12px;font-weight:700;cursor:pointer">📋 리스트</button>'):'')+editBtn+logBtn+refreshBtn+'</div>'+
       ((CU&&CU.role==='admin')?'<div id="sx-status" style="text-align:right;font-size:11px;color:#00695c;font-weight:700;margin-bottom:4px"></div>':'')+
     '</div>'+
     nav+
