@@ -11197,6 +11197,7 @@ async function lossInit(){
   LOSS_SEL=_nowM;
   if(!LOSS_HIST[LOSS_SEL]) LOSS_HIST[LOSS_SEL]={month:LOSS_SEL,records:[]};
   LOSS_DATA=LOSS_HIST[LOSS_SEL];
+  try{ if(_lossAutoConfirm(LOSS_DATA)) await _lossSave(); }catch(e){}
   lossRender();
 }
 function lossSelMonth(k){ LOSS_SEL=k; if(!LOSS_HIST[k])LOSS_HIST[k]={month:k,records:[]}; LOSS_DATA=LOSS_HIST[k]; lossRender(); }
@@ -11284,6 +11285,10 @@ function lossRender(){
     mine.forEach(function(x){ if(x.status!=='nofault' && x.confirmed!==true && seen.indexOf(String(x.wb))<0){ _LOSS_NEW[String(x.wb)]=true; newCnt++; } });
     if(!mine.length){ html+='<div style="background:#e8f5e9;border-radius:12px;padding:22px 14px;text-align:center;color:#2e7d32;font-size:13px;font-weight:700;margin-top:8px">✅ 내 분실 차감 내역이 없습니다</div>'; }
     else{
+      html+='<div style="background:linear-gradient(135deg,#fff3e0,#ffe0b2);border:1.5px solid #ffb74d;border-radius:13px;padding:13px 15px;margin:4px 2px 12px;box-shadow:0 3px 10px rgba(255,152,0,.18)">'
+        +'<div style="font-size:13.5px;font-weight:900;color:#e65100;margin-bottom:5px">⏰ 확정 안내</div>'
+        +'<div style="font-size:12.5px;color:#5d4037;line-height:1.65;font-weight:600">분실 차감 내역은 <b style="color:#c62828">공유 후 7일이 지나면 자동으로 확정</b> 처리됩니다.<br>이의가 있으면 기한 내에 <b>[✓ 확인]</b>을 누르거나 문의해 주세요.</div>'
+        +'</div>';
       if(newCnt>0){ html+='<div style="text-align:center;margin:2px 2px 11px"><span class="loss-nwb" style="display:inline-block;background:#fff3cd;color:#e65100;border:1.5px solid #ffb74d;border-radius:20px;padding:6px 15px;font-size:12.5px;font-weight:900">🆕 새로 공유된 '+newCnt+'건! 확인해주세요</span></div>'; }
       html+='<div style="display:flex;justify-content:space-between;align-items:center;margin:4px 2px 8px"><span style="font-size:13px;font-weight:800;color:#1565c0">📌 내 차감 내역</span><span style="font-size:12px;font-weight:800;color:#c2185b">'+mineAct.length+'건 · '+_lossFmt(mineSum)+'원</span></div>';
       mine.slice().sort(function(a,b){return _lossOrd(a)-_lossOrd(b)||String(a.date).localeCompare(String(b.date));}).forEach(function(x){ html+=lossRowMine(x); });
@@ -11335,6 +11340,18 @@ function lossRowAdmin(x){
     +btns+'</div>';
 }
 
+// 공유 후 7일 경과 시 자동 확정 (shared_at 없으면 지금부터 카운트 시작)
+function _lossAutoConfirm(data){
+  if(!data||!data.records)return false;
+  var now=Date.now(),SEVEN=7*24*3600*1000,nowIso=new Date().toISOString(),changed=false;
+  data.records.forEach(function(x){
+    if(x.status==='nofault'||x.confirmed===true)return;
+    if(!x.shared_at){x.shared_at=nowIso;changed=true;return;}
+    var sa=Date.parse(x.shared_at);
+    if(!isNaN(sa)&&(now-sa)>=SEVEN){x.confirmed=true;x.confirmed_at=nowIso;x.confirmed_by='자동확정';changed=true;}
+  });
+  return changed;
+}
 async function _lossSave(){
   if(!LOSS_DATA)return;
   LOSS_DATA.updated_at=new Date().toISOString();
@@ -11451,6 +11468,8 @@ async function _lossDoImport(file){
       var di=String(rec.driver_id||'').trim();
       if(di&&idMap[di]&&(dn===''||dn==='미지정'||dn===di)){rec.driver_name=idMap[di];}
     });
+    var _shIso=new Date().toISOString();
+    merged.forEach(function(rec){ if(!rec.shared_at)rec.shared_at=_shIso; });
     var payload={month:finalMonth,updated_at:new Date().toISOString(),records:merged};
     try{ await sbClient.from('app_settings').upsert({key:'loss_deduction_log_backup',value:JSON.stringify(prev||{month:'',records:[]})},{onConflict:'key'}); }catch(e){}
     await sbClient.from('app_settings').upsert({key:'loss_deduction_log',value:JSON.stringify(payload)},{onConflict:'key'});
