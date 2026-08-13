@@ -837,7 +837,7 @@ function _sbFetch(input,init){
   if(init.signal)return fetch(input,init);
   var ctrl;
   try{ctrl=new AbortController();}catch(e){return fetch(input,init);}
-  var to=setTimeout(function(){try{ctrl.abort();}catch(_){}}, 12000);
+  var to=setTimeout(function(){try{ctrl.abort();}catch(_){}}, 30000);
   init.signal=ctrl.signal;
   return fetch(input,init).then(function(r){clearTimeout(to);return r;},function(err){clearTimeout(to);throw err;});
 }
