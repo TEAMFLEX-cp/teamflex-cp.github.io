@@ -5378,7 +5378,10 @@ async function _sxDoChanged(){
   try{
     var ws0=SCHED_WK;var wm=String(ws0).match(/(\d{4})-(\d{2})-(\d{2})/);var wsD=wm?new Date(+wm[1],+wm[2]-1,+wm[3]):null;
     var weekDates={};if(wsD){for(var i=0;i<7;i++){var d=new Date(wsD.getTime()+i*86400000);weekDates[d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)]=1;}}
-    var log=[];try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_change_log').maybeSingle();if(r&&r.data&&r.data.value){var v=r.data.value;log=(typeof v==='string')?JSON.parse(v):v;}}catch(e){}
+    var sharedLog=[];try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_change_log').maybeSingle();if(r&&r.data&&r.data.value){var v=r.data.value;sharedLog=(typeof v==='string')?JSON.parse(v):v;}}catch(e){}
+    if(!Array.isArray(sharedLog))sharedLog=[];
+    var localLog=[];try{localLog=_getSchedLog()||[];}catch(e){}
+    var log=(typeof _mergeSchedLogs==='function')?_mergeSchedLogs(sharedLog,localLog):sharedLog;
     if(!Array.isArray(log))log=[];
     var scoped=log.filter(function(c){return weekDates[c.workDate];});
     if(!scoped.length){var _sd=Array.from(new Set(log.map(function(c){return c.workDate;}).filter(Boolean))).sort().slice(-10).join(', ');alert('이 주차('+_sxWeekLabel(ws0)+')의 변경 건이 없습니다.\n\n전체 변경이력: '+log.length+'건\n변경된 날짜: '+(_sd||'없음')+'\n\n※ 변경분은 지금 보고 있는 주차의 변경만 담습니다. 변경한 날짜가 포함된 주차로 이동 후 눌러주세요.');if(st)st.textContent='';return;}
