@@ -5385,12 +5385,19 @@ async function _sxDoChanged(){
     // net 처리: (날짜|라우트)별 최초 oldDriver, 최종 newDriver
     var net={};
     scoped.forEach(function(c){var key=c.workDate+'|'+c.route;var at=c.at||'';if(!net[key]){net[key]={workDate:c.workDate,route:c.route,oldDriver:c.oldDriver||'',newDriver:c.newDriver||'',oldAt:at,newAt:at};}else{if(at>net[key].newAt){net[key].newDriver=c.newDriver||'';net[key].newAt=at;}if(at<net[key].oldAt){net[key].oldDriver=c.oldDriver||'';net[key].oldAt=at;}}});
+    // 그날 최종 스케줄에서 근무 중인 기사 집합 (다른 라우트라도 근무 있으면 휴무 처리 제외)
+    var workingByDate={};
+    try{var wq=await sbClient.from('weekly_schedules').select('work_date,driver_name,share').eq('week_start',ws0);
+      (wq.data||[]).forEach(function(e){var d=e.work_date;if(!workingByDate[d])workingByDate[d]={};if(e.driver_name)workingByDate[d][norm_name_js(e.driver_name)]=1;
+        if(e.share){try{var sh=typeof e.share==='string'?JSON.parse(e.share):e.share;(sh||[]).forEach(function(s){if(s.driver)workingByDate[d][norm_name_js(s.driver)]=1;});}catch(ex){}}});
+    }catch(e){}
+    function _sxWorking(date,nm){return !!(workingByDate[date]&&workingByDate[date][norm_name_js(nm||'')]);}
     var didmap=await _sxDidMap();
-    var aoa=[['업무일','사업자등록번호','캠프명','웨이브','아이디','업무상태','회전','업무라우트']];var n=0;
+    var aoa=[['업무일','사업자등록번호','캠프명','웨이브','아이디','업무상태','회전','업무라우트']];var n=0,skipHumu=0;
     Object.keys(net).sort().forEach(function(key){var c=net[key];if((c.oldDriver||'')===(c.newDriver||''))return;
       var routes=_sxSplitRt(c.route||'');var first=routes[0]||'';var night=_sxIsNight(first);var baseRt=first.replace(/\s*\(.*?\)/g,'').trim();
       var camp=baseRt.charAt(0)==='8'?'일산8':'일산3';var wave=night?_SX_CFG.night_wave:_SX_CFG.day_wave;var rot=night?_SX_CFG.night_rot:_SX_CFG.day_rot;var routeStr=routes.join(',');
-      if(c.oldDriver){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,c.oldDriver,''),'휴무','','']);n++;}
+      if(c.oldDriver){ if(_sxWorking(c.workDate,c.oldDriver)){skipHumu++;} else {aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,c.oldDriver,''),'휴무','','']);n++;} }
       if(c.newDriver){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,c.newDriver,''),_SX_CFG.status,rot,routeStr]);n++;}
     });
     if(aoa.length<2){alert('순변경(net)이 없습니다. (원복된 변경만 있음)');if(st)st.textContent='';return;}
@@ -5399,8 +5406,8 @@ async function _sxDoChanged(){
     for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}
     XLSX.utils.book_append_sheet(wb,sh,'변경리스트');
     XLSX.writeFile(wb,_sxWeekLabel(ws0)+'_변경리스트.xlsx');
-    if(st)st.textContent='✅ 변경분 '+n+'행 다운로드';
-    try{showToast('✅ 변경분 다운로드 ('+n+'행)',true);}catch(e){}
+    if(st)st.textContent='✅ 변경분 '+n+'행'+(skipHumu?(' (휴무 제외 '+skipHumu+')'):'');
+    try{showToast('✅ 변경분 '+n+'행'+(skipHumu?(' · 근무있어 휴무제외 '+skipHumu):''),true);}catch(e){}
   }catch(e){if(st)st.textContent='';alert('변경분 생성 오류: '+((e&&e.message)||e));}
 }
 function toggleEdit(){
