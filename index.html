@@ -806,9 +806,11 @@ textarea.ann-input:focus{border-color:#1565c0}
   <div class="ah">
     <div class="au">
       <div onclick="go('hm')" style="cursor:pointer">
-        <div class="an" id="han"></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <div class="an" id="han"></div>
+          <div id="han-bdg" style="display:flex;flex-wrap:wrap;gap:3px"></div>
+        </div>
         <div class="ar" id="har"></div>
-        <div id="han-bdg" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px"></div>
       </div>
     </div>
     <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
@@ -15640,7 +15642,7 @@ function hcHomeBanner(){
     '<div style="font-size:11.5px;opacity:.95;margin-top:3px">근골격계 증상조사 &middot; 월 1회 &middot; 약 2분</div></div>'+
     '<div style="background:rgba(255,255,255,.25);border-radius:11px;padding:9px 12px;font-size:12.5px;font-weight:900;white-space:nowrap">작성 &#x25B6;</div></div></div>';
 }
-function hcNameBadge(){try{var h=document.getElementById('han');if(h&&!document.getElementById('hc-badge')){h.insertAdjacentHTML('afterend','<span id="hc-badge" style="display:inline-flex;align-items:center;gap:3px;background:#eaf3de;color:#3b6d11;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;margin-left:7px;vertical-align:middle">건강체크 &#x2713;</span>');}}catch(e){}}
+function hcNameBadge(){try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}}
 
 function hcOverlay(id){var o=document.getElementById(id);if(!o){o=document.createElement('div');o.id=id;o.style.cssText='position:fixed;inset:0;z-index:99993;background:#eef3f8;overflow:auto;-webkit-overflow-scrolling:touch';document.body.appendChild(o);}o.style.display='block';try{document.body.style.overflow='hidden';}catch(e){}return o;}
 function hcClose(id){var o=document.getElementById(id);if(o){o.style.display='none';o.innerHTML='';}try{document.body.style.overflow='';}catch(e){}}
