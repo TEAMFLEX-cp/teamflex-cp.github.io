@@ -2080,26 +2080,104 @@ function openSchedPermPopup(){
     var inMark=stamp?('<span style="position:relative;display:inline-block;width:66px;height:58px;vertical-align:middle;text-align:center"><span class="ctc-inmark" style="line-height:58px">(인)</span><img src="'+stamp+'" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:58px;width:auto;pointer-events:none"></span>'):'<span class="ctc-inmark">(인)</span>';
     return '<div class="ctc-tbl">'+trr('위탁자 주소',fv(addr))+trr('상호',fv(biz))+'<div class="ctc-tr"><div class="ctc-th">대표자</div><div class="ctc-td">'+fv(ceo)+' '+inMark+'</div></div></div>';
   }
-  function badgeHTML(d,mode){
-    var renew=(S.badgeKind==='renew');
-    function cho(){if(mode==='done'||(d._chks&&d._chks.b_cD==='y'&&mode!=='sign'))return '<div class="ctc-agree" style="border-color:#bfe6cc;background:#f4fbf6"><div class="q">허가 후 관리방법</div><div style="font-weight:800;color:#1b8a3f;font-size:12px">☑ 자동 증명 (관리비 월 1,000원)</div></div>';if(mode!=='sign')return '<div class="ctc-agree"><div class="q">허가 후 관리방법 (택1)</div><div style="color:#8090a0;font-size:12px">☐ 자동 증명  ☐ 직접 증명</div></div>';return '<div class="ctc-agree" id="b_cD"><div class="q">허가 후 관리방법 — 하나를 선택 (택1)</div><div class="ctc-opts"><div class="ctc-opt" data-v="auto" onclick="CT_choice(\'b_cD\',\'auto\')"><div class="cb">✓</div>자동 증명<br><span style="font-weight:500;font-size:9px">월1,000원</span></div><div class="ctc-opt" data-v="direct" onclick="CT_choice(\'b_cD\',\'direct\')"><div class="cb">✓</div>직접 증명<br><span style="font-weight:500;font-size:9px">2,000원</span></div></div></div>';}
-    var h='<div class="ctc-paper"><div class="ctc-ttl">택배용 화물자동차 운송사업 '+(renew?'재허가':'허가')+' 신청 현황 확인서</div><p class="ctc-p" style="text-align:center;color:#889;text-indent:0">'+(renew?'[별지 제2호 서식]':'(별지 제1호)')+'</p>';
-    h+='<div class="ctc-art">① 신청인</div><div class="ctc-tbl">'+trr('성명',fv(d.name))+trr('주민등록번호',fv(d.jumin))+trr('주소',fv(d.addr))+trr('연락처',fv(d.phone))+'</div>';
-    h+='<div class="ctc-art">② 전속운송계약</div><div class="ctc-tbl">'+trr('택배서비스사업자','쿠팡로지스틱스서비스 유한회사')+trr('영업점','팀플렉스 주식회사 · 대표 문병국')+trr('계약기간',fv(kd(d.start))+' ~ '+fv(kd(d.end))+' (1년)')+'</div>';
-    h+='<div class="ctc-art">③ 차량 정보</div><div class="ctc-tbl">'+trr('차명(연식)',fv(d.car)+' / '+fv(d.cyear))+trr('최대적재량',fv(d.load)+' kg')+trr('차량번호',fv(d.carno))+'</div>';
-    h+='<div class="ctc-art">④ 운전면허 · ⑤ 화물운송 자격</div><div class="ctc-tbl">'+trr('면허번호',fv(d.lic))+trr('면허종류',fv(d.lictype))+trr('자격증번호',fv(d.qual))+trr('자격취득일',fv(d.qualdate))+'</div>';
-    h+='<p class="ctc-p">택배용 화물자동차 운송사업 '+(renew?'재허가':'허가')+'를 위해 시행규칙 제6조제2항에 따라 확인서를 제출합니다.</p><p style="text-align:center">'+fv(kd(d.sign))+'</p>';
-    h+='<div class="ctc-tbl">'+trr('대표이사','강현오 (인)')+'<div class="ctc-tr"><div class="ctc-th">위 신청인</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s1','신청인',mode,d)+'</div></div></div>';
-    h+='<div class="ctc-sttl">택배용 화물자동차 전속 운송 계약서</div><p class="ctc-p" style="text-indent:0">쿠팡로지스틱스서비스(“갑”)·팀플렉스 주식회사(“을”)·'+fv(d.name)+'(“병”)은 허가요령 제4조에 따라 전속운송계약을 체결한다.</p>';
-    h+='<p class="ctc-p">제1조 목적 · 제2조 책임과 의무(갑 관리감독·을 관리책임·병 준수의무) · 제3조 병은 전속 담당, 제3자 운송 금지.</p><p class="ctc-p">제4조 계약기간 '+fv(kd(d.start))+' ~ '+fv(kd(d.end))+' (1년, 60일 전 미통지 시 자동연장).</p><p class="ctc-p">제5조 번호판 반납 · 제6조 서울중앙지법 관할 · 제7조 신용정보 조회 동의 · 제8조 서면 변경 · 제9조 번호 불허 시 계약 무효.</p>';
-    h+='<p style="text-align:center">계약일자 : '+fv(kd(d.sign))+'</p><div class="ctc-tbl">'+trr('(갑)','쿠팡로지스틱스서비스 · 강현오 (인)')+trr('(을)','팀플렉스(633-87-02978) · 문병국 (인)')+'<div class="ctc-tr"><div class="ctc-th">(병) 성명</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s2','병(기사)',mode,d)+'</div></div>'+trr('(병) 생년월일',fv(d.birth))+trr('(병) 연락처',fv(d.phone))+'</div>';
-    h+='<div class="ctc-sttl">개인정보 활용 동의서 (한국통합물류협회)</div><p class="ctc-p"><b>수집항목</b> 성명·생년월일·주소·연락처·차량정보·자격번호. <b>목적</b> 이력관리·복지 안내. <b>보유</b> 필요성 상실 시 3년 후 파기.</p>';
-    h+=agBlk('b_cA','[필수] 개인정보 및 고유식별정보(주민등록번호·운전면허번호) 수집·이용에 동의합니다.',mode,d)+'<p style="text-align:center">'+fv(kd(d.sign))+'</p><div class="ctc-tbl"><div class="ctc-tr"><div class="ctc-th">성명</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s3','동의자',mode,d)+'</div></div></div>';
-    h+='<div class="ctc-sttl">개인정보 제3자 제공 동의</div><p class="ctc-p" style="text-indent:0">쿠팡로지스틱스서비스는 운수사업법 제10조에 의거 한국통합물류협회에 개인정보를 제공합니다.</p>';
-    h+=agBlk('b_cB','[필수] 개인정보 제3자 제공 동의 (→ 한국통합물류협회)',mode,d)+agBlk('b_cC','[필수] 고유식별정보(주민등록번호·면허번호) 제3자 제공 동의',mode,d)+'<p style="text-align:center">'+fv(kd(d.sign))+'</p><div class="ctc-tbl"><div class="ctc-tr"><div class="ctc-th">성명</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s4','동의자',mode,d)+'</div></div></div>';
-    h+='<div class="ctc-sttl">택배용 화물자동차(‘배’번호판) 허가 후 관리 신청서</div><div class="ctc-tbl">'+trr('영업점','팀플렉스 주식회사 · 문병국')+trr('신청자',fv(d.name))+trr('생년월일',fv(d.birth))+trr('차량번호',fv(d.carno))+'</div>'+cho()+'<p class="ctc-p" style="color:#a33">※ 두 방법 중 1가지 선택 필수. 미신청·미제출 시 허가조건 위반으로 통보될 수 있음.</p><p style="text-align:center">'+fv(kd(d.sign))+'</p><div class="ctc-tbl"><div class="ctc-tr"><div class="ctc-th">신청자</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d)+'</div></div></div>';
-    h+='</div>';return h;
-  }
+   function badgeHTML(d,mode){
+     var renew=(S.badgeKind==='renew');
+     var SVC='쿠팡로지스틱스서비스 유한회사';
+     var GAP='쿠팡로지스틱스서비스',GAP_CEO='강현오',GAP_ADDR='서울특별시 강남구 광평로 280 7층 (수서동, 로즈데일빌딩)';
+     var EUL='팀플렉스 주식회사',EUL_CEO='문병국',EUL_ADDR='경기도 파주시 와석순환로 15, 807동 203호',EUL_TEL='010-7139-8602',EUL_BIZ='633-87-02978';
+     function fchk(on,l){return (on?'■':'□')+' '+l;}
+     var car=String(d.car||''),fu=String(d.fuel||''),lt=String(d.lictype||'');
+     var isEV=/EV|전기/i.test(fu),isLPG=/LPG/i.test(fu);
+     var isKia=/봉고|PV5|카니발|레이|모닝|니로|K\d/i.test(car),isHd=/포터|스타렉스|스타리아|쏠라티|그랜드/i.test(car);
+     function inMark(){return '<span class="ctc-inmark">(인)</span>';}
+     function mirror(){var im=(d._sigs&&d._sigs['b_s2']);if(im)return '<span class="ctc-sigspot done">'+inMark()+'<img class="simg" src="'+im+'"></span>';if(mode==='done')return '<span class="ctc-sigspot done">'+inMark()+'<span class="scur">'+(d.name||'')+'</span></span>';return '<span class="ctc-sigspot">'+inMark()+'<span style="font-size:8px;color:#12a58f;font-weight:800">제1부 자동적용</span></span>';}
+     function seal(nm){return nm+' <span class="ctc-sigspot done">'+inMark()+'</span>';}
+     function cho(){if(mode==='done'||(d._chks&&d._chks.b_cD==='y'&&mode!=='sign')){var au=(d._chks&&d._chks.b_cD==='auto')||true;return '<div class="ctc-agree" style="border-color:#bfe6cc;background:#f4fbf6"><div class="q">2. 허가 후 관리 방법</div><div style="font-weight:800;color:#1b8a3f;font-size:12px">☑ 자동 증명 (관리비 납부 · 월 1,000원)</div></div>';}if(mode!=='sign')return '<div class="ctc-agree"><div class="q">2. 허가 후 관리 방법 (택1)</div><div style="color:#8090a0;font-size:12px">□ 자동 증명 (관리비 월 1,000원)　□ 직접 증명 (서류확인비용 2,000원)</div></div>';return '<div class="ctc-agree" id="b_cD"><div class="q">2. 허가 후 관리 방법 — 하나를 선택 (택1)</div><div class="ctc-opts"><div class="ctc-opt" data-v="auto" onclick="CT_choice(\'b_cD\',\'auto\')"><div class="cb">✓</div>자동 증명<br><span style="font-weight:500;font-size:9px">관리비 월1,000원</span></div><div class="ctc-opt" data-v="direct" onclick="CT_choice(\'b_cD\',\'direct\')"><div class="cb">✓</div>직접 증명<br><span style="font-weight:500;font-size:9px">확인비용 2,000원</span></div></div></div>';}
+
+     var h='<div class="ctc-paper">';
+     /* ===================== 1p. 허가/재허가 신청 현황 확인서 ===================== */
+     h+='<div class="ctc-ttl">택배용 화물자동차 운송사업 '+(renew?'재허가':'허가')+' 신청 현황 확인서</div>';
+     h+='<p class="ctc-p" style="text-align:right;text-indent:0;color:#889;margin:0 0 6px">No. '+(renew?'[ 2 ]':'( 1 )')+'</p>';
+     h+='<div class="ctc-art">① 신청인</div><div class="ctc-tbl">'+trr('성명',fv(d.name))+trr('주민등록번호',fv(d.jumin))+trr('주소(주민등록 상)',fv(d.addr))+trr('연락처',fv(d.phone))+'</div>';
+     if(!renew)h+='<p class="ctc-p" style="text-indent:0;font-size:9.5pt;color:#a33">＊주민등록 상 주소지와 영업점(대리점) 주소지가 비인접할 경우, 접수 반려됨.</p>';
+     h+='<div class="ctc-art">② 전속운송계약</div><div class="ctc-tbl">'+trr('택배서비스사업자 명',SVC)+trr('영업점(대리점) 명',EUL)+trr('영업점(대리점) 대표자명',EUL_CEO)+trr('영업점(대리점) 주소',EUL_ADDR)+trr('영업점(대리점) 연락처',EUL_TEL);
+     if(!renew)h+=trr('전속운송 계약기간','(계약 시작일) '+fv(kd(d.start))+' <br>1 년 <br>(계약 종료일) '+fv(kd(d.end)));
+     h+='</div>';
+     if(!renew){
+       h+='<div class="ctc-art">③ 차량 정보</div><div class="ctc-tbl">'+trr('차명(연식)',fv(d.car)+' ('+fv(d.cyear)+')')+trr('연료',fchk(isLPG,'LPG')+'　'+fchk(isEV,'전기')+'　'+fchk(!isEV&&!isLPG&&fu!=='','기타 ( '+(!isEV&&!isLPG?fu:'')+' )'))+trr('제조사',fchk(isHd,'현대')+'　'+fchk(isKia,'기아'))+trr('계약번호','')+trr('최대적재량','( '+fv(d.load)+' ) kg')+trr('형태','□ 탑형　□ 밴형')+'</div>';
+       h+='<div class="ctc-art">④ 운전면허</div><div class="ctc-tbl">'+trr('면허번호',fv(d.lic))+trr('면허종류',fchk(/1종.*대형/.test(lt),'1종 대형')+'　'+fchk(/1종.*보통/.test(lt),'1종 보통')+'　'+fchk(/2종.*보통/.test(lt),'2종 보통')+'<br>'+fchk(/특수.*대형/.test(lt),'특수면허 대형견인차')+'　'+fchk(/특수.*소형/.test(lt),'특수면허 소형견인차'))+'</div>';
+       h+='<div class="ctc-art">⑤ 화물운송 종사자격</div><div class="ctc-tbl">'+trr('자격증번호',fv(d.qual))+trr('자격취득일',fv(d.qualdate))+'</div>';
+       h+='<p class="ctc-p">택배용 화물자동차 운송사업 허가를 위해 시행규칙 제6조제2항제1호·제2호에 따라 확인서를 제출합니다.</p>';
+     }else{
+       h+='<div class="ctc-art">③ 차량 정보</div><div class="ctc-tbl">'+trr('차종','소형화물')+trr('차명(연식)',fv(d.car)+' ('+fv(d.cyear)+')')+trr('최대적재량','( '+fv(d.load)+' ) kg')+trr('차량번호',fv(d.carno))+'</div>';
+       h+='<p class="ctc-p">택배용 화물자동차 운송사업 재허가를 위해 화물자동차 운수사업법 시행규칙 제6조제2항제1호·제2호에 따라 확인서를 제출합니다.</p>';
+     }
+     h+='<p class="ctc-p" style="text-align:center;text-indent:0">'+fv(kd(d.sign))+'</p>';
+     h+='<div class="ctc-tbl">'+trr('택배서비스사업자명',SVC)+trr('대 표 이 사',seal(GAP_CEO))+'<div class="ctc-tr"><div class="ctc-th">위 신청인</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s1','신청인',mode,d)+'</div></div></div>';
+     if(!renew){h+='<p class="ctc-p" style="text-align:center;text-indent:0;font-weight:700">특별시장·광역시장·특별자치시장·도지사·특별자치도지사 귀하</p>';h+='<p class="ctc-p" style="font-size:9pt;color:#666">※ 위에 기입된 내용은 향후 택배용 화물자동차 운송사업 허가요령 제7조제4항에 의거 택배용 화물자동차의 운영 현황관리에 활용될 수 있음</p><p class="ctc-p" style="font-size:9pt;color:#666">첨부 : 택배용 화물자동차 전속 운송 계약서</p>';}
+     else{h+='<p class="ctc-p" style="font-size:9pt;color:#666">(집배점(영업점)명이 아닌, 택배 본사명을 기재하고, 본사인감을 날인)</p>';}
+
+     /* ===================== 2p. 전속 운송 계약서 (3부: 갑/을/병 보관) ===================== */
+     function contract(copyLabel,interactive){
+       var s=`<p class="ctc-p" style="text-align:right;text-indent:0;color:#12a58f;font-weight:800;margin:0 0 4px">${copyLabel}</p>`;
+       s+=`<p class="ctc-p" style="text-indent:0">${GAP}（이하 "갑"이라 한다）와 ${EUL} (이하 "을"이라 한다) 및 ${fv(d.name)} (이하 "병"이라 한다）는 택배용 화물자동차 운송사업 허가요령 제4조 제1항에 따라 다음과 같이 전속운송계약을 체결한다.</p>`;
+       s+=`<div class="ctc-art">제1조【목적】</div><p class="ctc-p">본 계약은 화물자동차 운수사업법 시행규칙 제6조 제3항 및 택배용 화물자동차 운송사업 허가요령에 따라 "갑"과 "을" "병" 간에 전속 운송계약을 체결하고, 관계법령 및 본 계약에 의하여 운송업무를 수행함으로써 택배용 화물자동차 운송사업 허가기준을 준수함을 목적으로 한다.</p>`;
+       s+=`<div class="ctc-art">제2조【책임과 의무】</div>`;
+       s+=`<p class="ctc-p">① "갑"은 택배사업자（화물을 집화·분류·배송하는 형태의 화물자동차 운송사업자로서 국토교통부장관으로부터 인정받은 자）로서 "을"로부터 제2항에 따라 업무를 위탁받은 "병"과 관계법령에 따라 택배용 화물자동차 운송사업 허가를 위한 전속운송계약을 체결하고, 택배용 화물자동차 운송사업 허가와 관련된 사항을 전반적으로 관리감독한다.</p>`;
+       s+=`<p class="ctc-p">② "을"은 "갑"과 택배대리점 계약을 체결하고 "갑"으로부터 일정한 지역 내에서의 영업, 화물의 집화·배송·반품 및 관련 업무 등을 위탁받은 자로서 "병"과 위수탁 계약을 체결하고 이에 따라 "병"에게 택배운송 업무를 수행하게 하며, 택배 전용 번호판 사용 등에 관한 관계법령을 준수하게 할 관리책임을 진다.</p>`;
+       s+=`<p class="ctc-p">③ "병"은 본 계약에 따라 화물의 집하·배송만을 담당하기 위해 개별화물자동차 운송사업 또는 용달화물자동차 운송사업 허가를 받은 자로서 본 계약 및 관계법령에 따라 택배용 화물자동차 운송사업 허가와 관련된 사항을 이행하고, 대리점과의 위수탁 계약 등에 따라 택배운송업무를 성실하게 수행하며, 택배 전용 번호판 사용 등에 관하여 관계 법령을 준수할 의무를 진다.</p>`;
+       s+=`<p class="ctc-p">④ "갑"과 "병" 간에는 별도의 계약이 없는 한, 본 계약 외에는 어떠한 권리 의무관계도 발생하지 않음을 상호 확인한다.</p>`;
+       s+=`<div class="ctc-art">제3조【계약내용】</div>`;
+       s+=`<p class="ctc-p">① "병"은 본 계약의 계약기간 동안 "을"이 위탁하는 집화 및 배송 업무를 전속으로 담당하며, "갑" 및 "을" 외의 제3자에게 운송을 제공하여서는 아니된다.</p>`;
+       s+=`<p class="ctc-p">② 본 계약의 계약기간 중 "갑"과 "을" 간의 택배 대리점 계약이 종료되는 경우, "갑"과 "병"은 본 계약과 동일한 조건으로 "을"의 지위를 승계·대체한 자와 전속운송계약을 체결한다.</p>`;
+       s+=`<div class="ctc-art">제4조【계약기간】</div><p class="ctc-p">본 계약의 계약기간은 ${fv(kd(d.start))} 부터 ${fv(kd(d.end))} 까지（1년간）로 하되, 기간만료일 60일 이전에 어느 일방의 계약 종료 통지가 없는 한 본 계약은 동일조건으로 1년씩 자동 연장되는 것으로 한다. 다만, 일방의 계약조건의 변경 통지가 있을 시에는 본 계약의 만료일까지 당사자 간 계약조건이 서면 합의되지 아니하면 본 계약은 종료된 것으로 한다.</p>`;
+       s+=`<div class="ctc-art">제5조【택배 전용 번호판 반납】</div><p class="ctc-p">"병"이 질병, 사고 등의 사유로 택배운송업무가 불가능한 경우, 이후의 조치에 대하여 "갑" 또는 "을"과 협의하여야 하며, 본 계약이 종료되거나 해지되어 택배운송업무를 계속할 수 없게 된 경우 "병"은 택배 전용 번호판을 관할관청에 반납하여야 한다.</p>`;
+       s+=`<div class="ctc-art">제6조【분쟁의 해결】</div><p class="ctc-p">본 계약에 관하여 분쟁이 발생한 경우에는 당사자들의 상호 합의로 해결함을 원칙으로 하되, 상호 합의에 이르지 못한 경우에는 서울중앙 지방법원을 관할법원으로 하는 소송절차에 의하여 해결하기로 한다.</p>`;
+       s+=`<div class="ctc-art">제7조【신용정보 조회 승낙】</div><p class="ctc-p">"을"과 "병"은 "갑"이 '신용정보의 이용 및 보호에 관한 법률'이 정하는 바에 따라 "을" 및 "병"에 대한 신용조사 또는 신용정보 조회하는 것에 동의한다.</p>`;
+       s+=`<div class="ctc-art">제8조【기타사항】</div><p class="ctc-p">본 계약 계약기간 중 본 계약내용의 변경은 당사자의 서면 합의에 의해서만 변경될 수 있으며, 기명날인된 문서를 본 계약서의 말미에 첨부하여야 한다.</p>`;
+       s+=`<div class="ctc-art">제9조【특약사항】</div>`;
+       s+=`<p class="ctc-p">① 본 계약서와는 별도로 당사자 간 체결된 계약서의 내용과 본 계약서의 내용이 서로 상충되는 경우 다음의 사항은 본 계약서의 내용을 우선하여 적용한다.<br>　1. 제3조 택배 전용 번호판 사용 등에 관한 계약내용<br>　2. 제4조 택배 전용 번호판 사용 등에 관한 계약기간<br>　3. 제5조 택배 전용 번호판 사용 등에 관련된 번호판반납</p>`;
+       s+=`<p class="ctc-p">② "병"의 택배 전용번호 신청이 불허가 결정되면, 본 계약서는 효력이 없는 것으로 한다.</p>`;
+       s+=`<p class="ctc-p" style="text-align:center;text-indent:0">계약일자 : ${fv(kd(d.sign))}</p>`;
+       s+=`<div class="ctc-tbl">`+trr('（갑） 회사명',GAP)+trr('대표이사',seal(GAP_CEO))+trr('（갑） 주소',GAP_ADDR)+`<div class="ctc-tr"><div class="ctc-th">（병） 성명</div><div class="ctc-td">${fv(d.name)} ${interactive?sigSpot('b_s2','병(기사)',mode,d):mirror()}</div></div>`+trr('（병） 주소',fv(d.addr))+trr('（병） 생년월일',fv(d.birth))+trr('（병） 연락처',fv(d.phone))+trr('（을） 대리점명',EUL)+trr('（을） 사업자번호',EUL_BIZ)+trr('（을） 주소',EUL_ADDR)+trr('（을） 대표자',seal(EUL_CEO))+`</div>`;
+       return s;
+     }
+     h+='<div class="ctc-sttl">택배용 화물자동차 전속 운송 계약서</div>'+contract('［제1부 · "갑"(택배본사) 보관 — 서명하는 원본］',true);
+     h+='<div class="ctc-sttl">택배용 화물자동차 전속 운송 계약서 (제2부)</div>'+contract('［제2부 · "을"(대리점) 보관 — 제1부 서명 자동 적용］',false);
+     h+='<div class="ctc-sttl">택배용 화물자동차 전속 운송 계약서 (제3부)</div>'+contract('［제3부 · "병"(기사) 보관 — 제1부 서명 자동 적용］',false);
+
+     /* ===================== 3p. 개인정보 활용 동의서 ===================== */
+     h+='<div class="ctc-sttl">택배용 화물자동차 허가신청 및 이력관리를 위한 개인정보 활용 동의서</div>';
+     h+='<p class="ctc-p">한국통합물류협회(이하 \'협회\')는 택배용 화물자동차 운송사업 허가요령 제7조제4항에 의거하여 택배용 화물자동차의 전속운송계약(해지)현황, 운영현황을 관리하기 위해 택배용 화물자동차 및 해당 허가자에 대한 정보를 수집 및 보유합니다.</p>';
+     h+='<p class="ctc-p"><b>1. 수집하는 개인정보의 항목</b><br>성명, 생년월일, 주소, 연락처, 차량정보(차종, 차명, 형태, 차량번호), 화물운송종사자 자격번호 등 허가 신청 현황 확인서에 기입되는 모든 내용과 허가 후 정보(허가 받은 지역, 차량번호)를 수집합니다.</p>';
+     h+='<p class="ctc-p"><b>2. 수집 및 이용목적</b><br>택배용 화물자동차 이력관리(택배업 종사여부 확인, 국토교통부 보고, 행정관청 업무 지원, 보험안내, 택배관련 복지사업 안내 등)를 위해 정보를 수집·이용하며, 이를 제외한 목적으로 사용하지 않습니다. 전화·SMS를 통해 관리 및 안내할 수 있습니다.</p>';
+     h+='<p class="ctc-p"><b>3. 보유 및 보유기간</b><br>이력관리 및 정보 안내 필요성이 상실될 경우(허가취소, \'배\'번호판 반납 확인 등) 3년간 보유 후 파기합니다.</p>';
+     h+='<p class="ctc-p"><b>4. 고유식별정보</b> — 주민등록번호(허가 완료 및 시스템 등록 시까지), 운전면허번호(필요성 상실 후 3년 보유 후 파기).</p>';
+     h+='<p class="ctc-p"><b>5. 제3자 제공</b> — 국토교통부·환경부·해양수산부·관할관청(성명·차량번호·휴대폰번호, 영구보유, 필수) / 현대·기아·㈜버금·에이원금융판매㈜D&I지점(성명·휴대폰번호, 2년, 선택).</p>';
+     h+=agBlk('b_cA','[필수] 위와 같이 개인정보 및 고유식별정보(주민등록번호·운전면허번호)를 수집·이용하는 데 동의합니다.',mode,d);
+     h+='<p class="ctc-p" style="text-align:center;text-indent:0">'+fv(kd(d.sign))+'</p><div class="ctc-tbl"><div class="ctc-tr"><div class="ctc-th">성명</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s3','동의자',mode,d)+'</div></div></div><p class="ctc-p" style="text-align:right;text-indent:0">한국통합물류협회 귀하</p>';
+
+     /* ===================== 4p. 개인정보 제3자 제공 동의 ===================== */
+     h+='<div class="ctc-sttl">개인정보 제3자 제공 동의</div>';
+     h+='<p class="ctc-p" style="text-indent:0">쿠팡로지스틱스서비스는 화물자동차 운수사업법 제10조(화물자동차 운전자 채용 기록의 관리)에 의거 택배용 화물자동차 허가신청 및 이력 관리를 위해 한국통합물류협회에 개인정보를 제공합니다.</p>';
+     h+='<p class="ctc-p"><b>[필수] 개인정보 제3자 제공</b> — 제공받는 자: 한국통합물류협회 / 목적: 택배용 화물자동차 이력관리(택배업 종사여부 확인, 국토교통부 보고, 행정관청 업무 지원, 보험안내, 복지사업 안내 등) / 항목: 성명, 생년월일, 주소, 전화번호, 차량정보(차종·차명·형태·차량번호), 화물운송종사자 자격번호 및 허가 후 정보(허가받은 지역·차량번호) / 보유: \'배\'번호판 허가취소·번호판 반납 확인 후 3년.</p>';
+     h+=agBlk('b_cB','[필수] 위와 같이 개인정보를 한국통합물류협회에 제3자 제공하는 데 동의합니다.',mode,d);
+     h+='<p class="ctc-p"><b>[필수] 고유식별정보 제3자 제공</b> — 제공받는 자: 한국통합물류협회 / 항목: 고유식별정보(주민등록번호·운전면허번호) / 목적: 택배용 화물자동차 운송사업 허가 및 차량 이력관리 / 보유: 주민등록번호(시스템 등록 완료 시 지체없이 파기), 운전면허번호(필요성 상실 후 3년).</p>';
+     h+=agBlk('b_cC','[필수] 위와 같이 고유식별정보(주민등록번호·운전면허번호)를 제3자 제공하는 데 동의합니다.',mode,d);
+     h+='<p class="ctc-p" style="text-align:center;text-indent:0">'+fv(kd(d.sign))+'</p><div class="ctc-tbl"><div class="ctc-tr"><div class="ctc-th">성명</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s4','동의자',mode,d)+'</div></div></div>';
+
+     /* ===================== 5p. 허가 후 관리 신청서 ===================== */
+     h+='<div class="ctc-sttl">택배용 화물자동차(\'배\'번호판)의 허가 후 관리 신청서</div>';
+     h+='<p class="ctc-p" style="text-indent:0">쿠팡로지스틱스서비스 및 한국통합물류협회 귀중. 신청자 본인은 \'배\'번호판을 택배 용도로만 사용하고 있음을 증명하기 위하여 아래와 같이 허가 후 관리 신청서를 제출합니다.</p>';
+     h+='<div class="ctc-art">1. 신청 정보</div><div class="ctc-tbl">'+trr('영업점명',EUL)+'<div class="ctc-tr"><div class="ctc-th">신 청 자</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d)+'</div></div>'+trr('생년월일',fv(d.birth))+trr('대 표 자',seal(EUL_CEO))+trr('연 락 처',fv(d.phone))+trr('차량번호',fv(d.carno))+'</div>';
+     h+=cho();
+     h+='<p class="ctc-p" style="font-size:9pt;color:#666">· 자동 증명(관리비 납부): 신청서를 접수한 달부터 매월 집배송 수수료(월급)에서 1,000원을 공제하여 한국통합물류협회에 관리비로 납부.<br>· 직접 증명(서류 확인비용 납부): 매익월 5일까지 관련 증빙(도장 날인 월간 집배송 내역서 1부, 자동차등록증 사본 1부)을 제출하고 확인비용 2,000원을 지정계좌로 입금.</p>';
+     h+='<p class="ctc-p" style="color:#a33">※ 두 가지 방법 중 1가지를 택하여 허가 후 관리를 신청하여야 하며, 신청하지 않거나 직접 증명 선택 후 증빙 미제출 시에는 택배업 종사 확인이 불가능하므로 허가조건 위반 차량으로 관할관청에 통보될 수 있음.</p>';
+     h+='<p class="ctc-p" style="text-align:center;text-indent:0">'+fv(kd(d.sign))+'</p>';
+     h+='<p class="ctc-p" style="font-size:8.5pt;color:#888">1. 택배용 화물자동차(\'배\'번호판)는 택배용도 외로 사용할 경우 화물자동차 운수사업법 시행규칙 제27조 별표2에 따라 사업정지 또는 허가취소 처분을 받게 됩니다.<br>2. 수집하는 개인정보(성명·생년월일·연락처·차량번호)의 사용목적·보유기간 등은 개인정보활용동의서를 통해 고시하였습니다.</p>';
+
+     h+='</div>';return h;
+   }
   function fld(lab,id,v){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">'+lab+'</label><input id="ctc-'+id+'" value="'+(v||'')+'" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div>';}
   function badgeForm(d){return fld('이름','name',d.name||'')+fld('주민번호','jumin',d.jumin||'')+fld('주소','addr',d.addr||'')+fld('핸드폰','phone',d.phone||'')+fld('차량','car',d.car||'')+fld('연식','cyear',d.cyear||'')+fld('적재(kg)','load',d.load||'')+fld('차량번호','carno',d.carno||'')+fld('면허번호','lic',d.lic||'')+fld('면허종류','lictype',d.lictype||'')+fld('자격번호','qual',d.qual||'')+fld('자격취득일','qualdate',d.qualdate||'');}
   function mc(){return document.getElementById('mc');}
