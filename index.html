@@ -133,6 +133,8 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
 .btn-lo{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap}
 .mc{flex:1;padding:16px;padding-bottom:84px;overscroll-behavior:none;overscroll-behavior-y:none;}
   @keyframes tfblink{50%{opacity:0}}
+  @keyframes tfgold{0%{box-shadow:0 0 3px 0 rgba(212,175,55,.85)}50%{box-shadow:0 0 8px 2px rgba(255,215,0,.95)}100%{box-shadow:0 0 3px 0 rgba(212,175,55,.85)}}
+  .tfgold{border:1.5px solid #e3c04a!important;animation:tfgold 1.3s infinite}
 .bn{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:#fff;display:flex;box-shadow:0 -2px 12px rgba(0,0,0,.12);z-index:10000}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 8px;cursor:pointer;color:#9e9e9e;font-size:10px;font-weight:600;gap:3px;position:relative;transition:color .15s}
 .ni.on{color:#1565c0}
@@ -806,6 +808,7 @@ textarea.ann-input:focus{border-color:#1565c0}
       <div onclick="go('hm')" style="cursor:pointer">
         <div class="an" id="han"></div>
         <div class="ar" id="har"></div>
+        <div id="han-bdg" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px"></div>
       </div>
     </div>
     <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
@@ -3951,6 +3954,7 @@ function launchApp(){
   // avatar removed
   var roleLabel={'admin':'관리자','leader':'팀장','sub':'조장','driver':'기사'}[CU.role]||'기사';
   document.getElementById('han').textContent=CU.name+(CU.role==='admin'?' 님':' '+roleLabel+'님');
+  try{if(typeof updateHeaderBadges==='function'){Promise.all([(typeof _contractStatus!=='undefined'&&_contractStatus===null&&typeof loadContractStatus==='function')?loadContractStatus():null,(typeof _ctApproved!=='undefined'&&_ctApproved===null&&typeof loadCtApproved==='function')?loadCtApproved():null,(typeof _badgeLoaded!=='undefined'&&!_badgeLoaded&&typeof loadBadgeData==='function')?loadBadgeData():null]).then(updateHeaderBadges).catch(function(){});updateHeaderBadges();}}catch(e){}
   document.getElementById('har').textContent='TeamFlex | '+roleLabel;
   var bn=document.getElementById('bn');
   if(CU.role==='admin'){
@@ -8537,11 +8541,21 @@ function inspWarn(name){
   Object.keys(days).forEach(function(k){var dd=days[k];if(dd&&(dd.done||dd.off)){var n=parseInt(k,10);if(n<=today&&n>last)last=n;}});
   return (today-last)>=4;
 }
+function inspComplete(name){
+  if(!_badgeLoaded)return false;if(!_inspMap||Object.keys(_inspMap).length===0)return false;var days=_inspMap[name];if(!days)return false;
+  var d=new Date(Date.now()+9*3600000);var today=d.getUTCDate();
+  var rec=Object.keys(days).map(function(k){return parseInt(k,10);}).filter(function(n){return n>=1&&n<=today&&days[n]&&(days[n].done||days[n].off);});
+  if(!rec.length)return false;var start=Math.min.apply(null,rec);
+  for(var i=start;i<=today;i++){var dd=days[i]||days[String(i)];if(!dd||!(dd.done||dd.off))return false;}
+  return true;
+}
+function updateHeaderBadges(){try{var el=document.getElementById('han-bdg');if(!el||!CU)return;el.innerHTML=(typeof _statusBadges==='function')?_statusBadges(CU.name):'';}catch(e){}}
+window.updateHeaderBadges=updateHeaderBadges;
 function _statusBadges(name){
   var h='';
   try{if(typeof ctDone==='function'&&ctDone(name)){var ap=(typeof ctApprovedOf==='function'&&ctApprovedOf(name,'wc'));h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:'+(ap?'#e7f6ec':'#e3f2fd')+';color:'+(ap?'#1b7a3f':'#1565c0')+';border:1px solid '+(ap?'#a8e0bd':'#bcdcff')+'">📄 '+(ap?'계약완료':'계약작성')+'</span> ';}}catch(e){}
   try{if(_badgeLoaded&&typeof hcNorm==='function'&&_hcDoneSet[hcNorm(name)]){h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:#eaf6de;color:#3b6d11;border:1px solid #c7e39a">💪 건강체크</span> ';}}catch(e){}
-  try{if(inspWarn(name)){h+='<span style="font-size:9px;font-weight:900;padding:2px 7px;border-radius:9px;background:#c62828;color:#fff;display:inline-flex;align-items:center;gap:3px">⚠ <span style="color:#ffe600;animation:tfblink .8s steps(1,end) infinite">점검-경고</span></span> ';}}catch(e){}
+  try{if(inspComplete(name)){h+='<span class="tfgold" style="font-size:9px;font-weight:900;padding:2px 8px;border-radius:9px;background:#e7f6ec;color:#1b7a3f">🔧 점검-완료</span> ';}else if(inspWarn(name)){h+='<span style="font-size:9px;font-weight:900;padding:2px 7px;border-radius:9px;background:#c62828;color:#fff;display:inline-flex;align-items:center;gap:3px">⚠ <span style="color:#ffe600;animation:tfblink .8s steps(1,end) infinite">점검-경고</span></span> ';}}catch(e){}
   return h;
 }
 function _erDrvCard(d){
