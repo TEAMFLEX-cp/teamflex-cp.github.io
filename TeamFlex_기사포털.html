@@ -132,6 +132,7 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
 .ar{font-size:11px;opacity:.7}
 .btn-lo{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap}
 .mc{flex:1;padding:16px;padding-bottom:84px;overscroll-behavior:none;overscroll-behavior-y:none;}
+  @keyframes tfblink{50%{opacity:0}}
 .bn{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:#fff;display:flex;box-shadow:0 -2px 12px rgba(0,0,0,.12);z-index:10000}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 8px;cursor:pointer;color:#9e9e9e;font-size:10px;font-weight:600;gap:3px;position:relative;transition:color .15s}
 .ni.on{color:#1565c0}
@@ -6819,6 +6820,7 @@ function _dhCss(){return '<style>'
 function pgDriverHub(){
   var db=getDB();var isAdm=CU&&CU.role==='admin';
   if(_driverExt===null){_loadDriverExt().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();});}
+  if(typeof _badgeLoaded!=='undefined'&&!_badgeLoaded&&typeof loadBadgeData==='function'){loadBadgeData().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();});}
   var ext=_driverExt||{};
   var byName=function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');};
   var _cfg=(typeof getCfg==='function'?getCfg():{})||{};var _aid=_cfg.adminId||ROOT_ADMIN.id;
@@ -6869,8 +6871,7 @@ function _dhCard(d,ext,db,isAdm){
   var mp=_deDig(e.phone),sp=_deDig(e.subphone);
   var callMain=mp?'<a class="callbtn main" href="tel:'+mp+'">&#x1F4DE; <b>메인</b> '+_deP(e.phone)+'</a>':'<span class="callbtn off">&#x1F4DE; 메인폰 미등록</span>';
   var callSub=sp?'<a class="callbtn sub" href="tel:'+sp+'">&#x1F4F1; <b>서브</b> '+_deP(e.subphone)+'</a>':'<span class="callbtn off">&#x1F4F1; 서브폰 없음</span>';
-  var bdg='';
-  if(typeof ctDone==='function'){try{if(ctDone(name))bdg+='<span class="ctbadge"><span>&#x1F4C4; 계약완료</span></span> ';}catch(_){}}
+  var bdg=(typeof _statusBadges==='function')?_statusBadges(name):'';
   var roleOpts=DH_ROLES.map(function(r){return '<option '+(r===role?'selected':'')+'>'+r+'</option>';}).join('');
   var acts;
   if(isAdm&&!kick){
@@ -8366,12 +8367,64 @@ function checkContactsPw(){
     inp.value='';inp.focus();
   }
 }
+
+/* ===== 상태 배지(계약/건강체크/점검경고) 데이터 & 헬퍼 ===== */
+var _hcDoneSet={},_inspMap={},_badgeLoaded=false;
+async function loadBadgeData(){
+  _badgeLoaded=true;if(!sbClient)return;
+  var month=(typeof hcMonth==='function')?hcMonth():new Date(Date.now()+9*3600000).toISOString().slice(0,7);
+  try{var hr=await sbClient.from('app_settings').select('key').like('key','hsurvey:'+month+':%');var hs={};(hr.data||[]).forEach(function(x){var parts=String(x.key).split(':');var nm=parts.slice(2).join(':');if(nm)hs[nm]=true;});_hcDoneSet=hs;}catch(e){}
+  try{var ir=await sbClient.from('app_settings').select('key,value').like('key','insp_%_'+month);var im={};(ir.data||[]).forEach(function(x){var m=String(x.key).match(/^insp_(.+)_\d{4}-\d{2}$/);if(!m)return;var nm='';try{nm=decodeURIComponent(m[1]);}catch(e){nm=m[1];}var v=x.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}im[nm]=(v&&v.days)||{};});_inspMap=im;}catch(e){}
+}
+function inspWarn(name){
+  if(!_badgeLoaded)return false;var days=_inspMap[name];if(!days)return false;
+  var d=new Date(Date.now()+9*3600000);var today=d.getUTCDate();var last=0;
+  Object.keys(days).forEach(function(k){var dd=days[k];if(dd&&(dd.done||dd.off)){var n=parseInt(k,10);if(n<=today&&n>last)last=n;}});
+  return (today-last)>=2;
+}
+function _statusBadges(name){
+  var h='';
+  try{if(typeof ctDone==='function'&&ctDone(name)){var ap=(typeof ctApprovedOf==='function'&&ctApprovedOf(name,'wc'));h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:'+(ap?'#e7f6ec':'#e3f2fd')+';color:'+(ap?'#1b7a3f':'#1565c0')+';border:1px solid '+(ap?'#a8e0bd':'#bcdcff')+'">📄 '+(ap?'계약완료':'계약작성')+'</span> ';}}catch(e){}
+  try{if(_badgeLoaded&&typeof hcNorm==='function'&&_hcDoneSet[hcNorm(name)]){h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:#eaf6de;color:#3b6d11;border:1px solid #c7e39a">💪 건강체크</span> ';}}catch(e){}
+  try{if(inspWarn(name)){h+='<span style="font-size:9px;font-weight:900;padding:2px 7px;border-radius:9px;background:#c62828;color:#fff;display:inline-flex;align-items:center;gap:3px">⚠ <span style="color:#ffe600;animation:tfblink .8s steps(1,end) infinite">점검-경고</span></span> ';}}catch(e){}
+  return h;
+}
+function _erDrvCard(d){
+  var roleLabel={'admin':'관리자','leader':'팀장','sub':'조장','driver':'기사'};
+  var roleColors={'admin':'#c62828','leader':'#1565c0','sub':'#6a1b9a','driver':'#2e7d32'};
+  var ext=(typeof _driverExt!=='undefined'&&_driverExt&&_driverExt[d.name])||{};
+  var mp=_deDig(d.phone||ext.phone||'');var sp=_deDig(ext.subphone||'');
+  var car=ext.car||d.car_type||'';var fuel=ext.fuel||d.fuel_type||'';
+  var carNo=ext.carno||d.car_no||d.carNo||'';var cpid=ext.cpid||((d.coupang_id||d.coupangId||'').replace(/@df$/,''))||'';
+  var _bj=_deDig(ext.jumin||'').slice(0,6);var birth=_bj.length===6?(_bj.slice(0,2)+'.'+_bj.slice(2,4)+'.'+_bj.slice(4,6)):'';
+  var viewer=(CU&&CU.role)||'driver';var seeBirth=(viewer==='admin'||viewer==='leader');
+  var rc=roleColors[d.role]||'#333';var rl=roleLabel[d.role]||'기사';
+  var badges=(typeof _statusBadges==='function')?_statusBadges(d.name):'';
+  var actBtn=(viewer==='admin')?'<button onclick="openDriverDetail(\''+d.name+'\')" style="padding:6px 11px;background:#37474f;border:none;border-radius:8px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0">📋 상세</button>':(viewer==='leader'?'<button onclick="erEditDriver(\''+d.name+'\')" style="padding:6px 12px;background:#f0f4ff;border:1px solid #c5cae9;border-radius:8px;font-size:12px;font-weight:700;color:#3949ab;cursor:pointer;white-space:nowrap;flex-shrink:0">✏️ 수정</button>':'');
+  var callMain=mp?'<a href="tel:'+mp+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#2e9e5b;color:#fff;border-radius:10px;padding:9px 0;font-size:13px;font-weight:800;text-decoration:none">📞 메인 '+_deP(mp)+'</a>':'<span style="flex:1;text-align:center;background:#eef2f6;color:#aab;border-radius:10px;padding:9px 0;font-size:13px;font-weight:800">📞 메인 미등록</span>';
+  var smsMain=mp?'<a href="sms:'+mp+'" style="flex:0 0 74px;text-align:center;background:#eaf3ff;color:#1565c0;border:1px solid #bcdcff;border-radius:10px;padding:9px 0;font-size:13px;font-weight:800;text-decoration:none">💬 문자</a>':'';
+  var callSub=sp?'<a href="tel:'+sp+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#3f7fe0;color:#fff;border-radius:10px;padding:9px 0;font-size:13px;font-weight:800;text-decoration:none">📱 서브 '+_deP(sp)+'</a>':'<span style="flex:1;text-align:center;background:#eef2f6;color:#9aa7b4;border-radius:10px;padding:9px 0;font-size:13px;font-weight:700">📱 서브폰 없음</span>';
+  var chip=function(bg,tx,t){return '<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:14px;background:'+bg+';color:'+tx+'">'+t+'</span>';};
+  var chips='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+chip('#e8f5e9','#2e7d32','🚗 '+(car||'미입력'))+chip('#e3f2fd','#1565c0','⚡ '+(fuel||'-'))+(seeBirth?chip('#fff3e0','#e65100','🎂 '+(birth||'-')):'')+'</div>';
+  var _carSt=carNo?'background:#e3f2fd;border:2px solid #64b5f6;color:#1565c0':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
+  var carBadge='<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;'+_carSt+';border-radius:10px;padding:8px 6px;font-size:12px;font-weight:800;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">🚚 '+(carNo||'미등록')+'</span>';
+  var _cpSt=cpid?'background:#e8f5e9;border:2px solid #66bb6a;color:#1b5e20':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
+  var cpBadge='<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;'+_cpSt+';border-radius:10px;padding:8px 6px;font-size:12px;font-weight:800;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">🛒 '+(cpid||'미등록')+'</span>';
+  return '<div style="padding:14px 0;border-bottom:1px solid #f0f0f0">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap"><span style="font-size:17px;font-weight:900;color:#1a1a1a">'+d.name+'</span><span style="font-size:11px;font-weight:700;color:'+rc+';background:'+rc+'18;border:1px solid '+rc+'44;border-radius:6px;padding:2px 8px">'+rl+'</span>'+badges+'<span style="flex:1"></span>'+actBtn+'</div>'+
+    chips+
+    '<div style="display:flex;gap:6px;margin-bottom:6px">'+callMain+smsMain+'</div>'+
+    '<div style="display:flex;gap:6px;margin-bottom:8px">'+callSub+'</div>'+
+    '<div style="display:flex;gap:6px">'+carBadge+cpBadge+'</div></div>';
+}
 function pgEmergencyContact(){
   var isAdm=CU&&CU.role==='admin';
   if(!getFeatureCtrl('emergency','active')&&!isAdm){
     return _featureBar('emergency')+'<div style="margin:60px 16px;padding:40px 24px;background:#fff;border-radius:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #e0e0e0"><div style="font-size:52px;margin-bottom:16px">&#x1F512;</div><div style="font-size:17px;font-weight:800;color:#555;margin-bottom:10px">기능이 잠겼습니다</div><div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div></div>';
   }
   var db=getDB();
+  if(typeof _driverExt!=='undefined'&&_driverExt===null&&typeof _loadDriverExt==='function'){_loadDriverExt().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='er')mc.innerHTML=pgEmergencyContact();});}
+  if(typeof _badgeLoaded!=='undefined'&&!_badgeLoaded&&typeof loadBadgeData==='function'){loadBadgeData().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='er')mc.innerHTML=pgEmergencyContact();});}
   var canManage=(CU.role==='admin'||CU.role==='leader');
   var roleOrder={admin:0,leader:1,sub:2,driver:3};
   var roleLabel={'admin':'관리자','leader':'팀장','sub':'조장','driver':'기사'};
@@ -8379,31 +8432,7 @@ function pgEmergencyContact(){
   var _canSeeBlind=(CU.role==='admin');
   var drivers=Object.values(db).filter(function(d){return d.name&&d.name!==ROOT_ADMIN.id&&d.role!=='admin'&&d.status==='approved'&&(!d.blind||_canSeeBlind);});
   drivers.sort(function(a,b){var ra=roleOrder[a.role]||3,rb=roleOrder[b.role]||3;if(ra!==rb)return ra-rb;return (a.name||'').localeCompare((b.name||''),'ko');});
-  function _buildCard(d){
-    var phone=d.phone&&d.phone.trim()?d.phone.trim():'';
-    var carNo=d.car_no||d.carNo||'';
-    var coupangId=d.coupang_id||d.coupangId||'';
-    var rc=roleColors[d.role]||'#333';var rl=roleLabel[d.role]||'기사';
-    var callBtn=phone?'<a href="tel:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#1565c0;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">📞 전화</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">📞 전화</span>';
-    var smsBtn=phone?'<a href="sms:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#2e7d32;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">💬 문자</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">💬 문자</span>';
-    var kakaoId=(d.kakao_id||'').trim();
-    var kakaoBtn=kakaoId?'<a href="kakaolink://send?phone='+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#FEE500;color:#3C1E1E;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">🟡 카톡</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">🟡 카톡</span>';
-    var editBtn=canManage?'<button onclick="erEditDriver(\''+d.name+'\')" style="padding:6px 12px;background:#f0f4ff;border:1px solid #c5cae9;border-radius:8px;font-size:12px;font-weight:700;color:#3949ab;cursor:pointer;white-space:nowrap;flex-shrink:0">✏️ 수정</button>':'';
-    var _carSt=carNo?'background:#e3f2fd;border:2px solid #64b5f6;color:#1565c0':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
-    var carBadge='<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;'+_carSt+';border-radius:10px;padding:7px 6px;font-size:12px;font-weight:800;min-width:0;overflow:hidden">🚗 '+(carNo||'미등록')+'</span>';
-    var _cpSt=coupangId?'background:#e8f5e9;border:2px solid #66bb6a;color:#1b5e20':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
-    var coupangBadge='<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;'+_cpSt+';border-radius:10px;padding:7px 6px;font-size:12px;font-weight:800;min-width:0;overflow:hidden">🛒 '+(coupangId||'미등록')+'</span>';
-    return '<div style="padding:14px 0;border-bottom:1px solid #f0f0f0">'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
-        '<span style="font-size:17px;font-weight:900;color:#1a1a1a;flex:1">'+d.name+'</span>'+
-        '<span style="font-size:11px;font-weight:700;color:'+rc+';background:'+rc+'18;border:1px solid '+rc+'44;border-radius:6px;padding:2px 8px">'+rl+'</span>'+
-        editBtn+
-      '</div>'+
-      _drvInfoChips(d)+
-      '<div style="display:flex;gap:6px;margin-bottom:8px">'+callBtn+smsBtn+kakaoBtn+'</div>'+
-      '<div style="display:flex;gap:6px">'+carBadge+coupangBadge+'</div>'+
-    '</div>';
-  }
+  function _buildCard(d){return _erDrvCard(d);}
   function buildList(list){
     if(!list.length)return '<div style="color:#aaa;font-size:13px;padding:20px;text-align:center">검색 결과 없음</div>';
     var lastRole='';var h='';
@@ -8456,20 +8485,7 @@ function erSearch(q){
   var lastRole='';var h='';
   drivers.forEach(function(d){
     if(d.role!==lastRole){if(lastRole!=='')h+='</div>';var rl=roleLabel[d.role]||'기사';var rc=roleColors[d.role]||'#333';h+='<div style="font-size:15px;font-weight:900;color:'+rc+';background:'+rc+'18;border-left:5px solid '+rc+';border-radius:6px;padding:10px 14px;margin:14px 0 6px;letter-spacing:1px">'+rl+'</div><div>';lastRole=d.role;}
-    var phone=d.phone&&d.phone.trim()?d.phone.trim():'';var carNo=d.car_no||d.carNo||'';var coupangId=d.coupang_id||d.coupangId||'';var rc=roleColors[d.role]||'#333';var rl=roleLabel[d.role]||'기사';
-    var callBtn=phone?'<a href="tel:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#1565c0;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">📞 전화</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">📞 전화</span>';
-    var smsBtn=phone?'<a href="sms:'+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#2e7d32;color:#fff;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">💬 문자</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">💬 문자</span>';
-    var kakaoId=(d.kakao_id||'').trim();var kakaoBtn=kakaoId?'<a href="kakaolink://send?phone='+phone+'" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#FEE500;color:#3C1E1E;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800;text-decoration:none">🟡 카톡</a>':'<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;background:#e0e0e0;color:#aaa;border-radius:10px;padding:9px 0;font-size:14px;font-weight:800">🟡 카톡</span>';
-    var editBtn=canManage?'<button onclick="erEditDriver(\''+d.name+'\')" style="padding:6px 12px;background:#f0f4ff;border:1px solid #c5cae9;border-radius:8px;font-size:12px;font-weight:700;color:#3949ab;cursor:pointer;white-space:nowrap;flex-shrink:0">✏️ 수정</button>':'';
-    var _carSt2=carNo?'background:#e3f2fd;border:2px solid #64b5f6;color:#1565c0':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
-    var carBadge='<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;'+_carSt2+';border-radius:10px;padding:7px 6px;font-size:12px;font-weight:800;min-width:0;overflow:hidden">🚗 '+(carNo||'미등록')+'</span>';
-    var _cpSt2=coupangId?'background:#e8f5e9;border:2px solid #66bb6a;color:#1b5e20':'background:#f0f0f0;border:2px solid #e0e0e0;color:#9e9e9e';
-    var coupangBadge='<span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;'+_cpSt2+';border-radius:10px;padding:7px 6px;font-size:12px;font-weight:800;min-width:0;overflow:hidden">🛒 '+(coupangId||'미등록')+'</span>';
-    h+='<div style="padding:14px 0;border-bottom:1px solid #f0f0f0">'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:17px;font-weight:900;color:#1a1a1a;flex:1">'+d.name+'</span><span style="font-size:11px;font-weight:700;color:'+rc+';background:'+rc+'18;border:1px solid '+rc+'44;border-radius:6px;padding:2px 8px">'+rl+'</span>'+editBtn+'</div>'+
-      _drvInfoChips(d)+
-      '<div style="display:flex;gap:6px;margin-bottom:8px">'+callBtn+smsBtn+kakaoBtn+'</div>'+
-      '<div style="display:flex;gap:6px">'+carBadge+coupangBadge+'</div></div>';
+    h+=_erDrvCard(d);
   });
   if(lastRole!=='')h+='</div>';el.innerHTML=h;
 }
