@@ -6945,9 +6945,10 @@ function _dhRender(name,edit,mode){
   else{foot='<div style="display:flex;gap:8px;margin-top:14px">'+(isAdm?'<button onclick="_dhRender(\''+name+'\',true,\'\')" style="flex:2;padding:12px;background:#3949ab;color:#fff;border:none;border-radius:11px;font-weight:800">&#x270F;&#xFE0F; 수정</button><button onclick="dhAskDelete(\''+name+'\')" style="flex:1;padding:12px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:11px;font-weight:800">&#x1F5D1; 삭제</button>':'')+'<button onclick="closeDriverDetail()" style="flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800">닫기</button></div>';}
   var sub=self?'🔒 이름·주민·아이디·면허·자격 항목은 관리자에게 요청하세요':(edit?'수정 후 저장하면 Supabase에 반영됩니다':'전체 정보 (하이픈 자동 포맷)');
   var ttl=self?'내 정보':(name+' <span style="font-size:11px;color:'+st.tx+';background:'+st.bg+';border-radius:8px;padding:2px 8px">'+role+'</span>');
+  if(_dhPhotoCache[name]===undefined){_dhLoadPhotos(name,function(){var o=document.getElementById('dh-photos');if(o)o.innerHTML=_dhPhotoBoxes(name);});}
   var pop=document.getElementById('dh-detail');if(pop)pop.remove();
   pop=document.createElement('div');pop.id='dh-detail';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:10600;display:flex;align-items:flex-end;justify-content:center';
-  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+ttl+'</div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+sub+'</div>'+body+((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')+foot+'</div>';
+  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+ttl+'</div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+sub+'</div>'+body+'<div id="dh-photos">'+_dhPhotoBoxes(name)+'</div>'+((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')+foot+'</div>';
   pop.addEventListener('click',function(ev){if(ev.target===pop&&!edit)pop.remove();});
   document.body.appendChild(pop);
 }
@@ -6963,6 +6964,53 @@ function dhMyEditStart(name){
   if(cur&&pw!==cur){alert('비밀번호가 일치하지 않습니다.');return;}
   _dhRender(name,true,'self');
 }
+var _dhPhotoCache={};var DH_PHOTOS=[['id','신분증'],['car','차량등록증(배넘버)'],['haul','화물운송허가증'],['qual','화물운송자격증']];
+function _dhPhotoBoxes(name){
+  var ph=_dhPhotoCache[name]||{};
+  var h='<div style="font-size:12px;font-weight:800;color:#2f6bb0;margin:14px 2px 7px;padding-left:8px;border-left:3px solid #4aa3f0">서류 사진 <span style="color:#e65100;font-size:10px;font-weight:800">( 추후 꼭 첨부! )</span></div><div style="display:flex;gap:7px;flex-wrap:wrap">';
+  DH_PHOTOS.forEach(function(p){
+    var img=ph[p[0]];var iid='dhph_'+name+'_'+p[0];
+    h+='<div style="flex:1 1 46%;min-width:120px;border:1.5px dashed #cfd9e4;border-radius:11px;background:#f8fafc;padding:8px;text-align:center;position:relative">'
+      +(img?'<img src="'+img+'" onclick="dhViewPhoto(\''+name+'\',\''+p[0]+'\')" style="width:100%;height:82px;object-fit:cover;border-radius:8px;cursor:pointer">':'<div onclick="document.getElementById(\''+iid+'\').click()" style="height:82px;display:flex;align-items:center;justify-content:center;font-size:26px;color:#9ab;cursor:pointer">＋</div>')
+      +'<div style="font-size:10.5px;font-weight:700;color:#556;margin-top:4px">'+p[1]+'</div>'
+      +(img?'':'<div style="font-size:9px;color:#e65100;font-weight:800">추후 꼭 첨부!</div>')
+      +'<input type="file" accept="image/*" id="'+iid+'" style="display:none" onchange="dhPickPhoto(\''+name+'\',\''+p[0]+'\',this)">'
+      +(img?'<button onclick="document.getElementById(\''+iid+'\').click()" style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:7px;font-size:10px;font-weight:700;padding:3px 7px;cursor:pointer">교체</button>':'')
+      +'</div>';
+  });
+  return h+'</div>';
+}
+function _dhLoadPhotos(name,cb){
+  if(_dhPhotoCache[name]!==undefined){cb&&cb();return;}
+  if(!sbClient){_dhPhotoCache[name]={};cb&&cb();return;}
+  sbClient.from('app_settings').select('value').eq('key','dphoto_'+name).maybeSingle().then(function(r){
+    var v={};if(r&&r.data&&r.data.value){try{v=(typeof r.data.value==='string')?JSON.parse(r.data.value):r.data.value;}catch(e){}}
+    _dhPhotoCache[name]=v||{};cb&&cb();
+  }).catch(function(){_dhPhotoCache[name]={};cb&&cb();});
+}
+function _dhRefreshPhotoSection(name){var o=document.getElementById('dh-photos');if(o)o.innerHTML=_dhPhotoBoxes(name);}
+function dhPickPhoto(name,key,inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var rd=new FileReader();rd.onload=function(){
+    var im=new Image();im.onload=function(){
+      var mx=1024,w=im.width,hh=im.height;if(w>mx||hh>mx){if(w>=hh){hh=Math.round(hh*mx/w);w=mx;}else{w=Math.round(w*mx/hh);hh=mx;}}
+      var cv=document.createElement('canvas');cv.width=w;cv.height=hh;cv.getContext('2d').drawImage(im,0,0,w,hh);
+      var b64;try{b64=cv.toDataURL('image/jpeg',0.72);}catch(e){b64=rd.result;}
+      if(!_dhPhotoCache[name])_dhPhotoCache[name]={};_dhPhotoCache[name][key]=b64;
+      _dhRefreshPhotoSection(name);dhSavePhotos(name);
+      try{showToast('📎 첨부 완료 (저장 중…)',true);}catch(_){}
+    };im.onerror=function(){alert('이미지를 읽을 수 없습니다.');};im.src=rd.result;
+  };rd.readAsDataURL(f);
+}
+async function dhSavePhotos(name){if(!sbClient)return;try{var r=await sbClient.from('app_settings').upsert({key:'dphoto_'+name,value:JSON.stringify(_dhPhotoCache[name]||{})},{onConflict:'key'});if(r&&r.error)throw r.error;try{showToast('📎 사진 저장 완료',true);}catch(_){}}catch(e){console.warn('사진 저장 실패',e);try{showToast('⚠ 사진 저장 실패',false);}catch(_){}}}
+function dhViewPhoto(name,key){
+  var img=(_dhPhotoCache[name]||{})[key];if(!img)return;
+  var v=document.getElementById('dh-photo-view');if(v)v.remove();
+  v=document.createElement('div');v.id='dh-photo-view';v.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10800;display:flex;align-items:center;justify-content:center;padding:16px';
+  v.innerHTML='<img src="'+img+'" style="max-width:100%;max-height:88vh;border-radius:10px">';
+  v.onclick=function(){v.remove();};document.body.appendChild(v);
+}
+window.dhPickPhoto=dhPickPhoto;window.dhViewPhoto=dhViewPhoto;window.dhSavePhotos=dhSavePhotos;
 window.dhMyInfo=dhMyInfo;window.dhMyEditStart=dhMyEditStart;
 
 function closeDriverDetail(){var p=document.getElementById('dh-detail');if(p)p.remove();}
