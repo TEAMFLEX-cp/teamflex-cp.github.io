@@ -2828,18 +2828,14 @@ function openCfgSubMenu(){
       '<div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px"></div>'+
       '<div style="font-size:16px;font-weight:900;color:#1a237e;margin-bottom:18px;text-align:center">&#x2699;&#xFE0F; 관리 메뉴</div>'+
       '<div style="display:flex;flex-direction:column;gap:10px">'+
-        '<button onclick="closeCfgSubMenu();go(\'ap\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f3f4ff;border:2px solid #c5cae9;border-radius:14px;font-size:15px;font-weight:700;color:#3949ab;cursor:pointer;text-align:left;box-sizing:border-box">'+
-          '<span style="font-size:24px;flex-shrink:0">&#x1F6E1;</span><div style="flex:1;min-width:0"><div>권한 관리</div><div style="font-size:11px;font-weight:400;color:#7986cb;margin-top:2px">스케줄 수정 권한 설정</div></div>'+
-        '</button>'+
         '<button onclick="closeCfgSubMenu();go(\'dh\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#eef1ff;border:2px solid #c5cae9;border-radius:14px;font-size:15px;font-weight:700;color:#283593;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F5C2;&#xFE0F;</span><div style="flex:1;min-width:0"><div>기사 정보 통합관리</div><div style="font-size:11px;font-weight:400;color:#7986cb;margin-top:2px">권한·연락처·상세정보 통합</div></div>'+
         '</button>'+
+        
         '<button onclick="closeCfgSubMenu();_ctAdminV=&quot;hub&quot;;openContractAdmin()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f3ecff;border:2px solid #d9c9f2;border-radius:14px;font-size:15px;font-weight:700;color:#5a2fb0;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F4C4;</span><div style="flex:1;min-width:0"><div>계약서 관리</div><div style="font-size:11px;font-weight:400;color:#9575cd;margin-top:2px">위·수탁/배넘버 작성·서명·권한</div></div>'+
         '</button>'+
-        '<button onclick="closeCfgSubMenu();go(\'ph\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f0f4ff;border:2px solid #bbdefb;border-radius:14px;font-size:15px;font-weight:700;color:#1565c0;cursor:pointer;text-align:left;box-sizing:border-box">'+
-          '<span style="font-size:24px;flex-shrink:0">&#x1F4DE;</span><div style="flex:1;min-width:0"><div>연락처 관리</div><div style="font-size:11px;font-weight:400;color:#64b5f6;margin-top:2px">기사 연락처 등록·수정</div></div>'+
-        '</button>'+
+        
         '<button onclick="closeCfgSubMenu();go(\'cfg\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f8f9ff;border:2px solid #e8eaf6;border-radius:14px;font-size:15px;font-weight:700;color:#283593;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x2699;&#xFE0F;</span><div style="flex:1;min-width:0"><div>시스템 설정</div><div style="font-size:11px;font-weight:400;color:#9fa8da;margin-top:2px;white-space:normal;word-break:keep-all">관리자 계정·스케줄 잠금·Teams 연동</div></div>'+
         '</button>'+
@@ -2951,8 +2947,8 @@ window.addEventListener('popstate',function(e){
     else if(prev==='st'){mc.innerHTML=pgSettle();mc.scrollTop=0;}
     else if(prev==='aa')mc.innerHTML=pgApproval();
     else if(prev==='az')mc.innerHTML=pgAdminSettle();
-    else if(prev==='ap')mc.innerHTML=pgPermissions();
-    else if(prev==='ph')mc.innerHTML=pgPhoneBook();
+    else if(prev==='ap')mc.innerHTML=pgDriverHub();
+    else if(prev==='ph')mc.innerHTML=pgDriverHub();
     else if(prev==='cfg')mc.innerHTML=pgSettings();
     else if(prev==='sl')mc.innerHTML=pgSchedLog();
     else if(prev==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
@@ -4299,8 +4295,8 @@ function go(tab){
   else if(tab==='as'){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);setTimeout(function(){if(sbClient&&(!AW[SCHED_WK]||!AW[SCHED_WK].g))schedRefresh();},300);}
   else if(tab==='az'){mc.innerHTML=pgAdminSettle();if(sbClient)syncFromSupabase().then(function(){if(CUR_TAB==='az')mc.innerHTML=pgAdminSettle();}).catch(function(){});}
   else if(tab==='dh')mc.innerHTML=pgDriverHub();
-  else if(tab==='ap')mc.innerHTML=pgPermissions();
-  else if(tab==='ph')mc.innerHTML=pgPhoneBook();
+  else if(tab==='ap')mc.innerHTML=pgDriverHub();
+  else if(tab==='ph')mc.innerHTML=pgDriverHub();
   else if(tab==='cfg')mc.innerHTML=pgSettings();
   else if(tab==='sv'){mc.innerHTML=pgServerMon();setTimeout(function(){svInit(false);},60);}
   else if(tab==='sl')mc.innerHTML=pgSchedLog();
@@ -6806,12 +6802,13 @@ function pgDriverHub(){
      +'<div style="flex:1;background:#e8f5e9;border-radius:11px;padding:9px 6px;text-align:center"><div style="font-size:19px;font-weight:900;color:#2e7d32">'+withPh+'</div><div style="font-size:10px;color:#66a56a">번호등록</div></div>'
      +'<div style="flex:1;background:#e3f2fd;border-radius:11px;padding:9px 6px;text-align:center"><div style="font-size:19px;font-weight:900;color:#1565c0">'+ctN+'</div><div style="font-size:10px;color:#5b9bd5">계약완료</div></div>'
    +'</div>';
+  if(isAdm)h+='<button onclick="dhAddNew()" style="width:100%;margin-bottom:8px;background:#3949ab;color:#fff;border:none;border-radius:9px;padding:10px;font-size:12.5px;font-weight:800;cursor:pointer">&#x2795; 기사 추가</button>';
   if(isAdm)h+='<div style="display:flex;gap:8px;margin-bottom:12px">'
      +'<button onclick="dhExcelDown()" style="flex:1;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:9px;padding:9px;font-size:12px;font-weight:800;cursor:pointer">&#x2B07; 엑셀 다운</button>'
      +'<label style="flex:1;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:9px;padding:9px;font-size:12px;font-weight:800;cursor:pointer;text-align:center">&#x2B06; 엑셀 업로드<input type="file" accept=".csv" onchange="dhExcelUp(this)" style="display:none"></label>'
    +'</div>';
   if(isAdm&&pend.length){h+='<div style="border:2px solid #ffcc80;background:#fffbf2;border-radius:13px;padding:11px;margin-bottom:12px"><div style="font-size:13px;font-weight:900;color:#e65100;margin-bottom:6px">&#x1F514; 가입 승인 대기 ('+pend.length+')</div>';
-    pend.forEach(function(d){h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid #f4ead0"><div style="flex:1;font-size:13px;font-weight:700">'+d.name+' <span style="font-size:10px;color:#999">'+((_dhMerge(d.name,ext,db).cpid)||'')+'</span></div><span class="mini info" onclick="openDriverDetail(\''+d.name+'\')">상세</span><span class="mini" style="background:#2e9e5b;color:#fff;border:none" onclick="dhApprove(\''+d.name+'\')">&#x2714; 승인</span></div>';});
+    pend.forEach(function(d){h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid #f4ead0"><div style="flex:1;font-size:13px;font-weight:700">'+d.name+' <span style="font-size:10px;color:#999">'+((_dhMerge(d.name,ext,db).cpid)||'')+'</span></div><span class="mini info" onclick="openDriverDetail(\''+d.name+'\')">상세</span><span class="mini red" onclick="dhReject(\''+d.name+'\')">거절</span><span class="mini" style="background:#2e9e5b;color:#fff;border:none" onclick="dhApprove(\''+d.name+'\')">&#x2714; 승인</span></div>';});
     h+='</div>';}
   h+='<input type="search" id="dh-q" placeholder="&#x1F50D; 이름·아이디·차량번호 검색" oninput="dhSearch(this.value)" style="width:100%;padding:10px 12px;border:1.5px solid #d5e2f0;border-radius:11px;font-size:14px;box-sizing:border-box;margin-bottom:4px">';
   h+='<div id="dh-list">';
@@ -6910,7 +6907,7 @@ function dhResetPw(name){if(typeof resetDriverPw==='function'){resetDriverPw(nam
 /* ── 상세 모달 ── */
 function openDriverDetail(name){if(_driverExt===null){_loadDriverExt().then(function(){openDriverDetail(name);});return;}_dhRender(name,false);}
 function _dhRender(name,edit){
-  var db=getDB();var e=_dhMerge(name,_driverExt||{},db);var d=db[name]||{};var isAdm=CU&&CU.role==='admin';
+  var db=getDB();var e=_dhMerge(name,_driverExt||{},db);var d=db[name]||{};var isAdm=CU&&CU.role==='admin';var bl=!!(d&&d.blind);
   var role=_dhDrole(d,_driverExt||{});var st=DH_RSTYLE[role]||DH_RSTYLE['기사'];
   var body='';
   DH_FIELDS.forEach(function(f){
@@ -6932,7 +6929,7 @@ function _dhRender(name,edit){
   else{foot='<div style="display:flex;gap:8px;margin-top:14px">'+(isAdm?'<button onclick="_dhRender(\''+name+'\',true)" style="flex:2;padding:12px;background:#3949ab;color:#fff;border:none;border-radius:11px;font-weight:800">&#x270F;&#xFE0F; 수정</button><button onclick="dhAskDelete(\''+name+'\')" style="flex:1;padding:12px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:11px;font-weight:800">&#x1F5D1; 삭제</button>':'')+'<button onclick="closeDriverDetail()" style="flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800">닫기</button></div>';}
   var pop=document.getElementById('dh-detail');if(pop)pop.remove();
   pop=document.createElement('div');pop.id='dh-detail';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:10600;display:flex;align-items:flex-end;justify-content:center';
-  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+name+' <span style="font-size:11px;color:'+st.tx+';background:'+st.bg+';border-radius:8px;padding:2px 8px">'+role+'</span></div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+(edit?'수정 후 저장하면 Supabase에 반영됩니다':'전체 정보 (하이픈 자동 포맷)')+'</div>'+body+foot+'</div>';
+  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+name+' <span style="font-size:11px;color:'+st.tx+';background:'+st.bg+';border-radius:8px;padding:2px 8px">'+role+'</span></div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+(edit?'수정 후 저장하면 Supabase에 반영됩니다':'전체 정보 (하이픈 자동 포맷)')+'</div>'+body+((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')+foot+'</div>';
   pop.addEventListener('click',function(ev){if(ev.target===pop&&!edit)pop.remove();});
   document.body.appendChild(pop);
 }
@@ -7001,6 +6998,32 @@ function dhExcelUp(inp){
   rd.readAsText(f,'UTF-8');
 }
 function _dhCsv(line){var out=[],cur='',q=false;for(var i=0;i<line.length;i++){var ch=line[i];if(q){if(ch==='"'){if(line[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}else{if(ch==='"')q=true;else if(ch===','){out.push(cur);cur='';}else cur+=ch;}}out.push(cur);return out;}
+async function dhReject(name){
+  if(!(CU&&CU.role==='admin')){alert('관리자만 변경할 수 있습니다.');return;}
+  if(!confirm(name+' 가입 신청을 거절할까요?'))return;
+  var db=getDB();if(db[name])db[name].status='kicked';saveDB(db);
+  if(sbClient)sbClient.from('drivers').update({status:'kicked',synced_at:new Date().toISOString()}).eq('name',name).then(function(){}).catch(function(){});
+  var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();
+  try{showToast(name+' 신청 거절',true);}catch(_){}
+}
+async function dhAddNew(){
+  if(!(CU&&CU.role==='admin')){alert('관리자만 추가할 수 있습니다.');return;}
+  var name=(prompt('추가할 기사 성명 (로그인 아이디로 사용)')||'').trim();if(!name)return;
+  var db=getDB();if(db[name]){alert('이미 존재하는 기사입니다.');openDriverDetail(name);return;}
+  db[name]={name:name,role:'driver',status:'approved'};saveDB(db);
+  if(!_driverExt)_driverExt={};_driverExt[name]={name:name};
+  if(sbClient){try{
+    await sbClient.from('drivers').insert({name:name,login_id:name,driver_id:name,role:'driver',status:'approved',synced_at:new Date().toISOString()});
+    var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();var m={};if(r1&&r1.data&&r1.data.value){try{m=(typeof r1.data.value==='string')?JSON.parse(r1.data.value):r1.data.value;}catch(_e){m={};}}m[name]={name:name};await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});
+  }catch(e){console.warn('기사추가 실패',e);}}
+  _dhRender(name,true);
+}
+async function dhToggleBlind(name){
+  if(!(CU&&CU.role==='admin'))return;var db=getDB();if(!db[name])return;db[name].blind=!db[name].blind;saveDB(db);
+  if(sbClient){var blArr=Object.values(db).filter(function(d){return d&&d.blind;}).map(function(d){return d.name;});sbClient.from('misdelivery_settings').update({blind_list:JSON.stringify(blArr)}).eq('id',1).then(function(){}).catch(function(){});}
+  _dhRender(name,false);try{showToast(db[name].blind?'🙈 블라인드':'👁 공개',true);}catch(_){}
+}
+window.dhReject=dhReject;window.dhAddNew=dhAddNew;window.dhToggleBlind=dhToggleBlind;
 window.pgDriverHub=pgDriverHub;window.openDriverDetail=openDriverDetail;window._dhRender=_dhRender;window.closeDriverDetail=closeDriverDetail;window.saveDriverDetail=saveDriverDetail;window.dhAskDelete=dhAskDelete;window.dhSearch=dhSearch;window.dhExcelDown=dhExcelDown;window.dhExcelUp=dhExcelUp;window.dhSetRole=dhSetRole;window.dhToggleAdmin=dhToggleAdmin;window.dhToggleSusp=dhToggleSusp;window.dhApprove=dhApprove;window.dhUnkick=dhUnkick;window.dhResetPw=dhResetPw;
 function pgPermissions(){
   var db=getDB();
