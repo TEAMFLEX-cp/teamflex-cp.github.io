@@ -1903,7 +1903,7 @@ function pgContractAdmin(){
   }
   var drs=_ctDrivers();
   if(_ctAdminV==='wc'){
-    var written=drs.filter(function(d){return ctDone(d.name);});
+    var written=drs.filter(function(d){return ctDone(d.name);}).sort(function(a,b){var aa=(typeof ctApprovedOf==='function'&&ctApprovedOf(a.name,'wc'))?1:0;var bb=(typeof ctApprovedOf==='function'&&ctApprovedOf(b.name,'wc'))?1:0;if(aa!==bb)return aa-bb;return (a.name||'').localeCompare(b.name||'','ko');});
     var unwritten=drs.filter(function(d){return !ctDone(d.name);});
     var h=_ctBack('hub')+'📑 표준계약서 (위·수탁)</div>';
     h+='<div class="card"><div class="ctit">📤 계약서 공유 (홈에 노출)</div><div style="font-size:11px;color:#888;margin-bottom:8px">선택(전체/다중)한 기사 홈에 작성 배너가 뜨고, 완료 시 사라집니다.</div><div style="display:flex;gap:6px"><button class="btn-ok" style="flex:1" onclick="openCtShare(\'wc\')">📤 공유</button><button class="btn-ok" style="flex:1;background:#455a94" onclick="CT_startWrite(\'wc\',null,null,\'admin\')">✍️ 직접 작성</button></div></div>';
@@ -1925,7 +1925,7 @@ function pgContractAdmin(){
 }
 function ctBadgeSection(type,label,drs){
   var kindTxt=(type==='badge_renew')?'renew':'new';
-  var done=drs.filter(function(d){return ctaStatus(d.name,type)==='done';});
+  var done=drs.filter(function(d){return ctaStatus(d.name,type)==='done';}).sort(function(a,b){var aa=(typeof ctApprovedOf==='function'&&ctApprovedOf(a.name,type))?1:0;var bb=(typeof ctApprovedOf==='function'&&ctApprovedOf(b.name,type))?1:0;if(aa!==bb)return aa-bb;return (a.name||'').localeCompare(b.name||'','ko');});
   var pend=drs.filter(function(d){return ctaActive(d.name,type);});
   var h='<div class="card"><div class="ctit">'+label+'</div>';
   h+='<div style="display:flex;gap:6px;margin-bottom:8px"><button class="btn-ok" style="flex:1;background:#5a2fb0" onclick="openCtShare(\''+type+'\')">📤 기사 지정 공유</button><button class="btn-ok" style="flex:1;background:#455a94" onclick="CT_startWrite(\'badge\',null,\''+kindTxt+'\',\'admin\')">✍️ 직접 작성</button></div>';
