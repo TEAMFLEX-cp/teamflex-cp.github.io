@@ -6805,7 +6805,7 @@ function pgDriverHub(){
   if(isAdm)h+='<button onclick="dhAddNew()" style="width:100%;margin-bottom:8px;background:#3949ab;color:#fff;border:none;border-radius:9px;padding:10px;font-size:12.5px;font-weight:800;cursor:pointer">&#x2795; 기사 추가</button>';
   if(isAdm)h+='<div style="display:flex;gap:8px;margin-bottom:12px">'
      +'<button onclick="dhExcelDown()" style="flex:1;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:9px;padding:9px;font-size:12px;font-weight:800;cursor:pointer">&#x2B07; 엑셀 다운</button>'
-     +'<label style="flex:1;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:9px;padding:9px;font-size:12px;font-weight:800;cursor:pointer;text-align:center">&#x2B06; 엑셀 업로드<input type="file" accept=".csv" onchange="dhExcelUp(this)" style="display:none"></label>'
+     +'<label style="flex:1;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:9px;padding:9px;font-size:12px;font-weight:800;cursor:pointer;text-align:center">&#x2B06; 엑셀 업로드<input type="file" accept=".xlsx,.xls,.csv" onchange="dhExcelUp(this)" style="display:none"></label>'
    +'</div>';
   if(isAdm&&pend.length){h+='<div style="border:2px solid #ffcc80;background:#fffbf2;border-radius:13px;padding:11px;margin-bottom:12px"><div style="font-size:13px;font-weight:900;color:#e65100;margin-bottom:6px">&#x1F514; 가입 승인 대기 ('+pend.length+')</div>';
     pend.forEach(function(d){h+='<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid #f4ead0"><div style="flex:1;font-size:13px;font-weight:700">'+d.name+' <span style="font-size:10px;color:#999">'+((_dhMerge(d.name,ext,db).cpid)||'')+'</span></div><span class="mini info" onclick="openDriverDetail(\''+d.name+'\')">상세</span><span class="mini red" onclick="dhReject(\''+d.name+'\')">거절</span><span class="mini" style="background:#2e9e5b;color:#fff;border:none" onclick="dhApprove(\''+d.name+'\')">&#x2714; 승인</span></div>';});
@@ -6981,19 +6981,88 @@ function dhExcelDown(){
   });
   var blob=new Blob(['﻿'+rows.join('\r\n')],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='기사정보_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
 }
+function _dhCol(h){h=String(h==null?'':h).replace(/\s|\./g,'');if(!h||h==='None')return '';
+  if(/^ID$/i.test(h)||/쿠팡/.test(h)||/플렉스ID/i.test(h)||/로그인/.test(h))return 'cpid';
+  if(/비밀번호|비번|password/i.test(h))return '__skip';
+  if(/생년월일/.test(h))return '__skip';
+  if(/^이름$|성명/.test(h))return 'name';
+  if(/주소/.test(h))return 'addr';
+  if(/주민/.test(h))return 'jumin';
+  if(/서브폰|서브전화|보조폰/.test(h))return 'subphone';
+  if(/연락처|메인폰|전화|핸드폰|휴대/.test(h))return 'phone';
+  if(/차량번호/.test(h))return 'carno';
+  if(/^차량$|차량명|차종/.test(h))return 'car';
+  if(/연료/.test(h))return 'fuel';
+  if(/연식/.test(h))return 'cyear';
+  if(/차량등록|등록년월일/.test(h))return 'regdate';
+  if(/운전면허번호/.test(h))return 'lic';
+  if(/면허종류|운전면허종류/.test(h))return 'lictype';
+  if(/^면허$/.test(h))return 'lictype';
+  if(/화물운송자격|운수종사자격/.test(h))return 'qual';
+  if(/취득일/.test(h))return 'qualdate';
+  if(/은행/.test(h))return 'bank';
+  if(/계좌/.test(h))return 'acct';
+  if(/입사/.test(h))return 'joindate';
+  if(/시군구/.test(h))return 'sigungu';
+  if(/시도/.test(h))return 'sido';
+  if(/배넘버|허가일/.test(h))return 'badgedate';
+  return '';
+}
+function _dhApplyRows(hdr,rows){
+  var colmap=(hdr||[]).map(function(h){return _dhCol(h);});
+  var nameIdx=colmap.indexOf('name');
+  if(nameIdx<0){alert('이름(성명) 열을 찾을 수 없습니다.\n첫 행에 헤더가 있는지 확인하세요.');return;}
+  var db=getDB();if(!_driverExt)_driverExt={};var n=0;
+  rows.forEach(function(c){
+    if(!c)return;var nm=String(c[nameIdx]!=null?c[nameIdx]:'').trim();if(!nm||nm==='None')return;
+    var e=Object.assign({},_driverExt[nm]||{});
+    colmap.forEach(function(field,ci){
+      if(!field||field==='__skip'||field==='name')return;
+      var v=c[ci];if(v==null)return;v=String(v).trim();if(v===''||v==='None')return;
+      if(field==='qual'&&e.qual)return;
+      if(field==='regdate'&&e.regdate)return;
+      if(field==='badgedate'&&e.badgedate)return;
+      e[field]=v;
+    });
+    if(e.cyear&&_deDig(e.cyear).length>=6&&!e.regdate){e.regdate=e.cyear;}
+    e.cyear=_deDig(e.regdate).slice(0,4)||(/^\d{4}$/.test(String(e.cyear||''))?String(e.cyear):'')||'';
+    e.name=nm;_driverExt[nm]=e;
+    if(db[nm]){if(e.phone)db[nm].phone=_deP(e.phone);if(e.carno)db[nm].car_no=e.carno;if(e.cpid)db[nm].coupang_id=e.cpid;if(e.car)db[nm].car_type=e.car;if(e.fuel)db[nm].fuel_type=e.fuel;}
+    n++;
+  });
+  saveDB(db);
+  (async function(){if(sbClient){try{
+    var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();
+    var m={};if(r1&&r1.data&&r1.data.value){try{m=(typeof r1.data.value==='string')?JSON.parse(r1.data.value):r1.data.value;}catch(_e){m={};}}
+    Object.keys(_driverExt).forEach(function(k){m[k]=_driverExt[k];});
+    await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});
+  }catch(e){console.warn('driver_ext 저장 실패',e);}}})();
+  var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();
+  alert('✅ '+n+'명 정보 반영 완료\n(비밀번호는 보안상 제외 · Supabase 동기화)');
+}
 function dhExcelUp(inp){
-  var f=inp.files&&inp.files[0];if(!f)return;var rd=new FileReader();
+  var f=inp.files&&inp.files[0];if(!f)return;var fn=(f.name||'').toLowerCase();
+  if(fn.slice(-5)==='.xlsx'||fn.slice(-4)==='.xls'){
+    if(typeof hcLoadXLSX!=='function'){alert('엑셀 모듈 로더가 없습니다.');return;}
+    hcLoadXLSX(function(ok){
+      if(!ok||typeof XLSX==='undefined'){alert('엑셀 모듈을 불러오지 못했습니다(네트워크 확인).');return;}
+      var rd=new FileReader();
+      rd.onload=function(){try{
+        var wb=XLSX.read(new Uint8Array(rd.result),{type:'array'});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''});
+        if(!aoa||aoa.length<2){alert('데이터가 없습니다.');return;}
+        _dhApplyRows(aoa[0],aoa.slice(1));
+      }catch(ex){alert('엑셀 읽기 오류: '+ex.message);}};
+      rd.readAsArrayBuffer(f);
+    });
+    return;
+  }
+  var rd=new FileReader();
   rd.onload=function(){try{
     var lines=String(rd.result).replace(/^﻿/,'').split(/\r?\n/).filter(function(x){return x.trim();});
     if(lines.length<2){alert('데이터가 없습니다.');return;}
-    var hd=_dhCsv(lines[0]);var idx={};hd.forEach(function(hh,i){idx[hh.trim()]=i;});
-    var map={'주민번호':'jumin','주소':'addr','메인폰':'phone','서브폰':'subphone','쿠팡ID':'cpid','운전면허번호':'lic','면허종류':'lictype','화물운송자격번호':'qual','자격취득일':'qualdate','차량명':'car','연료':'fuel','차량등록일':'regdate','차량번호':'carno','허가시도':'sido','허가시군구':'sigungu','배넘버허가일':'badgedate','은행':'bank','계좌번호':'acct','입사일':'joindate'};
-    var db=getDB();if(!_driverExt)_driverExt={};var n=0;
-    for(var i=1;i<lines.length;i++){var c=_dhCsv(lines[i]);var nm=(c[idx['성명']]||'').trim();if(!nm)continue;var e=Object.assign({},_driverExt[nm]||{});Object.keys(map).forEach(function(k){if(idx[k]!=null&&c[idx[k]]!=null&&c[idx[k]].trim()!=='')e[map[k]]=c[idx[k]].trim();});e.cyear=_deDig(e.regdate).slice(0,4)||e.cyear||'';e.name=nm;_driverExt[nm]=e;if(db[nm]){if(e.phone)db[nm].phone=_deP(e.phone);if(e.carno)db[nm].car_no=e.carno;if(e.cpid)db[nm].coupang_id=e.cpid;}n++;}
-    saveDB(db);
-    (async function(){if(sbClient){try{await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(_driverExt)},{onConflict:'key'});}catch(e){}}})();
-    var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();
-    alert('✅ '+n+'명 반영 완료 (Supabase 동기화)');
+    _dhApplyRows(_dhCsv(lines[0]),lines.slice(1).map(function(l){return _dhCsv(l);}));
   }catch(ex){alert('파일 오류: '+ex.message);}};
   rd.readAsText(f,'UTF-8');
 }
@@ -7023,7 +7092,7 @@ async function dhToggleBlind(name){
   if(sbClient){var blArr=Object.values(db).filter(function(d){return d&&d.blind;}).map(function(d){return d.name;});sbClient.from('misdelivery_settings').update({blind_list:JSON.stringify(blArr)}).eq('id',1).then(function(){}).catch(function(){});}
   _dhRender(name,false);try{showToast(db[name].blind?'🙈 블라인드':'👁 공개',true);}catch(_){}
 }
-window.dhReject=dhReject;window.dhAddNew=dhAddNew;window.dhToggleBlind=dhToggleBlind;
+window._dhCol=_dhCol;window._dhApplyRows=_dhApplyRows;window.dhReject=dhReject;window.dhAddNew=dhAddNew;window.dhToggleBlind=dhToggleBlind;
 window.pgDriverHub=pgDriverHub;window.openDriverDetail=openDriverDetail;window._dhRender=_dhRender;window.closeDriverDetail=closeDriverDetail;window.saveDriverDetail=saveDriverDetail;window.dhAskDelete=dhAskDelete;window.dhSearch=dhSearch;window.dhExcelDown=dhExcelDown;window.dhExcelUp=dhExcelUp;window.dhSetRole=dhSetRole;window.dhToggleAdmin=dhToggleAdmin;window.dhToggleSusp=dhToggleSusp;window.dhApprove=dhApprove;window.dhUnkick=dhUnkick;window.dhResetPw=dhResetPw;
 function pgPermissions(){
   var db=getDB();
