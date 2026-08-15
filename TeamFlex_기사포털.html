@@ -2094,7 +2094,7 @@ function openSchedPermPopup(){
   function collect(){var ps=S.d.signDate;if(S.kind==='badge')S.d={name:val('name'),jumin:val('jumin'),addr:val('addr'),phone:val('phone'),car:val('car'),cyear:val('cyear'),load:val('load'),carno:val('carno'),lic:val('lic'),lictype:val('lictype'),qual:val('qual'),qualdate:val('qualdate'),start:val('start')};else S.d={name:val('name'),jumin:val('jumin'),addr:val('addr'),route:val('route'),price:val('price'),start:val('start')};S.d.signDate=today();}
   function full(){var d=S.d;var j=String(d.jumin||'').replace(/[^0-9]/g,'');return {name:d.name,jumin:msk(d.jumin),addr:d.addr,route:d.route,price:d.price,phone:d.phone,car:d.car,cyear:d.cyear,load:d.load,carno:d.carno,lic:d.lic,lictype:d.lictype,qual:d.qual,qualdate:d.qualdate,birth:j.slice(0,6),start:d.start,end:addY(d.start,1),sign:today()};}
   function paint(h){var m=mc();if(m){m.innerHTML=h;window.scrollTo(0,0);}}
-  function startWrite(kind,name,badgeKind,mode){S={kind:kind,badgeKind:badgeKind||'new',step:0,d:{},sig:{},chk:{},cur:0,mode:mode||'admin',showPrev:false};var t=today();var sd=(kind==='badge'&&S.badgeKind==='renew')?addD(t,5):addD(t,7);if(name){var db=(typeof getDB==='function')?getDB():{};var dd=db[name]||{};var ex=(window._driverExt&&window._driverExt[name])||{};S.d={name:name,jumin:ex.jumin||dd.jumin||'',addr:ex.addr||dd.addr||'',route:dd.route||'',price:dd.price||'',phone:dd.phone||ex.phone||'',car:ex.car||dd.car_type||'',cyear:ex.cyear||'',load:ex.load||'',carno:ex.carno||dd.car_no||'',lic:ex.lic||'',lictype:ex.lictype||'',qual:ex.qual||'',qualdate:ex.qualdate||'',start:sd};}else S.d={start:sd};if(kind==='badge'&&S.badgeKind==='renew')S.d.signDate=t;ensureUI();renderStep();}
+  function startWrite(kind,name,badgeKind,mode){S={kind:kind,badgeKind:badgeKind||'new',step:0,d:{},sig:{},chk:{},cur:0,mode:mode||'admin',showPrev:false};var t=today();var sd=(kind==='badge'&&S.badgeKind==='renew')?addD(t,5):addD(t,7);if(name){var db=(typeof getDB==='function')?getDB():{};var dd=db[name]||{};var ex=(window._driverExt&&window._driverExt[name])||{};S.d={name:name,jumin:ex.jumin||dd.jumin||'',addr:ex.addr||dd.addr||'',route:ex.route||dd.route||'',price:ex.price||dd.price||'',phone:dd.phone||ex.phone||'',car:ex.car||dd.car_type||'',cyear:ex.cyear||'',load:ex.load||'',carno:ex.carno||dd.car_no||'',lic:ex.lic||'',lictype:ex.lictype||'',qual:ex.qual||'',qualdate:ex.qualdate||'',start:(kind==='wc'&&ex.cstart)?ex.cstart:sd};}else S.d={start:sd};if(kind==='badge'&&S.badgeKind==='renew')S.d.signDate=t;ensureUI();renderStep();}
   function renderStep(){paint(stepHTML());after();}
   function stepHTML(){var badge=(S.kind==='badge');var kt=badge?('배넘버 '+(S.badgeKind==='renew'?'재허가':'신규')+' 서류'):'위·수탁 계약서';var s=S.step;var head='<div class="stit" style="display:flex;align-items:center;gap:8px"><span onclick="CT_back()" style="cursor:pointer;color:#2f6bb0;font-weight:900;font-size:20px">‹</span>&#x1F4C4; '+kt+' 작성</div>';
     if(s===0){var sm=badge?{name:'○○○',jumin:'______-*******',addr:'________',phone:'',car:'',cyear:'',load:'',carno:'',lic:'',lictype:'',qual:'',qualdate:'',birth:'',start:'',end:'',sign:''}:{name:'○○○',jumin:'______-*******',addr:'________',route:'___',price:'___',start:'',end:'',sign:''};var sp=!!S.showPrev;var doc=sp?docHTML(sm,'blank'):'';var pv=sp?'<button class="ctc-btn" style="background:#eef2f6;color:#5a6b7c;margin-bottom:8px" onclick="CT_prev(false)">▲ 미리보기 접기</button>':'<button class="ctc-btn" style="background:#12b5a3;margin-bottom:8px" onclick="CT_prev(true)">&#x1F4C4; 계약서 미리보기</button>';return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c;margin-bottom:10px">작성 전 <b>실제 '+kt+'</b>를 미리 볼 수 있습니다.'+(badge?' (6종 서류)':'')+'</div>'+pv+'<button class="ctc-btn" style="background:#2f3e9e" onclick="CT_step(1)">기사 정보 입력 ›</button></div>'+doc;}
@@ -6922,6 +6922,7 @@ function dhApprove(name){
   if(sbClient)sbClient.from('drivers').update({status:'approved',synced_at:new Date().toISOString()}).eq('name',name).then(function(){}).catch(function(){});
   var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();
   try{showToast('✔ '+name+' 승인 — 기본 권한: 일반 기사',true);}catch(_){}
+  if(_driverExt===null){_loadDriverExt().then(function(){dhContractSetup(name,true);});}else{dhContractSetup(name,true);}
 }
 function dhUnkick(name){
   if(!(CU&&CU.role==='admin'))return;var db=getDB();var d=db[name];if(!d)return;d.status='approved';saveDB(db);
@@ -6965,7 +6966,7 @@ function _dhRender(name,edit,mode){
   if(_dhPhotoCache[name]===undefined){_dhLoadPhotos(name,function(){var o=document.getElementById('dh-photos');if(o)o.innerHTML=_dhPhotoBoxes(name);});}
   var pop=document.getElementById('dh-detail');if(pop)pop.remove();
   pop=document.createElement('div');pop.id='dh-detail';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:10600;display:flex;align-items:flex-end;justify-content:center';
-  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+ttl+'</div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+sub+'</div>'+body+'<div id="dh-photos">'+_dhPhotoBoxes(name)+'</div>'+((self&&!edit)?('<div style="margin-top:10px"><button onclick="closeDriverDetail();CT_preview(\''+name+'\',\'wc\',\'driver\')" style="width:100%;padding:11px;background:#12b5a3;color:#fff;border:none;border-radius:11px;font-weight:800">📄 내 계약서 보기</button></div>'):'')+((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')+foot+'</div>';
+  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+ttl+'</div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+sub+'</div>'+body+'<div id="dh-photos">'+_dhPhotoBoxes(name)+'</div>'+((self&&!edit)?('<div style="margin-top:10px"><button onclick="closeDriverDetail();CT_preview(\''+name+'\',\'wc\',\'driver\')" style="width:100%;padding:11px;background:#12b5a3;color:#fff;border:none;border-radius:11px;font-weight:800">📄 내 계약서 보기</button></div>'):'')+((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')+((!edit&&isAdm)?('<div style="margin-top:8px"><button onclick="dhContractSetup(\''+name+'\',false)" style="width:100%;padding:11px;background:#eef4ff;color:#2f5fc8;border:1.5px solid #cfe0f5;border-radius:11px;font-weight:800">📝 계약 정보 (라우트·단가·계약일)</button></div>'):'')+foot+'</div>';
   pop.addEventListener('click',function(ev){if(ev.target===pop&&!edit)pop.remove();});
   document.body.appendChild(pop);
 }
@@ -7028,6 +7029,39 @@ function dhViewPhoto(name,key){
   v.onclick=function(){v.remove();};document.body.appendChild(v);
 }
 window.dhPickPhoto=dhPickPhoto;window.dhViewPhoto=dhViewPhoto;window.dhSavePhotos=dhSavePhotos;
+function dhContractSetup(name,afterApprove){
+  var ext=(_driverExt&&_driverExt[name])||{};
+  var route=ext.route||'';var price=ext.price||'';var cstart=ext.cstart||'';
+  var pop=document.getElementById('dh-ctset');if(pop)pop.remove();
+  pop=document.createElement('div');pop.id='dh-ctset';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:10700;display:flex;align-items:flex-end;justify-content:center';
+  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:520px;padding:18px 16px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div>'
+    +'<div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">📝 '+name+' 계약 정보</div>'
+    +'<div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:14px">'+(afterApprove?'승인 완료! 계약서에 들어갈 정보를 입력하세요.':'계약서 작성에 자동 반영됩니다.')+' 계약 시작일만 넣으면 종료일은 자동(1년).</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">라우트</label><input id="dhct-route" value="'+String(route).replace(/"/g,"&quot;")+'" placeholder="예: 316A" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">단가(원)</label><input id="dhct-price" value="'+String(price).replace(/"/g,"&quot;")+'" inputmode="numeric" placeholder="예: 900" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">계약 시작</label><input type="date" id="dhct-start" value="'+cstart+'" oninput="dhCtEnd()" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">계약 종료</label><input id="dhct-end" readonly style="flex:1;border:1.5px solid #bfe6cc;background:#f0faf3;color:#1b7a38;font-weight:700;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
+    +'<div style="display:flex;gap:8px"><button onclick="var p=document.getElementById(\'dh-ctset\');if(p)p.remove();" style="flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800">나중에</button><button onclick="dhSaveContractInfo(\''+name+'\')" style="flex:2;padding:12px;background:#12b5a3;color:#fff;border:none;border-radius:11px;font-weight:800">💾 저장</button></div></div>';
+  document.body.appendChild(pop);dhCtEnd();
+}
+function dhCtEnd(){var s=document.getElementById('dhct-start');var e=document.getElementById('dhct-end');if(!s||!e)return;var v=s.value;if(!v){e.value='';return;}var d=new Date(v);if(isNaN(d.getTime())){e.value='';return;}d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);e.value=d.toISOString().slice(0,10);}
+async function dhSaveContractInfo(name){
+  var route=(document.getElementById('dhct-route').value||'').trim();
+  var price=(document.getElementById('dhct-price').value||'').trim();
+  var cstart=(document.getElementById('dhct-start').value||'').trim();
+  if(!_driverExt)_driverExt={};if(!_driverExt[name])_driverExt[name]={name:name};
+  _driverExt[name].route=route;_driverExt[name].price=price;_driverExt[name].cstart=cstart;
+  var db=getDB();if(db[name]){db[name].route=route;db[name].price=price;saveDB(db);}
+  if(sbClient){try{
+    var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();
+    var m={};if(r1&&r1.data&&r1.data.value){try{m=(typeof r1.data.value==='string')?JSON.parse(r1.data.value):r1.data.value;}catch(_e){m={};}}
+    m[name]=Object.assign({},m[name]||{},_driverExt[name]);
+    await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});
+  }catch(e){console.warn('계약정보 저장 실패',e);}}
+  var p=document.getElementById('dh-ctset');if(p)p.remove();
+  try{showToast('💾 계약 정보 저장 — 계약서에 자동 반영됩니다',true);}catch(_){}
+}
+window.dhContractSetup=dhContractSetup;window.dhSaveContractInfo=dhSaveContractInfo;window.dhCtEnd=dhCtEnd;
 window.dhMyInfo=dhMyInfo;window.dhMyEditStart=dhMyEditStart;
 
 function closeDriverDetail(){var p=document.getElementById('dh-detail');if(p)p.remove();}
