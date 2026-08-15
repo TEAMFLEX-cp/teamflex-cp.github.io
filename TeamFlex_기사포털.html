@@ -6783,13 +6783,15 @@ function _dhCss(){return '<style>'
 +'.dhw .callbtn.main{background:linear-gradient(135deg,#2e9e5b,#1e7d44)}.dhw .callbtn.sub{background:linear-gradient(135deg,#3f7fe0,#2f5fc8)}.dhw .callbtn.off{background:#eef2f6;color:#9aa7b4;font-weight:600}'
 +'.dhw .boxrow{display:flex;gap:7px}'
 +'.dhw .bx{flex:1;border:1.5px solid #e6ebf1;border-radius:11px;padding:11px 8px;background:#f8fafc;text-align:center;font-size:13px;font-weight:800;color:#33475b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
++'.dhw .dhacts{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}'+'.dhw .dhacts>.rsel,.dhw .dhacts>.mini{flex:1 1 auto;min-width:54px;text-align:center;justify-content:center;display:inline-flex;align-items:center;white-space:nowrap}'
 +'</style>';}
 function pgDriverHub(){
   var db=getDB();var isAdm=CU&&CU.role==='admin';
   if(_driverExt===null){_loadDriverExt().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();});}
   var ext=_driverExt||{};
   var byName=function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');};
-  var all=Object.values(db).filter(function(d){return d.name&&splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&d.name!==ROOT_ADMIN.id&&d.role!=='admin';});
+  var _cfg=(typeof getCfg==='function'?getCfg():{})||{};var _aid=_cfg.adminId||ROOT_ADMIN.id;
+  var all=Object.values(db).filter(function(d){return d.name&&splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&d.name!==ROOT_ADMIN.id&&d.name!==_aid;});
   var main=all.filter(function(d){return d.status==='approved'||d.status==='suspended';});
   var pend=all.filter(function(d){return d.status==='pending'||d.status==='inactive';}).sort(byName);
   var kick=all.filter(function(d){return d.status==='kicked'||d.status==='blocked';}).sort(byName);
@@ -6815,9 +6817,11 @@ function pgDriverHub(){
   DH_ROLES.forEach(function(role){
     if(!isAdm&&(role==='대표'||role==='관리자'))return;
     var list=main.filter(function(d){return _dhDrole(d,ext)===role;}).sort(byName);
-    if(!list.length)return;var st=DH_RSTYLE[role];
+    var always=(isAdm&&(role==='대표'||role==='관리자'||role==='총괄'));
+    if(!list.length&&!always)return;var st=DH_RSTYLE[role];
     h+='<div class="rolehdr" style="background:'+st.hbg+';color:'+st.tx+';border-color:'+st.tx+'">'+st.ic+' '+role+' <span style="opacity:.6">('+list.length+')</span></div>';
-    list.forEach(function(d){h+=_dhCard(d,ext,db,isAdm);});
+    if(list.length)list.forEach(function(d){h+=_dhCard(d,ext,db,isAdm);});
+    else h+='<div style="padding:9px 6px 10px;font-size:11.5px;color:#9aa7b4;text-align:center">아직 지정된 인원이 없습니다 · 아래 카드의 역할 선택에서 지정하세요</div>';
   });
   if(kick.length){h+='<div class="rolehdr" style="background:#eceff1;color:#546e7a;border-color:#90a4ae">&#x1F6AB; 강퇴 <span style="opacity:.6">('+kick.length+')</span></div>';kick.forEach(function(d){h+=_dhCard(d,ext,db,isAdm);});}
   h+='</div></div>';
@@ -6833,19 +6837,19 @@ function _dhCard(d,ext,db,isAdm){
   var bdg='';
   if(typeof ctDone==='function'){try{if(ctDone(name))bdg+='<span class="ctbadge"><span>&#x1F4C4; 계약완료</span></span> ';}catch(_){}}
   var roleOpts=DH_ROLES.map(function(r){return '<option '+(r===role?'selected':'')+'>'+r+'</option>';}).join('');
-  var actL,actR;
+  var acts;
   if(isAdm&&!kick){
-    actL='<div class="actL"><select class="rsel" style="background:'+st.bg+';color:'+st.tx+';border-color:'+st.tx+'" onchange="dhSetRole(\''+name+'\',this.value)">'+roleOpts+'</select>'
+    acts='<div class="dhacts"><select class="rsel" style="background:'+st.bg+';color:'+st.tx+';border-color:'+st.tx+'" onchange="dhSetRole(\''+name+'\',this.value)">'+roleOpts+'</select>'
       +'<span class="mini '+(susp?'red':'warn')+'" onclick="dhToggleSusp(\''+name+'\')">'+(susp?'&#x25B6; 정지해제':'&#x23F8; 정지')+'</span>'
-      +'<span class="mini info" onclick="dhResetPw(\''+name+'\')">&#x1F511; PW</span></div>';
-    actR='<div class="actR"><span class="mini pur" onclick="dhToggleAdmin(\''+name+'\')">'+(isAdmRole?'&#x1F464; 관리자해제':'&#x1F451; 관리자지정')+'</span><span class="mini dark" onclick="openDriverDetail(\''+name+'\')">&#x1F4CB; 상세</span></div>';
+      +'<span class="mini info" onclick="dhResetPw(\''+name+'\')">&#x1F511; PW</span>'
+      +'<span class="mini pur" onclick="dhToggleAdmin(\''+name+'\')">'+(isAdmRole?'&#x1F464; 관리자해제':'&#x1F451; 관리자')+'</span>'
+      +'<span class="mini dark" onclick="openDriverDetail(\''+name+'\')">&#x1F4CB; 상세</span></div>';
   }else if(isAdm&&kick){
-    actL='<div class="actL"><span class="mini" style="background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7" onclick="dhUnkick(\''+name+'\')">복구</span></div>';
-    actR='<div class="actR"><span class="mini dark" onclick="openDriverDetail(\''+name+'\')">&#x1F4CB; 상세</span></div>';
-  }else{actL='';actR='<div class="actR" style="margin-left:auto"><span class="mini dark" onclick="openDriverDetail(\''+name+'\')">&#x1F4CB; 상세 보기</span></div>';}
+    acts='<div class="dhacts"><span class="mini" style="background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7" onclick="dhUnkick(\''+name+'\')">복구</span><span class="mini dark" onclick="openDriverDetail(\''+name+'\')">&#x1F4CB; 상세</span></div>';
+  }else{acts='<div class="dhacts"><span class="mini dark" onclick="openDriverDetail(\''+name+'\')">&#x1F4CB; 상세 보기</span></div>';}
   return '<div class="pcard" data-s="'+(name+' '+(e.carno||'')+' '+(e.cpid||'')).toLowerCase()+'">'
    +'<div class="pc-top"><span class="pc-name">'+name+'</span><span class="rbadge" style="background:'+st.bg+';color:'+st.tx+'">'+role+'</span>'+(susp?'<span class="rbadge" style="background:#ffebee;color:#c62828">정지</span>':'')+(kick?'<span class="rbadge" style="background:#eceff1;color:#546e7a">강퇴</span>':'')+bdg+'</div>'
-   +'<div class="actrow">'+actL+actR+'</div>'
+   +acts
    +'<div class="chips"><span class="chip bd">&#x1F382; '+(_dhBirth(e.jumin)||'--')+'</span><span class="chip car">&#x1F697; '+(e.car||'차량 미입력')+'</span><span class="chip fu">&#x26A1; '+(e.fuel||'-')+'</span></div>'
    +'<div class="callrow">'+callMain+callSub+'</div>'
    +'<div class="boxrow"><div class="bx">&#x1F69A; '+(e.carno||'-')+'</div><div class="bx">&#x1F6D2; '+(e.cpid||'-')+'</div></div>'
