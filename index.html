@@ -6705,6 +6705,7 @@ async function okDriver(name){
   console.log('[okDriver]',name,'승인, newpw:',newpw,'sbOk:',sbOk);
   alert(name+' 기사 승인 완료!'+(sbOk?'':'\n(Supabase 반영 실패 - 관리자에게 문의)'));
   go('aa');
+  if(typeof dhContractSetup==='function'){if(typeof _driverExt!=='undefined'&&_driverExt===null&&typeof _loadDriverExt==='function'){_loadDriverExt().then(function(){dhContractSetup(name,true);});}else{dhContractSetup(name,true);}}
 }
 function noDriver(name){
   if(!confirm('정말 거부하시겠습니까?'))return;
