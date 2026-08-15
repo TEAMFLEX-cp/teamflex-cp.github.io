@@ -11758,12 +11758,23 @@ async function _lossDoImport(file){
     }
     if(!newRecs.length){ if(st)st.textContent='❌ 유효한 행(운송장)이 없습니다.'; return; }
     var cr=await sbClient.from('app_settings').select('value').eq('key','loss_deduction_log').maybeSingle();
+    var _crErr=(cr&&cr.error)?cr.error:null;
     var prev=(cr&&cr.data&&cr.data.value)?(typeof cr.data.value==='string'?JSON.parse(cr.data.value):cr.data.value):null;
-    var curMonth=(prev&&prev.month)||'',curRecords=(prev&&prev.records)||[];
+    var curMonth=(prev&&prev.month)||'';
     var newMonth=_lossDeriveMonthImp(newRecs),monthReset=false;
-    if(curMonth&&newMonth&&curMonth!==newMonth){ curRecords=[]; monthReset=true; }
     var finalMonth=newMonth||curMonth||new Date(Date.now()+9*3600000).toISOString().slice(0,7);
-    var bywb={}; curRecords.forEach(function(x){bywb[String(x.wb)]=x;});
+    // [누적 보강] 병합 기반 = loss_deduction_log(같은 달) + 히스토리(해당 달) 합집합, 운송장(wb) 중복 제거.
+    //   서버 읽기 실패/얇아짐 시에도 기존 누적분을 복원 → '새것만 남고 기존이 사라지는' 현상 방지.
+    var _histRec=[];
+    try{ var hr=await sbClient.from('app_settings').select('value').eq('key','loss_deduction_history').maybeSingle();
+      var hv=(hr&&hr.data&&hr.data.value)?(typeof hr.data.value==='string'?JSON.parse(hr.data.value):hr.data.value):null;
+      if(hv&&hv[finalMonth]&&hv[finalMonth].records)_histRec=hv[finalMonth].records; }catch(e){}
+    var curRecords=[];
+    if(prev&&prev.records&&prev.records.length&&(!prev.month||prev.month===finalMonth))curRecords=curRecords.concat(prev.records);
+    if(_histRec&&_histRec.length)curRecords=curRecords.concat(_histRec);
+    if(prev&&prev.month&&newMonth&&prev.month!==finalMonth)monthReset=true;
+    if(_crErr&&!curRecords.length){ var _se=document.getElementById('loss-upl-status'); if(_se)_se.textContent='⚠️ 기존 내역을 못 읽음(일시 지연) — 누적 보호 위해 중단. 잠시 후 재시도.'; alert('⚠️ 서버에서 기존 분실차감 내역을 읽지 못했습니다(일시 지연). 누적 유실 방지를 위해 업로드를 중단합니다. 잠시 후 다시 시도해 주세요.'); return; }
+    var bywb={}; curRecords.forEach(function(x){ if(x&&x.wb!=null){ var k=String(x.wb); if(!bywb[k])bywb[k]=x; } });
     var added=0,updated=0;
     newRecs.forEach(function(rec){
       var k=String(rec.wb),old=bywb[k];
