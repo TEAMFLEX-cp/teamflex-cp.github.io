@@ -1734,7 +1734,7 @@ function pgContractRequired(){
 function openContractAdmin(){var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgContractAdmin();window.scrollTo(0,0);}}
 function pgContractAdmin(){
   var db=getDB();
-  var drs=Object.values(db).filter(function(d){return splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&d.role==='driver'&&d.status==='approved';}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');});
+  var drs=Object.values(db).filter(function(d){return splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&(d.role==='driver'||d.role==='leader'||d.role==='sub')&&d.status==='approved';}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');});
   var written=drs.filter(function(d){return ctDone(d.name);});
   var unwritten=drs.filter(function(d){return !ctDone(d.name);});
   var gate=ctGateOn();
@@ -1762,8 +1762,12 @@ function pgContractAdmin(){
 }
 function ctRow(d,done){
   var esc=d.name.replace(/'/g,"\\'");
+  var _rl={leader:'팀장',sub:'조장',driver:'기사'}[d.role]||'';
+  var _rlBg={leader:'#fff3e0',sub:'#e0f2f1',driver:'#eef2f6'}[d.role]||'#eef2f6';
+  var _rlTx={leader:'#e65100',sub:'#00695c',driver:'#5a6b7c'}[d.role]||'#5a6b7c';
+  var _rlTag=_rl?(' <span style="font-size:9px;font-weight:800;padding:1px 6px;border-radius:10px;background:'+_rlBg+';color:'+_rlTx+'">'+_rl+'</span>'):'';
   return '<div style="display:flex;align-items:center;gap:6px;padding:10px 4px;border-bottom:1px solid #f0f3f7;flex-wrap:wrap">'+
-    '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+(done?(' '+ctBadge(d.name,true)):'')+'</div>'+
+    '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+_rlTag+(done?(' '+ctBadge(d.name,true)):'')+'</div>'+
     (done
       ? '<button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>'+
         '<button onclick="ctSet(this.getAttribute(\'data-n\'),false)" data-n="'+d.name+'" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">취소</button>'
@@ -1772,6 +1776,28 @@ function ctRow(d,done){
     '</div>';
 }
 async function ctSet(name,done){ await ctMark(name,done,'paper'); openContractAdmin(); }
+
+/* 스케줄 수정 권한 — 스케줄탭 버튼에서 팝업으로 (기존 설정/저장 로직 재사용) */
+function openSchedPermPopup(){
+  if(!CU||CU.role!=='admin')return;
+  var old=document.getElementById('schedperm-pop');if(old)old.remove();
+  var cfg=getCfg();
+  var schedChecks=['admin','leader','sub'].map(function(r){var lbl={admin:'관리자',leader:'팀장',sub:'조장'}[r];var chk=(cfg.schedPerm||['admin','leader']).indexOf(r)>=0?'checked':'';return '<label class="perm-check"><input type="checkbox" '+chk+' onchange="togglePerm(\'sched\',\''+r+'\',this.checked)">'+lbl+'</label>';}).join('');
+  var daysH=[30,60,90,365].map(function(d){var sel=(cfg.schedEditDays||90)===d;var lbl=d>=365?'1년':(d+'일');return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?'#1565c0':'#e0e0e0')+';background:'+(sel?'#e3f2fd':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(sel?700:400)+';color:'+(sel?'#1565c0':'#555')+'"><input type="radio" name="schedDays2" value="'+d+'" '+(sel?'checked':'')+' onchange="setSchedEditDays('+d+')" style="accent-color:#1565c0">'+lbl+'</label>';}).join('');
+  var lockH=(function(){var opts=[{v:0,lbl:'제한없음'},{v:2,lbl:'2일 이전 잠금'},{v:3,lbl:'3일 이전 잠금'},{v:4,lbl:'4일 이전 잠금'},{v:5,lbl:'5일 이전 잠금'},{v:'week',lbl:'🔒 해당주차 금지'}];var cur=cfg.schedMinLockDays;if(cur===undefined||cur===null)cur=0;return opts.map(function(o){var sel=String(cur)===String(o.v);var isWeek=(o.v==='week');var bc=isWeek?'#7b1fa2':'#c62828';var bg=isWeek?'#f3e5f5':'#ffebee';var val=isWeek?'\'week\'':o.v;return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?bc:'#e0e0e0')+';background:'+(sel?bg:'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(sel?700:400)+';color:'+(sel?(isWeek?'#7b1fa2':'#c62828'):'#555')+'"><input type="radio" name="schedMinLock2" value="'+o.v+'" '+(sel?'checked':'')+' onchange="setSchedMinLockDays('+val+')" style="accent-color:'+(isWeek?'#7b1fa2':'#c62828')+'">'+o.lbl+'</label>';}).join('');})();
+  var pop=document.createElement('div');pop.id='schedperm-pop';
+  pop.style.cssText='position:fixed;inset:0;z-index:1500;display:flex;flex-direction:column;justify-content:flex-end';
+  pop.innerHTML='<div onclick="var p=document.getElementById(\'schedperm-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div>'+
+    '<div style="background:#fff;border-radius:24px 24px 0 0;padding:18px 18px 30px;box-shadow:0 -4px 24px rgba(0,0,0,.15);max-height:82vh;overflow-y:auto">'+
+      '<div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px"></div>'+
+      '<div style="font-size:16px;font-weight:900;color:#1a237e;text-align:center;margin-bottom:14px">&#x1F4C5; 스케줄 수정 권한</div>'+
+      '<div class="card"><div class="cfg-row"><div class="cfg-label">수정 가능한 역할 (다중 선택)</div><div class="perm-checks">'+schedChecks+'</div></div>'+
+        '<div class="cfg-row" style="margin-top:14px"><div class="cfg-label" style="margin-bottom:10px">&#x23F1; 팀장·조장 수정 가능 기간</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+daysH+'</div></div>'+
+        '<div class="cfg-row" style="margin-top:14px"><div class="cfg-label" style="margin-bottom:8px">🔒 과거 수정 잠금 — 며칠 이전 수정 불가 (0 = 제한없음)</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+lockH+'</div></div></div>'+
+      '<button onclick="var p=document.getElementById(\'schedperm-pop\');if(p)p.remove();" style="width:100%;margin-top:6px;padding:13px;background:#3949ab;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:14px">닫기</button>'+
+    '</div>';
+  document.body.appendChild(pop);
+}
 
 /* ================= 계약서 작성·서명 모듈 (위수탁 전문 + 배넘버 6종) ================= */
 (function(){
@@ -1842,10 +1868,10 @@ async function ctSet(name,done){ await ctMark(name,done,'paper'); openContractAd
   function collect(){var ps=S.d.signDate;if(S.kind==='badge')S.d={name:val('name'),jumin:val('jumin'),addr:val('addr'),phone:val('phone'),car:val('car'),cyear:val('cyear'),load:val('load'),carno:val('carno'),lic:val('lic'),lictype:val('lictype'),qual:val('qual'),qualdate:val('qualdate'),start:val('start')};else S.d={name:val('name'),jumin:val('jumin'),addr:val('addr'),route:val('route'),price:val('price'),start:val('start')};S.d.signDate=(S.badgeKind==='renew')?(ps||today()):sdFor(S.d.start);}
   function full(){var d=S.d;var j=String(d.jumin||'').replace(/[^0-9]/g,'');return {name:d.name,jumin:msk(d.jumin),addr:d.addr,route:d.route,price:d.price,phone:d.phone,car:d.car,cyear:d.cyear,load:d.load,carno:d.carno,lic:d.lic,lictype:d.lictype,qual:d.qual,qualdate:d.qualdate,birth:j.slice(0,6),start:d.start,end:addY(d.start,1),sign:d.signDate||sdFor(d.start)};}
   function paint(h){var m=mc();if(m){m.innerHTML=h;window.scrollTo(0,0);}}
-  function startWrite(kind,name,badgeKind,mode){S={kind:kind,badgeKind:badgeKind||'new',step:0,d:{},sig:{},chk:{},cur:0,mode:mode||'admin'};var t=today();var sd=(kind==='badge'&&S.badgeKind==='renew')?addD(t,5):addD(t,7);if(name){var db=(typeof getDB==='function')?getDB():{};var dd=db[name]||{};S.d={name:name,jumin:dd.jumin||'',addr:dd.addr||'',route:dd.route||'',price:dd.price||'',phone:dd.phone||'',start:sd};}else S.d={start:sd};if(kind==='badge'&&S.badgeKind==='renew')S.d.signDate=t;ensureUI();renderStep();}
+  function startWrite(kind,name,badgeKind,mode){S={kind:kind,badgeKind:badgeKind||'new',step:0,d:{},sig:{},chk:{},cur:0,mode:mode||'admin',showPrev:false};var t=today();var sd=(kind==='badge'&&S.badgeKind==='renew')?addD(t,5):addD(t,7);if(name){var db=(typeof getDB==='function')?getDB():{};var dd=db[name]||{};S.d={name:name,jumin:dd.jumin||'',addr:dd.addr||'',route:dd.route||'',price:dd.price||'',phone:dd.phone||'',start:sd};}else S.d={start:sd};if(kind==='badge'&&S.badgeKind==='renew')S.d.signDate=t;ensureUI();renderStep();}
   function renderStep(){paint(stepHTML());after();}
   function stepHTML(){var badge=(S.kind==='badge');var kt=badge?('배넘버 '+(S.badgeKind==='renew'?'재허가':'신규')+' 서류'):'위·수탁 계약서';var s=S.step;var head='<div class="stit" style="display:flex;align-items:center;gap:8px"><span onclick="CT_back()" style="cursor:pointer;color:#2f6bb0;font-weight:900;font-size:20px">‹</span>&#x1F4C4; '+kt+' 작성</div>';
-    if(s===0){var sm=badge?{name:'○○○',jumin:'______-*******',addr:'________',phone:'',car:'',cyear:'',load:'',carno:'',lic:'',lictype:'',qual:'',qualdate:'',birth:'',start:'',end:'',sign:''}:{name:'○○○',jumin:'______-*******',addr:'________',route:'___',price:'___',start:'',end:'',sign:''};return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c;margin-bottom:10px">작성 전 <b>실제 '+kt+' 원문</b>을 확인합니다.'+(badge?' (6종)':'')+'</div><button class="ctc-btn" style="background:#2f3e9e" onclick="CT_step(1)">기사 정보 입력 ›</button></div>'+docHTML(sm,'blank');}
+    if(s===0){var sm=badge?{name:'○○○',jumin:'______-*******',addr:'________',phone:'',car:'',cyear:'',load:'',carno:'',lic:'',lictype:'',qual:'',qualdate:'',birth:'',start:'',end:'',sign:''}:{name:'○○○',jumin:'______-*******',addr:'________',route:'___',price:'___',start:'',end:'',sign:''};var sp=!!S.showPrev;var doc=sp?docHTML(sm,'blank'):'';var pv=sp?'<button class="ctc-btn" style="background:#eef2f6;color:#5a6b7c;margin-bottom:8px" onclick="CT_prev(false)">▲ 미리보기 접기</button>':'<button class="ctc-btn" style="background:#12b5a3;margin-bottom:8px" onclick="CT_prev(true)">&#x1F4C4; 계약서 미리보기</button>';return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c;margin-bottom:10px">작성 전 <b>실제 '+kt+'</b>를 미리 볼 수 있습니다.'+(badge?' (6종 서류)':'')+'</div>'+pv+'<button class="ctc-btn" style="background:#2f3e9e" onclick="CT_step(1)">기사 정보 입력 ›</button></div>'+doc;}
     if(s===1){var d=S.d;var f=badge?badgeForm(d):(fld('성명','name',d.name||'')+fld('주민번호','jumin',d.jumin||'')+fld('주소','addr',d.addr||'')+fld('라우트','route',d.route||'')+fld('단가(원)','price',d.price||''));return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c;margin-bottom:10px">값이 서류 전체에 자동 반영됩니다. <b>계약일자=시작일−2~7일</b> 자동.'+(S.badgeKind==='renew'?' (재허가=오늘 작성)':'')+'</div>'+f+'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">계약 시작</label><input type="date" id="ctc-start" value="'+(d.start||'')+'" oninput="CT_end()" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">계약 종료</label><input id="ctc-end" readonly style="flex:1;border:1.5px solid #bfe6cc;background:#f0faf3;color:#1b7a38;font-weight:700;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div><div style="display:flex;gap:8px;margin-top:12px"><button class="ctc-btn" style="flex:0 0 70px;background:#eef2f6;color:#5a6b7c" onclick="CT_step(0)">‹</button><button class="ctc-btn" style="background:#12b5a3" onclick="CT_apply()">👁 미리보기 ›</button></div></div>';}
     if(s===2)return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c;margin-bottom:10px">입력값(노란칸)이 반영된 실제 '+kt+'. 확인 후 서명.</div><div style="display:flex;gap:8px"><button class="ctc-btn" style="flex:0 0 80px;background:#eef2f6;color:#5a6b7c" onclick="CT_step(1)">‹ 수정</button><button class="ctc-btn" style="background:#2f3e9e" onclick="CT_sign()">✍️ 사인하기 ›</button></div></div>'+docHTML(full(),'view');
     return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c">주황색 자리로 <b>자동 안내</b>됩니다. 하나 끝내면 다음으로.</div></div><div class="ctc-sign">'+docHTML(full(),'sign')+'</div><div class="ctc-foot" id="ctc-foot"><div class="mx"><div class="ctc-guide" id="ctc-guide"></div><div class="ctc-pg" id="ctc-pg"></div><div id="ctc-fbtn"></div></div></div>';
@@ -1874,7 +1900,7 @@ async function ctSet(name,done){ await ctMark(name,done,'paper'); openContractAd
   async function finish(){var w=document.getElementById('ctc-fbtn');if(w)w.innerHTML='<button class="ctc-btn" style="background:#9aa" disabled>저장 중…</button>';var ok=await save();if(ok===false){refFoot();return;}var kt=S.kind==='wc'?'위·수탁 계약서':'배넘버 '+(S.badgeKind==='renew'?'재허가':'신규')+' 서류';paint('<div class="stit">✅ 작성 완료</div><div class="card" style="text-align:center;padding:26px 18px"><div style="font-size:44px">✅</div><div style="font-size:16px;font-weight:900;color:#1b8a3f;margin:8px 0 6px">'+kt+' 작성 완료</div><div style="font-size:12.5px;color:#555;line-height:1.6">Supabase에 저장되었습니다.'+(S.kind==='wc'?'<br>계약 상태가 <b>작성완료</b>로 바뀌어 모든 기능이 열립니다.':'')+'</div><button class="ctc-btn" style="margin-top:16px;background:#2f7de0" onclick="CT_back()">확인</button></div>');}
   async function preview(name,slotk,mode){ensureUI();paint('<div class="stit">불러오는 중…</div>');var key='ct_doc_'+name,rec=null;try{var r=await sbClient.from('app_settings').select('value').eq('key',key).maybeSingle();var cur=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{};rec=cur[slotk];}catch(e){}S.mode=mode||'admin';if(!rec){paint('<div class="stit"><span onclick="CT_back()" style="cursor:pointer;color:#2f6bb0;font-weight:900;font-size:20px">‹</span> 미리보기</div><div class="card">저장된 계약서가 없습니다.</div>');return;}S.kind=rec.kind;S.badgeKind=rec.badgeKind||'new';var d=Object.assign({},rec.data,{_sigs:rec.sigs||{},_chks:rec.chks||{}});var kt=rec.kind==='wc'?'위·수탁 계약서':'배넘버 '+(rec.badgeKind==='renew'?'재허가':'신규')+' 서류';paint('<div class="stit" style="display:flex;align-items:center;gap:8px"><span onclick="CT_back()" style="cursor:pointer;color:#2f6bb0;font-weight:900;font-size:20px">‹</span>&#x1F4C4; '+name+' · '+kt+'</div><div class="card"><div style="font-size:12px;color:#5a6b7c">서명 완료된 실제 서류입니다. (작성 '+String(rec.at||'').slice(0,10)+')</div><button class="ctc-btn" style="background:#12b5a3;margin-top:8px" onclick="CT_toast(\'PDF는 준비 중입니다\')">📄 PDF 다운로드</button></div>'+docHTML(d,'done'));}
   // expose
-  window.CT_startWrite=startWrite;window.CT_step=function(n){S.step=n;renderStep();};window.CT_apply=function(){collect();S.step=2;renderStep();};window.CT_sign=function(){S.step=3;S.sig={};S.chk={};renderStep();};window.CT_end=endCalc;window.CT_slot=slot;window.CT_agree=agree;window.CT_choice=choice;window.CT_mclear=mclear;window.CT_mdone=mdone;window.CT_finish=finish;window.CT_back=back;window.CT_preview=preview;window.CT_toast=toast;
+  window.CT_startWrite=startWrite;window.CT_prev=function(v){S.showPrev=v;renderStep();};window.CT_step=function(n){S.step=n;renderStep();};window.CT_apply=function(){collect();S.step=2;renderStep();};window.CT_sign=function(){S.step=3;S.sig={};S.chk={};renderStep();};window.CT_end=endCalc;window.CT_slot=slot;window.CT_agree=agree;window.CT_choice=choice;window.CT_mclear=mclear;window.CT_mdone=mdone;window.CT_finish=finish;window.CT_back=back;window.CT_preview=preview;window.CT_toast=toast;
 })();
 
 function _featureBar(feat){
@@ -5742,9 +5768,10 @@ function pgFullSched(){
   var _canEd=(typeof canEdit==='function')?canEdit():(CU&&CU.role==='admin');
   var _isAdm=CU&&CU.role==='admin';
   var _unL=(typeof _unreadSchedLog==='function')?_unreadSchedLog():0;
+  var _permH=_isAdm?('<button class="sxLog" style="flex:0 0 auto;padding:0 11px;background:linear-gradient(135deg,#7b4fd6,#5a2fb0)" onclick="openSchedPermPopup()">⚙️ 수정권한</button>'):'';
   var _editH=_canEd?('<div class="sxEditWrap" onclick="toggleEdit()"><div class="sxEditInner'+(EDIT_MODE?' on':'')+'">'+(EDIT_MODE?'✔️ 완료':'✏️ 수정')+'</div></div>'):'';
   var _logH=_isAdm?('<button class="sxLog" onclick="go(\'sl\')">📋 변경이력'+(_unL?'<span class="sxBadge">'+(_unL>9?'9+':_unL)+'</span>':'')+'</button>'):'';
-  var _sxAct=(_editH||_logH)?('<div style="'+_wrap+';display:flex;gap:6px;margin-bottom:8px">'+_editH+_logH+'</div>'):'';
+  var _sxAct=(_permH||_editH||_logH)?('<div style="'+_wrap+';display:flex;gap:6px;margin-bottom:8px">'+_permH+_editH+_logH+'</div>'):'';
   var h='<div class="sched-sticky-nav">'+_sxExp+_sxAct+nav+'</div>';
 
   // Detect today / sat / sun columns
@@ -7781,10 +7808,6 @@ function pgSettings(){
   var curAdminId=cfg.adminId||ROOT_ADMIN.id;
   var curAdminPw=cfg.adminPw||ROOT_ADMIN.pw;
   return '<div class="stit">&#x2699; 시스템 설정</div>'+
-    hcSettingsCard()+
-    '<div class="card"><div class="ctit">&#x1F4C4; 계약서 관리</div>'+
-    '<div style="font-size:12px;color:#666;margin-bottom:10px">위·수탁 계약 작성 현황을 관리하고, 미작성자 권한 제한을 켜고 끕니다.</div>'+
-    '<button class="btn-ok" style="width:100%" onclick="openContractAdmin()">&#x1F4C4; 계약서 관리 열기</button></div>'+
     // ── Supabase 진단 (테스트 전용 — 삭제됨) ──
 
     // ── 관리자 계정 ──
