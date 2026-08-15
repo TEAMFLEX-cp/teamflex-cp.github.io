@@ -347,7 +347,8 @@ table.dt td.r0{color:#888;white-space:nowrap}
 .ctc-sttl{text-align:center;font-size:13.5px;font-weight:900;margin:22px 0 12px;padding-top:14px;border-top:2px dashed #d5deea}
 .ctc-art{font-weight:800;color:#12325a;margin:11px 0 3px}
 .ctc-p{margin:2px 0 4px;color:#33414f;padding-left:9px;text-indent:-9px}
-.ctc-fill{background:#fff6d6;padding:0 4px;font-weight:800;color:#8a5a00;border-radius:3px}
+.ctc-fill{background:#fff2bf;padding:1px 5px;font-weight:800;color:#4a3a00;border-radius:3px}
+.ctc-blank{display:inline-block;min-width:64px;min-height:1em}
 .ctc-tbl{border:1px solid #cfd8e2;border-radius:6px;overflow:hidden;margin:8px 0}
 .ctc-tr{display:flex;border-bottom:1px solid #dde5ee}.ctc-tr:last-child{border-bottom:none}
 .ctc-th{width:92px;flex-shrink:0;background:#f4f7fb;padding:6px 8px;font-weight:700;color:#456;border-right:1px solid #dde5ee}
@@ -1981,7 +1982,7 @@ function openSchedPermPopup(){
 
 /* ================= 계약서 작성·서명 모듈 (위수탁 전문 + 배넘버 6종) ================= */
 (function(){
-  function fv(t){return '<span class="ctc-fill">'+(t===0||t?t:'　')+'</span>';}
+  function fv(t){var em=!(t===0||t);return '<span class="ctc-fill'+(em?' ctc-blank':'')+'">'+(em?'':t)+'</span>';}
   function kd(iso){if(!iso)return'____년 __월 __일';var p=String(iso).split('-');return p[0]+'년 '+(+p[1])+'월 '+(+p[2])+'일';}
   function addY(iso,y){if(!iso)return'';var d=new Date(iso);d.setFullYear(d.getFullYear()+y);d.setDate(d.getDate()-1);return d.toISOString().slice(0,10);}
   function addD(iso,n){if(!iso)return'';var d=new Date(iso);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
@@ -2112,7 +2113,7 @@ function openSchedPermPopup(){
     '.ctc-sttl{text-align:center;font-size:14pt;font-weight:800;margin:0 0 16px;padding:0;border:none;page-break-before:always;page-break-after:avoid}'+
     '.ctc-art{font-weight:800;color:#111;margin:7px 0 2px;page-break-after:avoid;page-break-inside:avoid}'+
     '.ctc-p{margin:2px 0 4px;color:#222;padding-left:14px;text-indent:-14px;orphans:2;widows:2}'+
-    '.ctc-fill{font-weight:800;color:#111;padding:0 2px;border-bottom:1px solid #555}'+
+    '.ctc-fill{background:#fff2bf;color:#222;font-weight:800;padding:1px 5px;border-radius:3px}.ctc-blank{display:inline-block;min-width:64px;min-height:1em}'+
     '.ctc-tbl{border:1px solid #999;margin:11px 0;page-break-inside:avoid}.ctc-tr{display:flex;border-bottom:1px solid #bbb}.ctc-tr:last-child{border-bottom:none}'+
     '.ctc-th{width:110px;flex-shrink:0;background:#f2f2f2;padding:7px 9px;font-weight:700;color:#222;border-right:1px solid #bbb}.ctc-td{flex:1;padding:7px 9px}'+
     '.ctc-sigspot{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:70px;height:38px;margin-left:4px}'+
