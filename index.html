@@ -8377,7 +8377,7 @@ async function loadBadgeData(){
   try{var ir=await sbClient.from('app_settings').select('key,value').like('key','insp_%_'+month);var im={};(ir.data||[]).forEach(function(x){var m=String(x.key).match(/^insp_(.+)_\d{4}-\d{2}$/);if(!m)return;var nm='';try{nm=decodeURIComponent(m[1]);}catch(e){nm=m[1];}var v=x.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}im[nm]=(v&&v.days)||{};});_inspMap=im;}catch(e){}
 }
 function inspWarn(name){
-  if(!_badgeLoaded)return false;var days=_inspMap[name];if(!days)return false;
+  if(!_badgeLoaded)return false;if(!_inspMap||Object.keys(_inspMap).length===0)return false;var days=_inspMap[name]||{};
   var d=new Date(Date.now()+9*3600000);var today=d.getUTCDate();var last=0;
   Object.keys(days).forEach(function(k){var dd=days[k];if(dd&&(dd.done||dd.off)){var n=parseInt(k,10);if(n<=today&&n>last)last=n;}});
   return (today-last)>=2;
@@ -8413,8 +8413,7 @@ function _erDrvCard(d){
   return '<div style="padding:14px 0;border-bottom:1px solid #f0f0f0">'+
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap"><span style="font-size:17px;font-weight:900;color:#1a1a1a">'+d.name+'</span><span style="font-size:11px;font-weight:700;color:'+rc+';background:'+rc+'18;border:1px solid '+rc+'44;border-radius:6px;padding:2px 8px">'+rl+'</span>'+badges+'<span style="flex:1"></span>'+actBtn+'</div>'+
     chips+
-    '<div style="display:flex;gap:6px;margin-bottom:6px">'+callMain+smsMain+'</div>'+
-    '<div style="display:flex;gap:6px;margin-bottom:8px">'+callSub+'</div>'+
+    '<div style="display:flex;gap:6px;margin-bottom:8px">'+callMain+callSub+'</div>'+
     '<div style="display:flex;gap:6px">'+carBadge+cpBadge+'</div></div>';
 }
 function pgEmergencyContact(){
