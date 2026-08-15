@@ -2873,7 +2873,7 @@ function openUserSubMenu(){
       '<div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 20px"></div>'+
       '<div style="font-size:16px;font-weight:900;color:#1a237e;margin-bottom:18px;text-align:center">&#x2699;&#xFE0F; 설정</div>'+
       '<div style="display:flex;flex-direction:column;gap:10px">'+
-        '<button onclick="closeUserSubMenu();go(\'er\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f3f4ff;border:2px solid #c5cae9;border-radius:14px;font-size:15px;font-weight:700;color:#3949ab;cursor:pointer;text-align:left;box-sizing:border-box">'+
+        '<button onclick="closeUserSubMenu();dhMyInfo()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#eef1ff;border:2px solid #c5cae9;border-radius:14px;font-size:15px;font-weight:700;color:#283593;cursor:pointer;text-align:left;box-sizing:border-box">'+'<span style="font-size:24px;flex-shrink:0">&#x1F464;</span>'+'<div style="flex:1;min-width:0"><div>내 정보</div><div style="font-size:11px;font-weight:400;color:#7986cb;margin-top:2px">본인 정보 입력·수정 (본인 비번 확인)</div></div>'+'</button>'+'<button onclick="closeUserSubMenu();go(\'er\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f3f4ff;border:2px solid #c5cae9;border-radius:14px;font-size:15px;font-weight:700;color:#3949ab;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F4DE;</span>'+
           '<div style="flex:1;min-width:0"><div>비상연락망</div><div style="font-size:11px;font-weight:400;color:#7986cb;margin-top:2px">기사 연락처 확인</div></div>'+
         '</button>'+
@@ -6914,33 +6914,57 @@ function dhUnkick(name){
 function dhResetPw(name){if(typeof resetDriverPw==='function'){resetDriverPw(name);setTimeout(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();},60);}else{alert('PW 초기화 기능 없음');}}
 /* ── 상세 모달 ── */
 function openDriverDetail(name){if(_driverExt===null){_loadDriverExt().then(function(){openDriverDetail(name);});return;}_dhRender(name,false);}
-function _dhRender(name,edit){
-  var db=getDB();var e=_dhMerge(name,_driverExt||{},db);var d=db[name]||{};var isAdm=CU&&CU.role==='admin';var bl=!!(d&&d.blind);
+function _dhRender(name,edit,mode){
+  var self=(mode==='self');
+  var db=getDB();var e=_dhMerge(name,_driverExt||{},db);var d=db[name]||{};var isAdm=CU&&CU.role==='admin'&&!self;var bl=!!(d&&d.blind);
   var role=_dhDrole(d,_driverExt||{});var st=DH_RSTYLE[role]||DH_RSTYLE['기사'];
+  var LOCK={jumin:1,cpid:1,lic:1,qual:1,qualdate:1};
   var body='';
   DH_FIELDS.forEach(function(f){
     var key=f[0],lb=f[1],t=f[2];
     var raw=(key==='_birth')?_deDig(e.jumin).slice(0,6):(e[key]==null?'':e[key]);
-    if(edit&&key!=='_birth'&&key!=='cyear'){
-      body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'
-        +'<input id="dhe_'+key+'" value="'+String(raw).replace(/"/g,'&quot;')+'"'+(key==='regdate'?' oninput="var c=document.getElementById(\'dhe_cyear\');if(c)c.value=(this.value.replace(/[^0-9]/g,\'\').slice(0,4));"':'')+' style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0;box-sizing:border-box"></div>';
-    }else if(edit&&key==='cyear'){
-      body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'
-        +'<input id="dhe_cyear" value="'+(_deDig(e.regdate).slice(0,4)||e.cyear||'')+'" readonly style="flex:1;border:1.5px solid #bfe6cc;border-radius:9px;padding:8px 10px;font-size:13px;background:#f0faf3;color:#1b7a38;font-weight:700;box-sizing:border-box"></div>';
+    var locked=(self&&LOCK[key]);
+    if(edit&&key!=='_birth'&&!locked){
+      if(key==='cyear'){
+        body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'
+          +'<input id="dhe_cyear" value="'+(_deDig(e.regdate).slice(0,4)||e.cyear||'')+'" readonly style="flex:1;border:1.5px solid #bfe6cc;border-radius:9px;padding:8px 10px;font-size:13px;background:#f0faf3;color:#1b7a38;font-weight:700;box-sizing:border-box"></div>';
+      }else{
+        body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'
+          +'<input id="dhe_'+key+'" value="'+String(raw).replace(/"/g,'&quot;')+'"'+(key==='regdate'?' oninput="var c=document.getElementById(\'dhe_cyear\');if(c)c.value=(this.value.replace(/[^0-9]/g,\'\').slice(0,4));"':'')+' style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0;box-sizing:border-box"></div>';
+      }
     }else{
       var val=(key==='_birth')?_dhBirth(e.jumin):(key==='cyear'?(_deDig(e.regdate).slice(0,4)||e.cyear||''):_dhFmt(t,raw));
-      body+='<div style="display:flex;padding:7px 0;border-bottom:1px solid #f0f3f7;font-size:13px"><div style="width:112px;flex-shrink:0;color:#7a8794;font-weight:700">'+lb+'</div><div style="flex:1;font-weight:600;color:#22364a">'+((val&&String(val).trim())||'<span style="color:#c9d2da">미입력</span>')+'</div></div>';
+      var lockTag=(edit&&locked)?' <span style="font-size:9px;color:#c62828;background:#fdeaea;padding:1px 6px;border-radius:8px">🔒 관리자</span>':'';
+      body+='<div style="display:flex;padding:7px 0;border-bottom:1px solid #f0f3f7;font-size:13px"><div style="width:112px;flex-shrink:0;color:#7a8794;font-weight:700">'+lb+lockTag+'</div><div style="flex:1;font-weight:600;color:'+(edit&&locked?'#9aa7b4':'#22364a')+'">'+((val&&String(val).trim())||'<span style="color:#c9d2da">미입력</span>')+'</div></div>';
     }
   });
+  var _ms=self?'self':'';
   var foot;
-  if(edit){foot='<div style="display:flex;gap:8px;margin-top:14px"><button onclick="_dhRender(\''+name+'\',false)" style="flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800">취소</button><button onclick="saveDriverDetail(\''+name+'\')" style="flex:2;padding:12px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:11px;font-weight:800">&#x1F4BE; 저장</button></div>';}
-  else{foot='<div style="display:flex;gap:8px;margin-top:14px">'+(isAdm?'<button onclick="_dhRender(\''+name+'\',true)" style="flex:2;padding:12px;background:#3949ab;color:#fff;border:none;border-radius:11px;font-weight:800">&#x270F;&#xFE0F; 수정</button><button onclick="dhAskDelete(\''+name+'\')" style="flex:1;padding:12px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:11px;font-weight:800">&#x1F5D1; 삭제</button>':'')+'<button onclick="closeDriverDetail()" style="flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800">닫기</button></div>';}
+  if(edit){foot='<div style="display:flex;gap:8px;margin-top:14px"><button onclick="_dhRender(\''+name+'\',false,\''+_ms+'\')" style="flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800">취소</button><button onclick="saveDriverDetail(\''+name+'\')" style="flex:2;padding:12px;background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff;border:none;border-radius:11px;font-weight:800">&#x1F4BE; 저장</button></div>';}
+  else if(self){foot='<div style="display:flex;gap:8px;margin-top:14px"><button onclick="dhMyEditStart(\''+name+'\')" style="flex:2;padding:12px;background:#3949ab;color:#fff;border:none;border-radius:11px;font-weight:800">&#x270F;&#xFE0F; 수정 (본인 확인)</button><button onclick="closeDriverDetail()" style="flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800">닫기</button></div>';}
+  else{foot='<div style="display:flex;gap:8px;margin-top:14px">'+(isAdm?'<button onclick="_dhRender(\''+name+'\',true,\'\')" style="flex:2;padding:12px;background:#3949ab;color:#fff;border:none;border-radius:11px;font-weight:800">&#x270F;&#xFE0F; 수정</button><button onclick="dhAskDelete(\''+name+'\')" style="flex:1;padding:12px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:11px;font-weight:800">&#x1F5D1; 삭제</button>':'')+'<button onclick="closeDriverDetail()" style="flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800">닫기</button></div>';}
+  var sub=self?'🔒 이름·주민·아이디·면허·자격 항목은 관리자에게 요청하세요':(edit?'수정 후 저장하면 Supabase에 반영됩니다':'전체 정보 (하이픈 자동 포맷)');
+  var ttl=self?'내 정보':(name+' <span style="font-size:11px;color:'+st.tx+';background:'+st.bg+';border-radius:8px;padding:2px 8px">'+role+'</span>');
   var pop=document.getElementById('dh-detail');if(pop)pop.remove();
   pop=document.createElement('div');pop.id='dh-detail';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:10600;display:flex;align-items:flex-end;justify-content:center';
-  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+name+' <span style="font-size:11px;color:'+st.tx+';background:'+st.bg+';border-radius:8px;padding:2px 8px">'+role+'</span></div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+(edit?'수정 후 저장하면 Supabase에 반영됩니다':'전체 정보 (하이픈 자동 포맷)')+'</div>'+body+((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')+foot+'</div>';
+  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+ttl+'</div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+sub+'</div>'+body+((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')+foot+'</div>';
   pop.addEventListener('click',function(ev){if(ev.target===pop&&!edit)pop.remove();});
   document.body.appendChild(pop);
 }
+function dhMyInfo(){
+  if(!CU||!CU.name){alert('로그인 정보가 없습니다.');return;}
+  if(_driverExt===null){_loadDriverExt().then(function(){dhMyInfo();});return;}
+  _dhRender(CU.name,false,'self');
+}
+function dhMyEditStart(name){
+  var db=getDB();var cur=(db[name]&&db[name].password)||'';
+  var pw=prompt('내 정보 수정 — 본인 확인\n비밀번호를 입력하세요:');
+  if(pw===null)return;
+  if(cur&&pw!==cur){alert('비밀번호가 일치하지 않습니다.');return;}
+  _dhRender(name,true,'self');
+}
+window.dhMyInfo=dhMyInfo;window.dhMyEditStart=dhMyEditStart;
+
 function closeDriverDetail(){var p=document.getElementById('dh-detail');if(p)p.remove();}
 async function saveDriverDetail(name){
   var e=Object.assign({},(_driverExt&&_driverExt[name])||{});
