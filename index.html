@@ -1868,11 +1868,11 @@ function pgContractRequired(){
    '<div style="font-size:44px">&#x1F4C4;</div>'+
    '<div style="font-size:16px;font-weight:900;color:#c62828;margin:10px 0 6px">1년 위·수탁 계약서 미작성</div>'+
    '<div style="font-size:13px;color:#555;line-height:1.7">계약서 작성 전까지 다른 메뉴는 이용할 수 없습니다.<br>계약서를 작성하면 모든 기능이 열립니다.</div>'+
-   '<button class="btn-ok" style="margin-top:18px;width:100%" onclick="CT_startWrite(\'wc\','+(CU?JSON.stringify(CU.name):'null')+',null,\'driver\')">&#x270D;&#xFE0F; 계약서 작성하기</button>'+
+   '<button class="btn-ok" style="margin-top:18px;width:100%" onclick="CT_startWrite(&quot;wc&quot;,&quot;'+(CU?String(CU.name):'')+'&quot;,null,&quot;driver&quot;)">&#x270D;&#xFE0F; 계약서 작성하기</button>'+
    '</div>';
 }
 // 관리자: 계약서 관리 화면
-function openContractAdmin(){var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgContractAdmin();window.scrollTo(0,0);}}
+function openContractAdmin(){var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgContractAdmin();window.scrollTo(0,0);}if(_ctApproved===null&&typeof loadCtApproved==='function'){loadCtApproved().then(function(){var m=document.getElementById('mc');if(m&&m.innerHTML.indexOf('계약')>=0)m.innerHTML=pgContractAdmin();});}}
 var _ctAdminV='hub';
 function ctAdminGo(v){_ctAdminV=v;openContractAdmin();}
 function _ctGateCard(){var gate=ctGateOn();return '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div><div style="font-weight:800;color:#123a6b">&#x1F512; 미작성자 권한 제한</div><div style="font-size:11px;color:#888;margin-top:3px;line-height:1.5">켜면 위수탁 미작성 기사·팀장·조장은 계약서 화면만 볼 수 있습니다.</div></div><button onclick="saveFeatureCtrl(\'contract\',\'active\',!ctGateOn());setTimeout(openContractAdmin,350)" style="flex-shrink:0;padding:8px 15px;border-radius:16px;border:none;background:'+(gate?'#c62828':'#bdbdbd')+';color:#fff;font-size:12px;font-weight:800">'+(gate?'제한 ON':'제한 OFF')+'</button></div></div>';}
@@ -1927,6 +1927,24 @@ function ctBadgeSection(type,label,drs){
   h+='</div></details></div>';
   return h;
 }
+var _ctApproved=null;
+async function loadCtApproved(){
+  if(!sbClient)return (_ctApproved=_ctApproved||{});
+  try{var r=await sbClient.from('app_settings').select('value').eq('key','contract_approved').maybeSingle();
+    _ctApproved=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{};}catch(e){_ctApproved=_ctApproved||{};}
+  return _ctApproved;
+}
+function ctApprovedOf(name,type){return !!(_ctApproved&&_ctApproved[name]&&_ctApproved[name][type]);}
+async function ctApprove(name,type){
+  if(!confirm(name+' 님의 계약서를 최종 승인할까요?\n승인 후 PDF로 저장할 수 있습니다.'))return;
+  if(_ctApproved===null)await loadCtApproved();
+  if(!_ctApproved)_ctApproved={};if(!_ctApproved[name])_ctApproved[name]={};
+  _ctApproved[name][type]={ok:true,at:new Date().toISOString(),by:(window.CU&&CU.name)||''};
+  try{if(sbClient)await sbClient.from('app_settings').upsert({key:'contract_approved',value:JSON.stringify(_ctApproved)},{onConflict:'key'});}catch(e){console.warn('승인 저장 실패',e);}
+  try{showToast('✅ 최종 승인 완료 — PDF로 저장하세요',true);}catch(_){}
+  if(typeof CT_preview==='function')CT_preview(name,type,'admin');
+}
+window.ctApprove=ctApprove;window.loadCtApproved=loadCtApproved;
 function ctBadgeRow(d,type,done){
   var esc=d.name;
   var _rl={leader:'팀장',sub:'조장',driver:'기사'}[d.role]||'';
@@ -1936,7 +1954,7 @@ function ctBadgeRow(d,type,done){
   return '<div style="display:flex;align-items:center;gap:6px;padding:10px 4px;border-bottom:1px solid #f0f3f7;flex-wrap:wrap">'+
     '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+_rlTag+shBadge+'</div>'+
     (done
-      ? '<button onclick="CT_preview(\''+esc+'\',\''+type+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctReject(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>'
+      ? (ctApprovedOf(esc,type)?'<span style="font-size:11px;font-weight:800;color:#1b8a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:6px 11px;border-radius:14px">✅ 승인완료</span><button onclick="CT_preview(\''+esc+'\',\''+type+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>':'<button onclick="CT_preview(\''+esc+'\',\''+type+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctApprove(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">✅ 승인</button><button onclick="ctReject(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>')
       : '<button onclick="CT_startWrite(\'badge\',\''+esc+'\',\''+((type==='badge_renew')?'renew':'new')+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #cbb6ef;background:#f3ecff;color:#5a2fb0;font-weight:700">✍️ 대신작성</button>')+
     '</div>';
 }
@@ -1952,8 +1970,7 @@ function ctRow(d,done){
   return '<div style="display:flex;align-items:center;gap:6px;padding:10px 4px;border-bottom:1px solid #f0f3f7;flex-wrap:wrap">'+
     '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+_rlTag+(done?(' '+ctBadge(d.name,true)):shBadge)+'</div>'+
     (done
-      ? '<button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>'+
-        '<button onclick="ctReject(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>'
+      ? (ctApprovedOf(esc,'wc')?'<span style="font-size:11px;font-weight:800;color:#1b8a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:6px 11px;border-radius:14px">✅ 승인완료</span><button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>':'<button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctApprove(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">✅ 승인</button><button onclick="ctReject(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>')
       : ((shared
           ? '<button onclick="CT_startWrite(\'wc\',\''+esc+'\',null,\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #cbb6ef;background:#f3ecff;color:#5a2fb0;font-weight:700">✍️ 대신작성</button>'
           : '<button onclick="ctShareNow(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#5a2fb0;color:#fff;font-weight:800">📤 공유</button>')+
@@ -6948,7 +6965,7 @@ function _dhRender(name,edit,mode){
   if(_dhPhotoCache[name]===undefined){_dhLoadPhotos(name,function(){var o=document.getElementById('dh-photos');if(o)o.innerHTML=_dhPhotoBoxes(name);});}
   var pop=document.getElementById('dh-detail');if(pop)pop.remove();
   pop=document.createElement('div');pop.id='dh-detail';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:10600;display:flex;align-items:flex-end;justify-content:center';
-  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+ttl+'</div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+sub+'</div>'+body+'<div id="dh-photos">'+_dhPhotoBoxes(name)+'</div>'+((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')+foot+'</div>';
+  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;padding:16px 15px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+ttl+'</div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+sub+'</div>'+body+'<div id="dh-photos">'+_dhPhotoBoxes(name)+'</div>'+((self&&!edit)?('<div style="margin-top:10px"><button onclick="closeDriverDetail();CT_preview(\''+name+'\',\'wc\',\'driver\')" style="width:100%;padding:11px;background:#12b5a3;color:#fff;border:none;border-radius:11px;font-weight:800">📄 내 계약서 보기</button></div>'):'')+((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')+foot+'</div>';
   pop.addEventListener('click',function(ev){if(ev.target===pop&&!edit)pop.remove();});
   document.body.appendChild(pop);
 }
