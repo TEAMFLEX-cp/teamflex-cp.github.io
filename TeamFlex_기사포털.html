@@ -6610,7 +6610,7 @@ async function _loadDriverExt(){
 function _deDig(s){return String(s||'').replace(/[^0-9]/g,'');}
 function _deJ(v){v=_deDig(v);return v?v.slice(0,6)+(v.length>6?'-'+v.slice(6,13):''):'';}
 function _deP(v){v=_deDig(v);if(v.length===11)return v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7,11);if(v.length===10)return v.slice(0,3)+'-'+v.slice(3,6)+'-'+v.slice(6,10);return v||'';}
-function _deL(v){v=_deDig(v);return v.length>=12?v.slice(0,2)+'-'+v.slice(2,4)+'-'+v.slice(4,10)+'-'+v.slice(10,12):v;}
+function _deL(v){v=String(v||'').trim();if(!v)return '';if(/[가-힣]/.test(v)||v.indexOf('-')>=0)return v;var d=v.replace(/[^0-9]/g,'');return d.length>=12?d.slice(0,2)+'-'+d.slice(2,4)+'-'+d.slice(4,10)+'-'+d.slice(10,12):v;}
 function _deQ(v){v=_deDig(v);return v.length>=9?v.slice(0,1)+'-'+v.slice(1,3)+'-'+v.slice(3,9):(v.length>=3?v.slice(0,1)+'-'+v.slice(1,3)+'-'+v.slice(3):v);}
 function _deD(v){v=_deDig(v).slice(0,8);return v.length>=8?v.slice(0,4)+'.'+v.slice(4,6)+'.'+v.slice(6,8):(v.length>=6?v.slice(0,4)+'.'+v.slice(4,6):v);}
 async function openReqDetail(name){
