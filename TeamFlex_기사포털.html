@@ -6783,7 +6783,7 @@ function _dhCss(){return '<style>'
 +'.dhw .callbtn.main{background:linear-gradient(135deg,#2e9e5b,#1e7d44)}.dhw .callbtn.sub{background:linear-gradient(135deg,#3f7fe0,#2f5fc8)}.dhw .callbtn.off{background:#eef2f6;color:#9aa7b4;font-weight:600}'
 +'.dhw .boxrow{display:flex;gap:7px}'
 +'.dhw .bx{flex:1;border:1.5px solid #e6ebf1;border-radius:11px;padding:11px 8px;background:#f8fafc;text-align:center;font-size:13px;font-weight:800;color:#33475b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-+'.dhw .dhacts{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}'+'.dhw .dhacts>.rsel,.dhw .dhacts>.mini{flex:1 1 auto;min-width:54px;text-align:center;justify-content:center;display:inline-flex;align-items:center;white-space:nowrap}'
++'.dhw .dhacts{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}'+'.dhw .dhacts>.rsel,.dhw .dhacts>.mini{flex:1 1 auto;min-width:54px;text-align:center;justify-content:center;display:inline-flex;align-items:center;white-space:nowrap}'+'.dhw .dhacts select{border-radius:10px;padding:6px 22px 6px 10px;border:1.6px solid #d5e2f0;font-size:11px;font-weight:800;height:34px;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right 7px center;background-image:url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27><path d=%27M0 0l5 6 5-6z%27 fill=%27%23566%27/></svg>")}'
 +'</style>';}
 function pgDriverHub(){
   var db=getDB();var isAdm=CU&&CU.role==='admin';
@@ -6791,16 +6791,17 @@ function pgDriverHub(){
   var ext=_driverExt||{};
   var byName=function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');};
   var _cfg=(typeof getCfg==='function'?getCfg():{})||{};var _aid=_cfg.adminId||ROOT_ADMIN.id;
-  var all=Object.values(db).filter(function(d){return d.name&&d.name.indexOf('/')<0&&splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&d.name!==ROOT_ADMIN.id&&d.name!==_aid;});
+  var all=Object.values(db).filter(function(d){if(!d.name)return false;var _nm=String(d.name).trim();if(_nm==='관리자'||_nm.indexOf('/')>=0||_nm===ROOT_ADMIN.id||_nm===_aid)return false;if(splitDriverSuffix(d.name).suf!==''||isJunkDriver(d))return false;var _e=ext[_nm]||{};if(d.role==='admin'&&!(d.phone||_e.phone||_e.cpid||d.coupang_id||_e.jumin||_e.carno||d.car_no||_e.addr))return false;return true;});
   var main=all.filter(function(d){return d.status==='approved'||d.status==='suspended';});
   var pend=all.filter(function(d){return d.status==='pending'||d.status==='inactive';}).sort(byName);
   var kick=all.filter(function(d){return d.status==='kicked'||d.status==='blocked';}).sort(byName);
-  var withPh=main.filter(function(d){var e=_dhMerge(d.name,ext,db);return _deDig(e.phone).length>=10;}).length;
-  var ctN=(typeof ctDone==='function')?main.filter(function(d){try{return ctDone(d.name);}catch(e){return false;}}).length:0;
+  var cntMain=main.filter(function(d){return _dhDrole(d,ext)!=='대표';});
+  var withPh=cntMain.filter(function(d){var e=_dhMerge(d.name,ext,db);return _deDig(e.phone).length>=10;}).length;
+  var ctN=(typeof ctDone==='function')?cntMain.filter(function(d){try{return ctDone(d.name);}catch(e){return false;}}).length:0;
   var h=_dhCss()+'<div class="dhw"><div class="stit">&#x1F5C2;&#xFE0F; 기사 정보 통합관리</div>'
    +'<div style="font-size:11.5px;color:#667;margin:-2px 2px 10px">권한·정지·삭제 + 전화·차량·상세정보를 한 화면에서. <b>대표·관리자 그룹은 관리자에게만 표시</b>.</div>'
    +'<div style="display:flex;gap:8px;margin-bottom:10px">'
-     +'<div style="flex:1;background:#eef1ff;border-radius:11px;padding:9px 6px;text-align:center"><div style="font-size:19px;font-weight:900;color:#3949ab">'+main.length+'</div><div style="font-size:10px;color:#7986cb">전체</div></div>'
+     +'<div style="flex:1;background:#eef1ff;border-radius:11px;padding:9px 6px;text-align:center"><div style="font-size:19px;font-weight:900;color:#3949ab">'+cntMain.length+'</div><div style="font-size:10px;color:#7986cb">전체(대표 제외)</div></div>'
      +'<div style="flex:1;background:#e8f5e9;border-radius:11px;padding:9px 6px;text-align:center"><div style="font-size:19px;font-weight:900;color:#2e7d32">'+withPh+'</div><div style="font-size:10px;color:#66a56a">번호등록</div></div>'
      +'<div style="flex:1;background:#e3f2fd;border-radius:11px;padding:9px 6px;text-align:center"><div style="font-size:19px;font-weight:900;color:#1565c0">'+ctN+'</div><div style="font-size:10px;color:#5b9bd5">계약완료</div></div>'
    +'</div>';
@@ -6818,12 +6819,14 @@ function pgDriverHub(){
     if(!isAdm&&(role==='대표'||role==='관리자'))return;
     var list=main.filter(function(d){return _dhDrole(d,ext)===role;}).sort(byName);
     var always=(isAdm&&(role==='대표'||role==='관리자'||role==='총괄'));
-    if(!list.length&&!always)return;var st=DH_RSTYLE[role];
-    h+='<div class="rolehdr" style="background:'+st.hbg+';color:'+st.tx+';border-color:'+st.tx+'">'+st.ic+' '+role+' <span style="opacity:.6">('+list.length+')</span></div>';
+    if(!list.length&&!always)return;var st=DH_RSTYLE[role];var col=!!_dhCollapse[role];
+    h+='<div class="rolehdr" onclick="dhToggleGrp(\''+role+'\')" style="background:'+st.hbg+';color:'+st.tx+';border-color:'+st.tx+';cursor:pointer;justify-content:space-between"><span>'+st.ic+' '+role+' <span style="opacity:.6">('+list.length+')</span></span><span id="dhc-'+role+'" style="font-size:12px">'+(col?'▸':'▾')+'</span></div>';
+    h+='<div id="dhg-'+role+'" class="dhgrp"'+(col?' style="display:none"':'')+'>';
     if(list.length)list.forEach(function(d){h+=_dhCard(d,ext,db,isAdm);});
     else h+='<div style="padding:9px 6px 10px;font-size:11.5px;color:#9aa7b4;text-align:center">아직 지정된 인원이 없습니다 · 아래 카드의 역할 선택에서 지정하세요</div>';
+    h+='</div>';
   });
-  if(kick.length){h+='<div class="rolehdr" style="background:#eceff1;color:#546e7a;border-color:#90a4ae">&#x1F6AB; 강퇴 <span style="opacity:.6">('+kick.length+')</span></div>';kick.forEach(function(d){h+=_dhCard(d,ext,db,isAdm);});}
+  if(kick.length){var ck=!!_dhCollapse['강퇴'];h+='<div class="rolehdr" onclick="dhToggleGrp(\'강퇴\')" style="background:#eceff1;color:#546e7a;border-color:#90a4ae;cursor:pointer;justify-content:space-between"><span>&#x1F6AB; 강퇴 <span style="opacity:.6">('+kick.length+')</span></span><span id="dhc-강퇴" style="font-size:12px">'+(ck?'▸':'▾')+'</span></div>';h+='<div id="dhg-강퇴" class="dhgrp"'+(ck?' style="display:none"':'')+'>';kick.forEach(function(d){h+=_dhCard(d,ext,db,isAdm);});h+='</div>';}
   h+='</div></div>';
   return h;
 }
@@ -6831,6 +6834,7 @@ function _dhCard(d,ext,db,isAdm){
   var name=d.name;var e=_dhMerge(name,ext,db);var role=_dhDrole(d,ext);var st=DH_RSTYLE[role]||DH_RSTYLE['기사'];
   var susp=(d.status==='suspended'),kick=(d.status==='kicked'||d.status==='blocked');
   var isAdmRole=(role==='대표'||role==='관리자');
+  var admBadge=(role==='대표')?'<span class="rbadge" style="background:#ede7f6;color:#5e35b1">🛡 관리자</span>':'';
   var mp=_deDig(e.phone),sp=_deDig(e.subphone);
   var callMain=mp?'<a class="callbtn main" href="tel:'+mp+'">&#x1F4DE; <b>메인</b> '+_deP(e.phone)+'</a>':'<span class="callbtn off">&#x1F4DE; 메인폰 미등록</span>';
   var callSub=sp?'<a class="callbtn sub" href="tel:'+sp+'">&#x1F4F1; <b>서브</b> '+_deP(e.subphone)+'</a>':'<span class="callbtn off">&#x1F4F1; 서브폰 없음</span>';
@@ -6839,7 +6843,7 @@ function _dhCard(d,ext,db,isAdm){
   var roleOpts=DH_ROLES.map(function(r){return '<option '+(r===role?'selected':'')+'>'+r+'</option>';}).join('');
   var acts;
   if(isAdm&&!kick){
-    acts='<div class="dhacts"><select class="rsel" style="background:'+st.bg+';color:'+st.tx+';border-color:'+st.tx+'" onchange="dhSetRole(\''+name+'\',this.value)">'+roleOpts+'</select>'
+    acts='<div class="dhacts"><select class="rsel" style="background-color:'+st.bg+';color:'+st.tx+';border-color:'+st.tx+'" onchange="dhSetRole(\''+name+'\',this.value)">'+roleOpts+'</select>'
       +'<span class="mini '+(susp?'red':'warn')+'" onclick="dhToggleSusp(\''+name+'\')">'+(susp?'&#x25B6; 정지해제':'&#x23F8; 정지')+'</span>'
       +'<span class="mini info" onclick="dhResetPw(\''+name+'\')">&#x1F511; PW</span>'
       +'<span class="mini pur" onclick="dhToggleAdmin(\''+name+'\')">'+(isAdmRole?'&#x1F464; 관리자해제':'&#x1F451; 관리자')+'</span>'
@@ -7097,6 +7101,7 @@ async function dhToggleBlind(name){
   _dhRender(name,false);try{showToast(db[name].blind?'🙈 블라인드':'👁 공개',true);}catch(_){}
 }
 window._dhCol=_dhCol;window._dhApplyRows=_dhApplyRows;window.dhReject=dhReject;window.dhAddNew=dhAddNew;window.dhToggleBlind=dhToggleBlind;
+var _dhCollapse={};function dhToggleGrp(role){_dhCollapse[role]=!_dhCollapse[role];var g=document.getElementById('dhg-'+role);var c=document.getElementById('dhc-'+role);if(g)g.style.display=_dhCollapse[role]?'none':'';if(c)c.textContent=_dhCollapse[role]?'▸':'▾';}window.dhToggleGrp=dhToggleGrp;
 window.pgDriverHub=pgDriverHub;window.openDriverDetail=openDriverDetail;window._dhRender=_dhRender;window.closeDriverDetail=closeDriverDetail;window.saveDriverDetail=saveDriverDetail;window.dhAskDelete=dhAskDelete;window.dhSearch=dhSearch;window.dhExcelDown=dhExcelDown;window.dhExcelUp=dhExcelUp;window.dhSetRole=dhSetRole;window.dhToggleAdmin=dhToggleAdmin;window.dhToggleSusp=dhToggleSusp;window.dhApprove=dhApprove;window.dhUnkick=dhUnkick;window.dhResetPw=dhResetPw;
 function pgPermissions(){
   var db=getDB();
