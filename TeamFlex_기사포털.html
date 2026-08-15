@@ -331,6 +331,7 @@ table.dt td.r0{color:#888;white-space:nowrap}
 @keyframes ctspin{to{transform:rotate(360deg)}}
 .ct-badge-in{position:relative;display:inline-block;background:#0b6b2e;color:#eaffef;font-size:10px;font-weight:900;padding:2px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 0 7px rgba(0,230,118,.55);line-height:1.2}
 .ct-badge.sm .ct-badge-in{font-size:9px;padding:1px 6px}
+.ctc-sigblock{page-break-inside:avoid;break-inside:avoid}
 .ctdet{margin:0 0 12px}
 .ctdet>summary{list-style:none;cursor:pointer;font-size:14px;font-weight:900;color:#123a6b;background:#fff;border-radius:12px;padding:13px 16px;box-shadow:0 2px 8px rgba(0,60,120,.08);display:flex;align-items:center;justify-content:space-between}
 .ctdet>summary::-webkit-details-marker{display:none}
@@ -1631,6 +1632,7 @@ async function loadFeatureControls(){
   }
   if(_contractStatus===null){ try{ await loadContractStatus(); }catch(e){} }
   if(_ctAssign===null){ try{ await loadContractAssign(); }catch(e){} }
+  if(_ctIssuer===null){ try{ await loadContractIssuer(); }catch(e){} }
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
   if(!mc)return;
@@ -1795,6 +1797,43 @@ function openCtShare(type){
 function ctShareCount(){var n=Object.keys(_ctShareSel).filter(function(k){return _ctShareSel[k];}).length;var b=document.getElementById('ctshare-btn');if(b){b.disabled=!n;b.textContent=n?('📤 '+n+'명에게 공유하기'):'공유하기';}}
 function ctShareAll(on){var pop=document.getElementById('ctshare-pop');if(!pop)return;pop.querySelectorAll('input[type=checkbox][value]').forEach(function(c){if(c.disabled)return;c.checked=on;_ctShareSel[c.value]=on;});ctShareCount();}
 async function ctShareConfirm(type){var names=Object.keys(_ctShareSel).filter(function(k){return _ctShareSel[k];});if(!names.length)return;var p=document.getElementById('ctshare-pop');if(p)p.remove();await ctShareNow(names,type);}
+// ── 위탁자(회사) 정보 + 도장 이미지 (계약서 위탁자란) ──
+var _ctIssuer=null;var _ctIssuerStamp='';
+async function loadContractIssuer(){
+  if(!sbClient){ if(!_ctIssuer)_ctIssuer={}; return; }
+  try{ var r=await sbClient.from('app_settings').select('value').eq('key','contract_issuer').maybeSingle();
+    _ctIssuer=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{}; window._ctIssuer=_ctIssuer; }
+  catch(e){ if(!_ctIssuer)_ctIssuer={}; }
+}
+function openIssuerSetup(){
+  if(!CU||CU.role!=='admin')return;
+  var iss=_ctIssuer||{}; _ctIssuerStamp=iss.stamp||'';
+  var old=document.getElementById('issuer-pop');if(old)old.remove();
+  function esc(v){return String(v||'').replace(/"/g,'&quot;');}
+  var pop=document.createElement('div');pop.id='issuer-pop';pop.style.cssText='position:fixed;inset:0;z-index:10400;display:flex;flex-direction:column;justify-content:flex-end';
+  pop.innerHTML='<div onclick="var p=document.getElementById(\'issuer-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div>'+
+    '<div style="background:#fff;border-radius:24px 24px 0 0;padding:18px 18px 28px;max-height:86vh;overflow-y:auto">'+
+    '<div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 14px"></div>'+
+    '<div style="font-size:16px;font-weight:900;color:#1a237e;text-align:center;margin-bottom:14px">🏢 위탁자(회사) 정보 · 도장</div>'+
+    '<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:4px">위탁자 주소</div><input id="iss-addr" value="'+esc(iss.addr||'경기도 파수지 와석순환로 15, 807동 203호')+'" style="width:100%;padding:9px 10px;border:1.5px solid #d5e2f0;border-radius:9px;font-size:13px;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:4px">상호</div><input id="iss-biz" value="'+esc(iss.biz||'팀플렉스 주식회사')+'" style="width:100%;padding:9px 10px;border:1.5px solid #d5e2f0;border-radius:9px;font-size:13px;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:4px">대표자</div><input id="iss-ceo" value="'+esc(iss.ceo||'문병국')+'" style="width:100%;padding:9px 10px;border:1.5px solid #d5e2f0;border-radius:9px;font-size:13px;box-sizing:border-box"></div>'+
+    '<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:700;color:#555;margin-bottom:4px">도장 이미지 (배경 없는 PNG 권장)</div><input type="file" accept="image/*" id="iss-stampfile" onchange="issuerStampPick(this)" style="font-size:12px"><div id="iss-stamp-prev" style="margin-top:8px">'+(_ctIssuerStamp?'<img src="'+_ctIssuerStamp+'" style="height:56px;border:1px solid #eee;border-radius:8px;background:#fff">':'<span style="font-size:11px;color:#999">등록된 도장 없음</span>')+'</div></div>'+
+    '<button onclick="issuerSave()" style="width:100%;margin-top:8px;padding:13px;background:#5a2fb0;color:#fff;border:none;border-radius:12px;font-weight:800;font-size:14px">💾 저장</button>'+
+    '</div>';
+  document.body.appendChild(pop);
+}
+function issuerStampPick(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var rd=new FileReader();rd.onload=function(){_ctIssuerStamp=rd.result;var p=document.getElementById('iss-stamp-prev');if(p)p.innerHTML='<img src="'+_ctIssuerStamp+'" style="height:56px;border:1px solid #eee;border-radius:8px;background:#fff">';};rd.readAsDataURL(f);
+}
+async function issuerSave(){
+  if(!sbClient||!CU||CU.role!=='admin')return;
+  var obj={addr:(document.getElementById('iss-addr').value||''),biz:(document.getElementById('iss-biz').value||''),ceo:(document.getElementById('iss-ceo').value||''),stamp:_ctIssuerStamp||''};
+  var r=await sbClient.from('app_settings').upsert({key:'contract_issuer',value:JSON.stringify(obj)},{onConflict:'key'});
+  if(r&&r.error){showToast('저장 실패: '+r.error.message,false);return;}
+  _ctIssuer=obj;window._ctIssuer=obj;var p=document.getElementById('issuer-pop');if(p)p.remove();showToast('🏢 위탁자 정보·도장 저장 완료',true);
+}
 function ctGateOn(){ return !!(_featureControls&&_featureControls.contract&&_featureControls.contract.active===true); }
 function ctRestricted(){ return ctGateOn()&&CU&&(CU.role==='driver'||CU.role==='leader'||CU.role==='sub')&&!ctDone(CU.name); }
 // 홈 배너: 미작성(위수탁) 기사·팀장·조장에게 계약서 작성 진입점 노출 (게이트 여부와 무관)
@@ -1836,6 +1875,7 @@ function pgContractAdmin(){
   var gate=ctGateOn();
   var h='<div class="stit">&#x1F4C4; 계약서 관리 (위·수탁 / 배넘버)</div>';
   h+='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><div><div style="font-weight:800;color:#123a6b">&#x1F512; 미작성자 권한 제한</div><div style="font-size:11px;color:#888;margin-top:3px;line-height:1.5">켜면 위수탁 미작성 기사·팀장·조장은 계약서 화면만 볼 수 있습니다.</div></div><button onclick="saveFeatureCtrl(\'contract\',\'active\',!ctGateOn());setTimeout(openContractAdmin,350)" style="flex-shrink:0;padding:8px 15px;border-radius:16px;border:none;background:'+(gate?'#c62828':'#bdbdbd')+';color:#fff;font-size:12px;font-weight:800">'+(gate?'제한 ON':'제한 OFF')+'</button></div></div>';
+  h+='<div class="card"><button class="btn-ok" style="width:100%;background:#37474f" onclick="openIssuerSetup()">🏢 위탁자(회사) 정보·도장 설정</button></div>';
   h+='<div class="card"><div class="ctit">&#x1F4E4; 계약서 공유 (홈에 노출)</div><div style="font-size:11px;color:#888;margin-bottom:8px">선택(전체/다중)한 기사 홈에 작성 배너가 뜨고, 작성 완료 시 자동으로 사라집니다.</div><div style="display:flex;gap:6px;flex-wrap:wrap">'+
      '<button class="btn-ok" style="flex:1;min-width:120px" onclick="openCtShare(\'wc\')">📤 위·수탁 공유</button>'+
      '<button class="btn-ok" style="flex:1;min-width:110px;background:#5a2fb0" onclick="openCtShare(\'badge_new\')">🚚 배넘버 신규</button>'+
@@ -1931,17 +1971,41 @@ function openSchedPermPopup(){
     var h='<div class="ctc-paper"><div class="ctc-ttl">영업점 - 택배기사 위·수탁 표준계약서</div>';
     h+='<p class="ctc-p" style="text-indent:0">팀플렉스 주식회사(쿠팡) 영업점(이하 “위탁자”)과 택배종사자인 '+fv(d.name)+'(이하 “수탁자”)은 다음과 같이 위·수탁계약을 체결한다.</p>';
     CLAUSES.forEach(function(c){h+='<div class="ctc-art">'+c[0]+'</div>';c[1].forEach(function(l){if(l==='§TABLE'){h+='<div class="ctc-tbl">'+trr('계약기간',period)+trr('담당 라우트',fv(d.route))+trr('배송수수료','1건당 '+fv(d.price)+' 원')+trr('지급일','매월 15일')+trr('차량/자격','화물차량(영업용 넘버) / 화물운송자격증')+'</div>';}else h+='<p class="ctc-p">'+l+'</p>';});});
-    h+='<p style="text-align:center;margin-top:14px">계약일자 '+fv(kd(d.sign))+' · 계약기간 '+fv(kd(d.start))+' 시작</p>';
-    h+='<div class="ctc-tbl">'+trr('위탁자','팀플렉스 주식회사 · 대표자 문병국 (인)')+'</div>';
-    h+=sb2(d,'수탁자','sigMain',mode);
-    h+='<div class="ctc-sttl">［별지］개인정보 수집·이용 동의서</div><p class="ctc-p" style="text-indent:0"><b>가. 수집·이용 목적</b> ◦ 택배 운송 위·수탁계약 체결 및 그 이행 ◦ 「화물자동차 운수사업법」 등 관련 법령에 따른 자격보유 여부 확인</p><p class="ctc-p" style="text-indent:0"><b>나. 수집 항목</b> 이름, 주소, 전화번호, 통장계좌번호, 생년월일, 주민등록번호, 사업자등록번호(사업자등록을 한 경우), 운수종사자 자격증 등록번호</p><p class="ctc-p" style="text-indent:0"><b>다. 보유·이용 기간</b> 수집·이용 목적 달성 후 지체 없이 파기</p><p class="ctc-p" style="text-indent:0"><b>라. 고유식별정보(주민등록번호) 처리 근거</b> 「고용보험법 시행령」 제145조의2, 「근로기준법」 제48조·동법 시행령 제27조, 「소득세법」 제145조, 「국세기본법 시행령」 제68조</p><p class="ctc-p" style="text-indent:0;color:#a33"><b>마. 동의 거부 권리</b> 거부할 수 있으나 미동의 시 택배운송 위·수탁 계약이 불가합니다.</p>';
-    h+=agBlk('chkA','본인의 개인정보를 수집·이용하는 데 동의합니다.',mode,d)+agBlk('chkB','본인의 고유식별정보(주민등록번호)를 수집·이용하는 데 동의합니다.',mode,d)+sb2(d,'동의자','sigC1',mode);
-    h+='<div class="ctc-sttl">개인정보 제3자 제공 동의서</div><p class="ctc-p" style="text-indent:0"><b>가. 제공받는 자</b> 국토교통부장관, 한국교통안전공단, 시·도지사, 경찰청장</p><p class="ctc-p" style="text-indent:0"><b>나. 제공 목적</b> 「화물자동차 운수사업법」 제8조(운전업무 종사자격), 제9조의2(종사 제한), 시행령 제15조의2(민감정보 및 고유식별정보의 처리)</p><p class="ctc-p" style="text-indent:0"><b>다. 제공 항목</b> 이름, 주소, 전화번호, 통장계좌번호, 생년월일, 주민등록번호, 사업자등록번호(사업자등록을 한 경우), 운수종사자 자격증 등록번호</p><p class="ctc-p" style="text-indent:0"><b>라. 보유기간</b> 제공 목적 달성 후 지체 없이 파기</p><p class="ctc-p" style="text-indent:0;color:#a33"><b>마. 동의 거부 권리</b> 거부할 수 있으나 미동의 시 택배운송 위·수탁 계약이 불가합니다.</p>';
-    h+=agBlk('chkC','본인의 개인정보를 제3자에게 제공하는 데 동의합니다.',mode,d)+agBlk('chkD','본인의 고유식별정보(주민등록번호)를 제3자에게 제공하는 데 동의합니다.',mode,d)+sb2(d,'동의자','sigC2',mode);
-    h+='<div class="ctc-sttl">계약 관련 부속합의서</div><p class="ctc-p" style="text-indent:0">팀플렉스 주식회사(“위탁자”)와 '+fv(d.name)+'(“수탁자”)는 위 계약일자로 체결한 택배기사 위·수탁 계약서(이하 “원 계약서”) 제10조·제11조에 따른 손해배상 및 계약 해지에 관하여 다음과 같이 합의서(이하 “본 합의서”)를 체결한다. 본 합의서에 정의되지 아니한 용어는 원 계약서에서 정하는 바에 의한다.</p><div class="ctc-art">제1조 손해배상</div><p class="ctc-p">① 운송지연에는 [개인적인 사정으로 인한 업무 수행이 불가능한 경우]를 포함한다.</p><p class="ctc-p">② 업무 수행이 불가능한 경우 회사가 자체적으로 최대한 지원하되, 지원이 불가능한 경우 긴급 차량 및 인원 투입을 진행하며 해당 비용은 “수탁자”가 부담한다.</p><p class="ctc-p">③ 각 프로모션 및 추가 단가는 기준 미달인 경우 총 단가에서 차감한다.</p><p class="ctc-p">④ 신선, 00시 미스에 대한 부분은 개인의 잘못으로 인한 회사의 손해이므로 패널티를 적용한다.</p><p class="ctc-p">⑤ 담당 구역이라 함은 1년 동안 해당 구역에 대한 책임을 맡기 위해 계약서를 진행하는 것이며, 이에 따른 차량 고장·개인 사정 등으로 인한 라우트 업무 수행은 담당자가 최우선으로 처리하여야 한다.</p><div class="ctc-art">제2조 계약 기간 및 해지</div><p class="ctc-p">① 각 계약은 년 단위 계약으로 이루어진다.</p><p class="ctc-p">② “수탁자” 개인적인 사정으로 인한 퇴사 시, 계약종료 의사를 말한 날로부터 60일의 기한을 둔다.</p><p class="ctc-p">③ 본 합의서는 합의서 체결일로부터 유효하며, 양 당사자의 별도 서면 합의가 없는 한 원 계약서의 해제·해지 또는 기간만료에 따른 종료 시까지 유효하다.</p><p class="ctc-p">④ 본 합의서에 정함이 없는 사항에 대해서는 원 계약서에 의하기로 한다.</p><p class="ctc-p">⑤ 본 합의서의 내용이 원 계약서의 내용과 상충되는 경우에는 본 합의서의 내용이 우선한다.</p><p class="ctc-p" style="text-indent:0;color:#889">※ 해당 계약서는 국토부의 표준 계약서 변경이 없으면 매년 자동 갱신합니다.</p>';
-    h+=sb2(d,'수탁자','sigApp',mode)+'</div>';return h;
+    h+='<div class="ctc-sigblock"><p style="text-align:center;margin-top:14px">계약일자 '+fv(kd(d.sign))+' · 계약기간 '+fv(kd(d.start))+' 시작</p>'+issuerBlock(mode)+sb2(d,'수탁자','sigMain',mode)+'</div>';
+    h+='<div class="ctc-sttl">［별지］개인정보 수집ㆍ이용 동의서</div>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>가. 개인정보 수집ㆍ이용 목적</b></p><p class="ctc-p">◦ 택배 운송 위·수탁계약 체결 및 그 이행</p><p class="ctc-p">◦ 「화물자동차 운수사업법」등 관련 법령에 따른 자격보유 여부 확인</p>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>나. 개인정보 수집 항목</b></p><p class="ctc-p">◦ 이름, 주소, 전화번호, 통장계좌번호, 생년월일, 주민등록번호, 사업자등록번호(사업자등록을 한 경우), 운수종사자 자격증 등록번호</p>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>다. 개인정보의 보유ㆍ이용 기간</b></p><p class="ctc-p">◦ 개인정보 수집‧이용목적이 달성된 후에는 해당 정보를 지체 없이 파기합니다.</p>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>라. 고유식별정보(주민등록번호) 처리 근거</b></p><p class="ctc-p">◦ 「고용보험법 시행령」 제145조의 2, 「근로기준법」 제48조, 동법 시행령 제27조, 「소득세법」 제145조, 「국세기본법 시행령」 제68조</p>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>마. 동의를 거부할 권리</b></p><p class="ctc-p">◦ 정보주체는 본인의 개인정보 수집ㆍ이용 또는 고유식별정보(주민등록번호) 수집 및 이용의 동의를 거부할 권리가 있습니다.</p><p class="ctc-p">◦ 단, 개인정보 수집ㆍ이용 또는 고유식별정보(주민등록번호) 수집 및 이용에 동의하지 않을 경우에는 택배운송 위·수탁 계약이 불가합니다.</p>';
+    h+=agBlk('chkA','본인은 팀플렉스 주식회사 영업점이 위와 같이 본인의 개인정보를 수집‧이용하는데 동의합니다.',mode,d)+agBlk('chkB','본인은 팀플렉스 주식회사 영업점이 위와 같이 본인의 고유식별정보(주민등록번호)를 수집‧이용하는데 동의합니다.',mode,d);
+    h+='<div class="ctc-sigblock"><p style="text-align:center;margin-top:8px">'+fv(kd(d.sign))+'</p>'+sb2(d,'동의자','sigC1',mode)+'<p class="ctc-p" style="text-indent:0;text-align:center;margin-top:6px;font-weight:700">쿠팡 택배 / 팀플렉스 주식회사 영업점 대표 귀하</p></div>';
+    h+='<div class="ctc-sttl">개인정보 제3자 제공 동의서</div>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>가. 개인정보를 제공받는 자</b></p><p class="ctc-p">◦ 국토교통부장관, 한국교통안전공단, 시‧도지사, 경찰청장</p>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>나. 제공 목적</b></p><p class="ctc-p">◦ 「화물자동차 운수사업법」 제8조(화물자동차 운수사업의 운전업무 종사자격 등), 「화물자동차 운수사업법」 제9조의2(화물자동차 운수사업의 운전업무 종사의 제한), 「화물자동차 운수사업법 시행령」 제15조의2(민감정보 및 고유식별정보의 처리)</p>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>다. 제공 항목</b></p><p class="ctc-p">◦ 이름, 주소, 전화번호, 통장계좌번호, 생년월일, 주민등록번호, 사업자등록번호(사업자등록을 한 경우), 운수종사자 자격증 등록번호</p>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>라. 보유기간</b></p><p class="ctc-p">◦ 개인정보 제공 목적이 달성된 후에는 해당 정보를 지체 없이 파기합니다.</p>';
+    h+='<p class="ctc-p" style="text-indent:0"><b>마. 동의를 거부할 권리</b></p><p class="ctc-p">◦ 정보주체는 본인의 개인정보 제공 또는 고유식별정보(주민등록번호) 제공에 대한 동의를 거부할 권리가 있습니다.</p><p class="ctc-p">◦ 단, 개인정보 제공 또는 고유식별정보(주민등록번호) 제공에 동의하지 않을 경우에는 택배운송 위·수탁 계약이 불가합니다.</p>';
+    h+=agBlk('chkC','본인은 팀플렉스 주식회사 영업점이 위와 같이 본인의 개인정보를 제3자에게 제공하는데 동의합니다.',mode,d)+agBlk('chkD','본인은 팀플렉스 주식회사 영업점이 위와 같이 본인의 고유식별정보(주민등록번호)를 제3자에게 제공하는데 동의합니다.',mode,d);
+    h+='<div class="ctc-sigblock"><p style="text-align:center;margin-top:8px">'+fv(kd(d.sign))+'</p>'+sb2(d,'동의자','sigC2',mode)+'<p class="ctc-p" style="text-indent:0;text-align:center;margin-top:6px;font-weight:700">쿠팡 택배 / 팀플렉스 주식회사 영업점 대표 귀하</p></div>';
+    h+='<div class="ctc-sttl">계약 관련 부속합의서</div>';
+    h+='<p class="ctc-p" style="text-indent:0">팀플렉스 주식회사(“위탁자”)와 '+fv(d.name)+'(“수탁자”)는 위 계약일자로 체결한 택배기사 위·수탁 계약서(이하 “원 계약서”) 제10조·제11조에 따른 손해배상 및 계약 해지에 관하여 다음과 같이 합의서(이하 “본 합의서”)를 체결한다. 본 합의서에 정의되지 아니한 용어는 원 계약서에서 정하는 바에 의한다.</p>';
+    h+='<div class="ctc-art">제1조 손해배상</div><p class="ctc-p">① 운송지연에는 [개인적인 사정으로 인한 업무 수행이 불가능한 경우]를 포함함.</p><p class="ctc-p">② 업무 수행이 불가능한 경우, 회사 자체적으로 최대한 지원을 하겠지만, 지원이 불가능한 경우, 긴급 차량 및 인원 투입을 진행해야한다. 해당 부분에 대한 비용을 “수탁자”가 부담합니다.</p><p class="ctc-p">③ 각 프로모션 및 추가 단가는 기준 미달인 경우, 총 단가에서 차감 진행 된다.</p><p class="ctc-p">④ 신선, 00시 미스에 대한 부분은 개인의 잘못으로 인한 회사의 손해이기때문에 패널티 적용.</p><p class="ctc-p">⑤ 담당 구역이라함은, 1년동안 해당 구역에 대한 책임을 맡기 위해 계약서를 진행하는것이며, 이에 따른 차량 고장, 개인 사정등으로 인한 라우트 업무 수행에 대한 부분은 담당자가 최우선으로 처리 해야함.</p>';
+    h+='<div class="ctc-art">제2조 계약 기간 및 해지</div><p class="ctc-p">① 각 계약은 년단위 계약으로 이루어진다.</p><p class="ctc-p">② “수탁자” 개인적인 사정으로 인한 퇴사시, 계약종료 의사를 말한 날로부터 60일의 기한을 둔다.</p><p class="ctc-p">③ 본 합의서는 합의서 체결일로부터 유효하며, 양 당사자의 별도 서면 합의가 없는 한 원 계약서의 해제, 해지 또는 기간만료에 따른 종료 시까지 유효하다.</p><p class="ctc-p">④ 본 합의서에 정함이 없는 사항에 대해서는 원 계약서에 의하기로 한다.</p><p class="ctc-p">⑤ 본 합의서의 내용이 원 계약서의 내용과 상충되는 경우에는, 본 합의서의 내용이 우선한다.</p>';
+    h+='<p class="ctc-p" style="text-indent:0;color:#666">※ 해당 계약서는 국토부의 표준 계약서 변경이 없으면 매년 자동 갱신합니다.</p>';
+    h+='<div class="ctc-sigblock"><p class="ctc-p" style="text-indent:0">[ 팀플렉스 주식회사 ] 와 '+fv(d.name)+' 은 본 합의서의 내용을 증명하기 위하여 본 합의서 2부를 서명 또는 기명 날인한 후 각각 1부씩 보관한다.</p>'+issuerBlock(mode)+sb2(d,'수탁자','sigApp',mode)+'</div>';
+    h+='</div>';return h;
   }
   function sb2(d,role,sid,mode){return '<div class="ctc-tbl">'+trr(role+' 주소',fv(d.addr))+trr('주민번호',fv(d.jumin))+'<div class="ctc-tr"><div class="ctc-th">성명</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot(sid,role,mode,d)+'</div></div></div>';}
+  function issuerBlock(mode){
+    var iss=(window._ctIssuer)||{};
+    var addr=iss.addr||'경기도 파수지 와석순환로 15, 807동 203호';
+    var biz=iss.biz||'팀플렉스 주식회사';
+    var ceo=iss.ceo||'문병국';
+    var stamp=iss.stamp||'';
+    var inMark=stamp?('<span style="position:relative;display:inline-block;min-width:52px;height:40px;vertical-align:middle"><span class="ctc-inmark">(인)</span><img src="'+stamp+'" style="position:absolute;left:22px;top:50%;transform:translateY(-50%);height:40px;pointer-events:none"></span>'):'<span class="ctc-inmark">(인)</span>';
+    return '<div class="ctc-tbl">'+trr('위탁자 주소',fv(addr))+trr('상호',fv(biz))+'<div class="ctc-tr"><div class="ctc-th">대표자</div><div class="ctc-td">'+fv(ceo)+' '+inMark+'</div></div></div>';
+  }
   function badgeHTML(d,mode){
     var renew=(S.badgeKind==='renew');
     function cho(){if(mode==='done'||(d._chks&&d._chks.b_cD==='y'&&mode!=='sign'))return '<div class="ctc-agree" style="border-color:#bfe6cc;background:#f4fbf6"><div class="q">허가 후 관리방법</div><div style="font-weight:800;color:#1b8a3f;font-size:12px">☑ 자동 증명 (관리비 월 1,000원)</div></div>';if(mode!=='sign')return '<div class="ctc-agree"><div class="q">허가 후 관리방법 (택1)</div><div style="color:#8090a0;font-size:12px">☐ 자동 증명  ☐ 직접 증명</div></div>';return '<div class="ctc-agree" id="b_cD"><div class="q">허가 후 관리방법 — 하나를 선택 (택1)</div><div class="ctc-opts"><div class="ctc-opt" data-v="auto" onclick="CT_choice(\'b_cD\',\'auto\')"><div class="cb">✓</div>자동 증명<br><span style="font-weight:500;font-size:9px">월1,000원</span></div><div class="ctc-opt" data-v="direct" onclick="CT_choice(\'b_cD\',\'direct\')"><div class="cb">✓</div>직접 증명<br><span style="font-weight:500;font-size:9px">2,000원</span></div></div></div>';}
@@ -1966,8 +2030,8 @@ function openSchedPermPopup(){
   function badgeForm(d){return fld('이름','name',d.name||'')+fld('주민번호','jumin',d.jumin||'')+fld('주소','addr',d.addr||'')+fld('핸드폰','phone',d.phone||'')+fld('차량','car',d.car||'')+fld('연식','cyear',d.cyear||'')+fld('적재(kg)','load',d.load||'')+fld('차량번호','carno',d.carno||'')+fld('면허번호','lic',d.lic||'')+fld('면허종류','lictype',d.lictype||'')+fld('자격번호','qual',d.qual||'')+fld('자격취득일','qualdate',d.qualdate||'');}
   function mc(){return document.getElementById('mc');}
   function val(id){var e=document.getElementById('ctc-'+id);return e?e.value:'';}
-  function collect(){var ps=S.d.signDate;if(S.kind==='badge')S.d={name:val('name'),jumin:val('jumin'),addr:val('addr'),phone:val('phone'),car:val('car'),cyear:val('cyear'),load:val('load'),carno:val('carno'),lic:val('lic'),lictype:val('lictype'),qual:val('qual'),qualdate:val('qualdate'),start:val('start')};else S.d={name:val('name'),jumin:val('jumin'),addr:val('addr'),route:val('route'),price:val('price'),start:val('start')};S.d.signDate=(S.badgeKind==='renew')?(ps||today()):sdFor(S.d.start);}
-  function full(){var d=S.d;var j=String(d.jumin||'').replace(/[^0-9]/g,'');return {name:d.name,jumin:msk(d.jumin),addr:d.addr,route:d.route,price:d.price,phone:d.phone,car:d.car,cyear:d.cyear,load:d.load,carno:d.carno,lic:d.lic,lictype:d.lictype,qual:d.qual,qualdate:d.qualdate,birth:j.slice(0,6),start:d.start,end:addY(d.start,1),sign:d.signDate||sdFor(d.start)};}
+  function collect(){var ps=S.d.signDate;if(S.kind==='badge')S.d={name:val('name'),jumin:val('jumin'),addr:val('addr'),phone:val('phone'),car:val('car'),cyear:val('cyear'),load:val('load'),carno:val('carno'),lic:val('lic'),lictype:val('lictype'),qual:val('qual'),qualdate:val('qualdate'),start:val('start')};else S.d={name:val('name'),jumin:val('jumin'),addr:val('addr'),route:val('route'),price:val('price'),start:val('start')};S.d.signDate=today();}
+  function full(){var d=S.d;var j=String(d.jumin||'').replace(/[^0-9]/g,'');return {name:d.name,jumin:msk(d.jumin),addr:d.addr,route:d.route,price:d.price,phone:d.phone,car:d.car,cyear:d.cyear,load:d.load,carno:d.carno,lic:d.lic,lictype:d.lictype,qual:d.qual,qualdate:d.qualdate,birth:j.slice(0,6),start:d.start,end:addY(d.start,1),sign:today()};}
   function paint(h){var m=mc();if(m){m.innerHTML=h;window.scrollTo(0,0);}}
   function startWrite(kind,name,badgeKind,mode){S={kind:kind,badgeKind:badgeKind||'new',step:0,d:{},sig:{},chk:{},cur:0,mode:mode||'admin',showPrev:false};var t=today();var sd=(kind==='badge'&&S.badgeKind==='renew')?addD(t,5):addD(t,7);if(name){var db=(typeof getDB==='function')?getDB():{};var dd=db[name]||{};S.d={name:name,jumin:dd.jumin||'',addr:dd.addr||'',route:dd.route||'',price:dd.price||'',phone:dd.phone||'',start:sd};}else S.d={start:sd};if(kind==='badge'&&S.badgeKind==='renew')S.d.signDate=t;ensureUI();renderStep();}
   function renderStep(){paint(stepHTML());after();}
@@ -2015,7 +2079,8 @@ function openSchedPermPopup(){
     '.ctc-sigspot{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:70px;height:38px;margin-left:4px}'+
     '.ctc-inmark{opacity:.32;font-weight:700}.ctc-sigspot .simg{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);max-height:44px;max-width:120px}'+
     '.ctc-sigspot .scur{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) rotate(-5deg);font-family:cursive;font-size:20px;color:#111}'+
-    '.ctc-agree{border:1px solid #999;background:#fafafa;padding:10px 12px;margin:11px 0;page-break-inside:avoid}.ctc-agree .q{font-size:10.5pt;color:#222;margin-bottom:5px;font-weight:600}'
+    '.ctc-agree{border:1px solid #999;background:#fafafa;padding:10px 12px;margin:11px 0;page-break-inside:avoid}.ctc-agree .q{font-size:10.5pt;color:#222;margin-bottom:5px;font-weight:600}'+
+    '.ctc-sigblock{page-break-inside:avoid;break-inside:avoid}'
   function ctPdf(){
     if(!LASTD){toast('먼저 계약서를 여세요');return;}
     var body=docHTML(LASTD,'done');
