@@ -326,6 +326,11 @@ table.dt td.r0{color:#888;white-space:nowrap}
 .ei{font-size:48px;margin-bottom:12px}
 .perm-row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f5f5f5}
 .perm-row:last-child{border-bottom:none}
+.ct-badge{display:inline-block;position:relative;padding:2px;border-radius:12px;vertical-align:middle;overflow:hidden;line-height:0}
+.ct-badge::before{content:"";position:absolute;inset:-60%;background:conic-gradient(from 0deg,#00e676,#1b8a3f,#7bffb0,#00c853,#00e676);animation:ctspin 2.6s linear infinite}
+@keyframes ctspin{to{transform:rotate(360deg)}}
+.ct-badge-in{position:relative;display:inline-block;background:#0b6b2e;color:#eaffef;font-size:10px;font-weight:900;padding:2px 8px;border-radius:10px;white-space:nowrap;box-shadow:0 0 7px rgba(0,230,118,.55);line-height:1.2}
+.ct-badge.sm .ct-badge-in{font-size:9px;padding:1px 6px}
 .perm-name{font-size:15px;font-weight:700;flex:1}
 .perm-id{font-size:11px;color:#aaa}
 .perm-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
@@ -1574,6 +1579,7 @@ async function loadFeatureControls(){
   } catch(e){
     _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false},sla:{active:false,notify:false}};
   }
+  if(_contractStatus===null){ try{ await loadContractStatus(); }catch(e){} }
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
   if(!mc)return;
@@ -1640,6 +1646,81 @@ async function saveFeatureCtrl(feat, key, val){
     }
   }
 }
+// ── 위·수탁 계약 작성 상태 (Supabase app_settings: contract_status — 절대 초기화 안 됨) ──
+var _contractStatus=null; // { "이름": {yc:true, at:'ISO', via:'paper'|'app', by:'관리자'} }
+async function loadContractStatus(){
+  if(!sbClient){ if(!_contractStatus)_contractStatus={}; return; }
+  try{
+    var {data}=await sbClient.from('app_settings').select('value').eq('key','contract_status').maybeSingle();
+    var parsed=(data&&data.value)?(typeof data.value==='string'?JSON.parse(data.value):data.value):{};
+    _contractStatus=parsed||{};
+  }catch(e){ if(!_contractStatus)_contractStatus={}; }
+}
+function ctDone(name){
+  if(!name||!_contractStatus)return false;
+  var k=String(name).trim();
+  if(_contractStatus[k]&&_contractStatus[k].yc)return true;
+  try{ var b=splitDriverSuffix(k); var base=(b&&(b.base||b.name))||''; if(base&&base!==k&&_contractStatus[base]&&_contractStatus[base].yc)return true; }catch(e){}
+  return false;
+}
+async function ctMark(name,done,via){
+  if(!sbClient||!CU||CU.role!=='admin')return false;
+  if(!_contractStatus)_contractStatus={};
+  var k=String(name).trim();
+  var prev=_contractStatus[k];
+  if(done)_contractStatus[k]={yc:true,at:new Date().toISOString(),via:via||'paper',by:CU.name||''};
+  else delete _contractStatus[k];
+  var r=await sbClient.from('app_settings').upsert({key:'contract_status',value:JSON.stringify(_contractStatus)},{onConflict:'key'});
+  if(r&&r.error){ showToast('⚠ 계약 상태 저장 실패: '+r.error.message,false); if(prev)_contractStatus[k]=prev; else delete _contractStatus[k]; return false; }
+  return true;
+}
+// 게이트: contract.active 스위치가 켜졌을 때만 제한 (기본 OFF)
+function ctGateOn(){ return !!(_featureControls&&_featureControls.contract&&_featureControls.contract.active===true); }
+function ctRestricted(){ return ctGateOn()&&CU&&CU.role==='driver'&&!ctDone(CU.name); }
+// 녹색 회전 테두리 계약 배지
+function ctBadge(name,small){ if(!ctDone(name))return ''; return '<span class="ct-badge'+(small?' sm':'')+'"><span class="ct-badge-in">&#x1F4C4; 계약</span></span>'; }
+function pgContractRequired(){
+  return '<div class="stit">&#x1F4C4; 계약서 작성 필요</div>'+
+   '<div class="card" style="text-align:center;padding:30px 18px">'+
+   '<div style="font-size:44px">&#x1F4C4;</div>'+
+   '<div style="font-size:16px;font-weight:900;color:#c62828;margin:10px 0 6px">1년 위·수탁 계약서 미작성</div>'+
+   '<div style="font-size:13px;color:#555;line-height:1.7">계약서 작성 전까지 다른 메뉴는 이용할 수 없습니다.<br>계약서를 작성하면 모든 기능이 열립니다.</div>'+
+   '<button class="btn-ok" style="margin-top:18px;width:100%" onclick="alert(\'계약서 작성 화면은 준비 중입니다. 관리자에게 문의하세요.\')">&#x270D;&#xFE0F; 계약서 작성하기</button>'+
+   '</div>';
+}
+// 관리자: 계약서 관리 화면
+function openContractAdmin(){var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgContractAdmin();window.scrollTo(0,0);}}
+function pgContractAdmin(){
+  var db=getDB();
+  var drs=Object.values(db).filter(function(d){return splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&d.role==='driver'&&d.status==='approved';}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');});
+  var written=drs.filter(function(d){return ctDone(d.name);});
+  var unwritten=drs.filter(function(d){return !ctDone(d.name);});
+  var gate=ctGateOn();
+  var h='<div class="stit">&#x1F4C4; 계약서 관리 (위·수탁)</div>';
+  h+='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px">'+
+     '<div><div style="font-weight:800;color:#123a6b">&#x1F512; 미작성자 권한 제한</div><div style="font-size:11px;color:#888;margin-top:3px;line-height:1.5">켜면 1년 계약서 미작성 기사는 계약서 화면만 볼 수 있습니다.<br>(지금 켜면 전 기사가 미작성이라 전부 제한됩니다)</div></div>'+
+     '<button onclick="saveFeatureCtrl(\'contract\',\'active\',!ctGateOn());setTimeout(openContractAdmin,350)" style="flex-shrink:0;padding:8px 15px;border-radius:16px;border:none;background:'+(gate?'#c62828':'#bdbdbd')+';color:#fff;font-size:12px;font-weight:800">'+(gate?'제한 ON':'제한 OFF')+'</button></div></div>';
+  h+='<div class="card"><div class="ctit" style="color:#1b8a3f">&#x2705; 작성자 ('+written.length+')</div>';
+  if(!written.length)h+='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">없음</div>';
+  written.forEach(function(d){h+=ctRow(d,true);});
+  h+='</div>';
+  h+='<div class="card"><div class="ctit" style="color:#c62828">&#x26D4; 미작성자 ('+unwritten.length+')</div>'+
+     '<div style="font-size:11px;color:#888;margin-bottom:8px">기존 종이 계약서로 작성된 기사는 아래 "작성완료"를 눌러 작성자로 옮기세요.</div>';
+  if(!unwritten.length)h+='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">없음</div>';
+  unwritten.forEach(function(d){h+=ctRow(d,false);});
+  h+='</div>';
+  return h;
+}
+function ctRow(d,done){
+  return '<div style="display:flex;align-items:center;gap:8px;padding:10px 4px;border-bottom:1px solid #f0f3f7">'+
+    '<div style="flex:1;font-size:13px;font-weight:700;color:#33475b">'+d.name+(done?(' '+ctBadge(d.name,true)):'')+'</div>'+
+    (done
+      ? '<button onclick="ctSet(this.getAttribute(\'data-n\'),false)" data-n="'+d.name+'" style="font-size:11px;padding:6px 13px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">작성취소</button>'
+      : '<button onclick="ctSet(this.getAttribute(\'data-n\'),true)" data-n="'+d.name+'" style="font-size:11px;padding:6px 13px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">작성완료 처리</button>')+
+    '</div>';
+}
+async function ctSet(name,done){ await ctMark(name,done,'paper'); openContractAdmin(); }
+
 function _featureBar(feat){
   if(!CU||CU.role!=='admin') return '';
   var active=getFeatureCtrl(feat,'active');
@@ -3733,6 +3814,7 @@ function go(tab){
   window.history.pushState({tab:tab,ts:Date.now()},'');
   var mc=document.getElementById('mc');
   try{if(typeof hbgApply==='function')hbgApply(tab==='hm');}catch(e){}
+  if(ctRestricted()){mc.innerHTML=pgContractRequired();window.scrollTo(0,0);return;}
   if(tab==='hm'){mc.innerHTML=pgHome();setTimeout(function(){try{inspHomeLoad();}catch(e){}},80);if(CU&&CU.role!=='admin'){try{tqLoadAlert().then(function(){if(CUR_TAB==='hm'){var _m=document.getElementById('mc');if(_m)_m.innerHTML=pgHome();try{inspHomeLoad();}catch(e){}}try{tqDriverPopup();}catch(_e){}});}catch(e){}}}
   else if(tab==='nc')mc.innerHTML=pgAnn(false);
   else if(tab==='my')mc.innerHTML=pgMySched();
@@ -6132,7 +6214,7 @@ function permRow(d,rightBtns,nameExtra,extraBadge){
   return '<div class="perm-row" style="flex-wrap:wrap;gap:6px;align-items:center;padding:11px 16px;border-bottom:1px solid #f0f0f0">'+
     '<div style="flex:1;min-width:0">'+
       '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:3px">'+
-        notifBadge+homeBadge+
+        notifBadge+homeBadge+ctBadge(d.name)+
       '</div>'+
       '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px">'+
         '<span class="perm-name" style="flex:none">'+d.name+'</span>'+
@@ -7541,6 +7623,9 @@ function pgSettings(){
   var curAdminPw=cfg.adminPw||ROOT_ADMIN.pw;
   return '<div class="stit">&#x2699; 시스템 설정</div>'+
     hcSettingsCard()+
+    '<div class="card"><div class="ctit">&#x1F4C4; 계약서 관리</div>'+
+    '<div style="font-size:12px;color:#666;margin-bottom:10px">위·수탁 계약 작성 현황을 관리하고, 미작성자 권한 제한을 켜고 끕니다.</div>'+
+    '<button class="btn-ok" style="width:100%" onclick="openContractAdmin()">&#x1F4C4; 계약서 관리 열기</button></div>'+
     // ── Supabase 진단 (테스트 전용 — 삭제됨) ──
 
     // ── 관리자 계정 ──
@@ -13795,7 +13880,7 @@ async function loadFreshStatus(){
       var s='<div style="background:#fff;border-radius:14px;border:1.5px solid '+(hasMiss?'#ef9a9a':'#a5d6a7')+';margin-bottom:10px;overflow:hidden">';
       s+='<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px 0 14px">'+
         '<span style="font-size:13px;font-weight:800;color:'+(hasMiss?'#c62828':'#1b5e20')+'">'+
-          '<span style="color:#1a237e;font-size:14px">'+wName+'</span>'+pddBadge+
+          '<span style="color:#1a237e;font-size:14px">'+wName+'</span>'+ctBadge(wName,true)+pddBadge+
         '</span>'+
         '<span style="display:flex;align-items:center;gap:5px">'+
           '<span style="font-size:10px;color:#aaa">'+snapAt+'</span>'+
