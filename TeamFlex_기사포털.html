@@ -483,6 +483,7 @@ textarea.ann-input:focus{border-color:#1565c0}
     <div class="fg"><label>이름</label><input type="text" id="uid" placeholder="기사 이름 입력 (예: 문선우)"></div>
     <div class="fg"><label>비밀번호</label><input type="password" id="upw" placeholder="초기 비밀번호: 1234"></div>
     <button class="btn-p" id="btnLogin">로그인</button>
+    <button id="btnSignup" onclick="openSignup()" style="width:100%;margin-top:10px;padding:11px;background:#eef3fb;color:#2f5fc8;border:1.5px solid #cfe0f5;border-radius:11px;font-size:13px;font-weight:800;cursor:pointer">📝 회원가입 (신규 기사)</button>
     <div class="errmsg" id="lerr"></div>
     <!-- 앱 설치 버튼 (항상 표시) -->
     <div id="install-bar" style="margin-top:14px;display:none">
@@ -501,6 +502,7 @@ textarea.ann-input:focus{border-color:#1565c0}
     </div>
   </div>
 </div>
+<div id="signup-screen" style="display:none;position:fixed;inset:0;background:linear-gradient(180deg,#4aa3f0,#63b6f6 35%,#9ad3fb);z-index:9999;overflow-y:auto"></div>
 <div id="ps">
   <div class="pcard">
     <div class="picon">&#x23F3;</div>
@@ -3048,6 +3050,57 @@ if('serviceWorker' in navigator){
 })();
 
 // ── LOGIN ──────────────────────────────────────────────────────────
+/* ===== 회원가입(기사) — 전체정보 → drivers(pending) + driver_ext ===== */
+var SU_FIELDS=[
+ ['성명','name','홍길동',0],['주민번호','jumin','810101-1234567 (- 없이)',1],['주소','addr','전체 주소 작성',0],
+ ['핸드폰번호','phone','010-1234-5678 (- 없이)',1],['서브폰(선택)','subphone','010-0000-0000',1],['쿠팡플렉스 ID','cpid','쿠팡 기사 아이디',0],
+ ['운전면허번호','lic','11-11-111111-11 (- 없이)',1],['운전면허종류','lictype','1종 보통',0],
+ ['화물운송자격번호','qual','1-23-123456 (- 없이)',1],['자격증 취득일','qualdate','2026.01.01',1],
+ ['차량명(선택)','car','포터 2.2',0],['차량연료(선택)','fuel','EV / LPG / 디젤',0],['차량등록년월일(선택)','regdate','2026.01.01',1],
+ ['차량번호(선택)','carno','서울00배1234',0],['허가관할시도(선택)','sido','서울',0],['허가관할시군구(선택)','sigungu','은평',0],
+ ['배넘버허가일자(선택)','badgedate','2026.01.01',1],['정산은행','bank','농협',0],['계좌번호','acct','123-456-7890',0],['입사일자(선택)','joindate','2026.01.01',1]
+];
+function _suDig(s){return String(s||'').replace(/[^0-9]/g,'');}
+function openSignup(){
+  var h='<div style="max-width:520px;margin:0 auto;padding:16px 12px 44px">'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><button onclick="closeSignup()" style="background:#fff;border:none;border-radius:10px;width:36px;height:36px;font-size:18px;font-weight:900;color:#2f6bb0;cursor:pointer">&#x2039;</button><div style="font-size:18px;font-weight:900;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.25)">&#x1F4DD; 회원가입 (기사)</div></div>'+
+    '<div style="background:#fff;border-radius:16px;padding:16px 14px;box-shadow:0 6px 18px rgba(0,60,120,.16)">'+
+    '<div style="font-size:12px;color:#666;margin-bottom:12px;line-height:1.6">아래 정보를 입력하면 <b>관리자 승인</b> 후 → 계약서 작성 → 앱 사용이 가능합니다.<br><span style="color:#1565c0;font-weight:700">🔒 아이디는 성명으로 자동 설정됩니다.</span></div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><label style="width:110px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">비밀번호</label><input id="su_pw" type="password" placeholder="로그인 비밀번호" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;min-width:0"></div>';
+  SU_FIELDS.forEach(function(f){
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><label style="width:110px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">'+f[0]+'</label><input id="su_'+f[1]+'" placeholder="'+f[2]+'" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;min-width:0"'+(f[3]?' inputmode="numeric"':'')+'></div>';
+  });
+  h+='<button onclick="suSubmit()" id="su_btn" style="width:100%;margin-top:12px;padding:14px;background:linear-gradient(135deg,#3f7fe0,#2f5fc8);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer">&#x1F4E9; 가입 신청 (관리자 승인 요청)</button>'+
+    '<div id="su_err" style="color:#c62828;font-size:12px;margin-top:8px;text-align:center"></div>'+
+    '<div style="font-size:10.5px;color:#aab4c0;margin-top:8px;line-height:1.6">※ 주민·핸드폰·면허·자격번호는 "-" 없이, 날짜는 숫자만 입력해도 됩니다. (선택) 항목은 추후 입력 가능.</div>'+
+    '</div></div>';
+  var sc=document.getElementById('signup-screen');sc.innerHTML=h;sc.style.display='block';sc.scrollTop=0;
+}
+function closeSignup(){var sc=document.getElementById('signup-screen');if(sc){sc.style.display='none';sc.innerHTML='';}}
+async function suSubmit(){
+  var name=(document.getElementById('su_name').value||'').trim();
+  var pw=document.getElementById('su_pw').value;
+  var er=document.getElementById('su_err');er.textContent='';
+  if(!name||!pw){er.textContent='성명과 비밀번호는 필수입니다.';return;}
+  var ext={};SU_FIELDS.forEach(function(f){var v=(document.getElementById('su_'+f[1]).value||'').trim();if(f[3])v=_suDig(v);ext[f[1]]=v;});
+  if(!ext.jumin||!ext.phone){er.textContent='주민번호·핸드폰번호는 필수입니다.';return;}
+  if(!window.sbClient){er.textContent='서버 연결이 필요합니다. 잠시 후 다시 시도하세요.';return;}
+  var btn=document.getElementById('su_btn');if(btn){btn.disabled=true;btn.textContent='신청 중…';}
+  try{
+    var chk=await sbClient.from('drivers').select('name,status').eq('name',name).maybeSingle();
+    if(chk&&chk.data){er.textContent='이미 등록된 이름입니다. 관리자에게 문의하세요.';if(btn){btn.disabled=false;btn.textContent='📩 가입 신청 (관리자 승인 요청)';}return;}
+    var up=await sbClient.from('drivers').upsert({name:name,login_id:name,driver_id:name,password:pw,role:'driver',status:'pending',phone:ext.phone,synced_at:new Date().toISOString()},{onConflict:'name'});
+    if(up&&up.error)throw up.error;
+    var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();
+    var m=(r1&&r1.data&&r1.data.value)?(typeof r1.data.value==='string'?JSON.parse(r1.data.value):r1.data.value):{};
+    ext.cyear=_suDig(ext.regdate).slice(0,4);ext.at=new Date().toISOString();
+    m[name]=ext;
+    await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});
+    closeSignup();
+    alert('📩 '+name+' 님 가입 신청 완료!\n관리자 승인 후 [이름 + 비밀번호]로 로그인하세요.');
+  }catch(e){er.textContent='신청 실패: '+((e&&e.message)||e);if(btn){btn.disabled=false;btn.textContent='📩 가입 신청 (관리자 승인 요청)';}}
+}
+window.openSignup=openSignup;window.closeSignup=closeSignup;window.suSubmit=suSubmit;
 function doLogin(){
   var name=document.getElementById('uid').value.trim();
   var pw=document.getElementById('upw').value;
