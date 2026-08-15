@@ -2572,11 +2572,7 @@ function _onSchedChange(e, old, changedBy){
   if(oldDriver===newDriver&&oldDriver!=='')return;
 
   // 현재 앱 사용자 기준 알림 여부 (토스트 + 진동)
-  var shouldNotify=
-    CU.role==='admin' ||
-    CU.role==='leader' ||
-    (CU.role==='driver'&&(CU.name===newDriver||CU.name===oldDriver));
-  if(!shouldNotify)return;
+  if(CU.role!=='admin')return; // 스케줄 변경 알림은 관리자만
 
   var dateStr=_fmtSchedDate(workDate);
 
@@ -2588,8 +2584,7 @@ function _onSchedChange(e, old, changedBy){
   playTpalm();
   showToast('📅 업무 수정 '+dateStr+(CU&&CU.role==='admin'?' — 변경이력 탭 확인':''),true);
 
-  // admin/leader/sub: 해당 기사/팀장/조장 폰으로 Push 발송 (3초 디바운스)
-  _queueSchedPush(workDate,route,oldDriver,newDriver);
+  // (변경이력 알림은 관리자 전용 — 기사/팀장/조장 폰 푸시 발송 안 함)
 }
 
 function stopRealtime(){
@@ -3878,6 +3873,7 @@ async function _registerPeriodicSync(){
 
 // ── 접속 시 스케줄 변경 확인 (오프라인 중 변경된 경우도 감지) ───────────
 async function checkPendingSchedChanges(){
+  if(!(CU&&CU.role==='admin'))return; // 변경이력 팝업은 관리자만
   if(!CU||!sbClient)return;
   try{
     var snapKey='tf_sched_snap_'+CU.name;
@@ -8380,7 +8376,7 @@ function inspWarn(name){
   if(!_badgeLoaded)return false;if(!_inspMap||Object.keys(_inspMap).length===0)return false;var days=_inspMap[name]||{};
   var d=new Date(Date.now()+9*3600000);var today=d.getUTCDate();var last=0;
   Object.keys(days).forEach(function(k){var dd=days[k];if(dd&&(dd.done||dd.off)){var n=parseInt(k,10);if(n<=today&&n>last)last=n;}});
-  return (today-last)>=2;
+  return (today-last)>=4;
 }
 function _statusBadges(name){
   var h='';
@@ -8662,26 +8658,7 @@ function pgSettings(){
     '<button class="btn-ok" onclick="saveContactsPw()" style="flex:2">&#x1F512; 저장</button>'+
     '<button onclick="clearContactsPw()" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #ffb74d;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">&#x1F513; 해제</button>'+
     '</div></div>'+
-    // ── 스케줄 수정 권한 ──
-    '<div class="card"><div class="ctit">&#x1F4C5; 스케줄 수정 권한</div>'+
-    '<div class="cfg-row"><div class="cfg-label">수정 가능한 역할 (다중 선택)</div>'+
-    '<div class="perm-checks">'+schedChecks+'</div></div>'+
-    '<div class="cfg-row" style="margin-top:14px"><div class="cfg-label" style="margin-bottom:10px">&#x23F1; 팀장·조장 수정 가능 기간</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-    [30,60,90,365].map(function(d){var sel=(cfg.schedEditDays||90)===d;var lbl=d>=365?'1년':(d+'일');return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?'#1565c0':'#e0e0e0')+';background:'+(sel?'#e3f2fd':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(sel?700:400)+';color:'+(sel?'#1565c0':'#555')+'"><input type="radio" name="schedDays" value="'+d+'" '+(sel?'checked':'')+' onchange="setSchedEditDays('+d+')" style="accent-color:#1565c0">'+lbl+'</label>';}).join('')+
-    '</div></div>'+
-    '<div class="cfg-row" style="margin-top:14px"><div class="cfg-label" style="margin-bottom:8px">🔒 과거 수정 잠금 — 며칠 이전 수정 불가 (0 = 제한없음)</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-    (function(){
-      var opts=[{v:0,lbl:'제한없음'},{v:2,lbl:'2일 이전 잠금'},{v:3,lbl:'3일 이전 잠금'},{v:4,lbl:'4일 이전 잠금'},{v:5,lbl:'5일 이전 잠금'},{v:'week',lbl:'🔒 해당주차 금지'}];
-      var cur=cfg.schedMinLockDays;if(cur===undefined||cur===null)cur=0;
-      return opts.map(function(o){
-        var sel=String(cur)===String(o.v);var isWeek=(o.v==='week');
-        var bc=isWeek?'#7b1fa2':'#c62828';var bg=isWeek?'#f3e5f5':'#ffebee';var val=isWeek?'\'week\'':o.v;
-        return '<label style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:20px;border:2px solid '+(sel?bc:'#e0e0e0')+';background:'+(sel?bg:'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(sel?700:400)+';color:'+(sel?(isWeek?'#7b1fa2':'#c62828'):'#555')+'"><input type="radio" name="schedMinLock" value="'+o.v+'" '+(sel?'checked':'')+' onchange="setSchedMinLockDays('+val+')" style="accent-color:'+(isWeek?'#7b1fa2':'#c62828')+'">'+o.lbl+'</label>';
-      }).join('');
-    })()+
-    '</div></div></div>'+
+    // ── 스케줄 수정 권한: 스케줄 탭 ⚙️수정권한 팝업으로 이동(중복 카드 제거) ──
     // ── 공지 작성 권한 ──
     '<div class="card"><div class="ctit">&#x1F4E2; 공지 작성 권한</div>'+
     '<div class="cfg-row"><div class="cfg-label">공지 작성 가능한 역할 (다중 선택)</div>'+
