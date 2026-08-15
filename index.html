@@ -15376,6 +15376,8 @@ function _pddWon(n){return (n||0).toLocaleString('ko-KR')+'원';}
 // ── 팀플 마감 시간 미준수 카드 + 관리자 마감시간 설정 팝업 ──────────────
 function _ddlMissCardHtml(log,ddl,kdate,kmon,nowK,isAdm){
   if(!Array.isArray(log))log=[];
+  // ── 1회성 제외: 2026-08-09 ~ 2026-08-15 기록은 카운팅·표시에서 제외 (관리자 지시, 해당 주간만) ──
+  log=log.filter(function(e){var _dt=(e&&e.date)||'';return !(_dt>='2026-08-09'&&_dt<='2026-08-15');});
   var vis=log.filter(function(e){
     if(!e||!e.date||!e.name)return false;
     var d=new Date(e.date+'T00:00:00Z');
