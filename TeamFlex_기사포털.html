@@ -1958,6 +1958,26 @@ async function ctApprove(name,type){
   if(typeof openContractAdmin==='function')openContractAdmin();
 }
 window.ctApprove=ctApprove;window.loadCtApproved=loadCtApproved;
+async function ctDeleteDoc(name,type){
+  if(!(CU&&CU.role==='admin')){alert('관리자만 삭제할 수 있습니다.');return;}
+  var lbl={wc:'위·수탁 계약서',badge_new:'배넘버 신규 서류',badge_renew:'배넘버 재허가 서류'}[type]||'계약서';
+  if(!confirm(name+' 님의 '+lbl+'를 삭제할까요?\n작성 내용·서명이 삭제되어 미작성 상태로 돌아갑니다.'))return;
+  try{
+    var key='ct_doc_'+name;var r=await sbClient.from('app_settings').select('value').eq('key',key).maybeSingle();
+    var cur=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{};
+    if(cur[type]){delete cur[type];await sbClient.from('app_settings').upsert({key:key,value:JSON.stringify(cur)},{onConflict:'key'});}
+    if(_ctAssign===null&&typeof loadContractAssign==='function'){try{await loadContractAssign();}catch(e){}}
+    var ra=await sbClient.from('app_settings').select('value').eq('key','contract_assign').maybeSingle();
+    var ca=(ra&&ra.data&&ra.data.value)?(typeof ra.data.value==='string'?JSON.parse(ra.data.value):ra.data.value):{};
+    if(ca[name]&&ca[name][type]){delete ca[name][type];_ctAssign=ca;await sbClient.from('app_settings').upsert({key:'contract_assign',value:JSON.stringify(ca)},{onConflict:'key'});}
+    if(type==='wc'){try{if(window._contractStatus&&_contractStatus[name])delete _contractStatus[name];await sbClient.from('app_settings').upsert({key:'contract_status',value:JSON.stringify(window._contractStatus||{})},{onConflict:'key'});}catch(e){}}
+    if(_ctApproved===null&&typeof loadCtApproved==='function'){try{await loadCtApproved();}catch(e){}}
+    if(_ctApproved&&_ctApproved[name]&&_ctApproved[name][type]){delete _ctApproved[name][type];await sbClient.from('app_settings').upsert({key:'contract_approved',value:JSON.stringify(_ctApproved)},{onConflict:'key'});}
+    try{showToast('🗑 '+name+' '+lbl+' 삭제 — 미작성으로 되돌림',true);}catch(_){}
+  }catch(e){alert('삭제 실패: '+((e&&e.message)||e));}
+  if(typeof openContractAdmin==='function')openContractAdmin();
+}
+window.ctDeleteDoc=ctDeleteDoc;
 function ctBadgeRow(d,type,done){
   var esc=d.name;
   var _rl={leader:'팀장',sub:'조장',driver:'기사'}[d.role]||'';
@@ -1967,7 +1987,7 @@ function ctBadgeRow(d,type,done){
   return '<div style="display:flex;align-items:center;gap:6px;padding:10px 4px;border-bottom:1px solid #f0f3f7;flex-wrap:wrap">'+
     '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+_rlTag+shBadge+'</div>'+
     (done
-      ? (ctApprovedOf(esc,type)?'<span style="font-size:11px;font-weight:800;color:#1b8a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:6px 11px;border-radius:14px">✅ 승인완료</span><button onclick="CT_preview(\''+esc+'\',\''+type+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>':'<button onclick="CT_preview(\''+esc+'\',\''+type+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctApprove(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">✅ 승인</button><button onclick="ctReject(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>')
+      ? ((ctApprovedOf(esc,type)?'<span style="font-size:11px;font-weight:800;color:#1b8a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:6px 11px;border-radius:14px">✅ 승인완료</span><button onclick="CT_preview(\''+esc+'\',\''+type+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>':'<button onclick="CT_preview(\''+esc+'\',\''+type+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctApprove(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">✅ 승인</button><button onclick="ctReject(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>')+'<button onclick="ctDeleteDoc(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 9px;border-radius:14px;border:1px solid #e0a0a0;background:#fff5f5;color:#b33;font-weight:700">🗑 삭제</button>')
       : '<button onclick="CT_startWrite(\'badge\',\''+esc+'\',\''+((type==='badge_renew')?'renew':'new')+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #cbb6ef;background:#f3ecff;color:#5a2fb0;font-weight:700">✍️ 대신작성</button>')+
     '</div>';
 }
@@ -1983,7 +2003,7 @@ function ctRow(d,done){
   return '<div style="display:flex;align-items:center;gap:6px;padding:10px 4px;border-bottom:1px solid #f0f3f7;flex-wrap:wrap">'+
     '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+_rlTag+(done?(' '+ctBadge(d.name,true)):shBadge)+'</div>'+
     (done
-      ? (ctApprovedOf(esc,'wc')?'<span style="font-size:11px;font-weight:800;color:#1b8a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:6px 11px;border-radius:14px">✅ 승인완료</span><button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>':'<button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctApprove(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">✅ 승인</button><button onclick="ctReject(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>')
+      ? ((ctApprovedOf(esc,'wc')?'<span style="font-size:11px;font-weight:800;color:#1b8a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:6px 11px;border-radius:14px">✅ 승인완료</span><button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>':'<button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctApprove(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">✅ 승인</button><button onclick="ctReject(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>')+'<button onclick="ctDeleteDoc(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 9px;border-radius:14px;border:1px solid #e0a0a0;background:#fff5f5;color:#b33;font-weight:700">🗑 삭제</button>')
       : ((shared
           ? '<button onclick="CT_startWrite(\'wc\',\''+esc+'\',null,\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #cbb6ef;background:#f3ecff;color:#5a2fb0;font-weight:700">✍️ 대신작성</button>'
           : '<button onclick="ctShareNow(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#5a2fb0;color:#fff;font-weight:800">📤 공유</button>')+
@@ -2080,7 +2100,7 @@ function openSchedPermPopup(){
     var inMark=stamp?('<span style="position:relative;display:inline-block;width:66px;height:58px;vertical-align:middle;text-align:center"><span class="ctc-inmark" style="line-height:58px">(인)</span><img src="'+stamp+'" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:58px;width:auto;pointer-events:none"></span>'):'<span class="ctc-inmark">(인)</span>';
     return '<div class="ctc-tbl">'+trr('위탁자 주소',fv(addr))+trr('상호',fv(biz))+'<div class="ctc-tr"><div class="ctc-th">대표자</div><div class="ctc-td">'+fv(ceo)+' '+inMark+'</div></div></div>';
   }
-   function badgeHTML(d,mode){
+    function badgeHTML(d,mode){
      var renew=(S.badgeKind==='renew');
      var SVC='쿠팡로지스틱스서비스 유한회사';
      var GAP='쿠팡로지스틱스서비스',GAP_CEO='강현오',GAP_ADDR='서울특별시 강남구 광평로 280 7층 (수서동, 로즈데일빌딩)';
@@ -2146,37 +2166,52 @@ function openSchedPermPopup(){
      h+='<div class="ctc-sttl">택배용 화물자동차 전속 운송 계약서 (제2부)</div>'+contract('［제2부 · "을"(대리점) 보관 — 제1부 서명 자동 적용］',false);
      h+='<div class="ctc-sttl">택배용 화물자동차 전속 운송 계약서 (제3부)</div>'+contract('［제3부 · "병"(기사) 보관 — 제1부 서명 자동 적용］',false);
 
-     /* ===================== 3p. 개인정보 활용 동의서 ===================== */
+     /* ===================== 3p. 개인정보 활용 동의서 (원문) ===================== */
      h+='<div class="ctc-sttl">택배용 화물자동차 허가신청 및 이력관리를 위한 개인정보 활용 동의서</div>';
-     h+='<p class="ctc-p">한국통합물류협회(이하 \'협회\')는 택배용 화물자동차 운송사업 허가요령 제7조제4항에 의거하여 택배용 화물자동차의 전속운송계약(해지)현황, 운영현황을 관리하기 위해 택배용 화물자동차 및 해당 허가자에 대한 정보를 수집 및 보유합니다.</p>';
-     h+='<p class="ctc-p"><b>1. 수집하는 개인정보의 항목</b><br>성명, 생년월일, 주소, 연락처, 차량정보(차종, 차명, 형태, 차량번호), 화물운송종사자 자격번호 등 허가 신청 현황 확인서에 기입되는 모든 내용과 허가 후 정보(허가 받은 지역, 차량번호)를 수집합니다.</p>';
-     h+='<p class="ctc-p"><b>2. 수집 및 이용목적</b><br>택배용 화물자동차 이력관리(택배업 종사여부 확인, 국토교통부 보고, 행정관청 업무 지원, 보험안내, 택배관련 복지사업 안내 등)를 위해 정보를 수집·이용하며, 이를 제외한 목적으로 사용하지 않습니다. 전화·SMS를 통해 관리 및 안내할 수 있습니다.</p>';
-     h+='<p class="ctc-p"><b>3. 보유 및 보유기간</b><br>이력관리 및 정보 안내 필요성이 상실될 경우(허가취소, \'배\'번호판 반납 확인 등) 3년간 보유 후 파기합니다.</p>';
-     h+='<p class="ctc-p"><b>4. 고유식별정보</b> — 주민등록번호(허가 완료 및 시스템 등록 시까지), 운전면허번호(필요성 상실 후 3년 보유 후 파기).</p>';
-     h+='<p class="ctc-p"><b>5. 제3자 제공</b> — 국토교통부·환경부·해양수산부·관할관청(성명·차량번호·휴대폰번호, 영구보유, 필수) / 현대·기아·㈜버금·에이원금융판매㈜D&I지점(성명·휴대폰번호, 2년, 선택).</p>';
-     h+=agBlk('b_cA','[필수] 위와 같이 개인정보 및 고유식별정보(주민등록번호·운전면허번호)를 수집·이용하는 데 동의합니다.',mode,d);
-     h+='<p class="ctc-p" style="text-align:center;text-indent:0">'+fv(kd(d.sign))+'</p><div class="ctc-tbl"><div class="ctc-tr"><div class="ctc-th">성명</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s3','동의자',mode,d)+'</div></div></div><p class="ctc-p" style="text-align:right;text-indent:0">한국통합물류협회 귀하</p>';
+     h+='<p class="ctc-p" style="text-align:right;text-indent:0;color:#889;margin:0 0 4px">NO.</p>';
+     h+='<p class="ctc-p" style="text-indent:0;font-weight:800">개인정보 활용 동의 및 권익 보호에 관한 사항</p>';
+     h+='<p class="ctc-p" style="text-indent:0;font-weight:700">■ 정보의 수집ㆍ이용에 관한 소비자권익 보호 사항</p>';
+     h+="<p class=\"ctc-p\">한국통합물류협회는(이하＇협회‘) 택배용 화물자동차 운송사업 허가요령 제7조제4항에 의거하여 택배용 화물자동차의 전속운송계약(해지)현황, 운영현황을 관리하기 위해 택배용 화물자동차 및 해당 허가자에 대한 정보를 수집 및 보유합니다. 협회는 귀하의 개인정보보호를 중시하며, 개인 정보처리방침을 통해 귀하가 제공하는 개인정보가 어떠한 용도와 방식으로 사용되고, 개인정보보호를 위해 어떠한 조치가 취해지는지 알려드립니다.</p>";
+     h+='<p class="ctc-p" style="font-weight:700">1. 수집하는 개인정보의 항목</p><p class="ctc-p">■ 성명, 생년월일, 주소, 연락처, 차량정보(차종, 차명, 형태, 차량번호), 화물운송종사자 자격번호 등 택배용 화물자동차 운송사업 허가 신청 현황 확인서에 기입되는 모든 내용과 허가 후 정보(허가 받은 지역, 차량번호)를 수집합니다.</p>';
+     h+='<p class="ctc-p" style="font-weight:700">2. 개인정보 수집 및 이용목적</p><p class="ctc-p">■ 협회는 택배용 화물자동차 운송사업 허가요령 제7조 제4항에 의거, 택배용 화물자동차 이력관리(택배업 종사여부 확인, 국토교통부 보고, 행정관청 업무 지원, 보험안내, 택배관련 복지사업 안내 등)를 위해 택배용 화물자동차 및 해당 허가자에 대한 정보를 수집 및 이용하며, 이를 제외한 목적으로 사용하지 않습니다.</p><p class="ctc-p">■ 협회는 택배용 화물자동차 이력관리 및 택배 관련 복지사업 안내 등의 정보를 전화, SMS 를 통해 관리 및 안내할 수 있습니다.</p>';
+     h+="<p class=\"ctc-p\" style=\"font-weight:700\">3. 개인정보 보유 및 보유기간</p><p class=\"ctc-p\">■ 이력관리 및 정보 안내 필요성이 상실될 경우(허가받은 자나 관할관청으로부터 허가취소, 허가받은 차량번호('배'번호판) 반납 사실이 확인된 경우) 행정업무의 참고 또는 사실 증명을 위해 3년간 보유 후 파기합니다.</p><p class=\"ctc-p\">■ 종이에 출력된 개인정보는 분쇄기로 분쇄하거나 소각을 통하여 파기합니다.</p><p class=\"ctc-p\">■ 전자적 파일 형태로 저장된 개인정보는 기록을 재생할 수 없는 기술적 방법을 사용하여 삭제합니다.</p>";
+     h+='<p class="ctc-p" style="font-weight:700">4. 고유식별정보 처리 및 보관기간 &nbsp;<span style="font-weight:800">동의(필수)</span></p>';
+     h+='<div class="ctc-tbl">'+trr('주민등록번호','수집 목적: 택배용 화물자동차 운송사업 허가 &nbsp;/&nbsp; 보유 기간: 택배용 화물자동차 운송사업 허가 완료 및 택배차량 이력관리 시스템 등록시까지')+trr('운전면허번호','수집 목적: 택배용 화물자동차 운송사업 허가 및 차량 이력관리 &nbsp;/&nbsp; 보유 기간: 이력관리 및 정보 안내 필요성이 상실될 경우(허가 취소, 폐업 등) 3년간 보유 후 파기')+'</div>';
+     h+='<p class="ctc-p" style="font-size:9pt;color:#666">※ 위와 같이 개인정보를 처리하는데 동의하지 않을 경우 택배용 화물자동차 운송사업 허가 신청 접수 대행 및 허가 후 관리에 제한이 있을 수 있습니다.</p>';
+     h+='<p class="ctc-p" style="font-weight:700">5. 개인정보 제3자 제공 내역</p>';
+     h+='<div class="ctc-tbl">'+trr('국토교통부, 환경부, 해양수산부, 관할관청','제공 항목: 성명, 차량번호, 휴대폰 번호 등 &nbsp;/&nbsp; 제공 목적: 허가 조건 위반 내용 확인, 택배 관련 데이터 제공 등 &nbsp;/&nbsp; 보유기간: 영구보유 &nbsp;/&nbsp; 동의: (필수)')+trr('현대자동차, 기아자동차, ㈜버금, 에이원금융판매㈜D&I지점','제공 항목: 성명, 휴대폰번호 &nbsp;/&nbsp; 제공 목적: 영업용 자동차 구매 및 보험, 복지 사업 안내 &nbsp;/&nbsp; 보유기간: 2년 &nbsp;/&nbsp; 동의: (선택)')+'</div>';
+     h+='<p class="ctc-p" style="font-size:9pt;color:#666">※ 위와 같이 개인정보를 처리하는데 동의하지 않을 경우 협회에서 제공하는 복지사업 관련 서비스 제공 및 허가 후 관리에 제한이 있을 수 있습니다.</p>';
+     h+=agBlk('b_cA','[필수] 위와 같이 개인정보(고유식별정보 및 제3자 제공 포함)를 처리하는 데 동의합니다.',mode,d);
+     h+='<p class="ctc-p" style="text-align:center;text-indent:0">'+fv(kd(d.sign))+' &nbsp; 성명 : '+fv(d.name)+' '+sigSpot('b_s3','동의자',mode,d)+' (서명 또는 인)</p><p class="ctc-p" style="text-align:right;text-indent:0">한국통합물류협회 귀하</p>';
 
-     /* ===================== 4p. 개인정보 제3자 제공 동의 ===================== */
-     h+='<div class="ctc-sttl">개인정보 제3자 제공 동의</div>';
+     /* ===================== 4p. 개인정보 제3자 제공 동의 (원문) ===================== */
+     h+='<div class="ctc-sttl">개인정보 제 3 자 제공 동의</div>';
      h+='<p class="ctc-p" style="text-indent:0">쿠팡로지스틱스서비스는 화물자동차 운수사업법 제10조(화물자동차 운전자 채용 기록의 관리)에 의거 택배용 화물자동차 허가신청 및 이력 관리를 위해 한국통합물류협회에 개인정보를 제공합니다.</p>';
-     h+='<p class="ctc-p"><b>[필수] 개인정보 제3자 제공</b> — 제공받는 자: 한국통합물류협회 / 목적: 택배용 화물자동차 이력관리(택배업 종사여부 확인, 국토교통부 보고, 행정관청 업무 지원, 보험안내, 복지사업 안내 등) / 항목: 성명, 생년월일, 주소, 전화번호, 차량정보(차종·차명·형태·차량번호), 화물운송종사자 자격번호 및 허가 후 정보(허가받은 지역·차량번호) / 보유: \'배\'번호판 허가취소·번호판 반납 확인 후 3년.</p>';
-     h+=agBlk('b_cB','[필수] 위와 같이 개인정보를 한국통합물류협회에 제3자 제공하는 데 동의합니다.',mode,d);
-     h+='<p class="ctc-p"><b>[필수] 고유식별정보 제3자 제공</b> — 제공받는 자: 한국통합물류협회 / 항목: 고유식별정보(주민등록번호·운전면허번호) / 목적: 택배용 화물자동차 운송사업 허가 및 차량 이력관리 / 보유: 주민등록번호(시스템 등록 완료 시 지체없이 파기), 운전면허번호(필요성 상실 후 3년).</p>';
-     h+=agBlk('b_cC','[필수] 위와 같이 고유식별정보(주민등록번호·운전면허번호)를 제3자 제공하는 데 동의합니다.',mode,d);
-     h+='<p class="ctc-p" style="text-align:center;text-indent:0">'+fv(kd(d.sign))+'</p><div class="ctc-tbl"><div class="ctc-tr"><div class="ctc-th">성명</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s4','동의자',mode,d)+'</div></div></div>';
+     h+='<p class="ctc-p" style="font-weight:800">[필수] 개인정보 제 3 자 제공 동의 &nbsp;&nbsp; 동의 [ &nbsp; ]</p>';
+     h+='<div class="ctc-tbl">'+trr('제공받는 자','한국통합물류협회')+trr('목적','택배용 화물자동차 이력(택배업 종사여부 확인, 국토교통부 보고, 행정관청 업무 지원, 보험안내, 택배관련 복지사업 안내 등) 관리')+trr('항목','성명, 생년월일, 주소, 전화번호, 차량정보(차종, 차명, 형태, 차량번호), 화물운송종사자 자격번호 및 허가 후 정보(허가받은 지역, 차량번호)')+trr('보유기간 및 이용기간',"'배'번호판의 허가취소, 번호판 반납 확인 후 3년")+'</div>';
+     h+=agBlk('b_cB','[필수] 개인정보 제 3 자 제공에 동의합니다.',mode,d);
+     h+='<p class="ctc-p" style="font-weight:800">[필수] 고유식별정보 제 3 자 제공 동의 &nbsp;&nbsp; 동의 [ &nbsp; ]</p>';
+     h+='<div class="ctc-tbl">'+trr('제공받는 자','한국통합물류협회')+trr('주민등록번호','목적: 택배용 화물자동차 운송사업 허가 및 택배차량 이력관리 &nbsp;/&nbsp; 항목: 고유식별정보(주민등록 번호) &nbsp;/&nbsp; 보유기간: 택배용 화물자동차 운송사업 허가 및 시스템 등록 완료 시 지체없이 파기')+trr('운전면허번호','목적: 택배용 화물자동차 운송사업 허가 및 차량 이력관리 &nbsp;/&nbsp; 항목: 운전면허번호 &nbsp;/&nbsp; 보유기간: 허가 취소, 폐업 등 이력관리 필요성 상실 후 3년')+'</div>';
+     h+=agBlk('b_cC','[필수] 고유식별정보(주민등록번호·운전면허번호) 제 3 자 제공에 동의합니다.',mode,d);
+     h+='<p class="ctc-p">더 자세한 내용에 대해서는 임직원 개인정보 처리방침을 참고하시기 바랍니다.</p>';
+     h+='<p class="ctc-p" style="text-align:center;text-indent:0">'+fv(kd(d.sign))+' &nbsp; 성명 : '+fv(d.name)+' '+sigSpot('b_s4','동의자',mode,d)+' (서명 또는 인)</p>';
 
-     /* ===================== 5p. 허가 후 관리 신청서 ===================== */
-     h+='<div class="ctc-sttl">택배용 화물자동차(\'배\'번호판)의 허가 후 관리 신청서</div>';
-     h+='<p class="ctc-p" style="text-indent:0">쿠팡로지스틱스서비스 및 한국통합물류협회 귀중. 신청자 본인은 \'배\'번호판을 택배 용도로만 사용하고 있음을 증명하기 위하여 아래와 같이 허가 후 관리 신청서를 제출합니다.</p>';
-     h+='<div class="ctc-art">1. 신청 정보</div><div class="ctc-tbl">'+trr('영업점명',EUL)+'<div class="ctc-tr"><div class="ctc-th">신 청 자</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d)+'</div></div>'+trr('생년월일',fv(d.birth))+trr('대 표 자',seal(EUL_CEO))+trr('연 락 처',fv(d.phone))+trr('차량번호',fv(d.carno))+'</div>';
+     /* ===================== 5p. 허가 후 관리 신청서 (원문) ===================== */
+     h+="<div class=\"ctc-sttl\">택배용 화물자동차('배'번호판)의 허가 후 관리 신청서</div>";
+     h+='<p class="ctc-p" style="text-indent:0">쿠팡로지스틱스서비스 및 한국통합물류협회 귀중</p>';
+     h+="<p class=\"ctc-p\">신청자 본인은 '배'번호판을 택배 용도로만 사용하고 있음을 증명하기 위하여 아래와 같이 허가 후 관리 신청서를 제출합니다.</p><p class=\"ctc-p\" style=\"text-align:center;text-indent:0\">- 아 래 -</p>";
+     h+='<p class="ctc-p" style="font-weight:700">1. 신청 정보</p><div class="ctc-tbl">'+trr('영업점명',EUL)+'<div class="ctc-tr"><div class="ctc-th">신 청 자</div><div class="ctc-td">'+fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d)+'</div></div>'+trr('생년월일',fv(d.birth))+trr('대 표 자',seal(EUL_CEO))+trr('연 락 처',fv(d.phone))+trr('차량번호',fv(d.carno))+'</div>';
+     h+='<p class="ctc-p" style="font-weight:700">2. 허가 후 관리 방법</p>';
+     h+='<div class="ctc-tbl">'+trr('□ 자동 증명 (관리비 납부)','"이력관리 시스템"을 통해 전속운송계약이 체결되어 택배업에 종사하고 있음을 증명하고, 신청서를 접수한 달부터 매월 집배송 수수료(월급)에서 1,000원을 공제하여 한국통합물류협회에 관리비로 납부해줄 것을 요청합니다.')+trr('□ 직접 증명 (서류 확인비용 납부)','신청서를 접수한 달부터 매익월 5일까지 한국통합물류협회에 관련 증빙(택배회사 도장을 날인받은 월간 일자별 집배송 내역서 1부, 자동차등록증 사본 1부)을 등기우편 또는 직접 방문하여 제출하고, 서류 확인 비용 2,000원을 지정계좌로 입금하겠습니다. (지정계좌 별도 안내)')+'</div>';
+     h+='<p class="ctc-p" style="font-size:9.5pt;color:#a33">★ 서류 확인비용 납부 시 차량번호로 납부해주셔야 확인이 가능합니다.</p>';
      h+=cho();
-     h+='<p class="ctc-p" style="font-size:9pt;color:#666">· 자동 증명(관리비 납부): 신청서를 접수한 달부터 매월 집배송 수수료(월급)에서 1,000원을 공제하여 한국통합물류협회에 관리비로 납부.<br>· 직접 증명(서류 확인비용 납부): 매익월 5일까지 관련 증빙(도장 날인 월간 집배송 내역서 1부, 자동차등록증 사본 1부)을 제출하고 확인비용 2,000원을 지정계좌로 입금.</p>';
-     h+='<p class="ctc-p" style="color:#a33">※ 두 가지 방법 중 1가지를 택하여 허가 후 관리를 신청하여야 하며, 신청하지 않거나 직접 증명 선택 후 증빙 미제출 시에는 택배업 종사 확인이 불가능하므로 허가조건 위반 차량으로 관할관청에 통보될 수 있음.</p>';
+     h+='<p class="ctc-p" style="font-size:9.5pt;color:#a33">※ 두가지 방법 중 1가지를 택하여 허가 후 관리를 신청하여야 하며, 신청하지 않거나, 직접 증명 선택 후 증빙 미제출 시에는 택배업 종사 확인이 불가능하므로 허가조건 위반 차량으로 관할관청에 통보될 수 있음</p>';
      h+='<p class="ctc-p" style="text-align:center;text-indent:0">'+fv(kd(d.sign))+'</p>';
-     h+='<p class="ctc-p" style="font-size:8.5pt;color:#888">1. 택배용 화물자동차(\'배\'번호판)는 택배용도 외로 사용할 경우 화물자동차 운수사업법 시행규칙 제27조 별표2에 따라 사업정지 또는 허가취소 처분을 받게 됩니다.<br>2. 수집하는 개인정보(성명·생년월일·연락처·차량번호)의 사용목적·보유기간 등은 개인정보활용동의서를 통해 고시하였습니다.</p>';
+     h+='<p class="ctc-p" style="text-align:center;text-indent:0;color:#888">- - - - - - - - - - 안 내 사 항 - - - - - - - - - -</p>';
+     h+="<p class=\"ctc-p\" style=\"font-size:9pt;color:#666\">1. 택배용 화물자동차('배'번호판)는 택배용도 외로 사용할 경우 행정처분을 받습니다. (위반 시 화물자동차 운수사업법 시행규칙 제27조 별표2에 따라 사업정지 또는 허가취소 처분을 받게 됩니다.)</p>";
+     h+='<p class="ctc-p" style="font-size:9pt;color:#666">2. 수집하는 개인정보(성명, 생년월일, 연락처, 차량번호)에 대한 사용목적, 보유기간 등은 이력관리 등록신청 또는 허가 신규 신청시 제출하신 개인정보활용동의서를 통해 고시하였음을 알려드립니다.</p>
 
-     h+='</div>';return h;
+          h+='</div>';return h;
    }
   function fld(lab,id,v){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">'+lab+'</label><input id="ctc-'+id+'" value="'+(v||'')+'" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div>';}
   function badgeForm(d){return fld('이름','name',d.name||'')+fld('주민번호','jumin',d.jumin||'')+fld('주소','addr',d.addr||'')+fld('핸드폰','phone',d.phone||'')+fld('차량','car',d.car||'')+fld('연식','cyear',d.cyear||'')+fld('적재(kg)','load',d.load||'')+fld('차량번호','carno',d.carno||'')+fld('면허번호','lic',d.lic||'')+fld('면허종류','lictype',d.lictype||'')+fld('자격번호','qual',d.qual||'')+fld('자격취득일','qualdate',d.qualdate||'');}
