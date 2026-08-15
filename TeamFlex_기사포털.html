@@ -3089,7 +3089,7 @@ async function suSubmit(){
   try{
     var chk=await sbClient.from('drivers').select('name,status').eq('name',name).maybeSingle();
     if(chk&&chk.data){er.textContent='이미 등록된 이름입니다. 관리자에게 문의하세요.';if(btn){btn.disabled=false;btn.textContent='📩 가입 신청 (관리자 승인 요청)';}return;}
-    var up=await sbClient.from('drivers').upsert({name:name,login_id:name,driver_id:name,password:pw,role:'driver',status:'pending',phone:ext.phone,car_no:ext.carno||'',synced_at:new Date().toISOString()},{onConflict:'driver_id'});
+    var up=await sbClient.from('drivers').insert({name:name,login_id:name,driver_id:name,password:pw,role:'driver',status:'pending',phone:ext.phone,car_no:ext.carno||'',synced_at:new Date().toISOString()});
     if(up&&up.error)throw up.error;
     var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();
     var m=(r1&&r1.data&&r1.data.value)?(typeof r1.data.value==='string'?JSON.parse(r1.data.value):r1.data.value):{};
