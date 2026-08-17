@@ -883,7 +883,7 @@ function _addSchedChange(workDate,route,oldDriver,newDriver,changedBy){
   if(log.length>_SCHED_LOG_MAX)log=log.slice(0,_SCHED_LOG_MAX);
   _saveSchedLog(log);
   updateNavDots();
-  if(CU&&CU.role==='admin'){setTimeout(function(){try{loadPushSubs();}catch(e){}},1500);}
+  if(CU&&CU.role==='admin'){setTimeout(function(){try{loadPushSubs();}catch(e){}try{loadNotifTargets();}catch(e){}},1500);}
 }
 
 // 변경이력 미열람 건수
@@ -2561,12 +2561,75 @@ function _featureBar(feat){
       '<button id="fc-'+feat+'-active" onclick="saveFeatureCtrl(\''+feat+'\',\'active\',!getFeatureCtrl(\''+feat+'\',\'active\'))" '+
         'style="padding:4px 12px;border-radius:14px;border:none;background:'+(active?'#2e7d32':'#bdbdbd')+';color:#fff;font-size:11px;font-weight:700;cursor:pointer">'+
         (active?'&#x2705; 활성화':'&#x26D4; 비활성화')+'</button>'+
-      '<button id="fc-'+feat+'-notify" onclick="saveFeatureCtrl(\''+feat+'\',\'notify\',!getFeatureCtrl(\''+feat+'\',\'notify\'))" '+
-        'style="padding:4px 12px;border-radius:14px;border:none;background:'+(notify?'#1565c0':'#bdbdbd')+';color:#fff;font-size:11px;font-weight:700;cursor:pointer">'+
-        (notify?'&#x1F514; 알림켜짐':'&#x1F515; 알림꺼짐')+'</button>'+
+      '<button onclick="openNotifCfg(\''+feat+'\')" '+
+        'style="padding:4px 12px;border-radius:14px;border:none;background:#1565c0;color:#fff;font-size:11px;font-weight:700;cursor:pointer">&#x1F514; 알림 설정</button>'+
     '</div>'+
   '</div>';
 }
+
+
+// ── 탭별 알림 대상 설정 (관리자) ─────────────────────────────
+var _notifTargets=null;
+async function loadNotifTargets(){
+  if(!sbClient)return (_notifTargets=_notifTargets||{});
+  try{var r=await sbClient.from('app_settings').select('value').eq('key','notif_targets').maybeSingle();
+    _notifTargets=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{};}catch(e){_notifTargets=_notifTargets||{};}
+  return _notifTargets;
+}
+window.loadNotifTargets=loadNotifTargets;
+function notifCfgOf(feat){return (_notifTargets&&_notifTargets[feat])||{};}
+function notifRolesFor(feat){var c=notifCfgOf(feat);var r=c.roles||{};var out=[];['총괄','팀장','조장','기사'].forEach(function(k){if(r[k])out.push(k);});return out;}
+window.notifRolesFor=notifRolesFor;
+var NOTIF_LABEL={ann:'공지사항',misdelivery:'오배송',fresh:'신선',tq:'팀수량',requests:'각종요청',settle:'정산',pback:'프레시백 소명자료',loss:'분실차감',weightfactor:'가중요인',earlymonth:'월초예상물량',sla:'SLA',healthcheck:'건강체크',schedule:'스케줄',sched:'스케줄',emergency:'비상연락망',contract:'계약서 관리'};
+var NOTIF_NOTE={
+  ann:'전체 대상. 아래에서 체크한 역할에게 발송됩니다.',
+  misdelivery:'해당 인원에게 자동 발송. 승인요청 건은 아래 체크한 역할(예: 총괄·팀장)까지 발송.',
+  fresh:'수량이 공유되는 해당 인원에게 자동 발송. PDD MISS 인원 + 아래 체크한 역할(예: 팀장·총괄)까지 발송.',
+  tq:'수량이 공유되는 해당 인원에게 자동 발송. 수량 위험 인원 + 아래 체크한 역할(예: 팀장·총괄)까지 발송.',
+  requests:'요청·답글이 달린 해당 인원에게 자동 발송.',
+  pback:'해당 인원에게 자동 발송. 승인요청 건은 아래 체크한 역할(예: 총괄·팀장)까지 발송.',
+  loss:'해당 인원에게만 자동 발송.',
+  weightfactor:'아래에서 체크한 역할에게 발송됩니다.',
+  earlymonth:'아래에서 체크한 역할에게 발송됩니다.',
+  sla:'아래에서 체크한 역할에게 발송됩니다.',
+  settle:'해당 인원에게 자동 발송 + 아래 체크한 역할에게도 발송.',
+  healthcheck:'아래에서 체크한 역할에게 발송됩니다.',
+  contract:'해당 인원에게만 발송됩니다.'
+};
+async function openNotifCfg(feat){
+  if(!(CU&&CU.role==='admin'))return;
+  if(_notifTargets===null){try{await loadNotifTargets();}catch(e){}}
+  var cfg=notifCfgOf(feat);var roles=cfg.roles||{};
+  var label=NOTIF_LABEL[feat]||feat;var note=NOTIF_NOTE[feat]||'아래에서 체크한 역할에게 발송됩니다.';
+  var on=(cfg.on!==false);
+  var ROLES=['총괄','팀장','조장','기사'];
+  var rows=ROLES.map(function(k){var c=!!roles[k];return '<label style="display:flex;align-items:center;gap:12px;padding:12px 10px;border-bottom:1px solid #f2f5f8;cursor:pointer"><input type="checkbox" data-role="'+k+'" '+(c?'checked':'')+' style="width:20px;height:20px"><span style="flex:1;font-size:15px;font-weight:800;color:#33475b">'+k+'</span></label>';}).join('');
+  var old=document.getElementById('notifcfg-pop');if(old)old.remove();
+  var pop=document.createElement('div');pop.id='notifcfg-pop';pop.style.cssText='position:fixed;inset:0;z-index:10700;display:flex;flex-direction:column;justify-content:flex-end';
+  pop.innerHTML='<div onclick="var p=document.getElementById(\'notifcfg-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div>'+
+    '<div style="background:#fff;border-radius:22px 22px 0 0;max-height:86vh;display:flex;flex-direction:column;padding:16px 16px 26px">'+
+    '<div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div>'+
+    '<div style="font-size:16px;font-weight:900;color:#1565c0;text-align:center">🔔 '+label+' 알림 대상</div>'+
+    '<div style="font-size:11.5px;color:#8090a0;text-align:center;margin:6px 10px 12px;line-height:1.6">'+note+'</div>'+
+    '<label style="display:flex;align-items:center;gap:12px;padding:12px 10px;background:#eef5ff;border-radius:12px;margin-bottom:8px;cursor:pointer"><input type="checkbox" id="ntf-on" '+(on?'checked':'')+' style="width:20px;height:20px"><span style="flex:1;font-weight:900;color:#123a6b">이 탭 알림 사용</span></label>'+
+    '<label style="display:flex;align-items:center;gap:12px;padding:11px 10px;background:#f6f8fc;border-radius:12px;margin-bottom:6px;cursor:pointer"><input type="checkbox" id="ntf-all" onchange="_ntfAll(this.checked)" style="width:20px;height:20px"><span style="flex:1;font-weight:800;color:#3a4a5a">전체 역할 선택</span></label>'+
+    '<div style="border:1px solid #eef2f6;border-radius:12px;overflow:hidden">'+rows+'</div>'+
+    '<button onclick="saveNotifCfg(\''+feat+'\')" style="margin-top:14px;width:100%;padding:15px;background:linear-gradient(135deg,#1565c0,#0d3e80);color:#fff;border:none;border-radius:13px;font-weight:900;font-size:15px">저장</button>'+
+    '</div>';
+  document.body.appendChild(pop);
+}
+function _ntfAll(on){var p=document.getElementById('notifcfg-pop');if(!p)return;p.querySelectorAll('input[data-role]').forEach(function(cb){cb.checked=on;});}
+async function saveNotifCfg(feat){
+  var p=document.getElementById('notifcfg-pop');if(!p)return;
+  var roles={};p.querySelectorAll('input[data-role]').forEach(function(cb){roles[cb.getAttribute('data-role')]=cb.checked;});
+  var on=(document.getElementById('ntf-on')||{}).checked!==false;
+  if(_notifTargets===null)_notifTargets={};if(!_notifTargets)_notifTargets={};
+  _notifTargets[feat]={on:on,roles:roles};
+  try{if(sbClient)await sbClient.from('app_settings').upsert({key:'notif_targets',value:JSON.stringify(_notifTargets)},{onConflict:'key'});}catch(e){try{showToast('저장 실패: '+((e&&e.message)||e),false);}catch(_){}return;}
+  var pp=document.getElementById('notifcfg-pop');if(pp)pp.remove();
+  try{showToast('🔔 '+(NOTIF_LABEL[feat]||feat)+' 알림 대상 저장됨',true);}catch(_){}
+}
+window.openNotifCfg=openNotifCfg;window._ntfAll=_ntfAll;window.saveNotifCfg=saveNotifCfg;
 
 // Service Worker 코드 (blob으로 등록)
 var SW_CODE=`
