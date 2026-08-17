@@ -7516,6 +7516,29 @@ function _dhMaskField(key,val,e){
 function openDriverDetail(name){if(_driverExt===null){_loadDriverExt().then(function(){openDriverDetail(name);});return;}_dhRender(name,false);}
 var _DH_OPTS={car:['봉고 - Hi','봉고 - Low','봉고 - 2.2','포터 - Hi','포터 - Low','포터 - 2.2','스타리아','ST1','ST1 - Hi','PV5','PV5 - Hi','PV7','이티벤','마사다','기타'],fuel:['EV','LPG','디젤'],lictype:['2종보통','1종보통','1종대형']};
 function _dhSelectHtml(id,raw,opts){raw=String(raw==null?'':raw).trim();var found=opts.indexOf(raw)>=0;var h='<select id="'+id+'" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0;box-sizing:border-box;background:#fff">';h+='<option value=""'+(raw===''?' selected':'')+'>선택</option>';if(raw&&!found)h+='<option value="'+raw.replace(/"/g,'&quot;')+'" selected>'+raw+' (기존)</option>';opts.forEach(function(o){h+='<option value="'+o+'"'+(raw===o?' selected':'')+'>'+o+'</option>';});return h+'</select>';}
+var _DH_CARGROUPS=[{p:'봉고',bg:'#e8f5e9',tx:'#2e7d32'},{p:'포터',bg:'#e3f2fd',tx:'#1565c0'},{p:'스타리아',bg:'#f3e5f5',tx:'#7b1fa2'},{p:'ST1',bg:'#f3e5f5',tx:'#7b1fa2'},{p:'PV5',bg:'#fff3e0',tx:'#e65100'},{p:'PV7',bg:'#e0f2f1',tx:'#00695c'}];
+function _dhCarGroup(v){v=String(v||'');for(var i=0;i<_DH_CARGROUPS.length;i++){if(v.indexOf(_DH_CARGROUPS[i].p)===0)return _DH_CARGROUPS[i];}return {bg:'#eceff1',tx:'#546e7a'};}
+function _dhCarChip(v){var g=_dhCarGroup(v);var p=String(v).split(' - ');var base=p[0],suf=p.slice(1).join(' - ');var h='<span style="color:'+g.tx+';font-weight:800">'+base+'</span>';if(suf)h+=' <span style="background:'+g.tx+';color:#ffe600;font-weight:900;padding:1px 7px;border-radius:8px;font-size:11px;margin-left:2px">'+suf+'</span>';return h;}
+function _dhCarField(id,raw){raw=String(raw||'').trim();return '<div style="flex:1;min-width:0"><input type="hidden" id="'+id+'" value="'+raw.replace(/"/g,'&quot;')+'"><div id="'+id+'-btn" onclick="dhCarPick(\''+id+'\')" style="border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0"><span id="'+id+'-txt" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(raw?_dhCarChip(raw):'<span style="color:#9aa8b5">선택</span>')+'</span><span style="color:#9aa8b5;flex-shrink:0">&#9662;</span></div></div>';}
+function dhCarPick(id){
+  var cur=((document.getElementById(id)||{}).value)||'';
+  var G=[{c:'봉고',bg:'#e8f5e9',tx:'#2e7d32',items:['봉고 - Hi','봉고 - Low','봉고 - 2.2']},{c:'포터',bg:'#e3f2fd',tx:'#1565c0',items:['포터 - Hi','포터 - Low','포터 - 2.2']},{c:'스타리아·ST1',bg:'#f3e5f5',tx:'#7b1fa2',items:['스타리아','ST1','ST1 - Hi']},{c:'PV5',bg:'#fff3e0',tx:'#e65100',items:['PV5','PV5 - Hi']},{c:'PV7',bg:'#e0f2f1',tx:'#00695c',items:['PV7']},{c:'기타',bg:'#eceff1',tx:'#546e7a',items:['이티벤','마사다','기타']}];
+  var body='';
+  G.forEach(function(g){
+    body+='<div style="font-size:11px;font-weight:900;color:'+g.tx+';margin:12px 2px 5px">'+g.c+'</div><div style="display:flex;flex-wrap:wrap;gap:7px">';
+    g.items.forEach(function(it){
+      var p=it.split(' - ');var base=p[0],suf=p.slice(1).join(' - ');var sel=(cur===it);
+      body+='<div onclick="dhCarSet(\''+id+'\',\''+it+'\')" style="cursor:pointer;background:'+g.bg+';border:2px solid '+(sel?g.tx:'transparent')+';border-radius:11px;padding:8px 12px;display:inline-flex;align-items:center;gap:5px"><span style="color:'+g.tx+';font-weight:800;font-size:13px">'+base+'</span>'+(suf?'<span style="background:'+g.tx+';color:#ffe600;font-weight:900;padding:1px 8px;border-radius:8px;font-size:11.5px">'+suf+'</span>':'')+(sel?' <span style="color:'+g.tx+';font-weight:900">&#10003;</span>':'')+'</div>';
+    });
+    body+='</div>';
+  });
+  var old=document.getElementById('carpick-pop');if(old)old.remove();
+  var pop=document.createElement('div');pop.id='carpick-pop';pop.style.cssText='position:fixed;inset:0;z-index:11000;display:flex;flex-direction:column;justify-content:flex-end';
+  pop.innerHTML='<div onclick="var p=document.getElementById(\'carpick-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div><div style="background:#fff;border-radius:22px 22px 0 0;max-height:80vh;overflow:auto;padding:16px 16px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 10px"></div><div style="font-size:15px;font-weight:900;color:#22364a;text-align:center;margin-bottom:4px">🚚 차량명 선택</div>'+body+'</div>';
+  document.body.appendChild(pop);
+}
+function dhCarSet(id,v){var h=document.getElementById(id);if(h)h.value=v;var t=document.getElementById(id+'-txt');if(t)t.innerHTML=_dhCarChip(v);var p=document.getElementById('carpick-pop');if(p)p.remove();}
+window.dhCarPick=dhCarPick;window.dhCarSet=dhCarSet;
 function _dhRender(name,edit,mode){
   var self=(mode==='self');
   var db=getDB();var e=_dhMerge(name,_driverExt||{},db);var d=db[name]||{};var isAdm=CU&&CU.role==='admin'&&!self;var bl=!!(d&&d.blind);
@@ -7530,7 +7553,9 @@ function _dhRender(name,edit,mode){
       if(key==='cyear'){
         body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'
           +'<input id="dhe_cyear" value="'+(_deDig(e.regdate).slice(0,4)||e.cyear||'')+'" readonly style="flex:1;border:1.5px solid #bfe6cc;border-radius:9px;padding:8px 10px;font-size:13px;background:#f0faf3;color:#1b7a38;font-weight:700;box-sizing:border-box"></div>';
-      }else if(key==='car'||key==='fuel'||key==='lictype'){
+      }else if(key==='car'){
+        body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'+_dhCarField('dhe_car',raw)+'</div>';
+      }else if(key==='fuel'||key==='lictype'){
         body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'+_dhSelectHtml('dhe_'+key,raw,_DH_OPTS[key])+'</div>';
       }else{
         body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'
