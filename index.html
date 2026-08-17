@@ -2040,6 +2040,27 @@ function pgContractRequired(){
    '<button class="btn-ok" style="margin-top:18px;width:100%" onclick="CT_startWrite(&quot;wc&quot;,&quot;'+nm+'&quot;,null,&quot;driver&quot;)">&#x270D;&#xFE0F; 계약서 작성하기</button>'+
    '</div>';
 }
+async function pushStatusAdmin(){
+  if(!(CU&&CU.role==='admin'))return;
+  var old=document.getElementById('pushstat-pop');if(old)old.remove();
+  var pop=document.createElement('div');pop.id='pushstat-pop';pop.style.cssText='position:fixed;inset:0;z-index:10600;display:flex;flex-direction:column;justify-content:flex-end';
+  pop.innerHTML='<div onclick="var p=document.getElementById(\'pushstat-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div><div style="background:#fff;border-radius:22px 22px 0 0;max-height:88vh;display:flex;flex-direction:column"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:12px auto 8px"></div><div style="font-size:15px;font-weight:900;color:#5a2fb0;text-align:center">🔔 알림 구독 현황</div><div id="pushstat-body" style="overflow:auto;padding:10px 14px 22px;flex:1"><div style="text-align:center;color:#999;padding:24px">수파베이스에서 불러오는 중…</div></div></div>';
+  document.body.appendChild(pop);
+  var subs=[];try{var r=await sbClient.from('push_subscriptions').select('driver_name,role,endpoint');if(r&&r.data)subs=r.data;}catch(e){}
+  var byName={};subs.forEach(function(x){var n=(x.driver_name||'').trim();if(!n)return;byName[n]=(byName[n]||0)+1;});
+  var drs=(typeof _ctDrivers==='function')?_ctDrivers():[];
+  var subd=drs.filter(function(d){return byName[d.name];});var uns=drs.filter(function(d){return !byName[d.name];});
+  var dn={};drs.forEach(function(d){dn[d.name]=1;});var others=Object.keys(byName).filter(function(n){return !dn[n];});
+  var db=(typeof getDB==='function')?getDB():{};
+  function rl(nm){var d=db[nm];return d?({leader:'팀장',sub:'조장',driver:'기사'}[d.role]||''):'';}
+  function row(nm,cnt,ok){var _rl=rl(nm);return '<div style="display:flex;align-items:center;gap:8px;padding:9px 6px;border-bottom:1px solid #f2f5f8"><span style="flex:1;font-size:13px;font-weight:700;color:#33475b">'+nm+(_rl?' <span style="font-size:9px;color:#8090a0">'+_rl+'</span>':'')+'</span>'+(ok?'<span style="font-size:11px;font-weight:800;color:#1b7a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:4px 10px;border-radius:12px">🔔 구독 '+cnt+'대</span>':'<span style="font-size:11px;font-weight:800;color:#c62828;background:#fdeaea;border:1px solid #f2b8b8;padding:4px 10px;border-radius:12px">미구독</span>')+'</div>';}
+  var h='<div style="font-size:12px;color:#7a8794;text-align:center;margin-bottom:10px">수파베이스 push_subscriptions 기준 · 총 구독 '+subs.length+'대 · 구독 '+subd.length+'명 / 미구독 '+uns.length+'명</div>';
+  h+='<div style="font-weight:900;color:#1b7a3f;margin:6px 0 4px">🔔 구독됨 ('+subd.length+')</div>'+(subd.length?subd.map(function(d){return row(d.name,byName[d.name],true);}).join(''):'<div style="color:#bbb;font-size:12px;padding:6px">없음</div>');
+  h+='<div style="font-weight:900;color:#c62828;margin:14px 0 4px">⛔ 미구독 ('+uns.length+')</div>'+(uns.length?uns.map(function(d){return row(d.name,0,false);}).join(''):'<div style="color:#bbb;font-size:12px;padding:6px">없음</div>');
+  if(others.length){h+='<div style="font-weight:900;color:#607d8b;margin:14px 0 4px">그 외 구독(관리자 등) ('+others.length+')</div>'+others.map(function(n){return row(n,byName[n],true);}).join('');}
+  var body=document.getElementById('pushstat-body');if(body)body.innerHTML=h;
+}
+window.pushStatusAdmin=pushStatusAdmin;
 // 관리자: 계약서 관리 화면
 function _ctCapDetails(){try{return Array.prototype.map.call(document.querySelectorAll('#mc details.ctdet'),function(d){return d.open;});}catch(e){return null;}}
 function _ctResDetails(st){if(!st)return;try{var ds=document.querySelectorAll('#mc details.ctdet');for(var i=0;i<ds.length&&i<st.length;i++)ds[i].open=st[i];}catch(e){}}
@@ -2054,6 +2075,7 @@ function pgContractAdmin(){
     var h='<div class="stit">&#x1F4C4; 계약서 관리</div>';
     h+=_ctGateCard();
     h+='<div class="card"><button class="btn-ok" style="width:100%;background:#37474f" onclick="openIssuerSetup()">🏢 위탁자(회사) 정보·도장 설정</button></div>';
+    h+='<div class="card"><button class="btn-ok" style="width:100%;background:#5a2fb0" onclick="pushStatusAdmin()">🔔 알림 구독 현황 (수파베이스 실시간)</button></div>';
     h+='<div class="card"><div class="ctit">종류 선택</div><div style="display:flex;gap:10px">'+
        '<div onclick="ctAdminGo(\'wc\')" style="flex:1;border:2px solid #dbe7f5;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;background:#f8fbff"><div style="font-size:30px">📑</div><div style="font-size:13.5px;font-weight:800;color:#123a6b;margin-top:7px">표준계약서</div><div style="font-size:11px;color:#7a8794;margin-top:2px">위·수탁 1년</div></div>'+
        '<div onclick="ctAdminGo(\'badge\')" style="flex:1;border:2px solid #dbe7f5;border-radius:14px;padding:20px 10px;text-align:center;cursor:pointer;background:#f8fbff"><div style="font-size:30px">🚚</div><div style="font-size:13.5px;font-weight:800;color:#123a6b;margin-top:7px">배넘버 계약서</div><div style="font-size:11px;color:#7a8794;margin-top:2px">신규 · 재허가</div></div>'+
