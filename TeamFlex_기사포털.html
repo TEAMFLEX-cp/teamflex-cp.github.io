@@ -1309,7 +1309,11 @@ function sbSaveAnn(ann){
           var _annTitle='📢 팀플 - '+(ann.title||'새 공지사항');
           var _annBody=ann.content||ann.body||'새 공지가 등록됐습니다.';
           if(!isQuietHour()){
-            sendPushToAll(_annTitle, _annBody, sid);
+            var _annCfg=(typeof notifCfgOf==='function')?notifCfgOf('ann'):{};
+            var _annRoles=(typeof notifRolesFor==='function')?notifRolesFor('ann'):[];
+            if(_annCfg&&_annCfg.on===false){ /* 공지 알림 사용 꺼짐 → 발송 안 함 */ }
+            else if(_annRoles.length&&_annRoles.length<4){ pushNotify('ann',{title:_annTitle,body:_annBody,data:{ann_id:sid},roleBroadcast:true}); }
+            else { sendPushToAll(_annTitle, _annBody, sid); }
           }else{
             try{sbClient.from('night_queue').insert({recipient_name:null,recipient_role:null,category:'공지',title:_annTitle,body:String(_annBody).slice(0,300),data:{ann_id:sid}}).then(function(){}).catch(function(e){console.warn('night_queue 공지 적재 실패',e);});}catch(_nq){}
           }
@@ -2630,6 +2634,45 @@ async function saveNotifCfg(feat){
   try{showToast('🔔 '+(NOTIF_LABEL[feat]||feat)+' 알림 대상 저장됨',true);}catch(_){}
 }
 window.openNotifCfg=openNotifCfg;window._ntfAll=_ntfAll;window.saveNotifCfg=saveNotifCfg;
+
+// ── 통합 푸시 발송 헬퍼 (탭별 알림 대상 반영) ─────────────────────
+//   총괄/팀장→leader, 조장→sub, 기사→driver (DB role 기준). 대표/관리자=admin.
+function _edgeRolesFromK(kroles){
+  var set={};
+  (kroles||[]).forEach(function(k){
+    if(k==='총괄'||k==='팀장')set['leader']=1;
+    else if(k==='조장')set['sub']=1;
+    else if(k==='기사')set['driver']=1;
+    else if(k==='관리자'||k==='대표')set['admin']=1;
+  });
+  return Object.keys(set);
+}
+function _pushSend(payload){
+  try{fetch(SB_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify(payload)}).catch(function(){});}catch(e){}
+}
+// feat: notif_targets 키 / opts.always: 해당 인원(이름 배열) / opts.extraRoles: 강제 역할(한글) 추가
+async function pushNotify(feat, opts){
+  opts=opts||{};
+  try{ if(_notifTargets===null){ await loadNotifTargets(); } }catch(e){}
+  var cfg=notifCfgOf(feat);
+  if(cfg && cfg.on===false) return false; // 이 탭 알림 사용 꺼짐
+  var title=opts.title||'TeamFlex 알림', body=opts.body||'', data=opts.data||{};
+  var sent=false, seen={};
+  // 1) 해당 인원(항상 발송)
+  var always=(opts.always||[]).filter(Boolean);
+  for(var i=0;i<always.length;i++){ var nm=String(always[i]).trim(); if(!nm||seen[nm])continue; seen[nm]=1; _pushSend({title:title,body:body,target_name:nm,data:data}); sent=true; }
+  // 2) 역할 대상 (설정 없으면 defaultRoles로 폴백 → 기존 동작 보존)
+  if(opts.roleBroadcast!==false){
+    var kroles=notifRolesFor(feat)||[];
+    if(!kroles.length && opts.defaultRoles) kroles=opts.defaultRoles.slice();
+    kroles=kroles.concat(opts.extraRoles||[]);
+    var er=_edgeRolesFromK(kroles);
+    if(er.length){ _pushSend({title:title,body:body,target_roles:er,data:data}); sent=true; }
+  }
+  return sent;
+}
+window.pushNotify=pushNotify;window._pushSend=_pushSend;window._edgeRolesFromK=_edgeRolesFromK;
+
 
 // Service Worker 코드 (blob으로 등록)
 var SW_CODE=`
@@ -10484,16 +10527,10 @@ function mdRenderModeBar(mode){
 
 // ── 푸시 알림 헬퍼 ────────────────────────────────────────────────────
 function mdPushToDriver(driverName,title,body,caseId){
-  fetch(SB_URL+'/functions/v1/send-push',{
-    method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},
-    body:JSON.stringify({title:title,body:body,driver_name:driverName,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}}),
-  }).catch(function(e){console.warn('[mdPushToDriver]',e);});
+  try{pushNotify('misdelivery',{always:[driverName],roleBroadcast:false,title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}});}catch(e){console.warn('[mdPushToDriver]',e);}
 }
 function mdPushToLeaders(title,body,caseId){
-  fetch(SB_URL+'/functions/v1/send-push',{
-    method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},
-    body:JSON.stringify({title:title,body:body,target_roles:['leader','admin'],data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}}),
-  }).catch(function(e){console.warn('[mdPushToLeaders]',e);});
+  try{pushNotify('misdelivery',{roleBroadcast:true,defaultRoles:['총괄','팀장'],title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}});}catch(e){console.warn('[mdPushToLeaders]',e);}
 }
 // 기타/미지정 오배송 건을 특정 기사에게 지정 (관리자·팀장 전용)
 async function mdAssignDriver(caseId){
