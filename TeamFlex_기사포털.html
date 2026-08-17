@@ -1827,9 +1827,23 @@ async function ctRenew(names,type){
   if(!(CU&&CU.role==='admin'))return;
   var arr=Array.isArray(names)?names:[names];if(!arr.length)return;
   try{
-    if(type==='wc'){ if(!window._contractStatus)window._contractStatus={}; arr.forEach(function(n){delete _contractStatus[n];}); if(sbClient)await sbClient.from('app_settings').upsert({key:'contract_status',value:JSON.stringify(_contractStatus)},{onConflict:'key'}); }
-    if(typeof _ctApproved!=='undefined'&&_ctApproved===null&&typeof loadCtApproved==='function'){try{await loadCtApproved();}catch(e){}}
-    if(typeof _ctApproved!=='undefined'&&_ctApproved){arr.forEach(function(n){if(_ctApproved[n])delete _ctApproved[n][type];}); if(sbClient)await sbClient.from('app_settings').upsert({key:'contract_approved',value:JSON.stringify(_ctApproved)},{onConflict:'key'}); }
+    if(sbClient){
+      if(type==='wc'){
+        var rs=await sbClient.from('app_settings').select('value').eq('key','contract_status').maybeSingle();
+        var cs=(rs&&rs.data&&rs.data.value)?(typeof rs.data.value==='string'?JSON.parse(rs.data.value):rs.data.value):{};
+        arr.forEach(function(n){delete cs[n];try{var b=splitDriverSuffix(n);var base=(b&&(b.base||b.name))||'';if(base&&cs[base])delete cs[base];}catch(_e){}});
+        window._contractStatus=cs;_contractStatus=cs;
+        await sbClient.from('app_settings').upsert({key:'contract_status',value:JSON.stringify(cs)},{onConflict:'key'});
+      }
+      var rap=await sbClient.from('app_settings').select('value').eq('key','contract_approved').maybeSingle();
+      var ap=(rap&&rap.data&&rap.data.value)?(typeof rap.data.value==='string'?JSON.parse(rap.data.value):rap.data.value):{};
+      arr.forEach(function(n){if(ap[n])delete ap[n][type];});_ctApproved=ap;
+      await sbClient.from('app_settings').upsert({key:'contract_approved',value:JSON.stringify(ap)},{onConflict:'key'});
+      for(var _i=0;_i<arr.length;_i++){var _n=arr[_i];var _k='ct_doc_'+_n;var rd=await sbClient.from('app_settings').select('value').eq('key',_k).maybeSingle();var cur=(rd&&rd.data&&rd.data.value)?(typeof rd.data.value==='string'?JSON.parse(rd.data.value):rd.data.value):{};if(cur&&cur[type]){delete cur[type];await sbClient.from('app_settings').upsert({key:_k,value:JSON.stringify(cur)},{onConflict:'key'});}}
+    }else{
+      if(type==='wc'){if(!window._contractStatus)window._contractStatus={};arr.forEach(function(n){delete _contractStatus[n];});}
+      if(_ctApproved)arr.forEach(function(n){if(_ctApproved[n])delete _ctApproved[n][type];});
+    }
   }catch(e){console.warn('갱신 초기화 실패',e);}
   try{await ctaSet(arr,type,'pending');}catch(e){}
   try{showToast('🔄 '+arr.length+'명 계약서 갱신 요청 — 홈에 재작성 배너 노출',true);}catch(e){}
@@ -2003,13 +2017,20 @@ function pgContractAdmin(){
   }
   var drs=_ctDrivers();
   if(_ctAdminV==='wc'){
-    var written=drs.filter(function(d){return ctDone(d.name);}).sort(function(a,b){var aa=(typeof ctApprovedOf==='function'&&ctApprovedOf(a.name,'wc'))?1:0;var bb=(typeof ctApprovedOf==='function'&&ctApprovedOf(b.name,'wc'))?1:0;if(aa!==bb)return aa-bb;return (a.name||'').localeCompare(b.name||'','ko');});
-    var unwritten=drs.filter(function(d){return !ctDone(d.name);});
+    var _byN=function(a,b){return (a.name||'').localeCompare(b.name||'','ko');};
+    var _apW=function(nm){return (typeof ctApprovedOf==='function'&&ctApprovedOf(nm,'wc'));};
+    var pending=drs.filter(function(d){return ctDone(d.name)&&!_apW(d.name);}).sort(_byN);
+    var approved=drs.filter(function(d){return ctDone(d.name)&&_apW(d.name);}).sort(_byN);
+    var unwritten=drs.filter(function(d){return !ctDone(d.name);}).sort(_byN);
     var h=_ctBack('hub')+'📑 표준계약서 (위·수탁)</div>';
     h+='<div class="card"><div class="ctit">📤 계약서 공유 (홈에 노출)</div><div style="font-size:11px;color:#888;margin-bottom:8px">선택(전체/다중)한 기사 홈에 작성 배너가 뜨고, 완료 시 사라집니다.</div><div style="display:flex;gap:6px"><button class="btn-ok" style="flex:1" onclick="openCtShare(\'wc\')">📤 공유</button><button class="btn-ok" style="flex:1;background:#0b8a5f" onclick="openCtShare(\'wc\',true)">🔄 갱신</button><button class="btn-ok" style="flex:1;background:#455a94" onclick="CT_startWrite(\'wc\',null,null,\'admin\')">✍️ 직접 작성</button></div></div>';
-    h+='<details class="ctdet" open><summary>&#x2705; 작성자 ('+written.length+')</summary><div class="card" style="margin-top:8px">';
-    if(!written.length)h+='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">없음</div>';
-    written.forEach(function(d){h+=ctRow(d,true);});
+    h+='<details class="ctdet" open><summary>&#x1F58A;&#xFE0F; 승인 요청 ('+pending.length+')</summary><div class="card" style="margin-top:8px;border:1.5px solid #ffd08a">';
+    if(!pending.length)h+='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">없음</div>';
+    pending.forEach(function(d){h+=ctRow(d,true);});
+    h+='</div></details>';
+    h+='<details class="ctdet" open><summary>&#x2705; 작성 완료 ('+approved.length+')</summary><div class="card" style="margin-top:8px">';
+    if(!approved.length)h+='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">없음</div>';
+    approved.forEach(function(d){h+=ctRow(d,true);});
     h+='</div></details>';
     h+='<details class="ctdet"><summary>&#x26D4; 미작성자 ('+unwritten.length+')</summary><div class="card" style="margin-top:8px">';
     if(!unwritten.length)h+='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">없음</div>';
@@ -2357,7 +2378,7 @@ function openSchedPermPopup(){
 
      h+='</div>';return h;
    }
-  function fld(lab,id,v){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">'+lab+'</label><input id="ctc-'+id+'" value="'+(v||'')+'" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div>';}
+  function fld(lab,id,v,ro){return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">'+lab+'</label><input id="ctc-'+id+'" value="'+(v||'')+'" '+(ro?'readonly ':'')+'style="flex:1;border:1.5px solid '+(ro?'#cbd8e6':'#d5e2f0')+';'+(ro?'background:#eef3f8;color:#5a6b7c;':'')+'border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div>';}
   function badgeForm(d){return fld('이름','name',d.name||'')+fld('주민번호','jumin',d.jumin||'')+fld('주소','addr',d.addr||'')+fld('핸드폰','phone',d.phone||'')+fld('차량','car',d.car||'')+fld('연료','fuel',d.fuel||'')+fld('연식','cyear',d.cyear||'')+fld('적재(kg)','load',d.load||'')+fld('차량번호','carno',d.carno||'')+fld('면허번호','lic',d.lic||'')+fld('면허종류','lictype',d.lictype||'')+fld('자격번호','qual',d.qual||'')+fld('자격취득일','qualdate',d.qualdate||'');}
   function mc(){return document.getElementById('mc');}
   function val(id){var e=document.getElementById('ctc-'+id);return e?e.value:'';}
@@ -2368,7 +2389,7 @@ function openSchedPermPopup(){
   function renderStep(){paint(stepHTML());after();}
   function stepHTML(){var badge=(S.kind==='badge');var kt=badge?('배넘버 '+(S.badgeKind==='renew'?'재허가':'신규')+' 서류'):'위·수탁 계약서';var s=S.step;var head='<div class="stit" style="display:flex;align-items:center;gap:8px"><span onclick="CT_back()" style="cursor:pointer;color:#2f6bb0;font-weight:900;font-size:20px">‹</span>&#x1F4C4; '+kt+' 작성</div>';
     if(s===0){var sm=badge?{name:'○○○',jumin:'______-*******',addr:'________',phone:'',car:'',cyear:'',load:'',carno:'',lic:'',lictype:'',qual:'',qualdate:'',birth:'',start:'',end:'',sign:''}:{name:'○○○',jumin:'______-*******',addr:'________',route:'___',price:'___',start:'',end:'',sign:''};var sp=!!S.showPrev;var doc=sp?docHTML(sm,'blank'):'';var pv=sp?'<button class="ctc-btn" style="background:#eef2f6;color:#5a6b7c;margin-bottom:8px" onclick="CT_prev(false)">▲ 미리보기 접기</button>':'<button class="ctc-btn" style="background:#12b5a3;margin-bottom:8px" onclick="CT_prev(true)">&#x1F4C4; 계약서 미리보기</button>';return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c;margin-bottom:10px">작성 전 <b>실제 '+kt+'</b>를 미리 볼 수 있습니다.'+(badge?' (6종 서류)':'')+'</div>'+pv+'<button class="ctc-btn" style="background:#2f3e9e" onclick="CT_step(1)">기사 정보 입력 ›</button></div>'+doc;}
-    if(s===1){var d=S.d;var f=badge?badgeForm(d):(fld('성명','name',d.name||'')+fld('주민번호','jumin',d.jumin||'')+fld('주소','addr',d.addr||'')+fld('라우트','route',d.route||'')+fld('단가(원)','price',d.price||''));return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c;margin-bottom:10px">값이 서류 전체에 자동 반영됩니다. <b>계약일자=시작일−2~7일</b> 자동.'+(S.badgeKind==='renew'?' (재허가=오늘 작성)':'')+'</div>'+f+'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">계약 시작</label><input type="date" id="ctc-start" min="2020-01-01" max="2099-12-31" value="'+(d.start||'')+'" oninput="CT_end()" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">계약 종료</label><input id="ctc-end" readonly style="flex:1;border:1.5px solid #bfe6cc;background:#f0faf3;color:#1b7a38;font-weight:700;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div><div style="display:flex;gap:8px;margin-top:12px"><button class="ctc-btn" style="flex:0 0 70px;background:#eef2f6;color:#5a6b7c" onclick="CT_step(0)">‹</button><button class="ctc-btn" style="background:#12b5a3" onclick="CT_apply()">👁 미리보기 ›</button></div></div>';}
+    if(s===1){var d=S.d;var roLock=(S.mode!=='admin');var f=badge?badgeForm(d):(fld('성명','name',d.name||'')+fld('주민번호','jumin',d.jumin||'')+fld('주소','addr',d.addr||'')+fld('라우트','route',d.route||'',roLock)+fld('단가(원)','price',d.price||'',roLock));return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c;margin-bottom:10px">값이 서류 전체에 자동 반영됩니다. <b>계약일자=시작일−2~7일</b> 자동.'+(S.badgeKind==='renew'?' (재허가=오늘 작성)':'')+'</div>'+f+'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">계약 시작</label><input type="date" id="ctc-start" min="2020-01-01" max="2099-12-31" value="'+(d.start||'')+'" '+(roLock?'readonly ':'')+'oninput="CT_end()" style="flex:1;border:1.5px solid '+(roLock?'#cbd8e6':'#d5e2f0')+';'+(roLock?'background:#eef3f8;color:#5a6b7c;':'')+'border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div><div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:82px;flex-shrink:0;font-size:12px;font-weight:700;color:#33475b;text-align:right">계약 종료</label><input id="ctc-end" readonly style="flex:1;border:1.5px solid #bfe6cc;background:#f0faf3;color:#1b7a38;font-weight:700;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0"></div><div style="display:flex;gap:8px;margin-top:12px"><button class="ctc-btn" style="flex:0 0 70px;background:#eef2f6;color:#5a6b7c" onclick="CT_step(0)">‹</button><button class="ctc-btn" style="background:#12b5a3" onclick="CT_apply()">👁 미리보기 ›</button></div></div>';}
     if(s===2)return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c;margin-bottom:10px">입력값(노란칸)이 반영된 실제 '+kt+'. 확인 후 서명.</div><div style="display:flex;gap:8px"><button class="ctc-btn" style="flex:0 0 80px;background:#eef2f6;color:#5a6b7c" onclick="CT_step(1)">‹ 수정</button><button class="ctc-btn" style="background:#2f3e9e" onclick="CT_sign()">✍️ 사인하기 ›</button></div></div>'+docHTML(full(),'view');
     return head+'<div class="card"><div style="font-size:12px;color:#5a6b7c">주황색 자리로 <b>자동 안내</b>됩니다. 하나 끝내면 다음으로.</div></div><div class="ctc-sign">'+docHTML(full(),'sign')+'</div><div class="ctc-foot" id="ctc-foot"><div class="mx"><div class="ctc-guide" id="ctc-guide"></div><div class="ctc-pg" id="ctc-pg"></div><div id="ctc-fbtn"></div></div></div>';
   }
@@ -2422,7 +2443,7 @@ function openSchedPermPopup(){
     w.document.open();w.document.write(html);w.document.close();
   }
   window.CT_pdf=ctPdf;
-  window.CT_startWrite=function(k,n,bk,md){var run=function(){startWrite(k,n,bk,md);};if(n&&window._driverExt==null&&typeof window._loadDriverExt==='function'){window._loadDriverExt().then(run).catch(run);}else run();};window.CT_prev=function(v){S.showPrev=v;renderStep();};window.CT_step=function(n){S.step=n;renderStep();};window.CT_apply=function(){collect();S.step=2;renderStep();};window.CT_sign=function(){S.step=3;S.sig={};S.chk={};S.firstSig=null;renderStep();};window.CT_end=endCalc;window.CT_slot=slot;window.CT_agree=agree;window.CT_choice=choice;window.CT_mclear=mclear;window.CT_mdone=mdone;window.CT_finish=finish;window.CT_back=back;window.CT_preview=preview;window.CT_toast=toast;window.CT_bchk=function(field,val){if(!S.d)return;S.d[field]=(S.d[field]===val)?'':val;var el=document.getElementById(field);if(el){var sps=el.querySelectorAll('[data-v]');for(var i=0;i<sps.length;i++){var sp=sps[i];var on=(S.d[field]===sp.getAttribute('data-v'));var t=sp.textContent.replace(/^\s*[■□]\s?/,'');sp.textContent=(on?'■ ':'□ ')+t;sp.style.fontWeight=on?'800':'400';}}if(S.step===3)advance();};
+  window.CT_startWrite=function(k,n,bk,md){var run=function(){startWrite(k,n,bk,md);};if(n&&window.sbClient){window.sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle().then(function(r){try{if(r&&r.data&&r.data.value){var m=(typeof r.data.value==='string')?JSON.parse(r.data.value):r.data.value;if(m&&typeof m==='object')window._driverExt=m;}}catch(e){}run();}).catch(run);}else if(n&&window._driverExt==null&&typeof window._loadDriverExt==='function'){window._loadDriverExt().then(run).catch(run);}else run();};window.CT_prev=function(v){S.showPrev=v;renderStep();};window.CT_step=function(n){S.step=n;renderStep();};window.CT_apply=function(){collect();S.step=2;renderStep();};window.CT_sign=function(){S.step=3;S.sig={};S.chk={};S.firstSig=null;renderStep();};window.CT_end=endCalc;window.CT_slot=slot;window.CT_agree=agree;window.CT_choice=choice;window.CT_mclear=mclear;window.CT_mdone=mdone;window.CT_finish=finish;window.CT_back=back;window.CT_preview=preview;window.CT_toast=toast;window.CT_bchk=function(field,val){if(!S.d)return;S.d[field]=(S.d[field]===val)?'':val;var el=document.getElementById(field);if(el){var sps=el.querySelectorAll('[data-v]');for(var i=0;i<sps.length;i++){var sp=sps[i];var on=(S.d[field]===sp.getAttribute('data-v'));var t=sp.textContent.replace(/^\s*[■□]\s?/,'');sp.textContent=(on?'■ ':'□ ')+t;sp.style.fontWeight=on?'800':'400';}}if(S.step===3)advance();};
 })();
 
 function _featureBar(feat){
