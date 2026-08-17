@@ -13353,8 +13353,8 @@ function pbReassign(id){
   if(!nm||nm===cur)return;
   var db=(typeof getDB==='function')?getDB():{};
   if(!db[nm]){ if(!confirm('"'+nm+'" 은(는) 기사 명단에 없습니다.\n그래도 이 이름으로 넘길까요?'))return; }
-  pbUpd(id,{driver_name:nm});
-  try{if(typeof showToast==='function')showToast('🔀 '+cur+' → '+nm+' 재배정됨',true);}catch(e){}
+  pbUpd(id,{driver_name:nm,status:'pending',reason:'',reject_reason:'',approved_by:''});
+  try{if(typeof showToast==='function')showToast('🔀 '+cur+' → '+nm+' 재배정 · 소명 초기화(미작성)',true);}catch(e){}
 }
 function pbRevert(id){pbUpd(id,{status:'pending'});}
 function pbDownload(){
