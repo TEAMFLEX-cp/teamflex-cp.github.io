@@ -1643,10 +1643,11 @@ async function loadFeatureControls(){
   } catch(e){
     _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false},sla:{active:false,notify:false}};
   }
-  if(_contractStatus===null){ try{ await loadContractStatus(); }catch(e){} }
-  if(_ctAssign===null){ try{ await loadContractAssign(); }catch(e){} }
-  if(_ctIssuer===null){ try{ await loadContractIssuer(); }catch(e){} }
-  if(typeof _ctApproved!=='undefined'&&_ctApproved===null&&typeof loadCtApproved==='function'){ try{ await loadCtApproved(); }catch(e){} }
+  try{ await Promise.all([
+    (_contractStatus===null&&typeof loadContractStatus==='function')?loadContractStatus().catch(function(){}):null,
+    (_ctAssign===null&&typeof loadContractAssign==='function')?loadContractAssign().catch(function(){}):null,
+    (_ctIssuer===null&&typeof loadContractIssuer==='function')?loadContractIssuer().catch(function(){}):null
+  ]); }catch(e){}
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
   if(!mc)return;
@@ -1849,7 +1850,12 @@ async function issuerSave(){
   _ctIssuer=obj;window._ctIssuer=obj;var p=document.getElementById('issuer-pop');if(p)p.remove();showToast('🏢 위탁자 정보·도장 저장 완료',true);
 }
 function ctGateOn(){ return !!(_featureControls&&_featureControls.contract&&_featureControls.contract.active===true); }
-function ctRestricted(){ return ctGateOn()&&CU&&(CU.role==='driver'||CU.role==='leader'||CU.role==='sub')&&!(typeof ctApprovedOf==='function'&&ctApprovedOf(CU.name,'wc')); }
+function ctRestricted(){
+  if(!ctGateOn())return false;
+  if(!(CU&&(CU.role==='driver'||CU.role==='leader'||CU.role==='sub')))return false;
+  if(typeof _ctApproved==='undefined'||_ctApproved===null){ if(typeof loadCtApproved==='function'){loadCtApproved().then(function(){try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}});} return false; }
+  return !(typeof ctApprovedOf==='function'&&ctApprovedOf(CU.name,'wc'));
+}
 // 홈 배너: 미작성(위수탁) 기사·팀장·조장에게 계약서 작성 진입점 노출 (게이트 여부와 무관)
 function ctHomeBanner(){
   if(!CU||CU.role==='admin')return '';
@@ -3956,7 +3962,7 @@ function launchApp(){
   // avatar removed
   var roleLabel={'admin':'관리자','leader':'팀장','sub':'조장','driver':'기사'}[CU.role]||'기사';
   document.getElementById('han').textContent=CU.name+(CU.role==='admin'?' 님':' '+roleLabel+'님');
-  try{if(typeof updateHeaderBadges==='function'){Promise.all([(typeof _contractStatus!=='undefined'&&_contractStatus===null&&typeof loadContractStatus==='function')?loadContractStatus():null,(typeof _ctApproved!=='undefined'&&_ctApproved===null&&typeof loadCtApproved==='function')?loadCtApproved():null,(typeof _badgeLoaded!=='undefined'&&!_badgeLoaded&&typeof loadBadgeData==='function')?loadBadgeData():null]).then(updateHeaderBadges).catch(function(){});updateHeaderBadges();}}catch(e){}
+  try{if(typeof updateHeaderBadges==='function'){updateHeaderBadges();setTimeout(function(){try{Promise.all([(typeof _contractStatus!=='undefined'&&_contractStatus===null&&typeof loadContractStatus==='function')?loadContractStatus():null,(typeof _ctApproved!=='undefined'&&_ctApproved===null&&typeof loadCtApproved==='function')?loadCtApproved():null,(typeof _badgeLoaded!=='undefined'&&!_badgeLoaded&&typeof loadBadgeData==='function')?loadBadgeData():null]).then(updateHeaderBadges).catch(function(){});}catch(e){}},1600);}}catch(e){}
   document.getElementById('har').textContent='TeamFlex | '+roleLabel;
   var bn=document.getElementById('bn');
   if(CU.role==='admin'){
@@ -6982,10 +6988,10 @@ var _hotline=null;
 async function loadHotline(){
   if(!sbClient){_hotline=_hotline||'';return _hotline;}
   try{var r=await sbClient.from('app_settings').select('value').eq('key','coupang_hotline').maybeSingle();
-    _hotline=(r&&r.data&&r.data.value!=null)?String(r.data.value).replace(/^"|"$/g,'').trim():'';}catch(e){_hotline=_hotline||'';}
+    var _v=(r&&r.data)?r.data.value:null;var _t='';if(_v==null)_t='';else if(typeof _v==='string'){_t=_v.trim();if(_t.charAt(0)==='"'){try{_t=JSON.parse(_t);}catch(_e){_t=_t.replace(/^"|"$/g,'');}}}else _t=String(_v);_hotline=String(_t).trim();}catch(e){_hotline=_hotline||'';}
   return _hotline;
 }
-async function saveHotline(num){_hotline=num;try{if(sbClient)await sbClient.from('app_settings').upsert({key:'coupang_hotline',value:num},{onConflict:'key'});}catch(e){}}
+async function saveHotline(num){_hotline=num;try{if(sbClient)await sbClient.from('app_settings').upsert({key:'coupang_hotline',value:JSON.stringify(num)},{onConflict:'key'});}catch(e){}}
 function hotlineDial(){var n=(_hotline||'').replace(/[^0-9+]/g,'');if(!n){alert('쿠팡 핫라인 번호가 아직 설정되지 않았습니다.\n관리자에게 문의하세요.');return;}location.href='tel:'+n;}
 function hotlineEdit(){
   if(!(CU&&CU.role==='admin')){alert('관리자만 변경할 수 있습니다.');return;}
