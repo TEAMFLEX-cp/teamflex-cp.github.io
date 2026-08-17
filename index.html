@@ -135,6 +135,20 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
   @keyframes tfblink{50%{opacity:0}}
   @keyframes tfgold{0%{box-shadow:0 0 3px 0 rgba(212,175,55,.85)}50%{box-shadow:0 0 8px 2px rgba(255,215,0,.95)}100%{box-shadow:0 0 3px 0 rgba(212,175,55,.85)}}
   .tfgold{border:1.5px solid #e3c04a!important;animation:tfgold 1.3s infinite}
+/* 헤더 상태 배지(20번 디자인) */
+.hb{display:inline-flex;align-items:center;gap:2px;font-size:9.5px;font-weight:900;padding:2px 7px;border-radius:10px;white-space:nowrap;line-height:1.1}
+.hb-sub{background:#c62828;color:#ffe600;border:1.4px solid #ff8a8a}
+.hb-done{background:#e7f6ec;color:#137a3a;border:1.4px solid #9edcb4}
+.hb-gold{background:#e7f6ec;color:#137a3a;border:1.5px solid #e3c04a}
+.hb-group{position:relative;display:inline-flex;align-items:center;gap:5px;flex-wrap:nowrap;padding:1px 2px;border-radius:12px;overflow:hidden}
+.hb-group::after{content:'';position:absolute;top:-4px;bottom:-4px;left:-28%;width:20%;background:linear-gradient(105deg,transparent,rgba(255,232,140,.9) 45%,rgba(255,248,205,.98) 50%,rgba(255,232,140,.9) 55%,transparent);filter:blur(.5px);mix-blend-mode:screen;pointer-events:none;animation:hbflow 2.3s linear infinite}
+@keyframes hbflow{0%{left:-28%}100%{left:112%}}
+.hbrand{font-size:12px;font-weight:800;color:rgba(255,255,255,.95);letter-spacing:.3px;white-space:nowrap;margin-right:2px}
+.hb-need{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:900;padding:2px 9px;border-radius:11px;white-space:nowrap;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.55);color:#fff;animation:hbflash 1.25s ease-in-out infinite;margin-left:6px}
+.hb-need.n1{animation-delay:0s}.hb-need.n2{animation-delay:.22s}.hb-need.n3{animation-delay:.44s}.hb-need.n4{animation-delay:.66s}
+@keyframes hbflash{0%,100%{opacity:.42;box-shadow:0 0 0 0 rgba(255,255,255,0)}50%{opacity:1;box-shadow:0 0 12px 1px rgba(255,255,255,.55)}}
+.hb-need.danger{background:rgba(229,57,53,.42);border-color:#ff8a80}
+.hbw{color:#ffe600}
 /* 탭이 '글자 선택'으로 새는 문제 방지: 클릭 요소는 선택 불가·즉시 탭 */
 [onclick],button,a,.btn-ok,.ni,.mini,summary,label,.dhacts *{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0)}
 input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-select:text}
@@ -4303,7 +4317,7 @@ function launchApp(){
   document.getElementById('app').style.display='flex';
   // avatar removed
   var roleLabel={'admin':'관리자','leader':'팀장','sub':'조장','driver':'기사'}[CU.role]||'기사';
-  document.getElementById('han').textContent=CU.name+(CU.role==='admin'?' 님':' '+roleLabel+'님');
+  document.getElementById('han').textContent=CU.name+(CU.role==='admin'?' 님':'님');
   try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}
   document.getElementById('har').textContent='TeamFlex | '+roleLabel;
   var bn=document.getElementById('bn');
@@ -8947,7 +8961,28 @@ function inspComplete(name){
   for(var i=start;i<=today;i++){var dd=days[i]||days[String(i)];if(!dd||!(dd.done||dd.off))return false;}
   return true;
 }
-function updateHeaderBadges(){try{var el=document.getElementById('han-bdg');if(!el||!CU)return;el.innerHTML=(typeof _statusBadges==='function')?_statusBadges(CU.name):'';}catch(e){}}
+function updateHeaderBadges(){try{
+  if(!CU)return;var el=document.getElementById('han-bdg');var har=document.getElementById('har');
+  if(CU.role==='admin'){ if(el)el.innerHTML=''; return; }
+  var name=CU.name;
+  var subOn=!!window._pushOn;
+  var ctOk=(typeof ctDone==='function'&&ctDone(name));
+  var hcOk=!!(window._badgeLoaded&&typeof hcNorm==='function'&&window._hcDoneSet&&_hcDoneSet[hcNorm(name)]);
+  var inspOk=(typeof inspComplete==='function'&&inspComplete(name));
+  var inspBad=(typeof inspWarn==='function'&&inspWarn(name));
+  var done='';
+  if(subOn)done+='<span class="hb hb-sub">🔔 구독</span>';
+  if(ctOk)done+='<span class="hb hb-done">📄 계약✓</span>';
+  if(hcOk)done+='<span class="hb hb-done">💪 건강✓</span>';
+  if(inspOk)done+='<span class="hb hb-gold">🔧 점검✓</span>';
+  if(el)el.innerHTML=done?('<span class="hb-group">'+done+'</span>'):'';
+  var need='';
+  if(!subOn)need+='<span class="hb-need n1">🔔 구독 필요</span>';
+  if(!ctOk)need+='<span class="hb-need n4">📄 계약 필요</span>';
+  if(!hcOk)need+='<span class="hb-need n3">💪 건강체크 필요</span>';
+  if(!inspOk)need+='<span class="hb-need n2'+(inspBad?' danger':'')+'">🔧 <span class="hbw">차량점검 필요</span></span>';
+  if(har)har.innerHTML='<div style="display:flex;align-items:center;flex-wrap:wrap"><span class="hbrand">TeamFlex</span>'+need+'</div>';
+}catch(e){}}
 window.updateHeaderBadges=updateHeaderBadges;
 function _pushStatusCheck(){return (async function(){var ok=false;try{if(typeof Notification!=='undefined'&&Notification.permission==='granted'&&_swReg&&_swReg.pushManager){var sub=await _swReg.pushManager.getSubscription();ok=!!sub;}}catch(e){ok=false;}var changed=(window._pushOn!==ok);window._pushOn=ok;try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}try{if(changed&&typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm'&&!window._ctScreenOpen&&CU&&CU.role!=='admin'){var mc=document.getElementById('mc');if(mc&&typeof pgHome==='function')mc.innerHTML=pgHome();}}catch(e){}return ok;})();}
 window._pushStatusCheck=_pushStatusCheck;
