@@ -1989,6 +1989,36 @@ async function ensurePushSubscribed(interactive){
   }catch(e){if(interactive){try{showToast('알림 설정 실패: '+((e&&e.message)||e),false);}catch(_){}}return false;}
 }
 window.ensurePushSubscribed=ensurePushSubscribed;
+function _showChromeInstallOverlay(reason){
+  if(document.getElementById('chrome-ov'))return;
+  var ua=navigator.userAgent||'';
+  var isIOS=/iPhone|iPad|iPod/.test(ua)|| (/(Macintosh)/.test(ua)&&'ontouchend' in document);
+  var appUrl=location.href;
+  var intentUrl='intent://'+appUrl.replace(/^https?:\/\//,'')+'#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(appUrl)+';end';
+  var ov=document.createElement('div');ov.id='chrome-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:12000;background:rgba(6,20,40,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px;text-align:center;color:#fff';
+  var actionHtml=isIOS
+    ? '<div style="background:#0D2440;border:2px solid #1B6FD8;border-radius:16px;padding:20px;font-size:17px;line-height:2;color:#cfe3ff;max-width:360px">아이폰은 <b style="color:#fff">사파리(Safari)</b>로 열어야 해요.<br>① 사파리로 이 앱 주소 접속<br>② 아래 <b style="color:#fff">공유</b> 버튼 누르기<br>③ <b style="color:#fff">홈 화면에 추가</b><br>④ 새로 생긴 아이콘으로 열기</div>'
+    : '<a href="'+intentUrl+'" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:360px;padding:24px;border-radius:18px;background:linear-gradient(135deg,#1B6FD8,#0A3A8A);color:#fff;font-size:23px;font-weight:900;text-decoration:none;box-shadow:0 6px 24px rgba(27,111,216,.5)">🌐 크롬으로 열기</a>';
+  ov.innerHTML='<div style="font-size:64px;margin-bottom:14px">🔔</div>'
+    +'<div style="font-size:25px;font-weight:900;margin-bottom:12px;line-height:1.35">알림을 받으려면<br>크롬으로 열어야 해요</div>'
+    +'<div style="font-size:15px;color:#9fc0e0;line-height:1.7;margin-bottom:26px;max-width:360px">지금 이 화면은 <b style="color:#ffd08a">알림을 받을 수 없는 방식</b>이에요.<br>'+(isIOS?'아래 안내대로 사파리에서 설치하세요.':'아래 버튼을 누르면 크롬에서 자동으로 열려요.')+'</div>'
+    +actionHtml
+    +'<button onclick="var o=document.getElementById(\'chrome-ov\');if(o)o.remove();" style="margin-top:24px;background:none;border:none;color:#6a86a6;font-size:14px;text-decoration:underline">나중에 하기</button>';
+  document.body.appendChild(ov);
+}
+window._showChromeInstallOverlay=_showChromeInstallOverlay;
+async function ensurePushEnv(){
+  try{
+    if(!CU||CU.role==='admin')return; // 관리자는 강제 안내 제외
+    var ua=navigator.userAgent||'';
+    var isWV=/;\s*wv\)/.test(ua)|| /\bwv\b/.test(ua);
+    if(!('serviceWorker' in navigator)||isWV){ _showChromeInstallOverlay(isWV?'webview':'no-sw'); return; }
+    var reg=null;try{reg=await registerSW();}catch(e){}
+    if(!reg){ _showChromeInstallOverlay('sw-fail'); }
+  }catch(e){}
+}
+window.ensurePushEnv=ensurePushEnv;
 async function ctEnableNotif(ev){try{if(ev&&ev.stopPropagation)ev.stopPropagation();}catch(e){}return ensurePushSubscribed(true);}
 window.ctEnableNotif=ctEnableNotif;
 function _notifNudge(){
@@ -4185,6 +4215,7 @@ function launchApp(){
     } else { try{_pushStatusCheck();}catch(e){} }
   }, 2000);
   setTimeout(function(){try{_pushStatusCheck();}catch(e){}}, 3800);
+  setTimeout(function(){try{ensurePushEnv();}catch(e){}}, 2600);
   // 주기적 백그라운드 체크 등록 (앱 꺼져 있어도 15분마다 Supabase 조회)
   _registerPeriodicSync();
   // ── 시작 팝업 체인: 공지 → 당일 라우트 → 스케줄 변경 순으로 순차 표시 ──
