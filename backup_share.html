@@ -394,7 +394,6 @@ function adminHtml(){var tAvg=Math.round((draft.ta+draft.tj)/2);
   h+='<div class="card" style="border-left:6px solid #e65100"><div style="font-size:13.5px;font-weight:900;color:#e65100;margin-bottom:4px">🚚 현장 <span style="font-size:10px;font-weight:600;color:#a06a30">라우트 원단가 + 아래 금액</span></div>'+admRow('➕ 기본추가단가','ha')+'</div>';
   h+='<div class="card" style="border-left:6px solid #1565c0"><div style="font-size:13.5px;font-weight:900;color:#1565c0;margin-bottom:4px">📅 특정일 단가 <span style="font-size:10px;font-weight:600;color:#5a7bb0">(고정 단가)</span></div>'+admRow('🏢 아파트 단가','ta')+admRow('🏠 지번 단가','tj')+'<div class="calc"><div class="tot"><span>아파트+지번 (평균 자동)</span><span>'+money(tAvg)+'</span></div></div></div>';
   if(IS_OWNER&&ROLE==='admin')h+='<div style="margin-top:12px"><button class="btn b2" onclick="sub=\'compadmin\';render()">🏢 업체 승인 관리</button></div>';
-  h+='<div class="card" style="border-left:6px solid #12a374"><div style="font-size:13.5px;font-weight:900;color:#0b6b4a;margin-bottom:4px">📥 정산 내보내기</div><div style="font-size:11px;color:#7a8794;margin-bottom:9px;line-height:1.6">이번 달 <b>완료·정산일 정산</b> 건을 <b>백업 엑셀</b>(일자·근무자·지원자·수량·기본단가)로 내보냅니다.<br>정산 프로그램 → 기사관리 → <b>수익항목 백업 업로드</b>에 그대로 사용하세요. (개인 현금정산은 제외)</div><button class="btn b2" onclick="bpExportSettle()">📥 백업 정산 엑셀 내보내기</button></div>';
   h+='<div style="margin-top:12px"><button class="btn b1" onclick="saveAdmin()">💾 저장</button></div>';
   return h;
 }
