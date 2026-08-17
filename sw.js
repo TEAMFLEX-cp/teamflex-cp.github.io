@@ -1,5 +1,5 @@
 // TeamFlex Service Worker v347 — v346 원복(잘못된 consignment 필드로 PDD미스 판정 오류 → 복구)
-const CACHE_NAME = 'teamflex-v497';
+const CACHE_NAME = 'teamflex-v498';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -24,19 +24,26 @@ self.addEventListener('fetch', e => {
   //   → 접속은 항상 즉시(네트워크 대기 X = 스플래시 멈춤 방지), 절단된 파일은 캐시에 안 박힘.
   const isDoc = e.request.mode === 'navigate' || url.indexOf('TeamFlex_') >= 0 || url.endsWith('.html') || url.endsWith('/');
   if (isDoc) {
+    // 네트워크 우선(온라인이면 항상 최신 HTML) + 3.5s 타임아웃 시 캐시 폴백(오프라인/느린망 hang 방지)
     e.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match(e.request);
-      const netP = fetch(e.request).then(async resp => {
-        try {
-          if (resp && resp.ok) {
+      try {
+        const resp = await Promise.race([
+          fetch(e.request),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('t/o')), 3500))
+        ]);
+        if (resp && resp.ok) {
+          try {
             const txt = await resp.clone().text();
             if (txt.indexOf('</html>') >= 0) { try { await cache.put(e.request, resp.clone()); } catch (_) {} }
-          }
-        } catch (_) {}
-        return resp;
-      }).catch(() => null);
-      return cached || (await netP) || cached;   // 캐시 있으면 즉시, 없으면(최초 1회) 네트워크 대기
+          } catch (_) {}
+          return resp;
+        }
+        return cached || resp;
+      } catch (_) {
+        return cached || fetch(e.request).catch(() => cached);
+      }
     })());
     return;
   }
