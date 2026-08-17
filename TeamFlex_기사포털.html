@@ -839,12 +839,9 @@ textarea.ann-input:focus{border-color:#1565c0}
       </div>
     </div>
     <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0">
-        <button id="btnRefresh" onclick="doManualRefresh()" style="background:rgba(255,255,255,.18);border:none;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:16px;cursor:pointer;white-space:nowrap">&#x1F504; 새로고침</button>
-        <span id="sync-status-lbl" style="font-size:10px;color:rgba(255,255,255,.5);padding-right:4px;white-space:nowrap"></span>
-      </div>
-      <button class="btn-lo" onclick="openPwModal()">&#x1F512;</button>
-      <button class="btn-lo" id="btnLogout">로그아웃</button>
+      <button id="btnRefresh" onclick="doManualRefresh()" title="새로고침" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:16px;padding:0;width:34px;height:34px;border-radius:17px;cursor:pointer;display:grid;place-items:center;flex-shrink:0">&#x1F504;</button>
+      <span id="sync-status-lbl" style="display:none"></span>
+      <button class="btn-lo" id="btnLogout" title="로그아웃" style="width:34px;height:34px;border-radius:17px;padding:0;display:grid;place-items:center;flex-shrink:0;color:#fff"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
     </div>
   </div>
   <div class="mc" id="mc"></div>
