@@ -7685,17 +7685,40 @@ async function _dhDoDelete(name){
   try{showToast('🗑 '+name+' 삭제 완료',true);}catch(_){alert('삭제 완료');}
 }
 /* ── 엑셀 ── */
-function dhExcelDown(){
-  var db=getDB();var ext=_driverExt||{};
-  var cols=['성명','역할','상태','주민번호','생년월일','주소','메인폰','서브폰','쿠팡ID','운전면허번호','면허종류','화물운송자격번호','자격취득일','차량명','연료','차량등록일','연식','차량번호','허가시도','허가시군구','배넘버허가일','은행','계좌번호','입사일'];
-  var rows=[cols.join(',')];
-  Object.values(db).filter(function(d){return d.name&&splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&d.role!=='admin'&&d.name!==ROOT_ADMIN.id;}).forEach(function(d){
-    var e=_dhMerge(d.name,ext,db);
-    var v=[d.name,_dhDrole(d,ext),d.status,_deJ(e.jumin),_dhBirth(e.jumin),e.addr||'',_deP(e.phone),_deP(e.subphone),e.cpid||'',_deL(e.lic),e.lictype||'',_deQ(e.qual),_deD(e.qualdate),e.car||'',e.fuel||'',_deD(e.regdate),(_deDig(e.regdate).slice(0,4)||e.cyear||''),e.carno||'',e.sido||'',e.sigungu||'',_deD(e.badgedate),e.bank||'',e.acct||'',_deD(e.joindate)];
-    rows.push(v.map(function(x){x=String(x==null?'':x);return (x.indexOf(',')>=0||x.indexOf('"')>=0)?'"'+x.replace(/"/g,'""')+'"':x;}).join(','));
-  });
+function _loadExcelJS(cb){if(window.ExcelJS){cb(true);return;}var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';sc.onload=function(){cb(!!window.ExcelJS);};sc.onerror=function(){cb(false);};document.head.appendChild(sc);}
+function _dhCsvFallback(cols,data){
+  var rows=[cols.join(',')];data.forEach(function(v){rows.push(v.map(function(x){x=String(x==null?'':x);return (x.indexOf(',')>=0||x.indexOf('"')>=0||x.indexOf('\n')>=0)?'"'+x.replace(/"/g,'""')+'"':x;}).join(','));});
   var blob=new Blob(['﻿'+rows.join('\r\n')],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='기사정보_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
 }
+function dhExcelDown(){
+  var db=getDB();var ext=_driverExt||{};
+  var COLS=[['성명',9],['역할',7],['상태',8],['주민번호',15],['생년월일',11],['주소',30],['메인폰',14],['서브폰',14],['쿠팡ID',14],['운전면허번호',18],['면허종류',10],['화물운송자격번호',16],['자격취득일',12],['차량명',12],['연료',7],['적재량(kg)',9],['차량등록일',12],['연식',7],['차량번호',12],['허가시도',10],['허가시군구',10],['배넘버허가일',12],['라우트',9],['단가',8],['계약시작일',12],['은행',10],['계좌번호',18],['입사일',12]];
+  var data=[];
+  Object.values(db).filter(function(d){return d.name&&splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&d.role!=='admin'&&d.name!==ROOT_ADMIN.id;}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');}).forEach(function(d){
+    var e=_dhMerge(d.name,ext,db);
+    data.push([d.name,_dhDrole(d,ext),d.status,_deJ(e.jumin),_dhBirth(e.jumin),e.addr||'',_deP(e.phone),_deP(e.subphone),e.cpid||'',_deL(e.lic),e.lictype||'',_deQ(e.qual),_deD(e.qualdate),e.car||'',e.fuel||'',e.load||'',_deD(e.regdate),(_deDig(e.regdate).slice(0,4)||e.cyear||''),e.carno||'',e.sido||'',e.sigungu||'',_deD(e.badgedate),e.route||'',e.price||'',(e.cstart||''),e.bank||'',e.acct||'',_deD(e.joindate)]);
+  });
+  var fname='기사정보_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  _loadExcelJS(function(ok){
+    if(!ok||!window.ExcelJS){ _dhCsvFallback(COLS.map(function(c){return c[0];}),data); try{showToast('엑셀 모듈 실패 — CSV로 저장',false);}catch(_){}; return; }
+    (async function(){try{
+      var wb=new ExcelJS.Workbook();var ws=wb.addWorksheet('기사정보');
+      ws.columns=COLS.map(function(c){return {header:c[0],width:c[1]};});
+      data.forEach(function(r){ws.addRow(r);});
+      var B={style:'thin',color:{argb:'FFBFC7D0'}};var bd={top:B,left:B,bottom:B,right:B};
+      var hr=ws.getRow(1);hr.height=22;
+      hr.eachCell(function(c){c.font={bold:true,color:{argb:'FFFFFFFF'},size:11};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F4E79'}};c.alignment={horizontal:'center',vertical:'middle'};c.border=bd;});
+      for(var i=2;i<=data.length+1;i++){var row=ws.getRow(i);row.height=18;row.eachCell(function(c){c.border=bd;c.alignment={vertical:'middle',horizontal:'left'};c.font={size:10.5};});}
+      ws.views=[{state:'frozen',ySplit:1}];
+      ws.autoFilter={from:{row:1,column:1},to:{row:1,column:COLS.length}};
+      var buf=await wb.xlsx.writeBuffer();
+      var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();
+      try{showToast('📊 기사정보 엑셀 다운로드 (전체 항목)',true);}catch(_){}
+    }catch(ex){alert('엑셀 생성 오류: '+ex.message);_dhCsvFallback(COLS.map(function(c){return c[0];}),data);}})();
+  });
+}
+window._loadExcelJS=_loadExcelJS;
 function _dhCol(h){h=String(h==null?'':h).replace(/\s|\./g,'');if(!h||h==='None')return '';
   if(/^ID$/i.test(h)||/쿠팡/.test(h)||/플렉스ID/i.test(h)||/로그인/.test(h))return 'cpid';
   if(/비밀번호|비번|password/i.test(h))return '__skip';
@@ -7721,6 +7744,10 @@ function _dhCol(h){h=String(h==null?'':h).replace(/\s|\./g,'');if(!h||h==='None'
   if(/시군구/.test(h))return 'sigungu';
   if(/시도/.test(h))return 'sido';
   if(/배넘버|허가일/.test(h))return 'badgedate';
+  if(/적재/.test(h))return 'load';
+  if(/라우트|route/i.test(h))return 'route';
+  if(/단가/.test(h))return 'price';
+  if(/계약시작/.test(h))return 'cstart';
   return '';
 }
 function _dhApplyRows(hdr,rows){
