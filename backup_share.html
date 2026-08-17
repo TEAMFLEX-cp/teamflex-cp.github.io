@@ -84,7 +84,7 @@
   .rtitem.on{background:#e8f2ff;color:#1565c0}
   .rtck{width:20px;height:20px;border-radius:5px;border:1.5px solid #cfe0f5;display:grid;place-items:center;font-size:12px;color:#fff;background:#fff}
   .rtitem.on .rtck{background:#1565c0;border-color:#1565c0}
-</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head>
 <body>
 <div class="phone">
   <div class="hdr"><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="t">🤝 백업 공유</div><div class="s" id="bp-sub">매칭 전 익명 · 정산 연동</div></div><div style="display:flex;gap:8px"><div id="bp-back" onclick="bpBack()" style="cursor:pointer;font-size:20px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">‹</div><div id="bp-bell" onclick="bpBell()" style="cursor:pointer;font-size:16px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">🔔</div><div id="bp-gear" onclick="openAdmin()" style="cursor:pointer;font-size:20px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">⚙️</div></div></div></div>
@@ -337,6 +337,22 @@ function compAdminHtml(){
   });
   return h;
 }
+function bpExportSettle(){
+  if(typeof XLSX==='undefined'){toast('엑셀 모듈 로딩중 · 잠시 후 다시');return;}
+  var ym=TODAY.slice(0,7);
+  var rows=[['일자','근무자','지원자','수량','기본단가']];var cnt=0;
+  reqs.filter(function(r){return r.status==='done'&&r.settle==='정산일'&&(r.date||'').slice(0,7)===ym;}).forEach(function(r){
+    var p=(r.date||'').split('-');var mmdd=p.length>=3?(p[1]+'/'+p[2]):(r.date||'');
+    var sups=(r.supporters||[]).filter(function(s){return s.state==='picked';});if(!sups.length)sups=r.supporters||[];
+    var q=sups.length?Math.round((r.finalQty||0)/sups.length):(r.finalQty||0);
+    sups.forEach(function(s){rows.push([mmdd, r.requester, (s.name||'').split('(')[0].trim(), q, r.negUnit||reqUnit(r)]);cnt++;});
+  });
+  if(!cnt){toast('내보낼 정산일 완료건이 없습니다 (이번 달)');return;}
+  var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:8},{wch:12},{wch:12},{wch:8},{wch:10}];
+  var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'백업');
+  XLSX.writeFile(wb,'백업정산_'+ym+'.xlsx');
+  toast('📥 '+cnt+'행 내보내기 완료');
+}
 function openAdmin(){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}draft={ha:HYEONADD,ta:RATE['특정일']['아파트'],tj:RATE['특정일']['지번']};sub='admin';pushHist();render();}
 function aAdm(k,d){draft[k]=Math.max(0,(draft[k]||0)+d);render();}
 function saveAdmin(){HYEONADD=draft.ha;RATE['특정일']['아파트']=draft.ta;RATE['특정일']['지번']=draft.tj;APTP['아파트']=draft.ta;APTP['지번']=draft.tj;APTP['아파트+지번']=Math.round((draft.ta+draft.tj)/2);sb.from('bp_company_config').upsert({company_id:MYCOMP,hyeon_add:draft.ha,teuk_apt:draft.ta,teuk_jib:draft.tj,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(){});toast('💾 단가 저장 · 즉시 반영');go('cal');}
@@ -347,6 +363,7 @@ function adminHtml(){var tAvg=Math.round((draft.ta+draft.tj)/2);
   h+='<div class="card" style="border-left:6px solid #e65100"><div style="font-size:13.5px;font-weight:900;color:#e65100;margin-bottom:4px">🚚 현장 <span style="font-size:10px;font-weight:600;color:#a06a30">라우트 원단가 + 아래 금액</span></div>'+admRow('➕ 기본추가단가','ha')+'</div>';
   h+='<div class="card" style="border-left:6px solid #1565c0"><div style="font-size:13.5px;font-weight:900;color:#1565c0;margin-bottom:4px">📅 특정일 단가 <span style="font-size:10px;font-weight:600;color:#5a7bb0">(고정 단가)</span></div>'+admRow('🏢 아파트 단가','ta')+admRow('🏠 지번 단가','tj')+'<div class="calc"><div class="tot"><span>아파트+지번 (평균 자동)</span><span>'+money(tAvg)+'</span></div></div></div>';
   if(IS_OWNER&&ROLE==='admin')h+='<div style="margin-top:12px"><button class="btn b2" onclick="sub=\'compadmin\';render()">🏢 업체 승인 관리</button></div>';
+  h+='<div class="card" style="border-left:6px solid #12a374"><div style="font-size:13.5px;font-weight:900;color:#0b6b4a;margin-bottom:4px">📥 정산 내보내기</div><div style="font-size:11px;color:#7a8794;margin-bottom:9px;line-height:1.6">이번 달 <b>완료·정산일 정산</b> 건을 <b>백업 엑셀</b>(일자·근무자·지원자·수량·기본단가)로 내보냅니다.<br>정산 프로그램 → 기사관리 → <b>수익항목 백업 업로드</b>에 그대로 사용하세요. (개인 현금정산은 제외)</div><button class="btn b2" onclick="bpExportSettle()">📥 백업 정산 엑셀 내보내기</button></div>';
   h+='<div style="margin-top:12px"><button class="btn b1" onclick="saveAdmin()">💾 저장</button></div>';
   return h;
 }
