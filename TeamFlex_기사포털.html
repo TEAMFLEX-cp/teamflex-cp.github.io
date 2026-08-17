@@ -1648,6 +1648,7 @@ async function loadFeatureControls(){
     (_ctAssign===null&&typeof loadContractAssign==='function')?loadContractAssign().catch(function(){}):null,
     (_ctIssuer===null&&typeof loadContractIssuer==='function')?loadContractIssuer().catch(function(){}):null
   ]); }catch(e){}
+  try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
   if(!mc)return;
@@ -3962,7 +3963,7 @@ function launchApp(){
   // avatar removed
   var roleLabel={'admin':'관리자','leader':'팀장','sub':'조장','driver':'기사'}[CU.role]||'기사';
   document.getElementById('han').textContent=CU.name+(CU.role==='admin'?' 님':' '+roleLabel+'님');
-  try{if(typeof updateHeaderBadges==='function'){updateHeaderBadges();setTimeout(function(){try{Promise.all([(typeof _contractStatus!=='undefined'&&_contractStatus===null&&typeof loadContractStatus==='function')?loadContractStatus():null,(typeof _ctApproved!=='undefined'&&_ctApproved===null&&typeof loadCtApproved==='function')?loadCtApproved():null,(typeof _badgeLoaded!=='undefined'&&!_badgeLoaded&&typeof loadBadgeData==='function')?loadBadgeData():null]).then(updateHeaderBadges).catch(function(){});}catch(e){}},1600);}}catch(e){}
+  try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}
   document.getElementById('har').textContent='TeamFlex | '+roleLabel;
   var bn=document.getElementById('bn');
   if(CU.role==='admin'){
