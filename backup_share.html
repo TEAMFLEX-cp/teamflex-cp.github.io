@@ -450,10 +450,12 @@ function bpSaveReq(r){sb.from('bp_requests').update(reqToDb(r)).eq('id',r.id).th
 function bpNewSlot(s){sb.from('bp_slots').insert({company_id:MYCOMP,driver_name:s.driver,driver_company:s.company,date:s.date,type:s.type,qty:s.qty,unit:s.unit,status:s.status||'open'}).then(function(){reload();});}
 function bpSaveSlot(s){sb.from('bp_slots').update({status:s.status}).eq('id',s.id).then(function(){});}
 async function loadData(){
-  var rq=await sb.from('bp_requests').select('*').in('company_id',APPROVED_IDS).order('date',{ascending:true});
-  reqs=((rq&&rq.data)||[]).map(dbToReq);
-  var sl=await sb.from('bp_slots').select('*').in('company_id',APPROVED_IDS).order('date',{ascending:true});
-  slots=((sl&&sl.data)||[]).map(dbToSlot);
+  var _d=await Promise.all([
+    sb.from('bp_requests').select('*').in('company_id',APPROVED_IDS).order('date',{ascending:true}),
+    sb.from('bp_slots').select('*').in('company_id',APPROVED_IDS).order('date',{ascending:true})
+  ]);
+  reqs=((_d[0]&&_d[0].data)||[]).map(dbToReq);
+  slots=((_d[1]&&_d[1].data)||[]).map(dbToSlot);
 }
 function pendingHtml(c){return '<div style="padding:34px 16px;text-align:center"><div style="font-size:46px">⏳</div><div style="font-size:17px;font-weight:900;color:#123a6b;margin-top:12px">백업 공유 · 승인 대기</div><div class="note" style="margin-top:16px">'+(c?('<b>'+(c.name||MYCOMPNAME)+'</b> 업체는 아직 <b>승인</b>되지 않았습니다.'):('<b>'+MYCOMPNAME+'</b> 업체가 허브에 <b>참여 요청</b>되었습니다.'))+'<br>팀플렉스(오너) 관리자의 승인 후 이용할 수 있습니다.</div></div>';}
 async function boot(){
@@ -462,22 +464,29 @@ async function boot(){
     var meComp=cr&&cr.data;
     if(!meComp){ try{await sb.from('bp_companies').insert({id:MYCOMP,name:MYCOMPNAME,approved:false,active:true,contact:ME});}catch(e){} document.getElementById('scr').innerHTML=pendingHtml(null); return; }
     if(!meComp.approved && !meComp.is_owner){ document.getElementById('scr').innerHTML=pendingHtml(meComp); return; }
-    var ap=await sb.from('bp_companies').select('id').eq('approved',true);
-    APPROVED_IDS=((ap&&ap.data)||[]).map(function(x){return x.id;}); if(!APPROVED_IDS.length)APPROVED_IDS=[MYCOMP];
     IS_OWNER=!!meComp.is_owner;
-    try{var fc=await sb.from('app_settings').select('value').eq('key','feature_controls').maybeSingle(); if(fc&&fc.data){var _p=typeof fc.data.value==='string'?JSON.parse(fc.data.value):fc.data.value; PUSHHOURS=_p&&_p.pushHours;}}catch(_e){}
-    try{var nf=await sb.from('app_settings').select('value').eq('key','bp_notif').maybeSingle(); if(nf&&nf.data&&nf.data.value){var np=typeof nf.data.value==='string'?JSON.parse(nf.data.value):nf.data.value; BPNOTIF=Object.assign(BPNOTIF,np);}}catch(_e){}
-    var cs=await sb.from('bp_companies').select('*').order('requested_at',{ascending:true}); COMPANIES=((cs&&cs.data)||[]);
-    var cf=await sb.from('bp_company_config').select('*').eq('company_id',MYCOMP).maybeSingle();
+    try{if(ROLE!=='admin'){['bp-bell','bp-gear'].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});}}catch(_e){}
+    try{var _sb=document.getElementById('bp-sub');if(_sb)_sb.textContent=ME+' · '+MYCOMPNAME+' · 매칭 전 익명';}catch(_e){}
+    render();
+    var _R=await Promise.all([
+      sb.from('bp_companies').select('id').eq('approved',true),
+      sb.from('bp_company_config').select('*').eq('company_id',MYCOMP).maybeSingle(),
+      sb.from('bp_company_routes').select('route_name,base_price').eq('company_id',MYCOMP),
+      sb.from('bp_company_drivers').select('name,account_no,bank_name,phone').eq('company_id',MYCOMP),
+      sb.from('app_settings').select('value').eq('key','feature_controls').maybeSingle(),
+      sb.from('app_settings').select('value').eq('key','bp_notif').maybeSingle(),
+      sb.from('bp_companies').select('*').order('requested_at',{ascending:true})
+    ]);
+    var ap=_R[0],cf=_R[1],rt=_R[2],dv=_R[3],fc=_R[4],nf=_R[5],cs=_R[6];
+    APPROVED_IDS=((ap&&ap.data)||[]).map(function(x){return x.id;}); if(!APPROVED_IDS.length)APPROVED_IDS=[MYCOMP];
     if(cf&&cf.data){HYEONADD=cf.data.hyeon_add;RATE['특정일']['아파트']=cf.data.teuk_apt;RATE['특정일']['지번']=cf.data.teuk_jib;APTP['아파트']=cf.data.teuk_apt;APTP['지번']=cf.data.teuk_jib;APTP['아파트+지번']=Math.round((cf.data.teuk_apt+cf.data.teuk_jib)/2);}
-    var rt=await sb.from('bp_company_routes').select('route_name,base_price').eq('company_id',MYCOMP);
     ROUTES={};((rt&&rt.data)||[]).forEach(function(x){ROUTES[x.route_name]=x.base_price;});
-    var dv=await sb.from('bp_company_drivers').select('name,account_no,bank_name,phone').eq('company_id',MYCOMP);
     DRIVERS=((dv&&dv.data)||[]).map(function(x){return x.name;});
     var mine=((dv&&dv.data)||[]).find(function(x){return x.name===ME;}); if(mine){MYACCT=((mine.bank_name||'')+' '+(mine.account_no||'')).trim();}
+    try{if(fc&&fc.data){var _p=typeof fc.data.value==='string'?JSON.parse(fc.data.value):fc.data.value; PUSHHOURS=_p&&_p.pushHours;}}catch(_e){}
+    try{if(nf&&nf.data&&nf.data.value){var np=typeof nf.data.value==='string'?JSON.parse(nf.data.value):nf.data.value; BPNOTIF=Object.assign(BPNOTIF,np);}}catch(_e){}
+    COMPANIES=((cs&&cs.data)||[]);
     await loadData();
-    try{var _sb=document.getElementById('bp-sub');if(_sb)_sb.textContent=ME+' · '+MYCOMPNAME+' · 매칭 전 익명';}catch(_e){}
-    try{if(ROLE!=='admin'){['bp-bell','bp-gear'].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});}}catch(_e){}
     render();
   }catch(e){document.getElementById('scr').innerHTML='<div class="note">연결 오류: '+((e&&e.message)||e)+'</div>';}
 }
