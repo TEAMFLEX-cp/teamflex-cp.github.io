@@ -2565,11 +2565,8 @@ async function subscribePush(){
   try{
     var sub=await _swReg.pushManager.getSubscription();
     var _oldEp=sub?sub.endpoint:null;
-    // ★ 강제 갱신: 권한이 허용된 경우 기존 구독을 해지하고 새로 구독 → '죽은 구독'도 확실히 살림
-    if(sub&&Notification.permission==='granted'){
-      try{await sub.unsubscribe();}catch(e){}
-      sub=null;
-    }
+    // 기존 구독 '유지'(엔드포인트 안정화) → 같은 기기에 로그인한 여러 계정이 각자 알림 받도록.
+    //   (매 로그인마다 해지/재구독하면 엔드포인트가 바뀌어 이전 계정 구독이 죽어버림)
     if(!sub){
       if(Notification.permission!=='granted'){return;}
       sub=await _swReg.pushManager.subscribe({
@@ -2580,15 +2577,17 @@ async function subscribePush(){
     var k=sub.getKey('p256dh');var a=sub.getKey('auth');
     var p256dh=btoa(String.fromCharCode(...new Uint8Array(k)));
     var auth=btoa(String.fromCharCode(...new Uint8Array(a)));
-    // 이 기기의 옛 엔드포인트 행 삭제(중복 누적 방지) — 다른 기기 구독은 안 건드림
+    // 브라우저가 스스로 엔드포인트를 교체한 경우: 이 계정의 옛 행만 정리(다른 계정 구독은 유지)
     if(_oldEp&&_oldEp!==sub.endpoint){
-      try{await sbClient.from('push_subscriptions').delete().eq('endpoint',_oldEp);}catch(e){}
+      try{await sbClient.from('push_subscriptions').delete().eq('endpoint',_oldEp).eq('driver_name',driverName);}catch(e){}
     }
-    // endpoint 기준 upsert — 계정 전환 시 driver_name+role 항상 갱신
-    await sbClient.from('push_subscriptions').upsert({
-      endpoint:sub.endpoint,p256dh:p256dh,auth:auth,
-      driver_name:driverName,role:myRole,
-    },{onConflict:'endpoint'});
+    // (기기, 계정) 복합키 upsert → 한 기기에 계정별 구독을 각각 저장
+    var _row={endpoint:sub.endpoint,p256dh:p256dh,auth:auth,driver_name:driverName,role:myRole};
+    var _r=await sbClient.from('push_subscriptions').upsert(_row,{onConflict:'endpoint,driver_name'});
+    if(_r&&_r.error){
+      // 복합 유니크 미적용(마이그레이션 전) → 레거시 폴백(endpoint 단일)
+      try{await sbClient.from('push_subscriptions').upsert(_row,{onConflict:'endpoint'});}catch(e){}
+    }
     console.log('[Push] 구독 갱신 완료:',driverName,'('+myRole+')');
   }catch(e){console.warn('[Push] 구독 실패',e);}
 }
