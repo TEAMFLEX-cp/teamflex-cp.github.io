@@ -85,7 +85,7 @@
 </style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
 <body>
 <div class="phone">
-  <div class="hdr"><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="t">🤝 백업 공유</div><div class="s">정원준 · 팀플렉스 · 매칭 전 익명 · 정산 연동</div></div><div onclick="openAdmin()" style="cursor:pointer;font-size:20px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">⚙️</div></div></div>
+  <div class="hdr"><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="t">🤝 백업 공유</div><div class="s">정원준 · 팀플렉스 · 매칭 전 익명 · 정산 연동</div></div><div style="display:flex;gap:8px"><div onclick="bpBell()" style="cursor:pointer;font-size:16px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">🔔</div><div onclick="openAdmin()" style="cursor:pointer;font-size:20px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">⚙️</div></div></div></div>
   <div class="nav">
     <div class="on" id="n-cal" onclick="go('cal')">📅 달력</div>
     <div id="n-mine" onclick="go('mine')">🙋 내 등록</div>
@@ -219,7 +219,7 @@ function matchHtml(){var sl=slots.find(function(x){return x.id===draft.sid;});
 }
 function sendMatch(){var sl=slots.find(function(x){return x.id===draft.sid;});sl.status='matched';bpSaveSlot(sl);
   var nr={requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:sl.date,mode:'특정일',aptType:draft.type,routes:['(가용매칭)'],extra:0,settle:draft.settle,collab:false,needCount:1,supporters:[{name:sl.driver,company:sl.company,phone:'',state:'joined'}],negUnit:draft.unit,unit:draft.unit,estQty:draft.qty||0,status:'nego',negBy:ME,company_id:MYCOMP};
-  bpNewReq(nr);go('mine');toast('🤝 매칭 협상 전송 · 상대 확정 대기');
+  bpNewReq(nr);bpPush(sl.driver,'🤝 매칭 협상',ME+'님이 매칭 협상을 보냈습니다.');go('mine');toast('🤝 매칭 협상 전송 · 상대 확정 대기');
 }
 // ── 카드 ──
 function sortByDate(a,b){return a.date<b.date?-1:(a.date>b.date?1:0);}
@@ -329,7 +329,7 @@ function compAdminHtml(){
   });
   return h;
 }
-function openAdmin(){draft={ha:HYEONADD,ta:RATE['특정일']['아파트'],tj:RATE['특정일']['지번']};sub='admin';render();}
+function openAdmin(){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}draft={ha:HYEONADD,ta:RATE['특정일']['아파트'],tj:RATE['특정일']['지번']};sub='admin';render();}
 function aAdm(k,d){draft[k]=Math.max(0,(draft[k]||0)+d);render();}
 function saveAdmin(){HYEONADD=draft.ha;RATE['특정일']['아파트']=draft.ta;RATE['특정일']['지번']=draft.tj;APTP['아파트']=draft.ta;APTP['지번']=draft.tj;APTP['아파트+지번']=Math.round((draft.ta+draft.tj)/2);sb.from('bp_company_config').upsert({company_id:MYCOMP,hyeon_add:draft.ha,teuk_apt:draft.ta,teuk_jib:draft.tj,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(){});toast('💾 단가 저장 · 즉시 반영');go('cal');}
 function admRow(label,key){return '<label class="f">'+label+'</label><div class="stp"><button onclick="aAdm(\''+key+'\',-50)">−</button><input class="v" type="number" step="50" value="'+draft[key]+'" oninput="draft.'+key+'=Math.max(0,parseInt(this.value||0,10)||0)"><button onclick="aAdm(\''+key+'\',50)">＋</button></div>';}
@@ -401,26 +401,32 @@ function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r
   else if(r.status==='done'){h+='<div class="card" style="border-left:5px solid #2e7d32"><div class="row"><span class="badge b-green">✅ 완료·정산 확정</span></div><div class="kv" style="margin-top:6px"><span>최종 수량</span><b>'+r.finalQty+'개</b></div><div class="kv"><span>정산 방식</span><b>'+(r.settle==='개인'?'개인 정산':'정산일 정산')+'</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+money(reqTotal(r))+'</b></div></div>'+LOCK;}
   return h;
 }
-function applyReq(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters||[];r.supporters.push({name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'});bpSaveReq(r);toast('✋ 지원 신청 · 등록기사 확정 대기');render();}
-function pickOne(id,i){var r=reqs.find(function(x){return x.id===id;});r.supporters=[Object.assign(r.supporters[i],{state:'picked'})];r.collab=false;r.needCount=1;r.status='matched';bpSaveReq(r);toast('✅ '+r.supporters[0].name+' 업무 확정 · 매칭 완료');render();}
+function applyReq(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters||[];r.supporters.push({name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'});bpSaveReq(r);bpPush(r.requester,'🤝 백업 지원 신청',ME+'님이 '+bpLabel(r)+'에 지원 신청했습니다.');toast('✋ 지원 신청 · 등록기사 확정 대기');render();}
+function pickOne(id,i){var r=reqs.find(function(x){return x.id===id;});r.supporters=[Object.assign(r.supporters[i],{state:'picked'})];r.collab=false;r.needCount=1;r.status='matched';bpSaveReq(r);bpPush(r.supporters[0].name,'✅ 업무 확정',bpLabel(r)+' 업무가 확정되었습니다.');toast('✅ '+r.supporters[0].name+' 업무 확정 · 매칭 완료');render();}
 function dropSup(id,i){var r=reqs.find(function(x){return x.id===id;});var nm=r.supporters[i].name;r.supporters.splice(i,1);bpSaveReq(r);toast('✖ '+nm+' 포기');render();}
 function leaveSup(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters.filter(function(s){return s.name!==ME;});bpSaveReq(r);toast('🚪 지원 취소');render();}
-function proposeCollab(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='invited';});r.status='collabreq';bpSaveReq(r);toast('👥 협업 요청 전송 · 지원자 수락 대기');render();}
-function acceptCollab(id){var r=reqs.find(function(x){return x.id===id;});var s=r.supporters.find(function(x){return x.name===ME;});if(s)s.state='accepted';bpSaveReq(r);toast('🤝 협업 수락 · 상대 수락 시 협업 확정');render();}
-function declineCollab(id){var r=reqs.find(function(x){return x.id===id;});var s=r.supporters.find(function(x){return x.name===ME;});if(s)s.state='declined';bpSaveReq(r);toast('✖ 협업 거절');render();}
-function finalizeCollab(id){var r=reqs.find(function(x){return x.id===id;});var acc=r.supporters.filter(function(s){return s.state==='accepted';});if(!acc.length){toast('수락한 지원자가 없습니다');return;}if(acc.length>=2){r.collab=true;r.needCount=acc.length;acc.forEach(function(s){s.state='picked';});r.supporters=acc;toast('🤝 협업 확정 ('+acc.length+'명)');}else{acc[0].state='picked';r.collab=false;r.needCount=1;r.supporters=[acc[0]];toast('✅ '+acc[0].name+' 업무 확정 (수락 1명)');}r.status='matched';bpSaveReq(r);render();}
-function confirmNego(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='picked';});r.finalQty=0;r.status='matched';bpSaveReq(r);toast('✅ 협상 확정 · 진행');render();}
-function rejectNego(id){var r=reqs.find(function(x){return x.id===id;});r.status='rejected';bpSaveReq(r);toast('✖ 협상 거절');go('sup');}
-function confirmVia(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='picked';});r.status=r.finalQty?'done':'matched';bpSaveReq(r);toast('✅ 확정 · 정산 반영');render();}
-function rejectVia(id){var r=reqs.find(function(x){return x.id===id;});r.status='rejected';bpSaveReq(r);toast('✖ 거절 처리');go('mine');}
-function enterQty(id){var r=reqs.find(function(x){return x.id===id;});var v=prompt('실제 완료 수량 입력',r.estQty||'');if(v==null)return;r.finalQty=parseInt(v||'0',10)||0;r.status='qty';bpSaveReq(r);toast('📦 실제 수량 제출 · 등록기사 확인 대기');render();}
-function confirmDone(id){var r=reqs.find(function(x){return x.id===id;});r.status='done';bpSaveReq(r);toast('✅ 최종 확정 · 정산 반영');render();}
+function proposeCollab(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='invited';});r.status='collabreq';bpSaveReq(r);bpPushMany(r.supporters.map(function(s){return s.name;}),'👥 협업 제안',ME+'님이 '+bpLabel(r)+' 협업을 제안했습니다. 수락/거절해 주세요.');toast('👥 협업 요청 전송 · 지원자 수락 대기');render();}
+function acceptCollab(id){var r=reqs.find(function(x){return x.id===id;});var s=r.supporters.find(function(x){return x.name===ME;});if(s)s.state='accepted';bpSaveReq(r);bpPush(r.requester,'🤝 협업 수락',ME+'님이 협업을 수락했습니다.');toast('🤝 협업 수락 · 상대 수락 시 협업 확정');render();}
+function declineCollab(id){var r=reqs.find(function(x){return x.id===id;});var s=r.supporters.find(function(x){return x.name===ME;});if(s)s.state='declined';bpSaveReq(r);bpPush(r.requester,'✖ 협업 거절',ME+'님이 협업을 거절했습니다.');toast('✖ 협업 거절');render();}
+function finalizeCollab(id){var r=reqs.find(function(x){return x.id===id;});var acc=r.supporters.filter(function(s){return s.state==='accepted';});if(!acc.length){toast('수락한 지원자가 없습니다');return;}if(acc.length>=2){r.collab=true;r.needCount=acc.length;acc.forEach(function(s){s.state='picked';});r.supporters=acc;toast('🤝 협업 확정 ('+acc.length+'명)');}else{acc[0].state='picked';r.collab=false;r.needCount=1;r.supporters=[acc[0]];toast('✅ '+acc[0].name+' 업무 확정 (수락 1명)');}r.status='matched';bpSaveReq(r);bpPushMany(r.supporters.map(function(s){return s.name;}),'🤝 매칭 확정',bpLabel(r)+' 매칭이 확정되었습니다.');render();}
+function confirmNego(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='picked';});r.finalQty=0;r.status='matched';bpSaveReq(r);bpPush(r.requester,'✅ 협상 확정',ME+'님이 협상을 확정했습니다.');toast('✅ 협상 확정 · 진행');render();}
+function rejectNego(id){var r=reqs.find(function(x){return x.id===id;});r.status='rejected';bpSaveReq(r);bpPush(r.requester,'✖ 협상 거절',ME+'님이 협상을 거절했습니다.');toast('✖ 협상 거절');go('sup');}
+function confirmVia(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='picked';});r.status=r.finalQty?'done':'matched';bpSaveReq(r);bpPushMany(r.supporters.map(function(s){return s.name;}),'✅ 역지원 확정',bpLabel(r)+' 역지원이 확정되었습니다.');toast('✅ 확정 · 정산 반영');render();}
+function rejectVia(id){var r=reqs.find(function(x){return x.id===id;});r.status='rejected';bpSaveReq(r);bpPushMany(r.supporters.map(function(s){return s.name;}),'✖ 역지원 거절','역지원 요청이 거절되었습니다.');toast('✖ 거절 처리');go('mine');}
+function enterQty(id){var r=reqs.find(function(x){return x.id===id;});var v=prompt('실제 완료 수량 입력',r.estQty||'');if(v==null)return;r.finalQty=parseInt(v||'0',10)||0;r.status='qty';bpSaveReq(r);bpPush(r.requester,'📦 수량 확인 요청',ME+'님이 수량 '+r.finalQty+'개 제출. 확인해 주세요.');toast('📦 실제 수량 제출 · 등록기사 확인 대기');render();}
+function confirmDone(id){var r=reqs.find(function(x){return x.id===id;});r.status='done';bpSaveReq(r);bpPushMany(r.supporters.map(function(s){return s.name;}),'✅ 정산 확정',bpLabel(r)+' 정산이 확정되었습니다.');toast('✅ 최종 확정 · 정산 반영');render();}
 
 // ── 허브 연동 데이터 레이어 ──
 function dbToReq(x){return {id:x.id,requester:x.requester,rcomp:x.rcomp,rphone:x.rphone,date:x.date,mode:x.mode,aptType:x.apt_type,routes:x.routes||[],routeInfo:x.route_info||'',mapImg:x.map_img||'',estQty:x.est_qty,finalQty:x.final_qty,extra:x.extra||0,settle:x.settle,acctShare:x.acct_share,collab:x.collab,needCount:x.need_count||1,negUnit:x.neg_unit,negBy:x.neg_by,viaSupport:x.via_support,status:x.status,supporters:x.supporters||[],unit:x.unit,company_id:x.company_id};}
 function dbToSlot(x){return {id:x.id,driver:x.driver_name,company:x.driver_company,date:x.date,type:x.type,qty:x.qty,unit:x.unit,status:x.status,company_id:x.company_id};}
 function reqToDb(r){return {company_id:r.company_id||MYCOMP,requester:r.requester,rcomp:r.rcomp,rphone:r.rphone,date:r.date,mode:r.mode,apt_type:r.aptType||null,routes:r.routes||[],route_info:r.routeInfo||'',map_img:r.mapImg||'',est_qty:r.estQty||null,final_qty:r.finalQty||null,extra:r.extra||0,settle:r.settle,acct_share:!!r.acctShare,collab:!!r.collab,need_count:r.needCount||1,neg_unit:r.negUnit||null,neg_by:r.negBy||null,via_support:!!r.viaSupport,status:r.status,supporters:r.supporters||[],unit:r.unit||null,updated_at:new Date().toISOString()};}
 function reload(){loadData().then(function(){render();});}
+var PUSHHOURS=null;
+function bpQuiet(){try{if(!PUSHHOURS)return false;var d=new Date(Date.now()+9*3600000);var hm=('0'+d.getUTCHours()).slice(-2)+':'+('0'+d.getUTCMinutes()).slice(-2);var st=PUSHHOURS.start||'22:00',e=PUSHHOURS.end||'07:00';return st<=e?(hm>=st&&hm<e):(hm>=st||hm<e);}catch(_e){return false;}}
+function bpPush(name,title,body){if(!name)return;if(bpQuiet()&&name!=='문지영')return;try{fetch(SB_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({title:title,body:body,target_name:name,data:{tag:'backup'}})}).catch(function(){});}catch(_e){}}
+function bpPushMany(names,title,body){(names||[]).forEach(function(n){bpPush(n,title,body);});}
+function bpLabel(r){return '「'+((r.routes&&r.routes.join('/'))||'백업')+'」';}
+function bpBell(){alert('🔔 백업 공유 알림 안내\n\n· 백업 등록: 전체에게 목록으로 노출(푸시 없음)\n· 지원 신청 → 등록 기사에게 알림\n· 협업 제안/수락 → 해당 인원에게\n· 수량 확인 요청 → 등록 기사에게\n· 매칭·정산 확정 → 해당 인원에게\n\n푸시는 요청·확정 관련 해당 인원에게만 가며, 야간 시간대에는 발송되지 않습니다.');}
 function bpNewReq(r){var db=reqToDb(r);sb.from('bp_requests').insert(db).then(function(res){if(res&&res.error)toast('저장오류');reload();});}
 function bpSaveReq(r){sb.from('bp_requests').update(reqToDb(r)).eq('id',r.id).then(function(res){if(res&&res.error)toast('저장오류');reload();});}
 function bpNewSlot(s){sb.from('bp_slots').insert({company_id:MYCOMP,driver_name:s.driver,driver_company:s.company,date:s.date,type:s.type,qty:s.qty,unit:s.unit,status:s.status||'open'}).then(function(){reload();});}
@@ -441,6 +447,7 @@ async function boot(){
     var ap=await sb.from('bp_companies').select('id').eq('approved',true);
     APPROVED_IDS=((ap&&ap.data)||[]).map(function(x){return x.id;}); if(!APPROVED_IDS.length)APPROVED_IDS=[MYCOMP];
     IS_OWNER=!!meComp.is_owner;
+    try{var fc=await sb.from('app_settings').select('value').eq('key','feature_controls').maybeSingle(); if(fc&&fc.data){var _p=typeof fc.data.value==='string'?JSON.parse(fc.data.value):fc.data.value; PUSHHOURS=_p&&_p.pushHours;}}catch(_e){}
     var cs=await sb.from('bp_companies').select('*').order('requested_at',{ascending:true}); COMPANIES=((cs&&cs.data)||[]);
     var cf=await sb.from('bp_company_config').select('*').eq('company_id',MYCOMP).maybeSingle();
     if(cf&&cf.data){HYEONADD=cf.data.hyeon_add;RATE['특정일']['아파트']=cf.data.teuk_apt;RATE['특정일']['지번']=cf.data.teuk_jib;APTP['아파트']=cf.data.teuk_apt;APTP['지번']=cf.data.teuk_jib;APTP['아파트+지번']=Math.round((cf.data.teuk_apt+cf.data.teuk_jib)/2);}
