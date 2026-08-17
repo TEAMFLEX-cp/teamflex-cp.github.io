@@ -1984,7 +1984,7 @@ async function ensurePushSubscribed(interactive){
     try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}
     try{if(typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm'&&!window._ctScreenOpen){var mc=document.getElementById('mc');if(mc&&typeof pgHome==='function')mc.innerHTML=pgHome();}}catch(e){}
     setTimeout(function(){try{_pushStatusCheck();}catch(e){}},1000);
-    if(interactive){try{showToast(okSub?'🔔 알림 켜짐 — 이제 이 폰의 모든 알림을 받습니다':'구독 실패 — 앱을 완전히 종료 후 다시 열거나(캐시 갱신), 인앱브라우저 말고 크롬/사파리로 접속해 주세요',okSub);}catch(_){}}
+    if(interactive){ if(okSub){try{showToast('🔔 알림 켜짐 — 이제 이 폰의 모든 알림을 받습니다',true);}catch(_){}} else { var _swInfo=_swReg?('등록됨'+(_swReg.active?'/active':'/대기')):'미등록'; try{alert('❗ 알림 켜기 실패 — 원인\n\n· 사유: '+(window._pushLastError||'알수없음')+'\n· 알림권한: '+((typeof Notification!=='undefined')?Notification.permission:'미지원')+'\n· 서비스워커: '+_swInfo+'\n· 브라우저: '+navigator.userAgent.slice(0,80)+'\n\n이 내용을 관리자에게 그대로 알려주세요.');}catch(_){ try{showToast('구독 실패: '+(window._pushLastError||''),false);}catch(__){} } } }
     return okSub;
   }catch(e){if(interactive){try{showToast('알림 설정 실패: '+((e&&e.message)||e),false);}catch(_){}}return false;}
 }
@@ -2595,7 +2595,7 @@ async function requestNotifPerm(){
 }
 
 async function subscribePush(){
-  if(!_swReg||!sbClient)return false;
+  if(!_swReg||!sbClient){window._pushLastError='서비스워커 미등록'+(!_swReg?'(SW=null)':'')+(!sbClient?'(DB=null)':'');return false;}
   // localStorage를 primary source로 사용 (CU 타이밍 문제 완전 해결)
   // [역할 최신화] 현재 로그인 세션(CU)을 우선 — 역할 변경(팀장→조장 등) 시 stale localStorage가 덮어쓰지 않게.
   //   CU가 아직 준비 안 됐을 때만 localStorage로 폴백(타이밍 보호).
@@ -2603,7 +2603,7 @@ async function subscribePush(){
   var myRole=(CU&&CU.role)?CU.role:(localStorage.getItem('tf_push_role')||'driver');
   if(CU&&CU.role){try{localStorage.setItem('tf_push_role',CU.role);if(CU.name)localStorage.setItem('tf_push_name',CU.name);}catch(e){}}
   // driver_name 없으면 저장 불필요
-  if(!driverName){console.warn('[Push] driver_name 없음 — 구독 저장 건너뜀');return false;}
+  if(!driverName){window._pushLastError='로그인 이름(driverName) 비어있음';console.warn('[Push] driver_name 없음 — 구독 저장 건너뜀');return false;}
   try{
     var sub=await _swReg.pushManager.getSubscription();
     var _oldEp=sub?sub.endpoint:null;
@@ -2613,7 +2613,7 @@ async function subscribePush(){
       sub=null;
     }
     if(!sub){
-      if(Notification.permission!=='granted'){return false;}
+      if(Notification.permission!=='granted'){window._pushLastError='알림 권한 미허용('+Notification.permission+')';return false;}
       sub=await _swReg.pushManager.subscribe({
         userVisibleOnly:true,
         applicationServerKey:_urlB64ToUint8(VAPID_PUBLIC_KEY)
@@ -2628,10 +2628,10 @@ async function subscribePush(){
     }
     // endpoint 단일 유니크 기준 upsert (구/신 버전 모두 호환)
     var _r=await sbClient.from('push_subscriptions').upsert({endpoint:sub.endpoint,p256dh:p256dh,auth:auth,driver_name:driverName,role:myRole},{onConflict:'endpoint'});
-    if(_r&&_r.error){console.warn('[Push] 구독 저장 오류',_r.error.message);return false;}
-    console.log('[Push] 구독 갱신 완료:',driverName,'('+myRole+')');
+    if(_r&&_r.error){window._pushLastError='수파베이스 저장오류: '+_r.error.message;console.warn('[Push] 구독 저장 오류',_r.error.message);return false;}
+    window._pushLastError='';console.log('[Push] 구독 갱신 완료:',driverName,'('+myRole+')');
     return true;
-  }catch(e){console.warn('[Push] 구독 실패',e);return false;}
+  }catch(e){window._pushLastError='구독생성 실패: '+((e&&e.name)?e.name+' — ':'')+((e&&e.message)||e);console.warn('[Push] 구독 실패',e);return false;}
 }
 
 // 관리자 전용 알림 설정 (토스트 배너로 안내)
