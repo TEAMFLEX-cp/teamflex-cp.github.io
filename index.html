@@ -894,7 +894,7 @@ function _addSchedChange(workDate,route,oldDriver,newDriver,changedBy){
   if(log.length>_SCHED_LOG_MAX)log=log.slice(0,_SCHED_LOG_MAX);
   _saveSchedLog(log);
   updateNavDots();
-  if(CU&&CU.role==='admin'){setTimeout(function(){try{loadPushSubs();}catch(e){}try{loadNotifTargets();}catch(e){}try{_loadPushDedupe();}catch(e){}},1500);}
+  if(CU&&CU.role==='admin'){setTimeout(function(){try{loadPushSubs();}catch(e){}try{loadNotifTargets();}catch(e){}try{_loadPushDedupe();}catch(e){}try{if(window._driverExt==null&&typeof _loadDriverExt==='function')_loadDriverExt();}catch(e){}},1200);}
 }
 
 // 변경이력 미열람 건수
