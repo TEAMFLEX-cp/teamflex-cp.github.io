@@ -1976,10 +1976,13 @@ async function ensurePushSubscribed(interactive){
     if(perm==='denied'){if(interactive){try{showToast('알림이 차단됨 — 크롬 주소창 자물쇠 → 알림 → 허용으로 바꿔주세요',false);}catch(_){}}return false;}
     if(perm!=='granted')return false;
     if(typeof registerSW==='function'){try{await registerSW();}catch(e){}}
-    if(typeof subscribePush==='function'){try{await subscribePush();}catch(e){}}
-    var ok=false;try{ok=await _pushStatusCheck();}catch(e){}
-    if(interactive){try{showToast(ok?'🔔 알림 켜짐 — 이제 계약·공지 알림을 받습니다':'구독 실패 — 앱을 완전히 종료 후 다시 열거나(캐시 갱신), 카카오톡 등 인앱브라우저가 아닌 크롬으로 접속해 주세요',ok);}catch(_){}}
-    return ok;
+    var okSub=false;if(typeof subscribePush==='function'){try{okSub=await subscribePush();}catch(e){okSub=false;}}
+    window._pushAutoTried=true;window._pushOn=!!okSub;
+    try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}
+    try{if(typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm'&&!window._ctScreenOpen){var mc=document.getElementById('mc');if(mc&&typeof pgHome==='function')mc.innerHTML=pgHome();}}catch(e){}
+    setTimeout(function(){try{_pushStatusCheck();}catch(e){}},1000);
+    if(interactive){try{showToast(okSub?'🔔 알림 켜짐 — 이제 이 폰의 모든 알림을 받습니다':'구독 실패 — 앱을 완전히 종료 후 다시 열거나(캐시 갱신), 인앱브라우저 말고 크롬/사파리로 접속해 주세요',okSub);}catch(_){}}
+    return okSub;
   }catch(e){if(interactive){try{showToast('알림 설정 실패: '+((e&&e.message)||e),false);}catch(_){}}return false;}
 }
 window.ensurePushSubscribed=ensurePushSubscribed;
@@ -2589,7 +2592,7 @@ async function requestNotifPerm(){
 }
 
 async function subscribePush(){
-  if(!_swReg||!sbClient)return;
+  if(!_swReg||!sbClient)return false;
   // localStorage를 primary source로 사용 (CU 타이밍 문제 완전 해결)
   // [역할 최신화] 현재 로그인 세션(CU)을 우선 — 역할 변경(팀장→조장 등) 시 stale localStorage가 덮어쓰지 않게.
   //   CU가 아직 준비 안 됐을 때만 localStorage로 폴백(타이밍 보호).
@@ -2597,7 +2600,7 @@ async function subscribePush(){
   var myRole=(CU&&CU.role)?CU.role:(localStorage.getItem('tf_push_role')||'driver');
   if(CU&&CU.role){try{localStorage.setItem('tf_push_role',CU.role);if(CU.name)localStorage.setItem('tf_push_name',CU.name);}catch(e){}}
   // driver_name 없으면 저장 불필요
-  if(!driverName){console.warn('[Push] driver_name 없음 — 구독 저장 건너뜀');return;}
+  if(!driverName){console.warn('[Push] driver_name 없음 — 구독 저장 건너뜀');return false;}
   try{
     var sub=await _swReg.pushManager.getSubscription();
     var _oldEp=sub?sub.endpoint:null;
@@ -2607,7 +2610,7 @@ async function subscribePush(){
       sub=null;
     }
     if(!sub){
-      if(Notification.permission!=='granted'){return;}
+      if(Notification.permission!=='granted'){return false;}
       sub=await _swReg.pushManager.subscribe({
         userVisibleOnly:true,
         applicationServerKey:_urlB64ToUint8(VAPID_PUBLIC_KEY)
@@ -2622,9 +2625,10 @@ async function subscribePush(){
     }
     // endpoint 단일 유니크 기준 upsert (구/신 버전 모두 호환)
     var _r=await sbClient.from('push_subscriptions').upsert({endpoint:sub.endpoint,p256dh:p256dh,auth:auth,driver_name:driverName,role:myRole},{onConflict:'endpoint'});
-    if(_r&&_r.error){console.warn('[Push] 구독 저장 오류',_r.error.message);}
+    if(_r&&_r.error){console.warn('[Push] 구독 저장 오류',_r.error.message);return false;}
     console.log('[Push] 구독 갱신 완료:',driverName,'('+myRole+')');
-  }catch(e){console.warn('[Push] 구독 실패',e);}
+    return true;
+  }catch(e){console.warn('[Push] 구독 실패',e);return false;}
 }
 
 // 관리자 전용 알림 설정 (토스트 배너로 안내)
