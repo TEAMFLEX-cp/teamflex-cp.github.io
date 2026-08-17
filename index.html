@@ -1971,6 +1971,28 @@ function ctRestricted(){
   if(typeof _ctApproved==='undefined'||_ctApproved===null){ if(typeof loadCtApproved==='function'){loadCtApproved().then(function(){try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}});} return false; }
   return !(typeof ctApprovedOf==='function'&&ctApprovedOf(CU.name,'wc'));
 }
+async function ctEnableNotif(ev){
+  try{if(ev&&ev.stopPropagation)ev.stopPropagation();}catch(e){}
+  try{
+    if(!('Notification' in window)){try{showToast('이 브라우저는 알림을 지원하지 않습니다',false);}catch(_){}return;}
+    var perm=Notification.permission;
+    if(perm==='default')perm=await Notification.requestPermission();
+    if(perm==='granted'){
+      if(typeof registerSW==='function'){try{await registerSW();}catch(e){}}
+      if(typeof subscribePush==='function'){try{await subscribePush();}catch(e){}}
+      try{showToast('🔔 알림이 켜졌어요! 이제 요청이 오면 알림을 받습니다',true);}catch(_){}
+      try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();else{var mc=document.getElementById('mc');if(mc&&typeof pgHome==='function')mc.innerHTML=pgHome();}}catch(e){}
+    }else if(perm==='denied'){try{showToast('알림이 차단됨 — 크롬 주소창 자물쇠 → 알림 → 허용으로 바꿔주세요',false);}catch(_){}}
+  }catch(e){try{showToast('알림 켜기 실패: '+((e&&e.message)||e),false);}catch(_){}}
+}
+window.ctEnableNotif=ctEnableNotif;
+function _notifNudge(){
+  if(!CU||CU.role==='admin')return '';
+  if(typeof Notification==='undefined')return '';
+  if(Notification.permission==='granted')return '';
+  return '<div onclick="ctEnableNotif(event)" style="cursor:pointer;background:#fff7e6;border:1.5px solid #ffd08a;color:#a5670a;border-radius:14px;padding:13px 15px;margin:0 0 12px;display:flex;align-items:center;gap:11px;font-weight:800;font-size:13px;box-shadow:0 2px 8px rgba(180,120,0,.12)"><span style="font-size:20px">&#x1F514;</span><div style="flex:1;line-height:1.5">알림이 꺼져 있어요<br><span style="font-weight:600;font-size:11.5px;opacity:.9">눌러서 켜면 계약 요청·공지 알림을 받을 수 있어요</span></div><span style="background:#a5670a;color:#fff;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;white-space:nowrap">켜기</span></div>';
+}
+window._notifNudge=_notifNudge;
 // 홈 배너: 미작성(위수탁) 기사·팀장·조장에게 계약서 작성 진입점 노출 (게이트 여부와 무관)
 function ctHomeBanner(){
   if(!CU||CU.role==='admin')return '';
@@ -5241,7 +5263,7 @@ function pgHome(){
       '</div>'+
     '</div>'+
     '</div>'+
-    ctHomeBanner()+(typeof tqHomeBanner==='function'?tqHomeBanner():'')+weatherCard+hcHomeBanner()+inspHomeCard()+_ftBtnHTML();
+    _notifNudge()+ctHomeBanner()+(typeof tqHomeBanner==='function'?tqHomeBanner():'')+weatherCard+hcHomeBanner()+inspHomeCard()+_ftBtnHTML();
 }
 // ── WEATHER ──────────────────────────────────────────────────────────
 var _weatherCache=null;var _weatherCacheDate='';var _hourlyOpen=[false,false];
