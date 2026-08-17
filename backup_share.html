@@ -69,7 +69,8 @@
   .caltop{display:flex;align-items:center;justify-content:space-between;padding:2px 6px 8px}.caltop b{font-size:15px;color:#123a6b}
   .cw{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:2px}.cw>div{text-align:center;font-size:10px;font-weight:900}
   .cg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-  .cell{min-height:64px;border-radius:8px;padding:2px;border:1px solid #eef2f6;background:#fafcff;cursor:pointer;overflow:hidden}.cell.td{background:#fff6e9;border-color:#ffd8a8}
+  .cell{min-height:33px;border-radius:8px;padding:2px;border:1px solid #eef2f6;background:#fafcff;cursor:pointer;overflow:hidden}.cell.td{background:#fff6e9;border-color:#ffd8a8}
+  .cell.hascontent{min-height:60px}
   .cell.hasreq{background:#f8f0ff;border-color:#dcbdf3}.cell.hasreq.td{background:#fff1e9}
   .cell.hasav{position:relative}
   .cell.hasav::before{content:"";position:absolute;inset:0;border-radius:8px;padding:2px;background:conic-gradient(from var(--ang),#f5c518,#fff3b0,#f5c518,#e0a800,#f5c518);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:rotang 2.6s linear infinite;pointer-events:none}
@@ -86,7 +87,7 @@
 </style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
 <body>
 <div class="phone">
-  <div class="hdr"><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="t">🤝 백업 공유</div><div class="s" id="bp-sub">매칭 전 익명 · 정산 연동</div></div><div style="display:flex;gap:8px"><div id="bp-bell" onclick="bpBell()" style="cursor:pointer;font-size:16px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">🔔</div><div id="bp-gear" onclick="openAdmin()" style="cursor:pointer;font-size:20px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">⚙️</div></div></div></div>
+  <div class="hdr"><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="t">🤝 백업 공유</div><div class="s" id="bp-sub">매칭 전 익명 · 정산 연동</div></div><div style="display:flex;gap:8px"><div id="bp-back" onclick="bpBack()" style="cursor:pointer;font-size:20px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">‹</div><div id="bp-bell" onclick="bpBell()" style="cursor:pointer;font-size:16px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">🔔</div><div id="bp-gear" onclick="openAdmin()" style="cursor:pointer;font-size:20px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">⚙️</div></div></div></div>
   <div class="nav">
     <div class="on" id="n-cal" onclick="go('cal')">📅 달력</div>
     <div id="n-mine" onclick="go('mine')">🙋 내 등록</div>
@@ -139,8 +140,9 @@ function iAmSup(r){return (r.supporters||[]).some(function(s){return s.name===ME
 var LOCK='<div class="lock">🔒 매칭 확정 후에는 포기·취소가 불가합니다. 확정 후 취소는 <b>상호 협의 후 관리자를 통해</b>서만 가능합니다.</div>';
 function stateBadge(st){return {joined:'<span class="badge b-amber">신청</span>',invited:'<span class="badge b-indigo">협업제안</span>',accepted:'<span class="badge b-green">수락</span>',declined:'<span class="badge b-gray">거절</span>',picked:'<span class="badge b-green">업무확정</span>'}[st]||'<span class="badge b-gray">-</span>';}
 
-function pushHist(){try{history.pushState({bp:1},'');}catch(_e){}}
-window.addEventListener('popstate',function(){if(typeof sub!=='undefined'&&sub){sub=null;render();}});
+function pushHist(){}
+function bpBack(){if(typeof sub!=='undefined'&&sub){sub=null;render();}else{try{parent.postMessage('bp-close','*');}catch(_e){}}}
+window.addEventListener('message',function(e){try{if(e&&e.data==='bp-back-request'){if(typeof sub!=='undefined'&&sub){sub=null;render();}else{parent.postMessage('bp-close','*');}}}catch(_e){}});
 function render(){var s=document.getElementById('scr');
   if(sub==='admin')return s.innerHTML=adminHtml();
   if(sub==='compadmin')return s.innerHTML=compAdminHtml();
@@ -166,7 +168,7 @@ function calHtml(){
     var av=slots.filter(function(x){return x.date===ds;}).length;
     var chips=spq.slice(0,2).map(function(r){return '<div class="cq" onclick="event.stopPropagation();openDetail('+r.id+')">'+r.requester+'</div>';}).join('');
     if(spq.length>2)chips+='<div class="cq" style="background:#eee;color:#666">+'+(spq.length-2)+'</div>';
-    h+='<div class="cell'+(td?' td':'')+(av?' hasav':'')+(spq.length?' hasreq':'')+'" onclick="openDay(\''+ds+'\')"><div class="n" style="color:'+(td?'#e65100':'#33475b')+'">'+d+'</div>'+chips+(av?'<div class="cav">지원 '+av+'</div>':'')+'</div>';
+    h+='<div class="cell'+(td?' td':'')+(av?' hasav':'')+(spq.length?' hasreq':'')+((av||spq.length)?' hascontent':'')+'" onclick="openDay(\''+ds+'\')"><div class="n" style="color:'+(td?'#e65100':'#33475b')+'">'+d+'</div>'+chips+(av?'<div class="cav">지원 '+av+'</div>':'')+'</div>';
   }
   h+='</div></div>';
   h+='<div style="margin:14px 0"><button class="btn b1" onclick="startRegister()">＋ 백업 요청 등록</button></div>';
