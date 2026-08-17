@@ -7584,7 +7584,7 @@ function _dhRender(name,edit,mode){
     +((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')
     +((!edit&&isAdm)?('<div style="margin-top:8px"><button onclick="dhContractSetup(\''+name+'\',false)" style="width:100%;padding:11px;background:#eef4ff;color:#2f5fc8;border:1.5px solid #cfe0f5;border-radius:11px;font-weight:800">📝 계약 정보 (라우트·단가·계약일)</button></div>'):'')
     +'</div>'
-    +'<div style="border-top:1px solid #eef2f6;background:#fff;padding:11px 15px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -3px 10px rgba(0,0,0,.06)">'+((self&&!edit)?('<div style="margin-bottom:8px"><button onclick="closeDriverDetail();CT_preview(\''+name+'\',\'wc\',\'driver\')" style="width:100%;padding:11px;background:#12b5a3;color:#fff;border:none;border-radius:11px;font-weight:800">📄 내 계약서 보기</button></div>'):'')+foot.replace(\'margin-top:14px\',\'margin-top:0\')+'</div>'
+    +'<div style="border-top:1px solid #eef2f6;background:#fff;padding:11px 15px calc(14px + env(safe-area-inset-bottom));box-shadow:0 -3px 10px rgba(0,0,0,.06)">'+((self&&!edit)?('<div style="margin-bottom:8px"><button onclick="closeDriverDetail();CT_preview(\''+name+'\',\'wc\',\'driver\')" style="width:100%;padding:11px;background:#12b5a3;color:#fff;border:none;border-radius:11px;font-weight:800">📄 내 계약서 보기</button></div>'):'')+foot.replace('margin-top:14px','margin-top:0')+'</div>'
   +'</div>';
   pop.addEventListener('click',function(ev){if(ev.target===pop&&!edit)pop.remove();});
   document.body.appendChild(pop);
