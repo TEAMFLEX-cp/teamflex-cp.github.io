@@ -1692,6 +1692,8 @@ async function loadFeatureControls(){
     (_ctIssuer===null&&typeof loadContractIssuer==='function')?loadContractIssuer().catch(function(){}):null
   ]); }catch(e){}
   try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}
+  // 백업공유 네비 표시 동기화 (관리자 상시 / 기사는 활성화 시)
+  try{var _bp=document.getElementById('ni-bp'); if(_bp){ _bp.style.display=(CU&&CU.role==='admin')?'':(bpIsActive()?'':'none'); }}catch(e){}
   // 로드 완료 후 현재 탭이 비활성된 기능이면 잠금 화면으로 재렌더
   var mc=document.getElementById('mc');
   if(!mc)return;
