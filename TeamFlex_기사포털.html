@@ -2577,15 +2577,17 @@ async function subscribePush(){
     var k=sub.getKey('p256dh');var a=sub.getKey('auth');
     var p256dh=btoa(String.fromCharCode(...new Uint8Array(k)));
     var auth=btoa(String.fromCharCode(...new Uint8Array(a)));
-    // 브라우저가 스스로 엔드포인트를 교체한 경우: 이 계정의 옛 행만 정리(다른 계정 구독은 유지)
+    // 이 기기(엔드포인트)는 '현재 로그인한 계정' 1명에게만 귀속.
+    //   - 옛 엔드포인트(브라우저가 교체)는 통째로 정리
+    //   - 이 기기에 남아있는 '다른 계정' 구독행 제거(계정 전환 시 이전 사람 알림이 안 가게)
     if(_oldEp&&_oldEp!==sub.endpoint){
-      try{await sbClient.from('push_subscriptions').delete().eq('endpoint',_oldEp).eq('driver_name',driverName);}catch(e){}
+      try{await sbClient.from('push_subscriptions').delete().eq('endpoint',_oldEp);}catch(e){}
     }
-    // (기기, 계정) 복합키 upsert → 한 기기에 계정별 구독을 각각 저장
+    try{await sbClient.from('push_subscriptions').delete().eq('endpoint',sub.endpoint).neq('driver_name',driverName);}catch(e){}
+    // 현재 계정으로 구독 저장 (기기당 1행). 같은 계정이 여러 기기면 기기마다 각각 저장됨.
     var _row={endpoint:sub.endpoint,p256dh:p256dh,auth:auth,driver_name:driverName,role:myRole};
     var _r=await sbClient.from('push_subscriptions').upsert(_row,{onConflict:'endpoint,driver_name'});
     if(_r&&_r.error){
-      // 복합 유니크 미적용(마이그레이션 전) → 레거시 폴백(endpoint 단일)
       try{await sbClient.from('push_subscriptions').upsert(_row,{onConflict:'endpoint'});}catch(e){}
     }
     console.log('[Push] 구독 갱신 완료:',driverName,'('+myRole+')');
