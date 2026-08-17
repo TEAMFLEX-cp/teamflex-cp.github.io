@@ -135,6 +135,14 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
   @keyframes tfblink{50%{opacity:0}}
   @keyframes tfgold{0%{box-shadow:0 0 3px 0 rgba(212,175,55,.85)}50%{box-shadow:0 0 8px 2px rgba(255,215,0,.95)}100%{box-shadow:0 0 3px 0 rgba(212,175,55,.85)}}
   .tfgold{border:1.5px solid #e3c04a!important;animation:tfgold 1.3s infinite}
+.ctbulk{width:100%;border-collapse:collapse;min-width:440px}
+.ctbulk thead th{position:sticky;top:0;background:#e7f6ef;color:#0b6b4a;font-size:11.5px;font-weight:800;padding:8px 5px;border:1px solid #cbe6da;white-space:nowrap}
+.ctbulk td{border:1px solid #eef2f6;padding:5px;vertical-align:middle}
+.ctbulk .cbnm{font-size:12.5px;font-weight:800;color:#22364a;white-space:nowrap}
+.ctbulk .cbnm .cbrl{font-size:9px;color:#8090a0;margin-left:3px;font-weight:700}
+.ctbulk input{width:100%;border:1.3px solid #d5e2f0;border-radius:7px;padding:6px 7px;font-size:12px;box-sizing:border-box;outline:none}
+.ctbulk input:focus{border-color:#0b8a5f;background:#f4fbf7}
+.ctbulk .cbend{font-size:10.5px;color:#1b7a38;font-weight:700;white-space:nowrap;text-align:center}
 .bn{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:#fff;display:flex;box-shadow:0 -2px 12px rgba(0,0,0,.12);z-index:10000}
 .ni{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 8px;cursor:pointer;color:#9e9e9e;font-size:10px;font-weight:600;gap:3px;position:relative;transition:color .15s}
 .ni.on{color:#1565c0}
@@ -1828,9 +1836,69 @@ async function ctRenew(names,type){
   openContractAdmin();
 }
 window.ctRenew=ctRenew;
+var _ctBulkNames=[],_ctBulkType='wc',_ctBulkMode='share';
+function openCtBulkInfo(names,type,mode){
+  _ctBulkNames=names.slice();_ctBulkType=type;_ctBulkMode=mode;
+  var db=getDB();var esc=function(x){return String(x==null?'':x).replace(/"/g,'&quot;');};
+  var rows=names.map(function(nm,i){
+    var ext=(_driverExt&&_driverExt[nm])||{};var d=db[nm]||{};
+    var rl={leader:'팀장',sub:'조장',driver:'기사'}[d.role]||'';
+    var route=ext.route||'';var price=ext.price||'';
+    var cstart=/^\d{4}-\d{2}-\d{2}$/.test(ext.cstart||'')?ext.cstart:'';
+    return '<tr><td class="cbnm">'+nm+'<span class="cbrl">'+rl+'</span></td>'+
+      '<td><input id="cb-route-'+i+'" value="'+esc(route)+'" placeholder="라우트"></td>'+
+      '<td><input id="cb-price-'+i+'" value="'+esc(price)+'" inputmode="numeric" placeholder="단가"></td>'+
+      '<td><input id="cb-start-'+i+'" type="date" min="2020-01-01" max="2099-12-31" value="'+cstart+'" oninput="ctBulkEnd('+i+')"></td>'+
+      '<td class="cbend" id="cb-end-'+i+'">—</td></tr>';
+  }).join('');
+  var label={wc:'위·수탁 계약서',badge_new:'배넘버 신규',badge_renew:'배넘버 재허가'}[type]||type;
+  var title=(mode==='renew'?'🔄 '+label+' 갱신':'📤 '+label+' 발송')+' — 계약 정보 입력';
+  var old=document.getElementById('ctbulk-pop');if(old)old.remove();
+  var pop=document.createElement('div');pop.id='ctbulk-pop';pop.style.cssText='position:fixed;inset:0;z-index:10500;display:flex;flex-direction:column;justify-content:flex-end';
+  pop.innerHTML='<div onclick="var p=document.getElementById(\'ctbulk-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div>'+
+    '<div style="background:#fff;border-radius:22px 22px 0 0;max-height:92vh;display:flex;flex-direction:column">'+
+    '<div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:12px auto 8px"></div>'+
+    '<div style="font-size:15px;font-weight:900;color:#0b6b4a;text-align:center">'+title+'</div>'+
+    '<div style="font-size:11px;color:#8090a0;text-align:center;margin:3px 14px 8px;line-height:1.5">선택한 <b>'+names.length+'명</b>의 라우트·단가·계약 시작일 입력. 시작일만 넣으면 종료일 +1년 자동. 비우면 기존 값 유지.</div>'+
+    '<div style="overflow:auto;padding:0 12px;flex:1"><table class="ctbulk"><thead><tr><th style="text-align:left">이름</th><th>라우트</th><th>단가</th><th>계약 시작일</th><th>종료(자동)</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div style="padding:10px 14px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #eef2f6">'+
+      '<div style="display:flex;gap:8px;margin-bottom:9px"><button onclick="ctBulkCopyFirst()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📋 첫 행 → 전체</button><button onclick="ctBulkSameStart()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📅 시작일 전체 동일</button></div>'+
+      '<button onclick="ctBulkInfoConfirm()" style="width:100%;padding:14px;background:linear-gradient(135deg,#12a374,#0b6b4a);color:#fff;border:none;border-radius:12px;font-weight:900;font-size:15px">'+(mode==='renew'?('🔄 '+names.length+'명 갱신 요청 보내기'):('📤 '+names.length+'명에게 발송'))+'</button>'+
+    '</div></div>';
+  document.body.appendChild(pop);
+  names.forEach(function(_n,i){ctBulkEnd(i);});
+}
+function ctBulkEnd(i){var s=document.getElementById('cb-start-'+i);var e=document.getElementById('cb-end-'+i);if(!s||!e)return;var v=s.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){e.textContent='—';return;}var d=new Date(v);if(isNaN(d.getTime())){e.textContent='—';return;}d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);e.textContent=d.toISOString().slice(0,10);}
+function ctBulkCopyFirst(){var r=document.getElementById('cb-route-0');var p=document.getElementById('cb-price-0');if(!r)return;for(var i=1;i<_ctBulkNames.length;i++){var ri=document.getElementById('cb-route-'+i);var pi=document.getElementById('cb-price-'+i);if(ri)ri.value=r.value;if(pi&&p)pi.value=p.value;}}
+function ctBulkSameStart(){var s=document.getElementById('cb-start-0');if(!s||!s.value)return;for(var i=1;i<_ctBulkNames.length;i++){var si=document.getElementById('cb-start-'+i);if(si){si.value=s.value;ctBulkEnd(i);}}}
+async function ctBulkInfoConfirm(){
+  var names=_ctBulkNames.slice();var type=_ctBulkType;var mode=_ctBulkMode;if(!names.length)return;
+  if(!_driverExt)_driverExt={};var db=getDB();var dbDirty=false;
+  names.forEach(function(nm,i){
+    var route=(((document.getElementById('cb-route-'+i)||{}).value)||'').trim();
+    var price=(((document.getElementById('cb-price-'+i)||{}).value)||'').trim();
+    var cstart=(((document.getElementById('cb-start-'+i)||{}).value)||'').trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(cstart))cstart='';
+    if(!_driverExt[nm])_driverExt[nm]={name:nm};
+    if(route!==''){_driverExt[nm].route=route;if(db[nm]){db[nm].route=route;dbDirty=true;}}
+    if(price!==''){_driverExt[nm].price=price;if(db[nm]){db[nm].price=price;dbDirty=true;}}
+    if(cstart!=='')_driverExt[nm].cstart=cstart;
+  });
+  if(dbDirty){try{saveDB(db);}catch(e){}}
+  if(sbClient){try{
+    var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();
+    var m={};if(r1&&r1.data&&r1.data.value){try{m=(typeof r1.data.value==='string')?JSON.parse(r1.data.value):r1.data.value;}catch(_e){m={};}}
+    names.forEach(function(nm){m[nm]=Object.assign({},m[nm]||{},_driverExt[nm]);});
+    await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});
+  }catch(e){console.warn('일괄 계약정보 저장 실패',e);}}
+  var p=document.getElementById('ctbulk-pop');if(p)p.remove();
+  if(mode==='renew'){await ctRenew(names,type);}else{await ctShareNow(names,type);}
+}
+window.openCtBulkInfo=openCtBulkInfo;window.ctBulkEnd=ctBulkEnd;window.ctBulkCopyFirst=ctBulkCopyFirst;window.ctBulkSameStart=ctBulkSameStart;window.ctBulkInfoConfirm=ctBulkInfoConfirm;
+
 function ctShareCount(){var n=Object.keys(_ctShareSel).filter(function(k){return _ctShareSel[k];}).length;var b=document.getElementById('ctshare-btn');if(b){b.disabled=!n;b.textContent=n?(_ctShareMode==='renew'?('🔄 '+n+'명 갱신 요청'):('📤 '+n+'명에게 공유하기')):(_ctShareMode==='renew'?'갱신 요청':'공유하기');}}
 function ctShareAll(on){var pop=document.getElementById('ctshare-pop');if(!pop)return;pop.querySelectorAll('input[type=checkbox][value]').forEach(function(c){if(c.disabled)return;c.checked=on;_ctShareSel[c.value]=on;});ctShareCount();}
-async function ctShareConfirm(type){var names=Object.keys(_ctShareSel).filter(function(k){return _ctShareSel[k];});if(!names.length)return;var p=document.getElementById('ctshare-pop');if(p)p.remove();if(_ctShareMode==='renew'){await ctRenew(names,type);}else{await ctShareNow(names,type);}}
+async function ctShareConfirm(type){var names=Object.keys(_ctShareSel).filter(function(k){return _ctShareSel[k];});if(!names.length)return;var p=document.getElementById('ctshare-pop');if(p)p.remove();openCtBulkInfo(names,type,_ctShareMode);}
 // ── 위탁자(회사) 정보 + 도장 이미지 (계약서 위탁자란) ──
 var _ctIssuer=null;var _ctIssuerStamp='';
 async function loadContractIssuer(){
