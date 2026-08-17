@@ -92,6 +92,7 @@
     <div class="on" id="n-cal" onclick="go('cal')">📅 달력</div>
     <div id="n-mine" onclick="go('mine')">🙋 내 등록</div>
     <div id="n-sup" onclick="go('sup')">🚚 내 지원</div>
+    <div id="n-settle" onclick="go('settle')" style="display:none">📊 전체정산</div>
   </div>
   <div class="scr" id="scr"></div>
 </div>
@@ -124,7 +125,7 @@ var slots=[];
 var reqs=[];
 function money(n){return '₩'+Math.round(n||0).toLocaleString();}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},1700);}
-function go(p){page=p;sub=null;['cal','mine','sup'].forEach(function(x){document.getElementById('n-'+x).classList.toggle('on',x===p);});render();}
+function go(p){page=p;sub=null;['cal','mine','sup','settle'].forEach(function(x){var e=document.getElementById('n-'+x);if(e)e.classList.toggle('on',x===p);});render();}
 function rAvg(rt){if(!rt.length)return 0;return Math.round(rt.reduce(function(a,r){return a+(ROUTES[r]||800);},0)/rt.length);}
 function computeUnit(r){var ex=r.extra||0;if(r.viaSupport||r.mode==='개인')return rAvg(r.routes)+ex;if(r.mode==='현장')return rAvg(r.routes)+HYEONADD+ex;if(r.mode==='특정일')return aptUnit('특정일',r.aptType||'아파트')+ex;return 0;}
 function reqUnit(r){if(r.negUnit)return r.negUnit;if(r.unit!=null)return r.unit;return computeUnit(r);}
@@ -155,6 +156,7 @@ function render(){var s=document.getElementById('scr');
   if(page==='cal')return s.innerHTML=calHtml();
   if(page==='mine')return s.innerHTML=listHtml('mine');
   if(page==='sup')return s.innerHTML=listHtml('sup');
+  if(page==='settle')return s.innerHTML=settleHtml();
 }
 // ── 달력 ──
 function calHtml(){
@@ -239,6 +241,35 @@ function reqCard(r){if(r.status==='done')return doneCompact(r);
     +'<div class="meta">라우트 '+r.routes.join(', ')+' · '+qtyTxt+(r.mapImg?' · 🗺️지도':'')+'</div>'
     +supMini(r)
     +'<div class="row" style="justify-content:space-between;margin-top:9px"><span class="meta">'+pl+'</span><span class="price">'+pr+'</span></div></div>';
+}
+var settleScope='this';
+function bpPrevYM(){var d=new Date(CY,CM-2,1);return d.getFullYear()+'-'+pad(d.getMonth()+1);}
+function bpSettleData(scope){var inc={},exp={},tin=0,tout=0,ninc=0,nexp=0,thisYM=TODAY.slice(0,7),prevYM=bpPrevYM();
+  reqs.forEach(function(r){
+    if(r.status!=='done'||r.settle!=='정산일')return;
+    var ym=(r.date||'').slice(0,7);
+    if(scope==='this'&&ym!==thisYM)return;
+    if(scope==='prev'&&ym!==prevYM)return;
+    var u=r.negUnit||reqUnit(r),q=r.finalQty||0,total=u*q;
+    var sups=(r.supporters||[]).filter(function(s){return s.state==='picked';});if(!sups.length)sups=r.supporters||[];
+    var share=sups.length?Math.round(total/sups.length):total;
+    sups.forEach(function(s){var nm=(s.name||'').split('(')[0].trim();inc[nm]=(inc[nm]||0)+share;tin+=share;ninc++;});
+    if(r.requester){exp[r.requester]=(exp[r.requester]||0)+total;tout+=total;nexp++;}
+  });
+  return {inc:inc,exp:exp,tin:tin,tout:tout,ninc:ninc,nexp:nexp};
+}
+function settleHtml(){var D=bpSettleData(settleScope);
+  var lbl={this:'이번 달',prev:'지난 달',all:'전체'}[settleScope];
+  var h='<div class="note">📊 <b>관리자 전용</b> · 전체 인원의 백업 <b>수익(지원)·지출(요청)</b> 합계입니다. <b>완료·정산일 정산</b> 건만 집계(개인 현금정산 제외). 여기 <b>이번 달</b> 건이 정산 프로그램 "어플에서 가져오기"로 연결됩니다.</div>';
+  h+='<div class="seg">'+['this','prev','all'].map(function(k){var l={this:'이번 달',prev:'지난 달',all:'전체'}[k];return '<span class="fchip '+(settleScope===k?'on':'')+'" onclick="settleScope=\''+k+'\';render()">'+l+'</span>';}).join('')+'</div>';
+  h+='<div class="row" style="gap:10px;margin-bottom:12px;flex-wrap:nowrap">'
+    +'<div class="card" style="flex:1;margin:0;background:linear-gradient(135deg,#12a374,#0b6b4a);color:#fff"><div style="font-size:11px;opacity:.92;font-weight:800">전체 총 수익 💰</div><div style="font-size:21px;font-weight:900">'+money(D.tin)+'</div><div style="font-size:10.5px;opacity:.9">백업지원 · '+D.ninc+'건</div></div>'
+    +'<div class="card" style="flex:1;margin:0;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff"><div style="font-size:11px;opacity:.92;font-weight:800">전체 총 지출 💸</div><div style="font-size:21px;font-weight:900">'+money(D.tout)+'</div><div style="font-size:10.5px;opacity:.9">백업요청 · '+D.nexp+'건</div></div></div>';
+  function rows(obj,cls){var arr=Object.keys(obj).map(function(k){return [k,obj[k]];}).sort(function(a,b){return b[1]-a[1];});if(!arr.length)return '<div class="note">해당 없음</div>';return arr.map(function(x){var tp=(x[0].indexOf('(타업체)')>=0);return '<div class="row" style="justify-content:space-between;padding:9px 2px;border-bottom:1px dashed #eef2f6"><span class="rname" style="font-size:14px">'+x[0]+'</span><span class="price" style="color:'+(cls==='in'?'#1b7a4b':'#c0392b')+'">'+(cls==='in'?'+':'-')+money(x[1]).replace('₩','₩')+'</span></div>';}).join('');}
+  h+='<div class="card"><div style="font-size:12.5px;font-weight:900;color:#0b6b4a;margin-bottom:4px">🟢 수익(지원) — '+lbl+'</div>'+rows(D.inc,'in')+'</div>';
+  h+='<div class="card"><div style="font-size:12.5px;font-weight:900;color:#c0392b;margin-bottom:4px">🔴 지출(요청) — '+lbl+'</div>'+rows(D.exp,'out')+'</div>';
+  h+='<div style="margin-top:6px"><button class="btn b2" onclick="bpExportSettle()">📥 이번 달 정산 엑셀 내보내기</button></div>';
+  return h;
 }
 function listHtml(which){var arr=which==='mine'?reqs.filter(function(r){return r.requester===ME&&r.status!=='rejected';}):reqs.filter(function(r){return iAmSup(r)&&r.requester!==ME&&r.status!=='rejected';});
   var f=filt[which];var flt=arr.filter(function(r){return f==='all'?true:(f==='ing'?r.status!=='done':r.status==='done');}).sort(sortByDate);
@@ -482,7 +513,7 @@ async function boot(){
     if(!meComp){ try{await sb.from('bp_companies').insert({id:MYCOMP,name:MYCOMPNAME,approved:false,active:true,contact:ME});}catch(e){} document.getElementById('scr').innerHTML=pendingHtml(null); return; }
     if(!meComp.approved && !meComp.is_owner){ document.getElementById('scr').innerHTML=pendingHtml(meComp); return; }
     IS_OWNER=!!meComp.is_owner;
-    try{if(ROLE!=='admin'){['bp-bell','bp-gear'].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});}}catch(_e){}
+    try{if(ROLE!=='admin'){['bp-bell','bp-gear'].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});} else {var _ns=document.getElementById('n-settle');if(_ns)_ns.style.display='';}}catch(_e){}
     try{var _sb=document.getElementById('bp-sub');if(_sb)_sb.textContent=ME+' · '+MYCOMPNAME+' · 매칭 전 익명';}catch(_e){}
     render();
     var _R=await Promise.all([
