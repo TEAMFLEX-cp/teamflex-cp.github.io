@@ -714,7 +714,7 @@ textarea.ann-input:focus{border-color:#1565c0}
         <div id="ann-fpreview"></div>
         <input type="file" id="ann-file-inp" accept="image/*" multiple style="display:none" onchange="annHandlePhoto(this)">
       </div>
-      <div class="checkbox-row" id="ann-imp-row" style="display:none"><input type="checkbox" id="ann-imp"><label for="ann-imp">&#x2757; 중요 공지 — 최상단 고정 (팀장·관리자 전용)</label></div><div class="fg" style="margin-top:10px"><label style="font-size:13px;font-weight:700;color:#333;margin-bottom:7px;display:block">✨ 효과 <span style="font-size:11px;color:#888;font-weight:400">(접속 팝업·목록에서 강조)</span></label><div id="ann-fx-chips" style="display:flex;flex-wrap:wrap;gap:6px"><span class="ann-chip on" data-fx="" data-col="#607d8b" data-on="#607d8b" data-tx="#fff" onclick="annPickFx(this)" style="background:#607d8b;color:#fff">없음</span><span class="ann-chip" data-fx="siren" data-col="#e53935" data-on="#e53935" data-tx="#fff" onclick="annPickFx(this)" style="color:#e53935;border-color:#e53935">🚨 경광등</span><span class="ann-chip" data-fx="important" data-col="#caa200" data-on="#ffe600" data-tx="#d50000" onclick="annPickFx(this)" style="color:#caa200;border-color:#caa200">❗ 중요!</span><span class="ann-chip" data-fx="urgent" data-col="#ef6c00" data-on="#ef6c00" data-tx="#fff" onclick="annPickFx(this)" style="color:#ef6c00;border-color:#ef6c00">⚠️ 긴급</span><span class="ann-chip" data-fx="mustread" data-col="#7e57c2" data-on="#7e57c2" data-tx="#fff" onclick="annPickFx(this)" style="color:#7e57c2;border-color:#7e57c2">📌 필독</span><span class="ann-chip" data-fx="nw" data-col="#2e9e5b" data-on="#2e9e5b" data-tx="#fff" onclick="annPickFx(this)" style="color:#2e9e5b;border-color:#2e9e5b">✨ NEW</span><span class="ann-chip" data-fx="update" data-col="#1565c0" data-on="#1565c0" data-tx="#fff" onclick="annPickFx(this)" style="color:#1565c0;border-color:#1565c0">💫 앱업데이트</span><span class="ann-chip" data-fx="bar" data-col="#00897b" data-on="#00897b" data-tx="#fff" onclick="annPickFx(this)" style="color:#00897b;border-color:#00897b">📋 컬러바</span></div><input type="hidden" id="ann-effect" value=""></div>
+      <div class="checkbox-row" id="ann-imp-row" style="display:none"><input type="checkbox" id="ann-imp"><label for="ann-imp">&#x2757; 중요 공지 — 최상단 고정 (팀장·관리자 전용)</label></div><div class="checkbox-row" style="margin-top:8px"><input type="checkbox" id="ann-targeted" onchange="annToggleTargeted(this.checked)"><label for="ann-targeted">🎯 지정 공지 — 특정 인원에게만 발송 (미체크=전체 공지)</label></div><div id="ann-target-box" style="display:none;margin:2px 0 6px"><button type="button" onclick="openAnnTargetPicker()" style="width:100%;padding:11px;border:1.5px dashed #90a4d4;background:#f5f8ff;border-radius:10px;font-weight:800;color:#3949ab;cursor:pointer">👥 대상 선택 <span id="ann-target-cnt">(0명)</span></button></div><div class="fg" style="margin-top:10px"><label style="font-size:13px;font-weight:700;color:#333;margin-bottom:7px;display:block">✨ 효과 <span style="font-size:11px;color:#888;font-weight:400">(접속 팝업·목록에서 강조)</span></label><div id="ann-fx-chips" style="display:flex;flex-wrap:wrap;gap:6px"><span class="ann-chip on" data-fx="" data-col="#607d8b" data-on="#607d8b" data-tx="#fff" onclick="annPickFx(this)" style="background:#607d8b;color:#fff">없음</span><span class="ann-chip" data-fx="siren" data-col="#e53935" data-on="#e53935" data-tx="#fff" onclick="annPickFx(this)" style="color:#e53935;border-color:#e53935">🚨 경광등</span><span class="ann-chip" data-fx="important" data-col="#caa200" data-on="#ffe600" data-tx="#d50000" onclick="annPickFx(this)" style="color:#caa200;border-color:#caa200">❗ 중요!</span><span class="ann-chip" data-fx="urgent" data-col="#ef6c00" data-on="#ef6c00" data-tx="#fff" onclick="annPickFx(this)" style="color:#ef6c00;border-color:#ef6c00">⚠️ 긴급</span><span class="ann-chip" data-fx="mustread" data-col="#7e57c2" data-on="#7e57c2" data-tx="#fff" onclick="annPickFx(this)" style="color:#7e57c2;border-color:#7e57c2">📌 필독</span><span class="ann-chip" data-fx="nw" data-col="#2e9e5b" data-on="#2e9e5b" data-tx="#fff" onclick="annPickFx(this)" style="color:#2e9e5b;border-color:#2e9e5b">✨ NEW</span><span class="ann-chip" data-fx="update" data-col="#1565c0" data-on="#1565c0" data-tx="#fff" onclick="annPickFx(this)" style="color:#1565c0;border-color:#1565c0">💫 앱업데이트</span><span class="ann-chip" data-fx="bar" data-col="#00897b" data-on="#00897b" data-tx="#fff" onclick="annPickFx(this)" style="color:#00897b;border-color:#00897b">📋 컬러바</span></div><input type="hidden" id="ann-effect" value=""></div>
       <div class="fg" style="margin-top:10px">
         <label style="font-size:13px;font-weight:700;color:#333;margin-bottom:8px;display:block">📅 노출 기간 <span style="color:#e53935">*</span> <span style="font-size:11px;color:#888;font-weight:400">(기간 만료 후 자동 숨김)</span></label>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1312,6 +1312,7 @@ function sbSaveAnn(ann){
             var _annCfg=(typeof notifCfgOf==='function')?notifCfgOf('ann'):{};
             var _annRoles=(typeof notifRolesFor==='function')?notifRolesFor('ann'):[];
             if(_annCfg&&_annCfg.on===false){ /* 공지 알림 사용 꺼짐 → 발송 안 함 */ }
+            else if(ann.targets&&ann.targets.length){ pushNotify('ann',{title:_annTitle,body:_annBody,data:{ann_id:sid},always:ann.targets,roleBroadcast:false}); }
             else if(_annRoles.length&&_annRoles.length<4){ pushNotify('ann',{title:_annTitle,body:_annBody,data:{ann_id:sid},roleBroadcast:true}); }
             else { sendPushToAll(_annTitle, _annBody, sid); }
           }else{
@@ -6038,6 +6039,20 @@ function selectAnnExpire(days){
     lbl.style.color=sel?'#1565c0':'#555';
   });
 }
+var _annTargets=[];
+function annToggleTargeted(on){var b=document.getElementById('ann-target-box');if(b)b.style.display=on?'':'none';if(!on)_annTargets=[];annTargetCnt();}
+function annTargetCnt(){var e=document.getElementById('ann-target-cnt');if(e)e.textContent='('+_annTargets.length+'명)';}
+function openAnnTargetPicker(){
+  var db=getDB();
+  var drs=Object.values(db).filter(function(d){return splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&d.role!=='admin'&&d.status==='approved';}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');});
+  var sel={};_annTargets.forEach(function(n){sel[n]=1;});
+  var rows=drs.map(function(d){var rl={leader:'팀장',sub:'조장',driver:'기사'}[d.role]||'';return '<label style="display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid #f2f5f8"><input type="checkbox" class="anntg" value="'+String(d.name).replace(/"/g,'')+'" '+(sel[d.name]?'checked':'')+' style="width:18px;height:18px"><span style="flex:1;font-size:13px;font-weight:700;color:#33475b">'+d.name+' <span style="font-size:9px;color:#8090a0">'+rl+'</span></span></label>';}).join('');
+  var pop=document.createElement('div');pop.id='anntg-pop';pop.style.cssText='position:fixed;inset:0;z-index:10900;display:flex;flex-direction:column;justify-content:flex-end';
+  pop.innerHTML='<div onclick="var p=document.getElementById(\'anntg-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div><div style="background:#fff;border-radius:22px 22px 0 0;max-height:82vh;display:flex;flex-direction:column;padding:16px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:15px;font-weight:900;color:#3949ab;text-align:center;margin-bottom:8px">👥 지정 공지 대상 선택</div><label style="display:flex;align-items:center;gap:10px;padding:9px 6px;background:#eef5ff;border-radius:10px;margin-bottom:6px;cursor:pointer"><input type="checkbox" onchange="var c=this.checked;document.querySelectorAll(\'.anntg\').forEach(function(x){x.checked=c;});" style="width:18px;height:18px"><span style="font-weight:900;color:#123a6b">전체 선택</span></label><div style="overflow:auto;border:1px solid #eef2f6;border-radius:10px;flex:1;min-height:120px">'+rows+'</div><button onclick="annTargetConfirm()" style="margin-top:12px;width:100%;padding:14px;background:#3949ab;color:#fff;border:none;border-radius:12px;font-weight:800">선택 완료</button></div>';
+  document.body.appendChild(pop);
+}
+function annTargetConfirm(){var arr=[];document.querySelectorAll('.anntg:checked').forEach(function(c){arr.push(c.value);});_annTargets=arr;annTargetCnt();var p=document.getElementById('anntg-pop');if(p)p.remove();}
+window.annToggleTargeted=annToggleTargeted;window.openAnnTargetPicker=openAnnTargetPicker;window.annTargetConfirm=annTargetConfirm;
 function openAnnWrite(){
   document.getElementById('ann-write-modal').style.display='';
   var impRow=document.getElementById('ann-imp-row');
@@ -6048,6 +6063,7 @@ function openAnnWrite(){
     if(lbl){lbl.style.border='2px solid #e0e0e0';lbl.style.background='#fff';lbl.style.fontWeight='400';lbl.style.color='#555';}
   });
   document.getElementById('ann-err').textContent='';
+  var _tg=document.getElementById('ann-targeted');if(_tg)_tg.checked=false;_annTargets=[];var _tb=document.getElementById('ann-target-box');if(_tb)_tb.style.display='none';annTargetCnt();
   _annPhotos=[];var _afp1=document.getElementById('ann-fpreview');if(_afp1)_afp1.innerHTML='';var _afi=document.getElementById('ann-file-inp');if(_afi)_afi.value='';
 }
 function closeAnnWrite(){document.getElementById('ann-write-modal').style.display='none';}
@@ -6068,7 +6084,7 @@ async function submitAnn(){
   var _annImgs=[];try{_annImgs=await annUploadPhotos();}catch(_e){console.error('annUpload',_e);}
   var anns=getAnns();
   var _eff=(document.getElementById('ann-effect')||{}).value||'';
-  var a={id:Date.now(),title:title,body:body,important:imp,effect:_eff,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name],expireAt:expireAt,expireDays:expireDays,images:_annImgs};
+  var a={id:Date.now(),title:title,body:body,important:imp,effect:_eff,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name],expireAt:expireAt,expireDays:expireDays,images:_annImgs,targets:((document.getElementById('ann-targeted')&&document.getElementById('ann-targeted').checked)?_annTargets.slice():[])};
   anns.push(a);saveAnns(anns);
   // 로컬 알림 + 전체 Push 발송
   var notifTitle='📢 팀플 - '+(imp?'[중요] ':'')+title;
