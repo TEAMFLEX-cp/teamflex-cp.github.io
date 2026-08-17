@@ -1789,15 +1789,8 @@ window.ctaComplete=ctaComplete;
 async function ctShareNow(names,type){ var ok=await ctaSet(names,type,'pending'); if(ok){var arr=Array.isArray(names)?names:[names];try{ctNotifyOnce(arr,type);}catch(e){}showToast('📤 '+arr.length+'명에게 공유했습니다',true);openContractAdmin(true);} }
 async function ctNotifyOnce(names,type){
   if(!sbClient)return;var arr=Array.isArray(names)?names:[names];if(!arr.length)return;
-  try{
-    var r=await sbClient.from('app_settings').select('value').eq('key','contract_notified').maybeSingle();
-    var m=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{};
-    var lbl={wc:'위·수탁 계약서',badge_new:'배넘버 신규 서류',badge_renew:'배넘버 재허가 서류'}[type]||'계약서';
-    var send=[];arr.forEach(function(n){if(!(m[n]&&m[n][type])){send.push(n);if(!m[n])m[n]={};m[n][type]=true;}});
-    if(!send.length)return;
-    for(var i=0;i<send.length;i++){try{await sendPushToAll('📄 '+lbl+' 작성 요청',send[i]+'님, '+lbl+'를 작성해 주세요.',null,send[i]);}catch(e){}}
-    await sbClient.from('app_settings').upsert({key:'contract_notified',value:JSON.stringify(m)},{onConflict:'key'});
-  }catch(e){console.warn('계약 최초 알림 실패',e);}
+  var lbl={wc:'위·수탁 계약서',badge_new:'배넘버 신규 서류',badge_renew:'배넘버 재허가 서류'}[type]||'계약서';
+  for(var i=0;i<arr.length;i++){try{await sendPushToAll('📄 '+lbl+' 작성 요청',arr[i]+'님, '+lbl+'를 작성해 주세요.',null,arr[i]);}catch(e){}}
 }
 window.ctNotifyOnce=ctNotifyOnce;
 async function ctReject(name,type){
@@ -1996,8 +1989,8 @@ window._notifNudge=_notifNudge;
 // 홈 배너: 미작성(위수탁) 기사·팀장·조장에게 계약서 작성 진입점 노출 (게이트 여부와 무관)
 function ctHomeBanner(){
   if(!CU||CU.role==='admin')return '';
-  if(_contractStatus===null||_ctAssign===null){
-    if(sbClient){ Promise.all([(_contractStatus===null&&typeof loadContractStatus==='function')?loadContractStatus():null,(_ctAssign===null&&typeof loadContractAssign==='function')?loadContractAssign():null]).then(function(){try{if(CUR_TAB==='hm'&&!window._ctScreenOpen){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();}}catch(e){}}); }
+  if(_contractStatus===null||_ctAssign===null||(typeof _ctApproved!=='undefined'&&_ctApproved===null)){
+    if(sbClient){ Promise.all([(_contractStatus===null&&typeof loadContractStatus==='function')?loadContractStatus():null,(_ctAssign===null&&typeof loadContractAssign==='function')?loadContractAssign():null,((typeof _ctApproved!=='undefined'&&_ctApproved===null&&typeof loadCtApproved==='function')?loadCtApproved():null)]).then(function(){try{if(CUR_TAB==='hm'&&!window._ctScreenOpen){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();}}catch(e){}}); }
     return '';
   }
   var nm=String(CU.name||'').replace(/"/g,'');
@@ -2005,6 +1998,7 @@ function ctHomeBanner(){
   var out='';
   types.forEach(function(t){
     if(!ctaActive(CU.name,t[0]))return;
+    if(typeof ctApprovedOf==='function'&&ctApprovedOf(CU.name,t[0]))return;
     var rej=ctaStatus(CU.name,t[0])==='reject';
     var call=(t[0]==='wc')?('CT_startWrite(&quot;wc&quot;,&quot;'+nm+'&quot;,null,&quot;driver&quot;)'):('CT_startWrite(&quot;badge&quot;,&quot;'+nm+'&quot;,&quot;'+(t[0]==='badge_renew'?'renew':'new')+'&quot;,&quot;driver&quot;)');
     var bg=rej?'#c62828,#e5573f':'#5a2fb0,#7b4fd6';
@@ -2112,6 +2106,7 @@ async function ctApprove(name,type){
   if(!_ctApproved)_ctApproved={};if(!_ctApproved[name])_ctApproved[name]={};
   _ctApproved[name][type]={ok:true,at:new Date().toISOString(),by:(window.CU&&CU.name)||''};
   try{if(sbClient)await sbClient.from('app_settings').upsert({key:'contract_approved',value:JSON.stringify(_ctApproved)},{onConflict:'key'});}catch(e){console.warn('승인 저장 실패',e);}
+  try{if(typeof ctaComplete==='function')await ctaComplete(name,type);}catch(e){}
   try{showToast('✅ '+name+' 최종 승인 완료',true);}catch(_){}
   if(typeof openContractAdmin==='function')openContractAdmin(true);
 }
