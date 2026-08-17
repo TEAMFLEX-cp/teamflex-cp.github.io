@@ -7514,6 +7514,8 @@ function _dhMaskField(key,val,e){
   return val;
 }
 function openDriverDetail(name){if(_driverExt===null){_loadDriverExt().then(function(){openDriverDetail(name);});return;}_dhRender(name,false);}
+var _DH_OPTS={car:['봉고 - Hi','봉고 - Low','봉고 - 2.2','포터 - Hi','포터 - Low','포터 - 2.2','스타리아','ST1','ST1 - Hi','PV5','PV5 - Hi','PV7','이티벤','마사다','기타'],fuel:['EV','LPG','디젤'],lictype:['2종보통','1종보통','1종대형']};
+function _dhSelectHtml(id,raw,opts){raw=String(raw==null?'':raw).trim();var found=opts.indexOf(raw)>=0;var h='<select id="'+id+'" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0;box-sizing:border-box;background:#fff">';h+='<option value=""'+(raw===''?' selected':'')+'>선택</option>';if(raw&&!found)h+='<option value="'+raw.replace(/"/g,'&quot;')+'" selected>'+raw+' (기존)</option>';opts.forEach(function(o){h+='<option value="'+o+'"'+(raw===o?' selected':'')+'>'+o+'</option>';});return h+'</select>';}
 function _dhRender(name,edit,mode){
   var self=(mode==='self');
   var db=getDB();var e=_dhMerge(name,_driverExt||{},db);var d=db[name]||{};var isAdm=CU&&CU.role==='admin'&&!self;var bl=!!(d&&d.blind);
@@ -7528,6 +7530,8 @@ function _dhRender(name,edit,mode){
       if(key==='cyear'){
         body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'
           +'<input id="dhe_cyear" value="'+(_deDig(e.regdate).slice(0,4)||e.cyear||'')+'" readonly style="flex:1;border:1.5px solid #bfe6cc;border-radius:9px;padding:8px 10px;font-size:13px;background:#f0faf3;color:#1b7a38;font-weight:700;box-sizing:border-box"></div>';
+      }else if(key==='car'||key==='fuel'||key==='lictype'){
+        body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'+_dhSelectHtml('dhe_'+key,raw,_DH_OPTS[key])+'</div>';
       }else{
         body+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="width:104px;flex-shrink:0;font-size:11.5px;font-weight:700;color:#4a5a6a;text-align:right">'+lb+'</label>'
           +'<input id="dhe_'+key+'" value="'+String(raw).replace(/"/g,'&quot;')+'"'+(key==='regdate'?' oninput="var c=document.getElementById(\'dhe_cyear\');if(c)c.value=(this.value.replace(/[^0-9]/g,\'\').slice(0,4));"':'')+' style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:8px 10px;font-size:13px;min-width:0;box-sizing:border-box"></div>';
