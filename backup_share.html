@@ -109,7 +109,7 @@ var MYCOMPNAME=decodeURIComponent(_q.get('cn')||'팀플렉스');
 var ROLE=_q.get('role')||'admin';
 var MYPHONE=_q.get('phone')||'';
 var MYACCT='';
-var APPROVED_IDS=[MYCOMP];
+var APPROVED_IDS=[MYCOMP]; var IS_OWNER=false; var COMPANIES=[];
 var page='cal', sub=null, curDate=null, curId=null, draft=null, filt={mine:'all',sup:'all'};
 function pad(n){return ('0'+n).slice(-2);}
 function kToday(){var d=new Date(Date.now()+9*3600000);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate());}
@@ -140,6 +140,7 @@ function stateBadge(st){return {joined:'<span class="badge b-amber">신청</span
 
 function render(){var s=document.getElementById('scr');
   if(sub==='admin')return s.innerHTML=adminHtml();
+  if(sub==='compadmin')return s.innerHTML=compAdminHtml();
   if(sub==='availReg')return s.innerHTML=availRegHtml();
   if(sub==='register')return s.innerHTML=registerHtml();
   if(sub==='supReg')return s.innerHTML=supRegHtml();
@@ -312,6 +313,22 @@ function submitSupReg(){if(!draft.who){toast('요청 기사를 선택하세요')
   reqs.unshift(r);go('sup');toast('📤 '+draft.who+' 기사에게 확정 요청 전송');
 }
 // ── 상세 ──
+function reloadCompanies(){sb.from('bp_companies').select('*').order('requested_at',{ascending:true}).then(function(r){COMPANIES=(r.data||[]);render();});}
+function toggleApprove(id,cur){sb.from('bp_companies').update({approved:!cur,approved_at:new Date().toISOString(),approved_by:ME}).eq('id',id).then(function(res){if(res&&res.error){toast('저장오류');return;}toast(!cur?'✅ 승인 완료':'✖ 승인 해제');reloadCompanies();});}
+function compAdminHtml(){
+  var h='<div class="row"><span onclick="sub=\'admin\';render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">🏢 업체 승인 관리</b></div>';
+  h+='<div class="note">허브에 참여 요청한 업체를 승인/해제합니다. <b>승인된 업체만</b> 백업 공유가 열립니다. (팀플렉스 = 오너)</div>';
+  var wait=COMPANIES.filter(function(c){return !c.is_owner&&!c.approved;});
+  if(wait.length)h+='<div class="note" style="background:#fff6e0;color:#8a5a00">⏳ 승인 대기 '+wait.length+'개 업체가 있습니다.</div>';
+  if(!COMPANIES.length)h+='<div class="note">참여 업체 없음</div>';
+  COMPANIES.forEach(function(c){
+    var badge=c.is_owner?'<span class="badge b-blue">오너</span>':(c.approved?'<span class="badge b-green">✅ 승인됨</span>':'<span class="badge b-amber">⏳ 대기</span>');
+    h+='<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="rname" style="font-size:16px">'+c.name+'</div><div class="meta">id: '+c.id+(c.contact?(' · 담당 '+c.contact):'')+'</div></div>'+badge+'</div>';
+    if(!c.is_owner)h+='<div style="margin-top:9px"><button class="btn '+(c.approved?'b3':'b2')+'" onclick="toggleApprove(\''+c.id+'\','+(c.approved?'true':'false')+')">'+(c.approved?'✖ 승인 해제':'✅ 승인하기')+'</button></div>';
+    h+='</div>';
+  });
+  return h;
+}
 function openAdmin(){draft={ha:HYEONADD,ta:RATE['특정일']['아파트'],tj:RATE['특정일']['지번']};sub='admin';render();}
 function aAdm(k,d){draft[k]=Math.max(0,(draft[k]||0)+d);render();}
 function saveAdmin(){HYEONADD=draft.ha;RATE['특정일']['아파트']=draft.ta;RATE['특정일']['지번']=draft.tj;APTP['아파트']=draft.ta;APTP['지번']=draft.tj;APTP['아파트+지번']=Math.round((draft.ta+draft.tj)/2);sb.from('bp_company_config').upsert({company_id:MYCOMP,hyeon_add:draft.ha,teuk_apt:draft.ta,teuk_jib:draft.tj,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(){});toast('💾 단가 저장 · 즉시 반영');go('cal');}
@@ -321,7 +338,8 @@ function adminHtml(){var tAvg=Math.round((draft.ta+draft.tj)/2);
   h+='<div class="note"><b>현장 기본추가단가</b>(원단가에 가산)와 <b>특정일 아파트/지번 단가</b>를 설정합니다. 저장 시 즉시 반영.</div>';
   h+='<div class="card" style="border-left:6px solid #e65100"><div style="font-size:13.5px;font-weight:900;color:#e65100;margin-bottom:4px">🚚 현장 <span style="font-size:10px;font-weight:600;color:#a06a30">라우트 원단가 + 아래 금액</span></div>'+admRow('➕ 기본추가단가','ha')+'</div>';
   h+='<div class="card" style="border-left:6px solid #1565c0"><div style="font-size:13.5px;font-weight:900;color:#1565c0;margin-bottom:4px">📅 특정일 단가 <span style="font-size:10px;font-weight:600;color:#5a7bb0">(고정 단가)</span></div>'+admRow('🏢 아파트 단가','ta')+admRow('🏠 지번 단가','tj')+'<div class="calc"><div class="tot"><span>아파트+지번 (평균 자동)</span><span>'+money(tAvg)+'</span></div></div></div>';
-  h+='<div style="margin-top:16px"><button class="btn b1" onclick="saveAdmin()">💾 저장</button></div>';
+  if(IS_OWNER&&ROLE==='admin')h+='<div style="margin-top:12px"><button class="btn b2" onclick="sub=\'compadmin\';render()">🏢 업체 승인 관리</button></div>';
+  h+='<div style="margin-top:12px"><button class="btn b1" onclick="saveAdmin()">💾 저장</button></div>';
   return h;
 }
 function openDetail(id){curId=id;sub='detail';render();}
@@ -422,6 +440,8 @@ async function boot(){
     if(!meComp.approved && !meComp.is_owner){ document.getElementById('scr').innerHTML=pendingHtml(meComp); return; }
     var ap=await sb.from('bp_companies').select('id').eq('approved',true);
     APPROVED_IDS=((ap&&ap.data)||[]).map(function(x){return x.id;}); if(!APPROVED_IDS.length)APPROVED_IDS=[MYCOMP];
+    IS_OWNER=!!meComp.is_owner;
+    var cs=await sb.from('bp_companies').select('*').order('requested_at',{ascending:true}); COMPANIES=((cs&&cs.data)||[]);
     var cf=await sb.from('bp_company_config').select('*').eq('company_id',MYCOMP).maybeSingle();
     if(cf&&cf.data){HYEONADD=cf.data.hyeon_add;RATE['특정일']['아파트']=cf.data.teuk_apt;RATE['특정일']['지번']=cf.data.teuk_jib;APTP['아파트']=cf.data.teuk_apt;APTP['지번']=cf.data.teuk_jib;APTP['아파트+지번']=Math.round((cf.data.teuk_apt+cf.data.teuk_jib)/2);}
     var rt=await sb.from('bp_company_routes').select('route_name,base_price').eq('company_id',MYCOMP);
