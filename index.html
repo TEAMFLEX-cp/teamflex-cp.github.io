@@ -1309,14 +1309,20 @@ function sbSaveAnn(ann){
           // 야간(KST 알림금지)엔 즉시 발송 대신 night_queue 적재 → 폴러가 07시에 묶어 발송
           var _annTitle='📢 팀플 - '+(ann.title||'새 공지사항');
           var _annBody=ann.content||ann.body||'새 공지가 등록됐습니다.';
-          if(!isQuietHour()){
-            var _annCfg=(typeof notifCfgOf==='function')?notifCfgOf('ann'):{};
-            var _annRoles=(typeof notifRolesFor==='function')?notifRolesFor('ann'):[];
-            if(_annCfg&&_annCfg.on===false){ /* 공지 알림 사용 꺼짐 → 발송 안 함 */ }
-            else if(ann.targets&&ann.targets.length){ pushNotify('ann',{title:_annTitle,body:_annBody,data:{ann_id:sid},always:ann.targets,roleBroadcast:false}); }
-            else if(_annRoles.length&&_annRoles.length<4){ pushNotify('ann',{title:_annTitle,body:_annBody,data:{ann_id:sid},roleBroadcast:true}); }
+          var _annCfg=(typeof notifCfgOf==='function')?notifCfgOf('ann'):{};
+          var _annRoles=(typeof notifRolesFor==='function')?notifRolesFor('ann'):[];
+          var _q=isQuietHour();
+          if(_annCfg&&_annCfg.on===false){ /* 공지 알림 사용 꺼짐 → 발송 안 함 */ }
+          else if(ann.targets&&ann.targets.length){
+            // 지정공지: pushNotify가 야간 차단+문지영 예외 처리. 야간 비면제 대상은 나이트큐(07시).
+            pushNotify('ann',{title:_annTitle,body:_annBody,data:{ann_id:sid},always:ann.targets,roleBroadcast:false});
+            if(_q){ ann.targets.forEach(function(n){ if(!_QUIET_EXEMPT[n]){ try{sbClient.from('night_queue').insert({recipient_name:n,recipient_role:null,category:'공지',title:_annTitle,body:String(_annBody).slice(0,300),data:{ann_id:sid}}).then(function(){}).catch(function(){});}catch(_e){} } }); }
+          }
+          else if(!_q){
+            if(_annRoles.length&&_annRoles.length<4){ pushNotify('ann',{title:_annTitle,body:_annBody,data:{ann_id:sid},roleBroadcast:true}); }
             else { sendPushToAll(_annTitle, _annBody, sid); }
-          }else{
+          }
+          else {
             try{sbClient.from('night_queue').insert({recipient_name:null,recipient_role:null,category:'공지',title:_annTitle,body:String(_annBody).slice(0,300),data:{ann_id:sid}}).then(function(){}).catch(function(e){console.warn('night_queue 공지 적재 실패',e);});}catch(_nq){}
           }
         }
@@ -2676,7 +2682,7 @@ var _QUIET_EXEMPT={'문지영':1};
 async function pushNotify(feat, opts){
   opts=opts||{};
   // 야간(22:01~07:00): 공지 제외 + 테스트 면제자(_QUIET_EXEMPT)는 예외로 발송
-  var _quiet=(feat!=='ann' && typeof isQuietHour==='function' && isQuietHour());
+  var _quiet=(typeof isQuietHour==='function' && isQuietHour());
   // 최초 1회 (오늘 하루 같은 키는 재발송 안 함)
   if(opts.dedupeKey){ try{ var _ok=await _pushDedupeCheck(opts.dedupeKey); if(_ok===false) return false; }catch(e){} }
   try{ if(_notifTargets===null){ await loadNotifTargets(); } }catch(e){}
@@ -2932,9 +2938,10 @@ function kstDateStr(d){var x=new Date(d);return isNaN(x.getTime())?'':x.toLocale
 function isQuietHour(){
   // 차단창 = [시작, 종료). 기본 22:00~06:59 차단(=07:00부터 허용). 관리자 설정(시작/종료)으로 조정 가능.
   // 설정값(cfg) 단일소스 — 클라우드 허용창 의존 제거(야간 누수 방지). 폴러는 pushHours를 별도로 읽음(saveQuietHours가 동기화).
-  var cfg=getCfg();
-  var qs=cfg.quietStart!==undefined?Number(cfg.quietStart):22;
-  var qe=cfg.quietEnd!==undefined?Number(cfg.quietEnd):7;
+  var qs,qe;
+  try{ var ph=(typeof _featureControls!=='undefined'&&_featureControls)?_featureControls.pushHours:null;
+    if(ph&&ph.start&&ph.end){ qs=parseInt(String(ph.end).slice(0,2),10); qe=parseInt(String(ph.start).slice(0,2),10); } }catch(e){}
+  if(qs===undefined||isNaN(qs)){ var cfg=getCfg(); qs=cfg.quietStart!==undefined?Number(cfg.quietStart):22; qe=cfg.quietEnd!==undefined?Number(cfg.quietEnd):7; }
   var h=Math.floor(_kstParts().min/60);
   if(qs===qe)return false;
   return (qs>qe)?(h>=qs||h<qe):(h>=qs&&h<qe);
