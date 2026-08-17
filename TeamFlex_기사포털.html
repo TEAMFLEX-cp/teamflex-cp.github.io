@@ -2578,8 +2578,11 @@ async function subscribePush(){
   try{
     var sub=await _swReg.pushManager.getSubscription();
     var _oldEp=sub?sub.endpoint:null;
-    // 기존 구독 '유지'(엔드포인트 안정화) → 같은 기기에 로그인한 여러 계정이 각자 알림 받도록.
-    //   (매 로그인마다 해지/재구독하면 엔드포인트가 바뀌어 이전 계정 구독이 죽어버림)
+    // 권한 허용 시 기존 구독을 해지하고 새로 구독 → 죽은 구독도 확실히 되살림(검증된 방식)
+    if(sub&&Notification.permission==='granted'){
+      try{await sub.unsubscribe();}catch(e){}
+      sub=null;
+    }
     if(!sub){
       if(Notification.permission!=='granted'){return;}
       sub=await _swReg.pushManager.subscribe({
@@ -2590,19 +2593,13 @@ async function subscribePush(){
     var k=sub.getKey('p256dh');var a=sub.getKey('auth');
     var p256dh=btoa(String.fromCharCode(...new Uint8Array(k)));
     var auth=btoa(String.fromCharCode(...new Uint8Array(a)));
-    // 이 기기(엔드포인트)는 '현재 로그인한 계정' 1명에게만 귀속.
-    //   - 옛 엔드포인트(브라우저가 교체)는 통째로 정리
-    //   - 이 기기에 남아있는 '다른 계정' 구독행 제거(계정 전환 시 이전 사람 알림이 안 가게)
+    // 이 기기의 옛 엔드포인트 행 정리(계정 전환 시 이전 사람 구독도 함께 제거됨 → 기기당 현재 계정 1명)
     if(_oldEp&&_oldEp!==sub.endpoint){
       try{await sbClient.from('push_subscriptions').delete().eq('endpoint',_oldEp);}catch(e){}
     }
-    try{await sbClient.from('push_subscriptions').delete().eq('endpoint',sub.endpoint).neq('driver_name',driverName);}catch(e){}
-    // 현재 계정으로 구독 저장 (기기당 1행). 같은 계정이 여러 기기면 기기마다 각각 저장됨.
-    var _row={endpoint:sub.endpoint,p256dh:p256dh,auth:auth,driver_name:driverName,role:myRole};
-    var _r=await sbClient.from('push_subscriptions').upsert(_row,{onConflict:'endpoint,driver_name'});
-    if(_r&&_r.error){
-      try{await sbClient.from('push_subscriptions').upsert(_row,{onConflict:'endpoint'});}catch(e){}
-    }
+    // endpoint 단일 유니크 기준 upsert (구/신 버전 모두 호환)
+    var _r=await sbClient.from('push_subscriptions').upsert({endpoint:sub.endpoint,p256dh:p256dh,auth:auth,driver_name:driverName,role:myRole},{onConflict:'endpoint'});
+    if(_r&&_r.error){console.warn('[Push] 구독 저장 오류',_r.error.message);}
     console.log('[Push] 구독 갱신 완료:',driverName,'('+myRole+')');
   }catch(e){console.warn('[Push] 구독 실패',e);}
 }
