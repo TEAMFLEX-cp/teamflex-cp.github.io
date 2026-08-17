@@ -1964,27 +1964,39 @@ function ctRestricted(){
   if(typeof _ctApproved==='undefined'||_ctApproved===null){ if(typeof loadCtApproved==='function'){loadCtApproved().then(function(){try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}});} return false; }
   return !(typeof ctApprovedOf==='function'&&ctApprovedOf(CU.name,'wc'));
 }
-async function ctEnableNotif(ev){
-  try{if(ev&&ev.stopPropagation)ev.stopPropagation();}catch(e){}
+async function ensurePushSubscribed(interactive){
   try{
-    if(!('Notification' in window)){try{showToast('이 브라우저는 알림을 지원하지 않습니다',false);}catch(_){}return;}
+    if(typeof Notification==='undefined'){if(interactive){try{showToast('이 브라우저는 알림을 지원하지 않습니다',false);}catch(_){}}return false;}
     var perm=Notification.permission;
-    if(perm==='default')perm=await Notification.requestPermission();
-    if(perm==='granted'){
-      if(typeof registerSW==='function'){try{await registerSW();}catch(e){}}
-      if(typeof subscribePush==='function'){try{await subscribePush();}catch(e){}}
-      try{if(typeof _pushStatusCheck==='function')await _pushStatusCheck();}catch(e){}
-      try{showToast('🔔 알림이 켜졌어요! 이제 요청이 오면 알림을 받습니다',true);}catch(_){}
-      try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();else{var mc=document.getElementById('mc');if(mc&&typeof pgHome==='function')mc.innerHTML=pgHome();}}catch(e){}
-    }else if(perm==='denied'){try{showToast('알림이 차단됨 — 크롬 주소창 자물쇠 → 알림 → 허용으로 바꿔주세요',false);}catch(_){}}
-  }catch(e){try{showToast('알림 켜기 실패: '+((e&&e.message)||e),false);}catch(_){}}
+    if(perm!=='granted'){
+      if(!interactive)return false; // 권한요청은 사용자 탭(제스처) 필요
+      perm=await Notification.requestPermission();
+    }
+    if(perm==='denied'){if(interactive){try{showToast('알림이 차단됨 — 크롬 주소창 자물쇠 → 알림 → 허용으로 바꿔주세요',false);}catch(_){}}return false;}
+    if(perm!=='granted')return false;
+    if(typeof registerSW==='function'){try{await registerSW();}catch(e){}}
+    if(typeof subscribePush==='function'){try{await subscribePush();}catch(e){}}
+    var ok=false;try{ok=await _pushStatusCheck();}catch(e){}
+    if(interactive){try{showToast(ok?'🔔 알림 켜짐 — 이제 계약·공지 알림을 받습니다':'알림 설정을 한 번 더 확인해 주세요',ok);}catch(_){}}
+    return ok;
+  }catch(e){if(interactive){try{showToast('알림 설정 실패: '+((e&&e.message)||e),false);}catch(_){}}return false;}
 }
+window.ensurePushSubscribed=ensurePushSubscribed;
+async function ctEnableNotif(ev){try{if(ev&&ev.stopPropagation)ev.stopPropagation();}catch(e){}return ensurePushSubscribed(true);}
 window.ctEnableNotif=ctEnableNotif;
 function _notifNudge(){
   if(!CU||CU.role==='admin')return '';
   if(typeof Notification==='undefined')return '';
-  if(Notification.permission==='granted')return '';
-  return '<div onclick="ctEnableNotif(event)" style="cursor:pointer;background:#fff7e6;border:1.5px solid #ffd08a;color:#a5670a;border-radius:14px;padding:13px 15px;margin:0 0 12px;display:flex;align-items:center;gap:11px;font-weight:800;font-size:13px;box-shadow:0 2px 8px rgba(180,120,0,.12)"><span style="font-size:20px">&#x1F514;</span><div style="flex:1;line-height:1.5">알림이 꺼져 있어요<br><span style="font-weight:600;font-size:11.5px;opacity:.9">눌러서 켜면 계약 요청·공지 알림을 받을 수 있어요</span></div><span style="background:#a5670a;color:#fff;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;white-space:nowrap">켜기</span></div>';
+  if(window._pushOn===true)return '';
+  if(window._pushOn===undefined){ try{setTimeout(function(){if(typeof _pushStatusCheck==='function')_pushStatusCheck();},250);}catch(e){} return ''; }
+  // 여기부터는 _pushOn===false (구독 확정 안 됨)
+  var denied=(Notification.permission==='denied');
+  if(Notification.permission==='granted'&&!window._pushAutoTried){ // 권한은 있는데 미구독 → 자동 복구 1회
+    window._pushAutoTried=true;
+    try{setTimeout(function(){if(typeof ensurePushSubscribed==='function')ensurePushSubscribed(false);},400);}catch(e){}
+  }
+  var sub=denied?'알림이 차단돼 있어요 — 눌러서 해제 방법 보기':'눌러서 켜면 계약 요청·공지 알림을 받아요';
+  return '<div onclick="ensurePushSubscribed(true)" style="cursor:pointer;background:#fff7e6;border:1.5px solid #ffd08a;color:#a5670a;border-radius:14px;padding:13px 15px;margin:0 0 12px;display:flex;align-items:center;gap:11px;font-weight:800;font-size:13px;box-shadow:0 2px 8px rgba(180,120,0,.12)"><span style="font-size:20px">&#x1F514;</span><div style="flex:1;line-height:1.5">알림이 꺼져 있어요<br><span style="font-weight:600;font-size:11.5px;opacity:.9">'+sub+'</span></div><span style="background:#a5670a;color:#fff;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;white-space:nowrap">'+(denied?'해제':'켜기')+'</span></div>';
 }
 window._notifNudge=_notifNudge;
 // 홈 배너: 미작성(위수탁) 기사·팀장·조장에게 계약서 작성 진입점 노출 (게이트 여부와 무관)
@@ -8730,7 +8742,7 @@ function inspComplete(name){
 }
 function updateHeaderBadges(){try{var el=document.getElementById('han-bdg');if(!el||!CU)return;el.innerHTML=(typeof _statusBadges==='function')?_statusBadges(CU.name):'';}catch(e){}}
 window.updateHeaderBadges=updateHeaderBadges;
-function _pushStatusCheck(){return (async function(){var ok=false;try{if(typeof Notification!=='undefined'&&Notification.permission==='granted'&&_swReg&&_swReg.pushManager){var sub=await _swReg.pushManager.getSubscription();ok=!!sub;}}catch(e){ok=false;}window._pushOn=ok;try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}return ok;})();}
+function _pushStatusCheck(){return (async function(){var ok=false;try{if(typeof Notification!=='undefined'&&Notification.permission==='granted'&&_swReg&&_swReg.pushManager){var sub=await _swReg.pushManager.getSubscription();ok=!!sub;}}catch(e){ok=false;}var changed=(window._pushOn!==ok);window._pushOn=ok;try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}try{if(changed&&typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm'&&!window._ctScreenOpen&&CU&&CU.role!=='admin'){var mc=document.getElementById('mc');if(mc&&typeof pgHome==='function')mc.innerHTML=pgHome();}}catch(e){}return ok;})();}
 window._pushStatusCheck=_pushStatusCheck;
 function _statusBadges(name){
   var h='';
