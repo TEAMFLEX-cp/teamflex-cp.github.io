@@ -3394,9 +3394,6 @@ function openCfgSubMenu(){
         '<button onclick="closeCfgSubMenu();pushStatusAdmin()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e7f0ff;border:2px solid #b8ccff;border-radius:14px;font-size:15px;font-weight:700;color:#1546b0;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F514;</span><div style="flex:1;min-width:0"><div>구독 관리</div><div style="font-size:11px;font-weight:400;color:#5b83c9;margin-top:2px">실시간 구독자·미구독자 확인</div></div>'+
         '</button>'+
-        '<button onclick="closeCfgSubMenu();openBackupShare()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e0f7fa;border:2px solid #80deea;border-radius:14px;font-size:15px;font-weight:700;color:#00838f;cursor:pointer;text-align:left;box-sizing:border-box">'+
-          '<span style="font-size:24px;flex-shrink:0">&#x1F91D;</span><div style="flex:1;min-width:0"><div>백업 공유</div><div style="font-size:11px;font-weight:400;color:#4dbfcc;margin-top:2px">타업체 매칭·정산 연동 (승인 업체)</div></div>'+
-        '</button>'+
         '<button onclick="closeCfgSubMenu();go(\'sv\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e8f7ee;border:2px solid #a5d6bb;border-radius:14px;font-size:15px;font-weight:700;color:#1f7a4d;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1FA7A;</span><div style="flex:1;min-width:0"><div>서버 감시</div><div style="font-size:11px;font-weight:400;color:#4caf82;margin-top:2px">폴러 상태·서버화면·푸시 알림</div></div>'+
         '</button>'+
@@ -3426,6 +3423,9 @@ function openBackupShare(){
   document.body.appendChild(ov);
 }
 function closeBackupShare(){var o=document.getElementById('bpshare-ov');if(o)o.remove();}
+// 백업공유 네비 (현재 비활성화 상태). 활성화하려면 아래 BP_ENABLED=true 로 변경.
+var BP_ENABLED=false;
+function bpNavTap(){ if(BP_ENABLED){openBackupShare();return;} alert('🤝 백업 공유 — 준비 중 (비활성화)'); }
 // ── 일반 사용자(팀장/조장/기사) 설정 서브메뉴 ────────────────────────────────
 function openUserSubMenu(){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
@@ -4346,6 +4346,7 @@ function launchApp(){
       '<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>'+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
       '<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F4CB;</span><span style="color:#caa200;font-weight:800">리스트확인</span></div>'+
+      '<div class="ni" id="ni-bp" onclick="bpNavTap()" style="opacity:.4;filter:grayscale(1)"><span class="nicon">&#x1F91D;</span>백업공유</div>'+
       '<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>'+
       '<div class="ni" id="ni-cfg" onclick="openCfgSubMenu()"><span class="nicon">&#x2699;</span>설정</div>';
     go('hm');
