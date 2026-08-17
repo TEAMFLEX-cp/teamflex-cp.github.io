@@ -51,6 +51,7 @@
   .t-apt{background:#eef5ff;color:#1565c0}.t-apt.on{background:#1565c0;color:#fff}
   .t-jib{background:#fff4e6;color:#e65100}.t-jib.on{background:#e65100;color:#fff}
   .t-both{background:#f6ecfb;color:#7b1fa2}.t-both.on{background:#7b1fa2;color:#fff}
+  .t-all{background:#e9f7ee;color:#2e7d32}.t-all.on{background:#2e7d32;color:#fff}
   .cbrow{display:flex;align-items:center;gap:10px;background:#f4f8fc;border:1.5px solid #cfe0f5;border-radius:11px;padding:11px;margin-top:8px;cursor:pointer}
   .cbrow input{width:20px;height:20px}
   .stp{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;margin-top:8px}
@@ -188,7 +189,7 @@ function dayHtml(){
       +'<div class="anon">'+(rev?sl.driver:('지원기사 #'+(sl.id%1000)))+'</div>'
       +'<div class="kv" style="margin-top:6px"><span>가능 수량</span><b>'+sl.qty.toLocaleString()+'개</b></div>'
       +'<div class="kv" style="border:none"><span>희망 단가</span><b class="price">'+money(sl.unit)+' / 개</b></div>'
-      +(sl.status==='open'&&sl.driver!==ME?('<div style="margin-top:10px"><button class="btn b1" onclick="startMatch('+sl.id+')">🤝 매칭 신청 (협상)</button></div>'):'')+'</div>';
+      +(sl.status==='open'&&sl.driver!==ME?('<div style="margin-top:10px"><button class="btn b1" onclick="startMatch('+sl.id+')">🤝 매칭 신청 (협상)</button></div>'):'')+(sl.status==='open'&&sl.driver===ME?('<div style="margin-top:10px"><button class="btn b3" onclick="cancelSlot('+sl.id+')">🗑 지원 취소</button></div>'):'')+'</div>';
   });
   return h;
 }
@@ -196,14 +197,14 @@ function startAvailReg(){draft={type:'아파트',qty:'',unit:APTP['아파트']};
 function aStep(d){draft.unit=Math.max(0,(draft.unit||0)+d);var i=document.getElementById('au');if(i)i.value=draft.unit;}
 function availRegHtml(){
   var h='<div class="row"><span onclick="sub=\'day\';render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">지원 가능 등록</b>'+dBadge(curDate)+'</div>';
-  h+='<label class="f">유형</label><div class="tseg"><div class="t-apt '+(draft.type==='아파트'?'on':'')+'" onclick="draft.type=\'아파트\';draft.unit='+APTP['아파트']+';render()">아파트</div><div class="t-jib '+(draft.type==='지번'?'on':'')+'" onclick="draft.type=\'지번\';draft.unit='+APTP['지번']+';render()">지번</div><div class="t-both '+(draft.type==='아파트+지번'?'on':'')+'" onclick="draft.type=\'아파트+지번\';draft.unit='+APTP['아파트+지번']+';render()">아파트+지번</div></div>';
+  h+='<label class="f">유형</label><div class="tseg"><div class="t-apt '+(draft.type==='아파트'?'on':'')+'" onclick="draft.type=\'아파트\';draft.unit='+APTP['아파트']+';render()">아파트</div><div class="t-jib '+(draft.type==='지번'?'on':'')+'" onclick="draft.type=\'지번\';draft.unit='+APTP['지번']+';render()">지번</div><div class="t-both '+(draft.type==='아파트+지번'?'on':'')+'" onclick="draft.type=\'아파트+지번\';draft.unit='+APTP['아파트+지번']+';render()">아파트+지번</div><div class="t-all '+(draft.type==='ALL'?'on':'')+'" onclick="draft.type=\'ALL\';render()">ALL(무관)</div></div>';
   h+='<div style="text-align:center;margin:12px 0">'+typeBadge(draft.type)+(draft.type==='아파트+지번'?' <span style="font-size:10px;color:#7b1fa2">평균단가</span>':'')+'</div>';
   h+='<label class="f">가능 수량</label><input type="number" placeholder="예:500" oninput="draft.qty=parseInt(this.value||0,10)||0">';
   h+='<label class="f">희망 단가 (50원 단위)</label><div class="stp"><button onclick="aStep(-50)">−</button><input id="au" class="v" type="number" step="50" value="'+draft.unit+'" oninput="draft.unit=Math.max(0,parseInt(this.value||0,10)||0)"><button onclick="aStep(50)">＋</button></div>';
   h+='<div style="margin-top:16px"><button class="btn b2" onclick="submitAvail()">✅ 지원 가능 등록</button></div>';
   return h;
 }
-function submitAvail(){bpNewSlot({driver:ME,company:MYCOMPNAME,date:curDate,type:draft.type,qty:draft.qty||0,unit:draft.unit||0,status:'open'});sub='day';toast('📅 지원 가능 등록! (달력에 익명)');}
+function submitAvail(){bpNewSlot({driver:ME,company:MYCOMPNAME,date:curDate,type:draft.type,qty:draft.qty||0,unit:draft.unit||0,status:'open'});bpBroadcast('🙌 새 지원 가능 등록',ME+'님이 '+(+curDate.split('-')[1])+'월'+(+curDate.split('-')[2])+'일 지원 가능('+draft.type+' '+(draft.qty||0)+'개) 등록했습니다.');sub='day';toast('📅 지원 가능 등록! (달력에 익명·전체 알림)');}
 // ── 매칭 신청(협상): 유형·수량·단가·정산방식 ──
 function startMatch(sid){var sl=slots.find(function(x){return x.id===sid;});draft={sid:sid,type:(sl.type==='ALL'?'아파트':sl.type),qty:sl.qty,unit:sl.unit,settle:'정산일'};sub='match';render();}
 function mStep(d){draft.unit=Math.max(0,(draft.unit||0)+d);var i=document.getElementById('mu');if(i)i.value=draft.unit;}
@@ -244,6 +245,9 @@ function listHtml(which){var arr=which==='mine'?reqs.filter(function(r){return r
   if(which==='sup')h+='<div style="margin-bottom:11px"><button class="btn b2" onclick="startSupReg()">＋ 요청 없이 지원 등록 (역지원 → 확정 요청)</button></div>';
   h+='<div class="note">'+(which==='mine'?'내가 <b>백업을 요청</b>한 건 + 나에게 온 <b>확정 요청</b>.':'내가 <b>지원·협상·협업제안</b> 받은 건. 개인협업은 완료건이 합산 반영돼요.')+'</div>';
   h+='<div style="margin:4px 0 6px">'+['all','ing','done'].map(function(k){var l={all:'전체',ing:'진행중',done:'완료·확정'}[k];return '<span class="fchip '+(f===k?'on':'')+'" onclick="filt[\''+which+'\']=\''+k+'\';render()">'+l+'</span>';}).join('')+'</div>';
+  if(which==='sup'){var mySlots=slots.filter(function(x){return x.driver===ME;}).sort(sortByDate);
+    if(mySlots.length){h+='<div style="font-size:12px;font-weight:900;color:#0d3b66;margin:8px 2px 6px">🙌 내 지원 가능 등록 (매칭 대기)</div>';
+      mySlots.forEach(function(sl){h+='<div class="card req '+(sl.status==='open'?'open':'matched')+'"><div class="row" style="margin-bottom:6px">'+dBadge(sl.date)+typeBadge(sl.type)+(sl.status==='open'?'<span class="badge b-blue">🔵 매칭 대기</span>':'<span class="badge b-amber">🟠 매칭됨</span>')+'</div><div class="meta">가능 '+sl.qty+'개 · 희망 '+money(sl.unit)+'/개</div>'+(sl.status==='open'?('<div style="margin-top:8px"><button class="btn b3" onclick="cancelSlot('+sl.id+')">🗑 지원 취소</button></div>'):'')+'</div>';});}}
   if(!flt.length)h+='<div class="note">해당 없음</div>';
   flt.forEach(function(r){if(r.status==='done'){h+=doneCompact(r);return;}h+=reqCard(r);});
   return h;
@@ -291,7 +295,7 @@ function registerHtml(){
   h+='<div class="calc" id="calc-box">'+calcInner()+'</div><div style="margin-top:14px"><button class="btn b1" onclick="submitReq()">✅ 요청 등록</button></div>';
   return h;
 }
-function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;bpNewReq(r);go('mine');toast('📨 요청 등록');}
+function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;if(draft._editId){var ex=reqs.find(function(x){return x.id===draft._editId;})||{};r.id=draft._editId;r.supporters=ex.supporters||[];r.status=ex.status||'open';bpSaveReq(r);go('mine');toast('✏️ 요청 수정됨');}else{bpNewReq(r);bpBroadcast('📋 새 백업 요청',ME+'님이 '+bpLabel(r)+' 백업을 요청했습니다.');go('mine');toast('📨 요청 등록·전체 알림');}}
 // ── 역지원 등록 ──
 function startSupReg(){draft={who:'',route:'',extra:0,qty:'',settle:'정산일',acctShare:false};sub='supReg';render();}
 function sExtraStep(d){draft.extra=Math.max(0,(draft.extra||0)+d);render();}
@@ -425,6 +429,10 @@ var PUSHHOURS=null;
 function bpQuiet(){try{var qs,qe;if(PUSHHOURS&&PUSHHOURS.start&&PUSHHOURS.end){qs=parseInt(String(PUSHHOURS.end).slice(0,2),10);qe=parseInt(String(PUSHHOURS.start).slice(0,2),10);}else{qs=22;qe=7;}if(qs===qe)return false;var d=new Date(Date.now()+9*3600000);var h=d.getUTCHours();return (qs>qe)?(h>=qs||h<qe):(h>=qs&&h<qe);}catch(_e){return false;}}
 function bpPush(name,title,body){if(!name)return;if(bpQuiet()&&name!=='문지영')return;try{fetch(SB_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({title:title,body:body,target_name:name,data:{tag:'backup'}})}).catch(function(){});}catch(_e){}}
 function bpPushMany(names,title,body){(names||[]).forEach(function(n){bpPush(n,title,body);});}
+function bpBroadcast(title,body){if(bpQuiet())return;try{fetch(SB_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({title:title,body:body,target_roles:['admin','leader','sub','driver'],data:{tag:'backup'}})}).catch(function(){});}catch(_e){}}
+function cancelSlot(id){if(!confirm('지원 가능 등록을 취소할까요?'))return;sb.from('bp_slots').delete().eq('id',id).then(function(){reload();});toast('🗑 지원 취소됨');}
+function cancelReq(id){if(!confirm('백업 요청을 취소할까요?'))return;sb.from('bp_requests').delete().eq('id',id).then(function(){reload();});sub=null;go('mine');toast('🗑 요청 취소됨');}
+function startEditReq(id){var r=reqs.find(function(x){return x.id===id;});if(!r)return;draft={_editId:id,mode:r.mode,aptType:r.aptType||'아파트',routes:(r.routes||[]).slice(),_rtOpen:false,routeInfo:r.routeInfo||'',mapImg:r.mapImg||'',estQty:r.estQty||'',extra:r.extra||0,date:r.date,settle:r.settle||'정산일',acctShare:!!r.acctShare,collab:!!r.collab,collabExtra:Math.max(1,(r.needCount||1)-1)};sub='register';render();}
 function bpLabel(r){return '「'+((r.routes&&r.routes.join('/'))||'백업')+'」';}
 function bpBell(){alert('🔔 백업 공유 알림 안내\n\n· 백업 등록: 전체에게 목록으로 노출(푸시 없음)\n· 지원 신청 → 등록 기사에게 알림\n· 협업 제안/수락 → 해당 인원에게\n· 수량 확인 요청 → 등록 기사에게\n· 매칭·정산 확정 → 해당 인원에게\n\n푸시는 요청·확정 관련 해당 인원에게만 가며, 야간 시간대에는 발송되지 않습니다.');}
 function bpNewReq(r){var db=reqToDb(r);sb.from('bp_requests').insert(db).then(function(res){if(res&&res.error)toast('저장오류');reload();});}
