@@ -880,6 +880,7 @@ function _addSchedChange(workDate,route,oldDriver,newDriver,changedBy){
   if(log.length>_SCHED_LOG_MAX)log=log.slice(0,_SCHED_LOG_MAX);
   _saveSchedLog(log);
   updateNavDots();
+  if(CU&&CU.role==='admin'){setTimeout(function(){try{loadPushSubs();}catch(e){}},1500);}
 }
 
 // 변경이력 미열람 건수
@@ -1977,7 +1978,7 @@ async function ensurePushSubscribed(interactive){
     if(typeof registerSW==='function'){try{await registerSW();}catch(e){}}
     if(typeof subscribePush==='function'){try{await subscribePush();}catch(e){}}
     var ok=false;try{ok=await _pushStatusCheck();}catch(e){}
-    if(interactive){try{showToast(ok?'🔔 알림 켜짐 — 이제 계약·공지 알림을 받습니다':'알림 설정을 한 번 더 확인해 주세요',ok);}catch(_){}}
+    if(interactive){try{showToast(ok?'🔔 알림 켜짐 — 이제 계약·공지 알림을 받습니다':'구독 실패 — 앱을 완전히 종료 후 다시 열거나(캐시 갱신), 카카오톡 등 인앱브라우저가 아닌 크롬으로 접속해 주세요',ok);}catch(_){}}
     return ok;
   }catch(e){if(interactive){try{showToast('알림 설정 실패: '+((e&&e.message)||e),false);}catch(_){}}return false;}
 }
@@ -2173,7 +2174,7 @@ function ctBadgeRow(d,type,done){
   var rej=ctaStatus(d.name,type)==='reject';
   var shBadge=(!done)?(' <span class="cta-shared"><span class="cta-shared-in">📤 '+(rej?'반려':'공유성공')+'</span></span>'):'';
   return '<div style="display:flex;align-items:center;gap:6px;padding:10px 4px;border-bottom:1px solid #f0f3f7;flex-wrap:wrap">'+
-    '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+_rlTag+shBadge+'</div>'+
+    '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+_rlTag+(typeof pushSubBadge==='function'?pushSubBadge(d.name):'')+shBadge+'</div>'+
     (done
       ? ((ctApprovedOf(esc,type)?'<span style="font-size:11px;font-weight:800;color:#1b8a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:6px 11px;border-radius:14px">✅ 승인완료</span><button onclick="CT_preview(\''+esc+'\',\''+type+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>':'<button onclick="CT_preview(\''+esc+'\',\''+type+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctApprove(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">✅ 승인</button><button onclick="ctReject(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>')+'<button onclick="ctDeleteDoc(\''+esc+'\',\''+type+'\')" style="font-size:11px;padding:6px 9px;border-radius:14px;border:1px solid #e0a0a0;background:#fff5f5;color:#b33;font-weight:700">🗑 삭제</button>')
       : '<button onclick="CT_startWrite(\'badge\',\''+esc+'\',\''+((type==='badge_renew')?'renew':'new')+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #cbb6ef;background:#f3ecff;color:#5a2fb0;font-weight:700">✍️ 대신작성</button>')+
@@ -2189,7 +2190,7 @@ function ctRow(d,done){
   var rej=ctaStatus(d.name,'wc')==='reject';
   var shBadge=(!done&&shared)?(' <span class="cta-shared"><span class="cta-shared-in">📤 '+(rej?'반려':'공유성공')+'</span></span>'):'';
   return '<div style="display:flex;align-items:center;gap:6px;padding:10px 4px;border-bottom:1px solid #f0f3f7;flex-wrap:wrap">'+
-    '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+_rlTag+(done?(' '+ctBadge(d.name,true)):shBadge)+'</div>'+
+    '<div style="flex:1;min-width:90px;font-size:13px;font-weight:700;color:#33475b">'+d.name+_rlTag+(typeof pushSubBadge==='function'?pushSubBadge(d.name):'')+(done?(' '+ctBadge(d.name,true)):shBadge)+'</div>'+
     (done
       ? ((ctApprovedOf(esc,'wc')?'<span style="font-size:11px;font-weight:800;color:#1b8a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:6px 11px;border-radius:14px">✅ 승인완료</span><button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>':'<button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctApprove(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">✅ 승인</button><button onclick="ctReject(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>')+'<button onclick="ctDeleteDoc(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 9px;border-radius:14px;border:1px solid #e0a0a0;background:#fff5f5;color:#b33;font-weight:700">🗑 삭제</button>')
       : ((shared
@@ -8763,9 +8764,13 @@ function updateHeaderBadges(){try{var el=document.getElementById('han-bdg');if(!
 window.updateHeaderBadges=updateHeaderBadges;
 function _pushStatusCheck(){return (async function(){var ok=false;try{if(typeof Notification!=='undefined'&&Notification.permission==='granted'&&_swReg&&_swReg.pushManager){var sub=await _swReg.pushManager.getSubscription();ok=!!sub;}}catch(e){ok=false;}var changed=(window._pushOn!==ok);window._pushOn=ok;try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}try{if(changed&&typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm'&&!window._ctScreenOpen&&CU&&CU.role!=='admin'){var mc=document.getElementById('mc');if(mc&&typeof pgHome==='function')mc.innerHTML=pgHome();}}catch(e){}return ok;})();}
 window._pushStatusCheck=_pushStatusCheck;
+async function loadPushSubs(){try{var r=await sbClient.from('push_subscriptions').select('driver_name');var m={};(r&&r.data||[]).forEach(function(x){var n=(x.driver_name||'').trim();if(n)m[n]=true;});window._pushSubSet=m;try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}try{if(window._ctScreenOpen&&typeof openContractAdmin==='function'){openContractAdmin(true);}else if(typeof _reRenderCurTab==='function'){_reRenderCurTab();}}catch(e){}}catch(e){}}
+window.loadPushSubs=loadPushSubs;
+function pushSubBadge(name){try{var on=(window._pushSubSet&&window._pushSubSet[name])||(CU&&name===CU.name&&window._pushOn);if(on)return '<span style="font-size:9px;font-weight:900;padding:2px 7px;border-radius:9px;background:#c62828;color:#ffe600;margin-left:2px">🔔 구독</span>';}catch(e){}return '';}
+window.pushSubBadge=pushSubBadge;
 function _statusBadges(name){
   var h='';
-  try{if(window._pushOn&&CU&&name===CU.name){h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:#e7f0ff;color:#1546b0;border:1px solid #b8ccff">🔔 알림 ON</span> ';}}catch(e){}
+  try{var _pb=(typeof pushSubBadge==='function')?pushSubBadge(name):'';if(_pb)h+=_pb+' ';}catch(e){}
   try{if(typeof ctDone==='function'&&ctDone(name)){var ap=(typeof ctApprovedOf==='function'&&ctApprovedOf(name,'wc'));h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:'+(ap?'#e7f6ec':'#e3f2fd')+';color:'+(ap?'#1b7a3f':'#1565c0')+';border:1px solid '+(ap?'#a8e0bd':'#bcdcff')+'">📄 '+(ap?'계약완료':'계약작성')+'</span> ';}}catch(e){}
   try{if(_badgeLoaded&&typeof hcNorm==='function'&&_hcDoneSet[hcNorm(name)]){h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:#eaf6de;color:#3b6d11;border:1px solid #c7e39a">💪 건강체크</span> ';}}catch(e){}
   try{if(inspComplete(name)){h+='<span class="tfgold" style="font-size:9px;font-weight:900;padding:2px 8px;border-radius:9px;background:#e7f6ec;color:#1b7a3f">🔧 점검-완료</span> ';}else if(inspWarn(name)){h+='<span style="font-size:9px;font-weight:900;padding:2px 7px;border-radius:9px;background:#c62828;color:#fff;display:inline-flex;align-items:center;gap:3px">⚠ <span style="color:#ffe600;animation:tfblink .8s steps(1,end) infinite">점검-경고</span></span> ';}}catch(e){}
