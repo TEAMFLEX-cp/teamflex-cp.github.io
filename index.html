@@ -2651,8 +2651,23 @@ function _pushSend(payload){
   try{fetch(SB_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify(payload)}).catch(function(){});}catch(e){}
 }
 // feat: notif_targets 키 / opts.always: 해당 인원(이름 배열) / opts.extraRoles: 강제 역할(한글) 추가
+var _pushDedupe=null;
+function _kstTodayStr(){var d=new Date(Date.now()+9*3600*1000);return d.toISOString().slice(0,10);}
+async function _loadPushDedupe(){ if(_pushDedupe!==null)return _pushDedupe; _pushDedupe={}; try{ if(sbClient){var r=await sbClient.from('app_settings').select('value').eq('key','push_dedupe').maybeSingle(); if(r&&r.data&&r.data.value){var m=(typeof r.data.value==='string')?JSON.parse(r.data.value):r.data.value; if(m&&typeof m==='object')_pushDedupe=m;} } }catch(e){} return _pushDedupe; }
+async function _pushDedupeCheck(key){ await _loadPushDedupe(); var today=_kstTodayStr();
+  if(_pushDedupe[key]===today) return false; // 이미 오늘 발송함
+  _pushDedupe[key]=today;
+  // 다른 날짜 항목 정리(용량 관리)
+  try{Object.keys(_pushDedupe).forEach(function(k){if(_pushDedupe[k]!==today)delete _pushDedupe[k];});}catch(e){}
+  try{ if(sbClient) sbClient.from('app_settings').upsert({key:'push_dedupe',value:JSON.stringify(_pushDedupe)},{onConflict:'key'}).then(function(){}).catch(function(){}); }catch(e){}
+  return true; }
+window._pushDedupeCheck=_pushDedupeCheck;
 async function pushNotify(feat, opts){
   opts=opts||{};
+  // 야간(22:01~07:00) 금지 — 공지 제외. (07시 이후 재발송은 폴러/night_queue 담당)
+  if(feat!=='ann' && typeof isQuietHour==='function' && isQuietHour()) return false;
+  // 최초 1회 (오늘 하루 같은 키는 재발송 안 함)
+  if(opts.dedupeKey){ try{ var _ok=await _pushDedupeCheck(opts.dedupeKey); if(_ok===false) return false; }catch(e){} }
   try{ if(_notifTargets===null){ await loadNotifTargets(); } }catch(e){}
   var cfg=notifCfgOf(feat);
   if(cfg && cfg.on===false) return false; // 이 탭 알림 사용 꺼짐
@@ -10527,10 +10542,10 @@ function mdRenderModeBar(mode){
 
 // ── 푸시 알림 헬퍼 ────────────────────────────────────────────────────
 function mdPushToDriver(driverName,title,body,caseId){
-  try{pushNotify('misdelivery',{always:[driverName],roleBroadcast:false,title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}});}catch(e){console.warn('[mdPushToDriver]',e);}
+  try{pushNotify('misdelivery',{always:[driverName],roleBroadcast:false,dedupeKey:'md:'+String(caseId)+':'+driverName,title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}});}catch(e){console.warn('[mdPushToDriver]',e);}
 }
 function mdPushToLeaders(title,body,caseId){
-  try{pushNotify('misdelivery',{roleBroadcast:true,defaultRoles:['총괄','팀장'],title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}});}catch(e){console.warn('[mdPushToLeaders]',e);}
+  try{pushNotify('misdelivery',{roleBroadcast:true,defaultRoles:['총괄','팀장'],dedupeKey:'mdappr:'+String(caseId),title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}});}catch(e){console.warn('[mdPushToLeaders]',e);}
 }
 // 기타/미지정 오배송 건을 특정 기사에게 지정 (관리자·팀장 전용)
 async function mdAssignDriver(caseId){
