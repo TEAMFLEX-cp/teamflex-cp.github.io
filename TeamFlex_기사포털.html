@@ -7131,6 +7131,15 @@ function dhUnkick(name){
 }
 function dhResetPw(name){if(typeof resetDriverPw==='function'){resetDriverPw(name);setTimeout(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();},60);}else{alert('PW 초기화 기능 없음');}}
 /* ── 상세 모달 ── */
+function _dhMaskField(key,val,e){
+  val=String(val==null?'':val);if(!val)return val;
+  if(key==='jumin'){var d=_deDig(e.jumin);return d.length>=7?d.slice(0,6)+'-*******':val;}
+  if(key==='addr'){return val.length>6?(val.slice(0,6)+' *****'):val;}
+  if(key==='lic'){var p=val.split('-');if(p.length>=4)return p[0]+'-'+p[1].replace(/[^\s]/g,'*')+'-'+p[2].replace(/[^\s]/g,'*')+'-'+p[3];return val.length>4?val.slice(0,2)+val.slice(2,-2).replace(/[0-9]/g,'*')+val.slice(-2):val;}
+  if(key==='qual'){var q=val.split('-');if(q.length>=3){var last=q[2];return q[0]+'-'+q[1]+'-'+(last.length>2?last.slice(0,-2).replace(/[0-9]/g,'*')+last.slice(-2):last);}return val;}
+  if(key==='acct'){return val.length>4?val.slice(0,-4).replace(/[0-9]/g,'*')+val.slice(-4):val;}
+  return val;
+}
 function openDriverDetail(name){if(_driverExt===null){_loadDriverExt().then(function(){openDriverDetail(name);});return;}_dhRender(name,false);}
 function _dhRender(name,edit,mode){
   var self=(mode==='self');
@@ -7152,6 +7161,7 @@ function _dhRender(name,edit,mode){
       }
     }else{
       var val=(key==='_birth')?_dhBirth(e.jumin):(key==='cyear'?(_deDig(e.regdate).slice(0,4)||e.cyear||''):_dhFmt(t,raw));
+      if(self&&!edit&&typeof _dhMaskField==='function')val=_dhMaskField(key,val,e);
       var lockTag=(edit&&locked)?' <span style="font-size:9px;color:#c62828;background:#fdeaea;padding:1px 6px;border-radius:8px">🔒 관리자</span>':'';
       body+='<div style="display:flex;padding:7px 0;border-bottom:1px solid #f0f3f7;font-size:13px"><div style="width:112px;flex-shrink:0;color:#7a8794;font-weight:700">'+lb+lockTag+'</div><div style="flex:1;font-weight:600;color:'+(edit&&locked?'#9aa7b4':'#22364a')+'">'+((val&&String(val).trim())||'<span style="color:#c9d2da">미입력</span>')+'</div></div>';
     }
