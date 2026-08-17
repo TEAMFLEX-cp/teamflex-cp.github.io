@@ -3526,7 +3526,7 @@ window.addEventListener('popstate',function(e){
     else if(prev==='cfg')mc.innerHTML=pgSettings();
     else if(prev==='sl')mc.innerHTML=pgSchedLog();
     else if(prev==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();},200);}
-    else if(prev==='fr'){mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
+    else if(prev==='fr'){mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,0);}
     else if(prev==='er')mc.innerHTML=pgEmergencyContact();
     window.history.pushState({tab:prev,ts:Date.now()},'');
     return;
@@ -4881,9 +4881,9 @@ function go(tab){
   else if(tab==='cfg')mc.innerHTML=pgSettings();
   else if(tab==='sv'){mc.innerHTML=pgServerMon();setTimeout(function(){svInit(false);},60);}
   else if(tab==='sl')mc.innerHTML=pgSchedLog();
-  else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();mdStartRqRefresh();try{inspLoadResetReqs();}catch(e){}},200);}
-  else if(tab==='rq'){_rqTab='';mc.innerHTML=pgRequest();setTimeout(rqInit,100);}
-  else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,200);}
+  else if(tab==='md'){mc.innerHTML=pgMisdelivery();setTimeout(function(){mdLoadCases();mdLoadRequests();mdStartRqRefresh();try{inspLoadResetReqs();}catch(e){}},0);}
+  else if(tab==='rq'){_rqTab='';mc.innerHTML=pgRequest();setTimeout(rqInit,0);}
+  else if(tab==='fr'){_todayRouteMap=null;mc.innerHTML=pgFresh();setTimeout(loadFreshStatus,0);}
   else if(tab==='pb'){PB_SUB='menu';mc.innerHTML=pgPback();}
   else if(tab==='tq'){mc.innerHTML=pgTotalQty();try{tqLoad().then(function(){if(CUR_TAB==='tq'){var _m=document.getElementById('mc');if(_m)_m.innerHTML=pgTotalQty();}try{tqRiskPopup();}catch(_e){}});}catch(e){}}
       else if(tab==='rl'){ghEnterHub();}
