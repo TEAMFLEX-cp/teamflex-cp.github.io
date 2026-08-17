@@ -3062,6 +3062,7 @@ function applyFeatureCtrlToUI(){
   if(!mc||!CU)return;
   // 현재 탭을 다시 렌더링하여 활성/비활성 즉시 반영
   var isAdm=CU.role==='admin';
+  try{var _bp=document.getElementById('ni-bp'); if(_bp&&!isAdm)_bp.style.display=bpIsActive()?'':'none';}catch(e){}
   var needRefresh=false;
   var feats={md:'misdelivery',fr:'fresh',sl:'sched',nc:'ann',ab:'ann',fs:'schedule',as:'schedule',st:'settle',az:'settle',er:'emergency'};
   var feat=feats[CUR_TAB];
@@ -3409,23 +3410,27 @@ function closeCfgSubMenu(){
   if(sheet)sheet.remove();
 }
 // ── 백업 공유 (공용 허브 · 독립 모듈 iframe) ──────────────────────────────
+function bpIsActive(){try{return !!(_featureControls&&_featureControls.backup&&_featureControls.backup.active===true);}catch(e){return false;}}
+function _bpTLabel(on){return on?'🟢 활성화됨 · 탭하여 끄기':'⚪ 비활성화 · 탭하여 켜기';}
+function _bpTStyle(on){return 'margin-left:auto;background:'+(on?'#12a374':'rgba(255,255,255,.28)')+';border:none;color:#fff;font-size:12px;font-weight:800;border-radius:9px;padding:7px 12px;cursor:pointer';}
 function openBackupShare(){
-  if(!(CU&&(CU.role==='admin'||CU.role==='leader'))){alert('관리자·팀장 전용입니다.');return;}
+  var isAdm=(CU&&CU.role==='admin'), isLeader=(CU&&CU.role==='leader');
+  var on=bpIsActive();
+  if(!isAdm&&!isLeader&&!on){alert('🤝 백업 공유는 현재 비활성화 상태입니다.');return;}
   var old=document.getElementById('bpshare-ov');if(old)old.remove();
   var nm=encodeURIComponent((CU&&CU.name)||'');
-  var role=(CU&&CU.role)||'admin';
+  var role=(CU&&CU.role)||'driver';
   var url='backup_share.html?name='+nm+'&comp=teamflex&cn='+encodeURIComponent('팀플렉스')+'&role='+encodeURIComponent(role)+'&v='+Date.now();
-  var ov=document.createElement('div');
-  ov.id='bpshare-ov';
+  var tgl=isAdm?('<button id="bp-toggle" onclick="bpToggleActive()" style="'+_bpTStyle(on)+'">'+_bpTLabel(on)+'</button>'):'';
+  var ov=document.createElement('div');ov.id='bpshare-ov';
   ov.style.cssText='position:fixed;inset:0;z-index:11000;background:#0e2238;display:flex;flex-direction:column';
-  ov.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,#123a6b,#1565c0);color:#fff;flex-shrink:0"><button onclick="closeBackupShare()" style="background:rgba(255,255,255,.22);border:none;color:#fff;font-size:15px;font-weight:900;border-radius:9px;padding:7px 14px;cursor:pointer">‹ 닫기</button><div style="font-size:15px;font-weight:800">&#x1F91D; 백업 공유</div></div>'+
+  ov.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,#123a6b,#1565c0);color:#fff;flex-shrink:0"><button onclick="closeBackupShare()" style="background:rgba(255,255,255,.22);border:none;color:#fff;font-size:15px;font-weight:900;border-radius:9px;padding:7px 14px;cursor:pointer">‹ 닫기</button><div style="font-size:15px;font-weight:800">&#x1F91D; 백업 공유</div>'+tgl+'</div>'+
     '<iframe src="'+url+'" style="flex:1;border:none;width:100%;background:#0e2238" allow="clipboard-write"></iframe>';
   document.body.appendChild(ov);
 }
 function closeBackupShare(){var o=document.getElementById('bpshare-ov');if(o)o.remove();}
-// 백업공유 네비 (현재 비활성화 상태). 활성화하려면 아래 BP_ENABLED=true 로 변경.
-var BP_ENABLED=false;
-function bpNavTap(){ if(BP_ENABLED){openBackupShare();return;} alert('🤝 백업 공유 — 준비 중 (비활성화)'); }
+function bpToggleActive(){ if(!(CU&&CU.role==='admin')){alert('관리자만 변경할 수 있습니다.');return;} var cur=bpIsActive(); saveFeatureCtrl('backup','active',!cur).then(function(){ var b=document.getElementById('bp-toggle'); if(b){b.innerHTML=_bpTLabel(!cur);b.setAttribute('style',_bpTStyle(!cur));} try{var _bp=document.getElementById('ni-bp');if(_bp)_bp.style.display='';}catch(e){} alert(!cur?'🟢 백업 공유를 활성화했습니다. 기사에게도 노출됩니다.':'⚪ 백업 공유를 비활성화했습니다. (관리자만 접근)'); }); }
+function bpNavTap(){ openBackupShare(); }
 // ── 일반 사용자(팀장/조장/기사) 설정 서브메뉴 ────────────────────────────────
 function openUserSubMenu(){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
@@ -4346,7 +4351,7 @@ function launchApp(){
       '<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>'+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
       '<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F4CB;</span><span style="color:#caa200;font-weight:800">리스트확인</span></div>'+
-      '<div class="ni" id="ni-bp" onclick="bpNavTap()" style="opacity:.4;filter:grayscale(1)"><span class="nicon">&#x1F91D;</span>백업공유</div>'+
+      '<div class="ni" id="ni-bp" onclick="openBackupShare()"><span class="nicon">&#x1F91D;</span>백업공유</div>'+
       '<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>'+
       '<div class="ni" id="ni-cfg" onclick="openCfgSubMenu()"><span class="nicon">&#x2699;</span>설정</div>';
     go('hm');
@@ -4367,6 +4372,7 @@ function launchApp(){
       (CU.role==='leader'?'<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>':'')+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
       ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F4CB;</span><span style="color:#caa200;font-weight:800">리스트확인</span></div>':'')+
+      '<div class="ni" id="ni-bp" onclick="openBackupShare()" style="display:'+(bpIsActive()?'':'none')+'"><span class="nicon">&#x1F91D;</span>백업공유</div>'+
       (getFeatureCtrl('roulette','active')?'<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>':'')+
       '<div class="ni" id="ni-usr-cfg" onclick="openUserSubMenu()"><span class="nicon">&#x2699;&#xFE0F;</span>설정</div>';
     go('hm');
