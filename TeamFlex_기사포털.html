@@ -1996,8 +1996,8 @@ function _notifNudge(){
     window._pushAutoTried=true;
     try{setTimeout(function(){if(typeof ensurePushSubscribed==='function')ensurePushSubscribed(false);},400);}catch(e){}
   }
-  var sub=denied?'알림이 차단돼 있어요 — 눌러서 해제 방법 보기':'눌러서 켜면 계약 요청·공지 알림을 받아요';
-  return '<div onclick="ensurePushSubscribed(true)" style="cursor:pointer;background:#fff7e6;border:1.5px solid #ffd08a;color:#a5670a;border-radius:14px;padding:13px 15px;margin:0 0 12px;display:flex;align-items:center;gap:11px;font-weight:800;font-size:13px;box-shadow:0 2px 8px rgba(180,120,0,.12)"><span style="font-size:20px">&#x1F514;</span><div style="flex:1;line-height:1.5">알림이 꺼져 있어요<br><span style="font-weight:600;font-size:11.5px;opacity:.9">'+sub+'</span></div><span style="background:#a5670a;color:#fff;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;white-space:nowrap">'+(denied?'해제':'켜기')+'</span></div>';
+  var sub=denied?'차단돼 있어요 — 눌러서 해제 방법 보기':'눌러서 이 폰의 모든 알림을 켜세요 (계약·공지·정산·스케줄 등 전체)';
+  return '<div onclick="ensurePushSubscribed(true)" style="cursor:pointer;background:#fff7e6;border:1.5px solid #ffd08a;color:#a5670a;border-radius:14px;padding:13px 15px;margin:0 0 12px;display:flex;align-items:center;gap:11px;font-weight:800;font-size:13px;box-shadow:0 2px 8px rgba(180,120,0,.12)"><span style="font-size:20px">&#x1F514;</span><div style="flex:1;line-height:1.5">이 폰은 알림이 꺼져 있어요<br><span style="font-weight:600;font-size:11.5px;opacity:.9">'+sub+'</span></div><span style="background:#a5670a;color:#fff;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;white-space:nowrap">'+(denied?'해제':'켜기')+'</span></div>';
 }
 window._notifNudge=_notifNudge;
 // 홈 배너: 미작성(위수탁) 기사·팀장·조장에게 계약서 작성 진입점 노출 (게이트 여부와 무관)
