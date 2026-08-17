@@ -4954,6 +4954,7 @@ function checkUnreadAnns(impOnly, chainCb){
   var anns=getAnns().filter(function(a){return !isAnnExpired(a)&&!a.disabled&&_annVisibleTo(a);});
   ANN_QUEUE=anns.filter(function(a){
     var unread=!_annIsReadByMe(a);
+    if(a.author&&CU&&a.author===CU.name)return false; // 내가 쓴 공지는 나에게 팝업 X (목록엔 미확인으로 노출)
     return impOnly?(unread&&a.important):unread;
   });
   ANN_IDX=0;
@@ -6102,7 +6103,7 @@ async function submitAnn(){
   var _annImgs=[];try{_annImgs=await annUploadPhotos();}catch(_e){console.error('annUpload',_e);}
   var anns=getAnns();
   var _eff=(document.getElementById('ann-effect')||{}).value||'';
-  var a={id:Date.now(),title:title,body:body,important:imp,effect:_eff,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[CU.name],expireAt:expireAt,expireDays:expireDays,images:_annImgs,targets:((document.getElementById('ann-targeted')&&document.getElementById('ann-targeted').checked)?_annTargets.slice():[])};
+  var a={id:Date.now(),title:title,body:body,important:imp,effect:_eff,author:CU.name,authorRole:CU.role,at:new Date().toLocaleString('ko-KR'),readBy:[],expireAt:expireAt,expireDays:expireDays,images:_annImgs,targets:((document.getElementById('ann-targeted')&&document.getElementById('ann-targeted').checked)?_annTargets.slice():[])};
   anns.push(a);saveAnns(anns);
   // 로컬 알림 + 전체 Push 발송
   var notifTitle='📢 팀플 - '+(imp?'[중요] ':'')+title;
