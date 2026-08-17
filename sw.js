@@ -1,5 +1,5 @@
 // TeamFlex Service Worker v347 — v346 원복(잘못된 consignment 필드로 PDD미스 판정 오류 → 복구)
-const CACHE_NAME = 'teamflex-v501';
+const CACHE_NAME = 'teamflex-v502';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -274,4 +274,6 @@ self.addEventListener('pushsubscriptionchange', e => {
           method: 'DELETE', headers: { apikey: SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
         });
       }
-    } catch (err) { /* 갱신 실패는 다음 앱 열기 때 subscribePush가 
+    } catch (err) { /* 갱신 실패는 다음 앱 열기 때 subscribePush가 재저장하므로 무시 */ }
+  })());
+});
