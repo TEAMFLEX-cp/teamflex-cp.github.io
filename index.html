@@ -1066,6 +1066,7 @@ async function syncFromSupabase(){
             body:annSplit(a.body||a.content||'').t,
             content:annSplit(a.body||a.content||'').t,
             images:annSplit(a.body||a.content||'').imgs,
+            targets:annSplit(a.body||a.content||'').targets,
             author:a.author||'관리자',
             important:a.pinned||false,
             effect:a.effect||'',
@@ -1287,7 +1288,7 @@ function sbSaveDriver(d){
 // ── Supabase에 공지사항 저장 ──────────────────────────────────────────
 function sbSaveAnn(ann){
   if(!sbClient||!ann)return;
-  var obj={title:ann.title||'',body:(ann.content||ann.body||'')+((ann.images&&ann.images.length)?('[[TFIMG]]'+ann.images.join('|')):''),
+  var obj={title:ann.title||'',body:(ann.content||ann.body||'')+((ann.targets&&ann.targets.length)?('[[TFTG]]'+ann.targets.join('|')):'')+((ann.images&&ann.images.length)?('[[TFIMG]]'+ann.images.join('|')):''),
            author:ann.author||'관리자',pinned:ann.important||false,effect:ann.effect||null,
            expire_at:ann.expireAt||null};
   if(ann.sb_id){
@@ -1480,11 +1481,19 @@ async function sbSaveSchedOvr(key,newDriver){
 // ── STORAGE ──────────────────────────────────────────────────────────
 function getDB(){var r=localStorage.getItem('tfdb6');if(r){try{return JSON.parse(r);}catch(e){}}return JSON.parse(JSON.stringify(IDRV));/*폴백: syncFromSupabase가 실제 데이터 로드, IDRV는 읽기 전용 기본값으로만 사용*/}
 var _sbSynced=false;  // syncFromSupabase 성공 후 true — 빈 로컬DB(IDRV폴백)로 클라우드 덮어쓰기 방지
+var _drvPushSnap={};
 function saveDB(db){
   localStorage.setItem('tfdb6',JSON.stringify(db));
-  // 변경된 기사들 Supabase에도 저장 — 단, 동기화 성공 전엔 밀지 않음(초기화 사고 방지)
-  if(sbClient && _sbSynced){Object.values(db).forEach(function(d){sbSaveDriver(d);});}
+  // Supabase에는 '실제로 바뀐 기사'만 저장 (매번 전체 업로드 방지 → 성능·네트워크 대폭 절감)
+  if(sbClient && _sbSynced){
+    Object.values(db).forEach(function(d){
+      try{ var js=JSON.stringify(d); if(_drvPushSnap[d.name]!==js){ _drvPushSnap[d.name]=js; sbSaveDriver(d); } }catch(e){ sbSaveDriver(d); }
+    });
+  }
 }
+// 클라우드 동기화 직후 스냅샷 시드 → 로드된 상태는 '이미 저장됨'으로 간주(불필요한 재업로드 방지)
+function _seedDrvPushSnap(db){ try{ Object.values(db||getDB()).forEach(function(d){ _drvPushSnap[d.name]=JSON.stringify(d); }); }catch(e){} }
+window._seedDrvPushSnap=_seedDrvPushSnap;
 function getReqs(){var r=localStorage.getItem('tfreqs6');return r?JSON.parse(r):[];}
 function saveReqs(r){localStorage.setItem('tfreqs6',JSON.stringify(r));}
 function getAnns(){var r=localStorage.getItem('tfann');return r?JSON.parse(r):[];}
@@ -2663,10 +2672,11 @@ async function _pushDedupeCheck(key){ await _loadPushDedupe(); var today=_kstTod
   try{ if(sbClient) sbClient.from('app_settings').upsert({key:'push_dedupe',value:JSON.stringify(_pushDedupe)},{onConflict:'key'}).then(function(){}).catch(function(){}); }catch(e){}
   return true; }
 window._pushDedupeCheck=_pushDedupeCheck;
+var _QUIET_EXEMPT={'문지영':1};
 async function pushNotify(feat, opts){
   opts=opts||{};
-  // 야간(22:01~07:00) 금지 — 공지 제외. (07시 이후 재발송은 폴러/night_queue 담당)
-  if(feat!=='ann' && typeof isQuietHour==='function' && isQuietHour()) return false;
+  // 야간(22:01~07:00): 공지 제외 + 테스트 면제자(_QUIET_EXEMPT)는 예외로 발송
+  var _quiet=(feat!=='ann' && typeof isQuietHour==='function' && isQuietHour());
   // 최초 1회 (오늘 하루 같은 키는 재발송 안 함)
   if(opts.dedupeKey){ try{ var _ok=await _pushDedupeCheck(opts.dedupeKey); if(_ok===false) return false; }catch(e){} }
   try{ if(_notifTargets===null){ await loadNotifTargets(); } }catch(e){}
@@ -2676,9 +2686,9 @@ async function pushNotify(feat, opts){
   var sent=false, seen={};
   // 1) 해당 인원(항상 발송)
   var always=(opts.always||[]).filter(Boolean);
-  for(var i=0;i<always.length;i++){ var nm=String(always[i]).trim(); if(!nm||seen[nm])continue; seen[nm]=1; _pushSend({title:title,body:body,target_name:nm,data:data}); sent=true; }
+  for(var i=0;i<always.length;i++){ var nm=String(always[i]).trim(); if(!nm||seen[nm])continue; if(_quiet&&!_QUIET_EXEMPT[nm])continue; seen[nm]=1; _pushSend({title:title,body:body,target_name:nm,data:data}); sent=true; }
   // 2) 역할 대상 (설정 없으면 defaultRoles로 폴백 → 기존 동작 보존)
-  if(opts.roleBroadcast!==false){
+  if(opts.roleBroadcast!==false && !_quiet){
     var kroles=notifRolesFor(feat)||[];
     if(!kroles.length && opts.defaultRoles) kroles=opts.defaultRoles.slice();
     kroles=kroles.concat(opts.extraRoles||[]);
@@ -4900,7 +4910,7 @@ async function _annFetchBrief(){
         var resolvedExpire=a.expire_at||(ex?ex.expireAt:null)||null;
         var autoExpired=resolvedExpire&&new Date(resolvedExpire).getTime()<=Date.now();
         var localDisabled=ex?(!!(ex.disabled)):false;
-        return {id:a.id,sb_id:a.id,title:a.title,body:annSplit(a.body||a.content||'').t,content:annSplit(a.body||a.content||'').t,images:annSplit(a.body||a.content||'').imgs,author:a.author||'관리자',important:a.pinned||false,effect:a.effect||'',at:a.created_at,expireAt:resolvedExpire,expireDays:(ex?ex.expireDays:null)||null,readBy:mergedRby,disabled:autoExpired||localDisabled};
+        return {id:a.id,sb_id:a.id,title:a.title,body:annSplit(a.body||a.content||'').t,content:annSplit(a.body||a.content||'').t,images:annSplit(a.body||a.content||'').imgs,targets:annSplit(a.body||a.content||'').targets,author:a.author||'관리자',important:a.pinned||false,effect:a.effect||'',at:a.created_at,expireAt:resolvedExpire,expireDays:(ex?ex.expireDays:null)||null,readBy:mergedRby,disabled:autoExpired||localDisabled};
       });
       localStorage.setItem('tfann',JSON.stringify(anns));
     }
@@ -4934,7 +4944,7 @@ function checkUnreadAnns(impOnly, chainCb){
     }
     return;  // 브리핑(공지+오배송+프백) 완료 전엔 팝업 안 띄움
   }
-  var anns=getAnns().filter(function(a){return !isAnnExpired(a)&&!a.disabled;});
+  var anns=getAnns().filter(function(a){return !isAnnExpired(a)&&!a.disabled&&_annVisibleTo(a);});
   ANN_QUEUE=anns.filter(function(a){
     var unread=!_annIsReadByMe(a);
     return impOnly?(unread&&a.important):unread;
@@ -5697,6 +5707,7 @@ function pgAnn(isAdmin){
   var activeAnns=reversedAnns.filter(function(a){
     if(a.disabled)return false;
     if(isAnnExpired(a))return false;
+    if(!_annVisibleTo(a))return false;
     return true;
   });
   // 만료·비활성 공지 — 관리자 전용 (하단 축소 표시)
@@ -6103,7 +6114,9 @@ async function submitAnn(){
 
 // ── 공지 사진 첨부 (저장 시 본문에 [[TFIMG]]url|url 로 붙이고, 불러올 때 분리) ──
 var _annPhotos=[];
-function annSplit(b){b=b||'';var m=b.indexOf('[[TFIMG]]');if(m<0)return{t:b,imgs:[]};return{t:b.slice(0,m).replace(/\s+$/,''),imgs:b.slice(m+9).split('|').filter(Boolean)};}
+function annSplit(b){b=b||'';var tg=[];var mt=b.indexOf('[[TFTG]]');if(mt>=0){var af=b.slice(mt+8);var ei=af.indexOf('[[TFIMG]]');var ts=(ei>=0)?af.slice(0,ei):af;tg=ts.split('|').filter(Boolean);b=b.slice(0,mt)+((ei>=0)?af.slice(ei):'');}var m=b.indexOf('[[TFIMG]]');if(m<0)return{t:b,imgs:[],targets:tg};return{t:b.slice(0,m).replace(/\s+$/,''),imgs:b.slice(m+9).split('|').filter(Boolean),targets:tg};}
+function _annVisibleTo(a){if(!a||!a.targets||!a.targets.length)return true;if(CU&&CU.role==='admin')return true;return !!(CU&&a.targets.indexOf(CU.name)>=0);}
+window._annVisibleTo=_annVisibleTo;
 function annImgRow(imgs){if(!imgs||!imgs.length)return '';var h='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';imgs.forEach(function(u){h+='<img src="'+u+'" onclick="annLightbox(\''+u+'\')" style="width:calc(50% - 4px);max-height:230px;object-fit:cover;border-radius:10px;cursor:pointer;border:1px solid #e6e6ea">';});h+='</div>';return h;}
 function annLightbox(u){
   var o=document.createElement('div');
