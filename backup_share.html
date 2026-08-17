@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>백업 공유 목업 v11</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:#0e2238;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#12314f;display:flex;justify-content:center;padding:12px}
+  .phone{width:100%;max-width:434px;background:linear-gradient(180deg,#4aa3f0,#8fc7f6 55%,#d6eafc);border-radius:26px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.4);min-height:900px;display:flex;flex-direction:column}
+  .hdr{background:linear-gradient(135deg,#3f97ee,#6fb6f4);padding:12px 16px;color:#fff}
+  .hdr .t{font-size:18px;font-weight:900}.hdr .s{font-size:11px;opacity:.9;margin-top:1px}
+  .nav{display:flex;background:rgba(255,255,255,.1)}
+  .nav>div{flex:1;text-align:center;padding:11px 2px;font-size:13px;font-weight:800;color:rgba(255,255,255,.8);cursor:pointer;border-bottom:3px solid transparent}
+  .nav>div.on{color:#fff;border-color:#fff}
+  .scr{flex:1;overflow:auto;padding:13px 12px 34px}
+  .card{background:#fff;border-radius:15px;padding:13px;margin-bottom:11px;box-shadow:0 3px 10px rgba(0,40,90,.1);position:relative}
+  .req{border-left:7px solid #1565c0;cursor:pointer}.req.qty{border-left-color:#6a1b9a}.req.confirm{border-left-color:#e0a800}.req.nego{border-left-color:#0097a7}.req.collabreq{border-left-color:#303f9f}
+  .req.open{background:#d4e8ff}.req.matched{background:#ffd7a8}.req.qty{background:#e6ccf9}.req.confirm{background:#ffe985}.req.nego{background:#bfeaf4}.req.collabreq{background:#d3d8f6}
+  .req.open{animation:grow 1.7s ease-in-out infinite}
+  @keyframes grow{0%,100%{transform:scale(1);box-shadow:0 3px 10px rgba(0,40,90,.12)}50%{transform:scale(1.025);box-shadow:0 0 0 3px rgba(21,101,192,.4),0 6px 16px rgba(0,40,90,.22)}}
+  @property --ang{syntax:'<angle>';initial-value:0deg;inherits:false}
+  .req.matched{border-left:none!important}
+  .req.matched::before{content:"";position:absolute;inset:0;border-radius:15px;padding:2.5px;background:conic-gradient(from var(--ang),#f0932b,#ffe0b2,#f0932b,#ffd18a,#f0932b);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:rotang 2.6s linear infinite;pointer-events:none}
+  @keyframes rotang{to{--ang:360deg}}
+  .req.done{border-left:6px solid #2e7d32;overflow:hidden;background:#d3f0dd}
+  .req.done::after{content:"";position:absolute;top:0;bottom:0;left:-45%;width:38%;background:linear-gradient(105deg,transparent,rgba(46,125,50,.26),transparent);animation:gsweep 2.4s linear infinite;pointer-events:none}
+  @keyframes gsweep{0%{left:-45%}100%{left:132%}}
+  .dcompact{display:flex;align-items:center;gap:9px;padding:12px 13px}
+  .row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .badge{font-size:12px;font-weight:900;padding:3.5px 11px;border-radius:11px}
+  .b-blue{background:#e3f2fd;color:#1565c0}.b-orange{background:#fff3e0;color:#e65100}.b-green{background:#e8f5e9;color:#2e7d32}.b-gray{background:#eceff1;color:#607d8b}.b-purple{background:#f3e5f5;color:#7b1fa2}.b-amber{background:#fff8e1;color:#b8860b}.b-yellow{background:#fff8d6;color:#a67c00}.b-teal{background:#d9f5f0;color:#0b8f7a}.b-cyan{background:#d6f5fa;color:#00838f}.b-indigo{background:#e3e6f7;color:#303f9f}
+  .b-today{background:#c62828;color:#fff}.b-date{background:#e8f0ff;color:#1546b0}.b-collab{background:#e7f0ff;color:#0d47a1;border:1px solid #90caf9}
+  .rname{font-size:19px;font-weight:900;color:#1a237e;text-align:left;line-height:1.2}
+  .anon{font-size:14px;font-weight:900;color:#607d8b}
+  .meta{font-size:11.5px;color:#7a8794;margin-top:3px;text-align:left}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px dashed #eef2f6}.kv b{color:#123a6b}
+  .price{font-size:18px;font-weight:900;color:#1565c0}
+  .supcard{background:#f6f8fc;border:1px solid #e3ebf5;border-radius:11px;padding:10px;margin-top:9px}
+  .suphead{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:900;color:#1a237e}
+  .supn{width:23px;height:23px;border-radius:50%;background:#1565c0;color:#fff;display:grid;place-items:center;font-size:12px;flex-shrink:0}
+  .supn.picked{background:#12a374}.supn.acc{background:#12a374}.supn.dec{background:#c0c7d0}
+  .supbtns{display:flex;gap:7px;margin-top:8px}
+  .sbtn{flex:1;padding:9px;border:none;border-radius:9px;font-size:12.5px;font-weight:900;cursor:pointer}
+  .sb-ok{background:#12a374;color:#fff}.sb-no{background:#fbe6e6;color:#c62828}.sb-dis{background:#eef2f6;color:#a7b2bd}
+  .btn{width:100%;padding:13px;border:none;border-radius:12px;font-size:14.5px;font-weight:900;cursor:pointer;color:#fff}
+  .b1{background:linear-gradient(135deg,#1565c0,#0d3e80)}.b2{background:linear-gradient(135deg,#12a374,#0b6b4a)}.b-warn{background:linear-gradient(135deg,#f0932b,#c56a10)}.b3{background:#eef2f6;color:#5a6b7c}
+  label.f{display:block;font-size:12px;font-weight:800;color:#33475b;margin:11px 2px 6px}
+  input,select,textarea{width:100%;border:1.5px solid #d5e2f0;border-radius:10px;padding:11px;font-size:14px;box-sizing:border-box;background:#fff;font-weight:700;color:#1a3a5a}
+  textarea{font-weight:600;min-height:60px;resize:vertical}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}.seg>div{flex:1;min-width:22%;text-align:center;padding:10px 4px;border-radius:11px;border:2px solid #dbe7f5;font-size:12.5px;font-weight:800;color:#5a6b7c;cursor:pointer;background:#f8fbff}.seg>div.on{border-color:#1565c0;background:#e3f2fd;color:#1565c0}
+  .tseg{display:flex;gap:6px}.tseg>div{flex:1;text-align:center;padding:11px 4px;border-radius:12px;font-size:12px;font-weight:900;cursor:pointer;border:2px solid transparent}
+  .t-apt{background:#eef5ff;color:#1565c0}.t-apt.on{background:#1565c0;color:#fff}
+  .t-jib{background:#fff4e6;color:#e65100}.t-jib.on{background:#e65100;color:#fff}
+  .t-both{background:#f6ecfb;color:#7b1fa2}.t-both.on{background:#7b1fa2;color:#fff}
+  .cbrow{display:flex;align-items:center;gap:10px;background:#f4f8fc;border:1.5px solid #cfe0f5;border-radius:11px;padding:11px;margin-top:8px;cursor:pointer}
+  .cbrow input{width:20px;height:20px}
+  .stp{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;margin-top:8px}
+  .stp button{width:52px;height:46px;border:1.5px solid #cfe0f5;border-radius:11px;background:#eef4ff;font-size:22px;font-weight:900;color:#1565c0;cursor:pointer;flex-shrink:0}
+  .stp .v{flex:1;text-align:center;font-weight:900;font-size:16px;color:#1565c0}
+  .calc{background:#f2f8ff;border:1.5px solid #cfe0f5;border-radius:12px;padding:11px;margin-top:9px}
+  .calc .li{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:#4a5a6a}.calc .tot{display:flex;justify-content:space-between;font-size:15px;font-weight:900;color:#1565c0;border-top:1.5px solid #cfe0f5;margin-top:5px;padding-top:6px}
+  .mapimg{width:100%;border-radius:11px;border:1.5px solid #cfe0f5;margin-top:8px;display:block}
+  .mapph{width:100%;height:120px;border-radius:11px;border:1.5px dashed #b9cbe0;background:#f4f8fc;display:grid;place-items:center;color:#8aa0b8;font-size:12px;font-weight:800;margin-top:8px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#123a6b;color:#fff;padding:11px 20px;border-radius:22px;font-size:13px;font-weight:800;z-index:99;opacity:0;transition:opacity .2s}.toast.show{opacity:1}
+  .note{font-size:11px;color:#0d3b66;background:rgba(255,255,255,.62);border-radius:10px;padding:9px 11px;margin-bottom:10px;line-height:1.6}
+  .lock{font-size:11px;color:#8a5a00;background:#fff6e0;border:1px solid #ffe2a8;border-radius:10px;padding:9px 11px;margin-top:8px;line-height:1.55}
+  .hl{font-size:9.5px;font-weight:900;padding:1px 6px;border-radius:8px;background:#c62828;color:#ffe600;margin-left:3px}
+  .cal{background:#fff;border-radius:15px;padding:10px 8px;box-shadow:0 3px 10px rgba(0,40,90,.1)}
+  .caltop{display:flex;align-items:center;justify-content:space-between;padding:2px 6px 8px}.caltop b{font-size:15px;color:#123a6b}
+  .cw{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:2px}.cw>div{text-align:center;font-size:10px;font-weight:900}
+  .cg{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cell{min-height:64px;border-radius:8px;padding:2px;border:1px solid #eef2f6;background:#fafcff;cursor:pointer;overflow:hidden}.cell.td{background:#fff6e9;border-color:#ffd8a8}
+  .cell.hasreq{background:#f8f0ff;border-color:#dcbdf3}.cell.hasreq.td{background:#fff1e9}
+  .cell.hasav{position:relative}
+  .cell.hasav::before{content:"";position:absolute;inset:0;border-radius:8px;padding:2px;background:conic-gradient(from var(--ang),#f5c518,#fff3b0,#f5c518,#e0a800,#f5c518);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:rotang 2.6s linear infinite;pointer-events:none}
+  .cell .n{font-size:11px;font-weight:900;text-align:left;padding-left:2px}
+  .cq{font-size:8.5px;font-weight:900;border-radius:4px;padding:1px 4px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;background:#f1e6fb;color:#7b1fa2}
+  .cav{font-size:8.5px;font-weight:900;border-radius:4px;padding:1px 4px;margin-top:2px;text-align:left;background:#e6f7ee;color:#12a374}
+  .tbig{font-size:13px;font-weight:900;padding:5px 14px;border-radius:12px}
+  .selbox{width:100%;border:1.5px solid #d5e2f0;border-radius:10px;padding:12px;font-size:14px;background:#fff;font-weight:700;color:#5a6b7c;cursor:pointer}
+  .rtpanel{border:1.5px solid #d5e2f0;border-radius:10px;margin-top:6px;max-height:240px;overflow:auto;background:#fff}
+  .rtitem{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:13.5px;font-weight:800;color:#33475b;cursor:pointer;border-bottom:1px solid #f0f4f8}
+  .rtitem.on{background:#e8f2ff;color:#1565c0}
+  .rtck{width:20px;height:20px;border-radius:5px;border:1.5px solid #cfe0f5;display:grid;place-items:center;font-size:12px;color:#fff;background:#fff}
+  .rtitem.on .rtck{background:#1565c0;border-color:#1565c0}
+</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head>
+<body>
+<div class="phone">
+  <div class="hdr"><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="t">🤝 백업 공유</div><div class="s">정원준 · 팀플렉스 · 매칭 전 익명 · 정산 연동</div></div><div onclick="openAdmin()" style="cursor:pointer;font-size:20px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">⚙️</div></div></div>
+  <div class="nav">
+    <div class="on" id="n-cal" onclick="go('cal')">📅 달력</div>
+    <div id="n-mine" onclick="go('mine')">🙋 내 등록</div>
+    <div id="n-sup" onclick="go('sup')">🚚 내 지원</div>
+  </div>
+  <div class="scr" id="scr"></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+var ROUTES={};
+var DRIVERS=[];
+var HYEONADD=200; var RATE={'특정일':{'아파트':950,'지번':1100}};
+function aptUnit(mode,t){var m=RATE[mode]||RATE['특정일'];if(t==='아파트+지번')return Math.round((m['아파트']+m['지번'])/2);return m[t]||m['아파트'];}
+var APTP={'아파트':950,'지번':1100,'아파트+지번':1025}, VAT=0.1, FIELD=200;
+var SB_URL='https://czpinyfirgvkhdfnvkls.supabase.co', SB_KEY='sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
+var sb=supabase.createClient(SB_URL,SB_KEY);
+var _q=new URLSearchParams(location.search);
+var ME=decodeURIComponent(_q.get('name')||'정원준');
+var MYCOMP=_q.get('comp')||'teamflex';
+var MYCOMPNAME=decodeURIComponent(_q.get('cn')||'팀플렉스');
+var ROLE=_q.get('role')||'admin';
+var MYPHONE=_q.get('phone')||'';
+var MYACCT='';
+var APPROVED_IDS=[MYCOMP];
+var page='cal', sub=null, curDate=null, curId=null, draft=null, filt={mine:'all',sup:'all'};
+function pad(n){return ('0'+n).slice(-2);}
+function kToday(){var d=new Date(Date.now()+9*3600000);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate());}
+var TODAY=kToday(),CY=+TODAY.slice(0,4),CM=+TODAY.slice(5,7),TD=+TODAY.slice(8,10);
+function dstr(y,m,d){return y+'-'+pad(m)+'-'+pad(d);}
+function dBadge(ds){if(ds===TODAY)return '<span class="badge b-today">당일</span>';var p=ds.split('-');return '<span class="badge b-date">'+(+p[1])+'월'+(+p[2])+'일</span>';}
+function typeBadge(t){var m={'아파트':['#e3f2fd','#1565c0'],'지번':['#fff4e6','#e65100'],'아파트+지번':['#f6ecfb','#7b1fa2'],'ALL':['#e9f7ee','#2e7d32']}[t]||['#eceff1','#607d8b'];return '<span class="tbig" style="background:'+m[0]+';color:'+m[1]+'">'+t+'</span>';}
+var slots=[];
+// state: joined(신청)/invited(협업제안)/accepted(수락)/declined(거절)/picked(업무확정)
+var reqs=[];
+function money(n){return '₩'+Math.round(n||0).toLocaleString();}
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},1700);}
+function go(p){page=p;sub=null;['cal','mine','sup'].forEach(function(x){document.getElementById('n-'+x).classList.toggle('on',x===p);});render();}
+function rAvg(rt){if(!rt.length)return 0;return Math.round(rt.reduce(function(a,r){return a+(ROUTES[r]||800);},0)/rt.length);}
+function computeUnit(r){var ex=r.extra||0;if(r.viaSupport||r.mode==='개인')return rAvg(r.routes)+ex;if(r.mode==='현장')return rAvg(r.routes)+HYEONADD+ex;if(r.mode==='특정일')return aptUnit('특정일',r.aptType||'아파트')+ex;return 0;}
+function reqUnit(r){if(r.negUnit)return r.negUnit;if(r.unit!=null)return r.unit;return computeUnit(r);}
+function reqTotal(r){var q=(r.finalQty||0),u=reqUnit(r);return u*q;}
+function estTotal(r){var q=(r.estQty||0),u=reqUnit(r);return u*q;}
+function modeBadge(m){return {'현장':'<span class="badge b-orange">현장</span>','특정일':'<span class="badge b-blue">특정일</span>','개인':'<span class="badge b-purple">개인협업</span>'}[m];}
+function kindBadge(r){return r.viaSupport?'<span class="badge b-teal">🔁 역지원</span>':(modeBadge(r.mode)+(r.mode==='특정일'?typeBadge(r.aptType):''));}
+function stBadge(s){return {open:'<span class="badge b-blue">🔵 대기</span>',collabreq:'<span class="badge b-indigo">👥 협업제안</span>',nego:'<span class="badge b-cyan">🤝 매칭협상</span>',matched:'<span class="badge b-amber">🟠 진행중</span>',qty:'<span class="badge b-purple">🟣 수량확인</span>',confirm:'<span class="badge b-yellow">🟡 확정요청</span>',done:'<span class="badge b-green">✅ 완료</span>'}[s];}
+function comp(c){return c!==MYCOMPNAME?('<span class="badge b-purple">'+c+'</span>'):'<span class="badge b-blue">팀플렉스</span>';}
+function settleBadge(r){return r.settle==='개인'?'<span class="badge b-amber">💵 개인정산</span>':'<span class="badge b-gray">📅 정산일정산</span>';}
+function collabBadge(r){return r.collab?('<span class="badge b-collab">👥 협업 +'+((r.needCount||1)-1)+'</span>'):'';}
+function iAmSup(r){return (r.supporters||[]).some(function(s){return s.name===ME;});}
+var LOCK='<div class="lock">🔒 매칭 확정 후에는 포기·취소가 불가합니다. 확정 후 취소는 <b>상호 협의 후 관리자를 통해</b>서만 가능합니다.</div>';
+function stateBadge(st){return {joined:'<span class="badge b-amber">신청</span>',invited:'<span class="badge b-indigo">협업제안</span>',accepted:'<span class="badge b-green">수락</span>',declined:'<span class="badge b-gray">거절</span>',picked:'<span class="badge b-green">업무확정</span>'}[st]||'<span class="badge b-gray">-</span>';}
+
+function render(){var s=document.getElementById('scr');
+  if(sub==='admin')return s.innerHTML=adminHtml();
+  if(sub==='availReg')return s.innerHTML=availRegHtml();
+  if(sub==='register')return s.innerHTML=registerHtml();
+  if(sub==='supReg')return s.innerHTML=supRegHtml();
+  if(sub==='match')return s.innerHTML=matchHtml();
+  if(sub==='detail')return s.innerHTML=detailHtml(reqs.find(function(x){return x.id===curId;}));
+  if(sub==='day')return s.innerHTML=dayHtml();
+  if(page==='cal')return s.innerHTML=calHtml();
+  if(page==='mine')return s.innerHTML=listHtml('mine');
+  if(page==='sup')return s.innerHTML=listHtml('sup');
+}
+// ── 달력 ──
+function calHtml(){
+  var first=new Date(CY,CM-1,1),startW=first.getDay(),days=new Date(CY,CM,0).getDate();
+  var h='<div class="note"><b style="color:#7b1fa2">■</b> 요청(보라 배경) · <b style="color:#d4a800">◎</b> 지원가능(금색 회전 테두리). 날짜를 눌러 상세/등록.</div>';
+  h+='<div class="cal"><div class="caltop"><b>'+CY+'년 '+CM+'월</b></div>';
+  h+='<div class="cw">'+['일','월','화','수','목','금','토'].map(function(w,i){return '<div style="color:'+(i===0?'#e53935':(i===6?'#1565c0':'#33475b'))+'">'+w+'</div>';}).join('')+'</div><div class="cg">';
+  for(var p=0;p<startW;p++)h+='<div></div>';
+  for(var d=1;d<=days;d++){var ds=dstr(CY,CM,d);var td=ds===TODAY;
+    var spq=reqs.filter(function(r){return r.mode==='특정일'&&r.date===ds;});
+    var av=slots.filter(function(x){return x.date===ds;}).length;
+    var chips=spq.slice(0,2).map(function(r){return '<div class="cq" onclick="event.stopPropagation();openDetail('+r.id+')">'+r.requester+'</div>';}).join('');
+    if(spq.length>2)chips+='<div class="cq" style="background:#eee;color:#666">+'+(spq.length-2)+'</div>';
+    h+='<div class="cell'+(td?' td':'')+(av?' hasav':'')+(spq.length?' hasreq':'')+'" onclick="openDay(\''+ds+'\')"><div class="n" style="color:'+(td?'#e65100':'#33475b')+'">'+d+'</div>'+chips+(av?'<div class="cav">지원 '+av+'</div>':'')+'</div>';
+  }
+  h+='</div></div>';
+  h+='<div style="margin:14px 0"><button class="btn b1" onclick="startRegister()">＋ 백업 요청 등록</button></div>';
+  var tf=reqs.filter(function(r){return r.mode==='현장'&&r.date===TODAY&&r.status==='open';});
+  h+='<div style="font-size:13px;font-weight:900;color:#0d3b66;margin:6px 2px 9px">🔥 오늘 현장 백업 요청 <span class="badge b-orange">'+tf.length+'</span></div>';
+  if(!tf.length)h+='<div class="note">없음</div>';
+  tf.forEach(function(r){h+=reqCard(r);});
+  return h;
+}
+function openDay(ds){curDate=ds;sub='day';render();}
+function dayHtml(){
+  var list=slots.filter(function(x){return x.date===curDate;});
+  var sp=reqs.filter(function(r){return r.mode==='특정일'&&r.date===curDate;});
+  var p=curDate.split('-');
+  var h='<div class="row"><span onclick="sub=null;render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">'+(+p[1])+'월 '+(+p[2])+'일</b>'+dBadge(curDate)+'</div>';
+  h+='<div style="margin:12px 0"><button class="btn b2" onclick="startAvailReg()">＋ 이 날 내 지원 가능 등록</button></div>';
+  if(sp.length){h+='<div style="font-size:12.5px;font-weight:900;color:#0d3b66;margin:8px 2px 8px">📌 이 날 특정일 백업 요청</div>';sp.forEach(function(r){h+=reqCard(r);});}
+  h+='<div style="font-size:12.5px;font-weight:900;color:#0d3b66;margin:14px 2px 8px">🙌 지원 가능 기사 (익명)</div>';
+  if(!list.length)h+='<div class="note">없음</div>';
+  list.forEach(function(sl){var rev=(sl.status!=='open')||(sl.driver===ME);
+    h+='<div class="card"><div class="row" style="margin-bottom:8px">'+typeBadge(sl.type)+(rev?comp(sl.company):'<span class="badge b-gray">익명</span>')+(sl.status!=='open'?'<span class="badge b-green">🟢 매칭됨</span>':'')+'</div>'
+      +'<div class="anon">'+(rev?sl.driver:('지원기사 #'+(sl.id%1000)))+'</div>'
+      +'<div class="kv" style="margin-top:6px"><span>가능 수량</span><b>'+sl.qty.toLocaleString()+'개</b></div>'
+      +'<div class="kv" style="border:none"><span>희망 단가</span><b class="price">'+money(sl.unit)+' / 개</b></div>'
+      +(sl.status==='open'&&sl.driver!==ME?('<div style="margin-top:10px"><button class="btn b1" onclick="startMatch('+sl.id+')">🤝 매칭 신청 (협상)</button></div>'):'')+'</div>';
+  });
+  return h;
+}
+function startAvailReg(){draft={type:'아파트',qty:'',unit:APTP['아파트']};sub='availReg';render();}
+function aStep(d){draft.unit=Math.max(0,(draft.unit||0)+d);var i=document.getElementById('au');if(i)i.value=draft.unit;}
+function availRegHtml(){
+  var h='<div class="row"><span onclick="sub=\'day\';render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">지원 가능 등록</b>'+dBadge(curDate)+'</div>';
+  h+='<label class="f">유형</label><div class="tseg"><div class="t-apt '+(draft.type==='아파트'?'on':'')+'" onclick="draft.type=\'아파트\';draft.unit='+APTP['아파트']+';render()">아파트</div><div class="t-jib '+(draft.type==='지번'?'on':'')+'" onclick="draft.type=\'지번\';draft.unit='+APTP['지번']+';render()">지번</div><div class="t-both '+(draft.type==='아파트+지번'?'on':'')+'" onclick="draft.type=\'아파트+지번\';draft.unit='+APTP['아파트+지번']+';render()">아파트+지번</div></div>';
+  h+='<div style="text-align:center;margin:12px 0">'+typeBadge(draft.type)+(draft.type==='아파트+지번'?' <span style="font-size:10px;color:#7b1fa2">평균단가</span>':'')+'</div>';
+  h+='<label class="f">가능 수량</label><input type="number" placeholder="예:500" oninput="draft.qty=parseInt(this.value||0,10)||0">';
+  h+='<label class="f">희망 단가 (50원 단위)</label><div class="stp"><button onclick="aStep(-50)">−</button><input id="au" class="v" type="number" step="50" value="'+draft.unit+'" oninput="draft.unit=Math.max(0,parseInt(this.value||0,10)||0)"><button onclick="aStep(50)">＋</button></div>';
+  h+='<div style="margin-top:16px"><button class="btn b2" onclick="submitAvail()">✅ 지원 가능 등록</button></div>';
+  return h;
+}
+function submitAvail(){bpNewSlot({driver:ME,company:MYCOMPNAME,date:curDate,type:draft.type,qty:draft.qty||0,unit:draft.unit||0,status:'open'});sub='day';toast('📅 지원 가능 등록! (달력에 익명)');}
+// ── 매칭 신청(협상): 유형·수량·단가·정산방식 ──
+function startMatch(sid){var sl=slots.find(function(x){return x.id===sid;});draft={sid:sid,type:(sl.type==='ALL'?'아파트':sl.type),qty:sl.qty,unit:sl.unit,settle:'정산일'};sub='match';render();}
+function mStep(d){draft.unit=Math.max(0,(draft.unit||0)+d);var i=document.getElementById('mu');if(i)i.value=draft.unit;}
+function matchHtml(){var sl=slots.find(function(x){return x.id===draft.sid;});
+  var h='<div class="row"><span onclick="sub=\'day\';render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">매칭 신청 (협상)</b></div>';
+  h+='<div class="card"><div class="row">'+typeBadge(sl.type)+'<span class="badge b-gray">익명</span></div><div class="kv" style="margin-top:8px"><span>상대 가능 수량</span><b>'+sl.qty+'개</b></div><div class="kv" style="border:none"><span>상대 희망 단가</span><b>'+money(sl.unit)+'</b></div></div>';
+  h+='<label class="f">유형</label><div class="tseg"><div class="t-apt '+(draft.type==='아파트'?'on':'')+'" onclick="draft.type=\'아파트\';render()">아파트</div><div class="t-jib '+(draft.type==='지번'?'on':'')+'" onclick="draft.type=\'지번\';render()">지번</div><div class="t-both '+(draft.type==='아파트+지번'?'on':'')+'" onclick="draft.type=\'아파트+지번\';render()">아파트+지번</div></div>';
+  h+='<label class="f">예상 수량</label><input type="number" value="'+(draft.qty||'')+'" oninput="draft.qty=parseInt(this.value||0,10)||0">';
+  h+='<label class="f">희망 단가 (50원)</label><div class="stp"><button onclick="mStep(-50)">−</button><input id="mu" class="v" type="number" step="50" value="'+draft.unit+'" oninput="draft.unit=Math.max(0,parseInt(this.value||0,10)||0)"><button onclick="mStep(50)">＋</button></div>';
+  h+='<label class="f">정산 방식</label><div class="seg"><div class="'+(draft.settle==='정산일'?'on':'')+'" onclick="draft.settle=\'정산일\';render()">📅 정산일 정산(VAT포함)</div><div class="'+(draft.settle==='개인'?'on':'')+'" onclick="draft.settle=\'개인\';render()">💵 개인정산(현금)</div></div>';
+  h+='<div style="margin-top:14px"><button class="btn b1" onclick="sendMatch()">🤝 매칭 협상 보내기</button></div>';
+  return h;
+}
+function sendMatch(){var sl=slots.find(function(x){return x.id===draft.sid;});sl.status='matched';bpSaveSlot(sl);
+  var nr={requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:sl.date,mode:'특정일',aptType:draft.type,routes:['(가용매칭)'],extra:0,settle:draft.settle,collab:false,needCount:1,supporters:[{name:sl.driver,company:sl.company,phone:'',state:'joined'}],negUnit:draft.unit,unit:draft.unit,estQty:draft.qty||0,status:'nego',negBy:ME,company_id:MYCOMP};
+  bpNewReq(nr);go('mine');toast('🤝 매칭 협상 전송 · 상대 확정 대기');
+}
+// ── 카드 ──
+function sortByDate(a,b){return a.date<b.date?-1:(a.date>b.date?1:0);}
+function doneCompact(r){return '<div class="card req done" onclick="openDetail('+r.id+')"><div class="dcompact"><span class="badge b-green">✅ 완료</span>'+dBadge(r.date)+'<span style="flex:1"></span><span class="price" style="font-size:15px">'+money(reqTotal(r))+'</span><span style="color:#c5cad2;font-weight:900;font-size:18px">›</span></div></div>';}
+function supMini(r){if(!r.supporters||!r.supporters.length)return '';return '<div class="row" style="gap:5px;margin-top:7px">'+r.supporters.map(function(s,i){var c=(s.state==='picked'||s.state==='accepted')?'b-green':(s.state==='declined'?'b-gray':'b-amber');return '<span class="badge '+c+'">지원자 '+(i+1)+'</span>';}).join('')+'</div>';}
+function reqCard(r){if(r.status==='done')return doneCompact(r);
+  var qtyTxt=r.finalQty?('실제 '+r.finalQty+'개'):(r.estQty?('예상 '+r.estQty+'개'):'수량 대기');
+  var pr=r.finalQty?money(reqTotal(r)):(r.estQty?money(estTotal(r)):money(reqUnit(r)));
+  var pl=r.finalQty?'정산금':(r.estQty?'예상 정산금':'단가/개');
+  return '<div class="card req '+r.status+'" onclick="openDetail('+r.id+')"><div class="row" style="margin-bottom:7px">'+dBadge(r.date)+stBadge(r.status)+kindBadge(r)+comp(r.rcomp)+collabBadge(r)+settleBadge(r)+'</div>'
+    +'<div class="rname">'+r.requester+'</div>'
+    +'<div class="meta">라우트 '+r.routes.join(', ')+' · '+qtyTxt+(r.mapImg?' · 🗺️지도':'')+'</div>'
+    +supMini(r)
+    +'<div class="row" style="justify-content:space-between;margin-top:9px"><span class="meta">'+pl+'</span><span class="price">'+pr+'</span></div></div>';
+}
+function listHtml(which){var arr=which==='mine'?reqs.filter(function(r){return r.requester===ME;}):reqs.filter(function(r){return iAmSup(r);});
+  var f=filt[which];var flt=arr.filter(function(r){return f==='all'?true:(f==='ing'?r.status!=='done':r.status==='done');}).sort(sortByDate);
+  var doneArr=arr.filter(function(r){return r.status==='done';}),ingArr=arr.filter(function(r){return r.status!=='done';});
+  var total=doneArr.reduce(function(a,r){return a+reqTotal(r);},0);
+  var grad=which==='sup'?'linear-gradient(135deg,#12a374,#0b6b4a)':'linear-gradient(135deg,#e53935,#b71c1c)';
+  var h='<div class="card" style="background:'+grad+';color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.2)"><div style="font-size:12px;opacity:.92;font-weight:800">정산 기준 총 '+(which==='sup'?'수익 💰':'지출 💸')+'</div><div style="font-size:26px;font-weight:900;margin-top:2px">'+money(total)+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">완료·확정 '+doneArr.length+'건'+(ingArr.length?' · 진행중 '+ingArr.length+'건':'')+'</div></div>';
+  if(which==='sup')h+='<div style="margin-bottom:11px"><button class="btn b2" onclick="startSupReg()">＋ 요청 없이 지원 등록 (역지원 → 확정 요청)</button></div>';
+  h+='<div class="note">'+(which==='mine'?'내가 <b>백업을 요청</b>한 건 + 나에게 온 <b>확정 요청</b>.':'내가 <b>지원·협상·협업제안</b> 받은 건. 개인협업은 완료건이 합산 반영돼요.')+'</div>';
+  h+='<div style="margin:4px 0 6px">'+['all','ing','done'].map(function(k){var l={all:'전체',ing:'진행중',done:'완료·확정'}[k];return '<span class="fchip '+(f===k?'on':'')+'" onclick="filt[\''+which+'\']=\''+k+'\';render()">'+l+'</span>';}).join('')+'</div>';
+  if(!flt.length)h+='<div class="note">해당 없음</div>';
+  flt.forEach(function(r){if(r.status==='done'){h+=doneCompact(r);return;}h+=reqCard(r);});
+  return h;
+}
+// ── 요청 등록 ──
+function startRegister(){draft={mode:'현장',aptType:'아파트',routes:[],_rtOpen:false,routeInfo:'',mapImg:'',estQty:'',extra:0,date:TODAY,settle:'정산일',acctShare:false,collab:false,collabExtra:1};sub='register';render();}
+function dSet(k,v){draft[k]=v;render();}
+function dExtraStep(d){draft.extra=Math.max(0,(draft.extra||0)+d);render();}
+function dCollabStep(d){draft.collabExtra=Math.max(1,(draft.collabExtra||1)+d);render();}
+function toggleRtOpen(){draft._rtOpen=!draft._rtOpen;render();}
+function toggleRoute(rt){var i=draft.routes.indexOf(rt);if(i>=0)draft.routes.splice(i,1);else{if(draft.routes.length>=2){toast('라우트는 최대 2개');return;}draft.routes.push(rt);}render();}
+function loadMap(inp){var f=inp.files&&inp.files[0];if(!f)return;var rd=new FileReader();rd.onload=function(e){draft.mapImg=e.target.result;render();};rd.readAsDataURL(f);}
+function routeOptions(sel){return '<option value="">라우트 선택</option>'+Object.keys(ROUTES).map(function(rt){return '<option value="'+rt+'"'+(sel===rt?' selected':'')+'>'+rt+'</option>';}).join('');}
+function calcInner(){var u=0,h='';
+  if(draft.mode==='현장'){var b=rAvg(draft.routes||[]);u=b+HYEONADD+(draft.extra||0);h+='<div class="li"><span>라우트 원단가'+((draft.routes||[]).length>1?'(2개 평균)':'')+'</span><span>'+money(b)+'</span></div><div class="li"><span>기본추가단가</span><span>+ '+money(HYEONADD)+'</span></div>';}
+  else if(draft.mode==='특정일'){var base=aptUnit('특정일',draft.aptType);u=base+(draft.extra||0);h+='<div class="li"><span>['+draft.aptType+'] 단가'+(draft.aptType==='아파트+지번'?'(평균)':'')+'</span><span>'+money(base)+'</span></div>';}
+  else{var b2=rAvg(draft.routes||[]);u=b2+(draft.extra||0);h+='<div class="li"><span>라우트 원단가'+((draft.routes||[]).length>1?'(2개 평균)':'')+'</span><span>'+money(b2)+'</span></div>';}
+  h+='<div class="li"><span>추가 +@</span><span>+ '+money(draft.extra||0)+'</span></div>';
+  h+='<div class="tot"><span>적용 단가 / 개</span><span>'+money(u)+'</span></div>';
+  if(draft.estQty)h+='<div class="li" style="border-top:1px dashed #cfe0f5;margin-top:4px;padding-top:5px"><span>예상 정산금 (예상 '+draft.estQty+'개)</span><span style="font-weight:900;color:#1565c0">'+money(u*draft.estQty)+'</span></div>';
+  h+='<div class="li" style="border:none;color:#8090a0;margin-top:2px">※ 실제 수량은 지원 기사가 완료 후 입력 → 최종 정산금 확정</div>';
+  return h;
+}
+function registerHtml(){
+  var h='<div class="row"><span onclick="sub=null;go(\'cal\')" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">백업 요청 등록</b></div>';
+  h+='<label class="f">유형</label><div class="seg"><div class="'+(draft.mode==='현장'?'on':'')+'" onclick="dSet(\'mode\',\'현장\')">현장</div><div class="'+(draft.mode==='특정일'?'on':'')+'" onclick="dSet(\'mode\',\'특정일\')">특정일</div><div class="'+(draft.mode==='개인'?'on':'')+'" onclick="dSet(\'mode\',\'개인\')">개인<span class="hl">원단가</span></div></div>';
+  if(draft.mode==='특정일'){var rm=RATE['특정일'];var avg=Math.round((rm['아파트']+rm['지번'])/2);
+    h+='<label class="f">아파트 / 지번 유형</label><div class="tseg"><div class="t-apt '+(draft.aptType==='아파트'?'on':'')+'" onclick="dSet(\'aptType\',\'아파트\')">아파트 '+rm['아파트']+'</div><div class="t-jib '+(draft.aptType==='지번'?'on':'')+'" onclick="dSet(\'aptType\',\'지번\')">지번 '+rm['지번']+'</div><div class="t-both '+(draft.aptType==='아파트+지번'?'on':'')+'" onclick="dSet(\'aptType\',\'아파트+지번\')">아파트+지번 '+avg+'</div></div>';
+    h+='<div class="note" style="margin-top:7px;margin-bottom:0">ℹ️ <b>아파트+지번</b>은 <b>평균단가('+avg+'원)</b>로 측정됩니다.</div>';
+    h+='<label class="f">날짜(특정일) <span style="font-weight:400;color:#8a97a4">달력에서 선택</span></label><input type="date" value="'+(draft.date!==TODAY?draft.date:'')+'" min="'+TODAY+'" onchange="draft.date=this.value||TODAY;render()">'+(draft.date&&draft.date!==TODAY?('<div style="margin-top:7px">'+dBadge(draft.date)+'</div>'):'<div class="note" style="margin-top:7px;margin-bottom:0">날짜를 선택하세요.</div>');
+  } else if(draft.mode==='현장'){draft.date=TODAY;
+    h+='<div class="note" style="margin-top:2px;margin-bottom:0">ℹ️ 현장은 <b>라우트 원단가 + 기본추가단가('+money(HYEONADD)+')</b>로 측정됩니다.</div>';
+  } else { draft.date=TODAY; }
+  h+='<label class="f">라우트 <span style="font-weight:400;color:#8a97a4">(최대 2개 선택)</span></label>';
+  h+='<div class="selbox" onclick="toggleRtOpen()">'+(draft.routes.length?('<b style="color:#1565c0">'+draft.routes.join(', ')+'</b>'):'라우트 선택')+'<span style="float:right;color:#8aa">▾</span></div>';
+  if(draft._rtOpen)h+='<div class="rtpanel">'+Object.keys(ROUTES).map(function(rt){var on=draft.routes.indexOf(rt)>=0;return '<div class="rtitem'+(on?' on':'')+'" onclick="toggleRoute(\''+rt+'\')"><span class="rtck">'+(on?'✔':'')+'</span>'+rt+'</div>';}).join('')+'</div>';
+  h+='<label class="f">라우트 정보 (설명)</label><textarea placeholder="예: 대단지 아파트, 저층 위주. 엘베 O, 오후 집중." oninput="draft.routeInfo=this.value">'+(draft.routeInfo||'')+'</textarea>';
+  h+='<label class="f">라우트 지도 첨부 (선택) <span style="font-weight:400;color:#8a97a4">지원자에게 공개</span></label><input type="file" accept="image/*" onchange="loadMap(this)">'+(draft.mapImg?('<img class="mapimg" src="'+draft.mapImg+'">'):'<div class="mapph">🗺️ 지도 이미지를 첨부하면 여기에 표시</div>');
+  h+='<label class="f">예상 수량</label><input type="number" value="'+(draft.estQty||'')+'" placeholder="예: 500 (실제 수량은 지원기사가 완료 후 입력)" oninput="draft.estQty=parseInt(this.value||0,10)||0;var c=document.getElementById(\'calc-box\');if(c)c.innerHTML=calcInner();">';
+  h+='<div class="cbrow" onclick="draft.collab=!draft.collab;render()"><input type="checkbox" '+(draft.collab?'checked':'')+'><div style="font-size:12.5px;font-weight:800;color:#33475b">👥 협업 매칭 가능<div style="font-size:10.5px;font-weight:400;color:#8090a0;margin-top:2px">여러 지원 기사와 함께 진행. 미선택 시 <b>1인만 모집</b>.</div></div></div>';
+  if(draft.collab)h+='<label class="f">추가 인원 (본인 요청 외)</label><div class="stp"><button onclick="dCollabStep(-1)">−</button><div class="v">+'+draft.collabExtra+' <span style="font-size:11px;color:#7a8794">(총 '+(draft.collabExtra+1)+'명 모집)</span></div><button onclick="dCollabStep(1)">＋</button></div>';
+  h+='<label class="f">추가 +@ (50원)</label><div class="stp"><button onclick="dExtraStep(-50)">−</button><div class="v">'+money(draft.extra||0)+'</div><button onclick="dExtraStep(50)">＋</button></div>';
+  h+='<label class="f">정산 방식</label><div class="seg"><div class="'+(draft.settle==='정산일'?'on':'')+'" onclick="dSet(\'settle\',\'정산일\')">📅 정산일 정산(VAT포함)</div><div class="'+(draft.settle==='개인'?'on':'')+'" onclick="dSet(\'settle\',\'개인\')">💵 개인 정산(현금)</div></div>';
+  if(draft.settle==='개인')h+='<div class="cbrow" onclick="draft.acctShare=!draft.acctShare;render()"><input type="checkbox" '+(draft.acctShare?'checked':'')+'><div style="font-size:12px;font-weight:800;color:#33475b">개인 계좌번호 공유 동의<div style="font-size:10.5px;font-weight:400;color:#8090a0;margin-top:2px">체크 시에만 계좌 공유. 미동의 시 <b>개인간 협의로 정산</b>.</div></div></div>';
+  h+='<div class="calc" id="calc-box">'+calcInner()+'</div><div style="margin-top:14px"><button class="btn b1" onclick="submitReq()">✅ 요청 등록</button></div>';
+  return h;
+}
+function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;bpNewReq(r);go('mine');toast('📨 요청 등록');}
+// ── 역지원 등록 ──
+function startSupReg(){draft={who:'',route:'',extra:0,qty:'',settle:'정산일',acctShare:false};sub='supReg';render();}
+function sExtraStep(d){draft.extra=Math.max(0,(draft.extra||0)+d);render();}
+function supRegHtml(){
+  var u=(ROUTES[draft.route]||0)+(draft.extra||0);
+  var h='<div class="row"><span onclick="sub=null;go(\'sup\')" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">역지원 등록</b></div>';
+  h+='<div class="note">요청 등록 없이 내가 <b>먼저 도와준 건</b>을 역으로 등록해요. 상대 기사에게 <b>확정 요청</b>이 가고, 상대가 확정하면 정산 반영됩니다.</div>';
+  h+='<label class="f">요청 기사 (등록된 기사 선택)</label><select onchange="draft.who=this.value;render()"><option value="">기사 선택</option>'+DRIVERS.map(function(n){return '<option value="'+n+'"'+(draft.who===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
+  h+='<label class="f">라우트 <span style="font-weight:400;color:#8a97a4">(1개만)</span></label><select onchange="draft.route=this.value;render()">'+routeOptions(draft.route)+'</select>';
+  h+='<label class="f">추가 단가 +@ (50원, 협의된 경우)</label><div class="stp"><button onclick="sExtraStep(-50)">−</button><div class="v">'+money(draft.extra||0)+'</div><button onclick="sExtraStep(50)">＋</button></div>';
+  h+='<label class="f">완료 수량 (실제)</label><input type="number" placeholder="내가 배송한 수량" oninput="draft.qty=parseInt(this.value||0,10)||0">';
+  h+='<label class="f">정산 방식</label><div class="seg"><div class="'+(draft.settle==='정산일'?'on':'')+'" onclick="draft.settle=\'정산일\';render()">📅 정산일</div><div class="'+(draft.settle==='개인'?'on':'')+'" onclick="draft.settle=\'개인\';render()">💵 개인</div></div>';
+  h+='<div class="calc"><div class="li"><span>라우트 기본단가</span><span>'+money(ROUTES[draft.route]||0)+'</span></div><div class="li"><span>추가 +@</span><span>+ '+money(draft.extra||0)+'</span></div><div class="tot"><span>단가 / 개</span><span>'+money(u)+'</span></div></div>';
+  h+='<div style="margin-top:14px"><button class="btn b2" onclick="submitSupReg()">📤 확정 요청 보내기</button></div>';
+  return h;
+}
+function submitSupReg(){if(!draft.who){toast('요청 기사를 선택하세요');return;}if(!draft.route){toast('라우트를 선택하세요');return;}
+  var r={id:Date.now(),requester:draft.who,rcomp:MYCOMPNAME,rphone:MYPHONE,date:TODAY,mode:'개인',viaSupport:true,routes:[draft.route],extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:false,needCount:1,supporters:[{name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'}],finalQty:draft.qty||0,status:'confirm'};
+  reqs.unshift(r);go('sup');toast('📤 '+draft.who+' 기사에게 확정 요청 전송');
+}
+// ── 상세 ──
+function openAdmin(){draft={ha:HYEONADD,ta:RATE['특정일']['아파트'],tj:RATE['특정일']['지번']};sub='admin';render();}
+function aAdm(k,d){draft[k]=Math.max(0,(draft[k]||0)+d);render();}
+function saveAdmin(){HYEONADD=draft.ha;RATE['특정일']['아파트']=draft.ta;RATE['특정일']['지번']=draft.tj;APTP['아파트']=draft.ta;APTP['지번']=draft.tj;APTP['아파트+지번']=Math.round((draft.ta+draft.tj)/2);sb.from('bp_company_config').upsert({company_id:MYCOMP,hyeon_add:draft.ha,teuk_apt:draft.ta,teuk_jib:draft.tj,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(){});toast('💾 단가 저장 · 즉시 반영');go('cal');}
+function admRow(label,key){return '<label class="f">'+label+'</label><div class="stp"><button onclick="aAdm(\''+key+'\',-50)">−</button><input class="v" type="number" step="50" value="'+draft[key]+'" oninput="draft.'+key+'=Math.max(0,parseInt(this.value||0,10)||0)"><button onclick="aAdm(\''+key+'\',50)">＋</button></div>';}
+function adminHtml(){var tAvg=Math.round((draft.ta+draft.tj)/2);
+  var h='<div class="row"><span onclick="sub=null;go(\'cal\')" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">⚙️ 관리자 · 단가 설정</b></div>';
+  h+='<div class="note"><b>현장 기본추가단가</b>(원단가에 가산)와 <b>특정일 아파트/지번 단가</b>를 설정합니다. 저장 시 즉시 반영.</div>';
+  h+='<div class="card" style="border-left:6px solid #e65100"><div style="font-size:13.5px;font-weight:900;color:#e65100;margin-bottom:4px">🚚 현장 <span style="font-size:10px;font-weight:600;color:#a06a30">라우트 원단가 + 아래 금액</span></div>'+admRow('➕ 기본추가단가','ha')+'</div>';
+  h+='<div class="card" style="border-left:6px solid #1565c0"><div style="font-size:13.5px;font-weight:900;color:#1565c0;margin-bottom:4px">📅 특정일 단가 <span style="font-size:10px;font-weight:600;color:#5a7bb0">(고정 단가)</span></div>'+admRow('🏢 아파트 단가','ta')+admRow('🏠 지번 단가','tj')+'<div class="calc"><div class="tot"><span>아파트+지번 (평균 자동)</span><span>'+money(tAvg)+'</span></div></div></div>';
+  h+='<div style="margin-top:16px"><button class="btn b1" onclick="saveAdmin()">💾 저장</button></div>';
+  return h;
+}
+function openDetail(id){curId=id;sub='detail';render();}
+function routeInfoCard(r){if(!r.routeInfo&&!r.mapImg)return '';return '<div class="card"><div style="font-size:12px;font-weight:900;color:#0d3b66;margin-bottom:5px">📍 라우트 정보 <span style="font-size:10px;font-weight:600;color:#8aa">지원자 공개</span></div>'+(r.routeInfo?('<div style="font-size:12.5px;color:#33475b;line-height:1.6">'+r.routeInfo+'</div>'):'')+(r.mapImg?('<img class="mapimg" src="'+r.mapImg+'">'):'')+'</div>';}
+function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r);var si={open:0,collabreq:1,nego:1,confirm:1,matched:1,qty:2,done:3}[r.status];
+  var h='<div class="row"><span onclick="sub=null;render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">요청 상세</b>'+dBadge(r.date)+'</div>';
+  h+='<div class="row" style="gap:4px;margin:8px 0">'+[0,1,2,3].map(function(i){return '<div style="flex:1;height:5px;border-radius:3px;background:'+(si>=i?'#1565c0':'rgba(255,255,255,.45)')+'"></div>';}).join('')+'</div><div style="font-size:10px;color:#0d3b66;display:flex;justify-content:space-between;margin:-4px 2px 10px"><span>등록</span><span>매칭</span><span>수량</span><span>확정</span></div>';
+  h+='<div class="card"><div class="row" style="margin-bottom:6px">'+stBadge(r.status)+kindBadge(r)+comp(r.rcomp)+collabBadge(r)+settleBadge(r)+'</div>';
+  h+='<div class="rname" style="margin-bottom:4px">'+r.requester+'</div>';
+  h+='<div class="kv"><span>라우트</span><b>'+r.routes.join(', ')+'</b></div>';
+  h+='<div class="kv"><span>단가/개</span><b style="color:#1565c0">'+money(reqUnit(r))+'</b></div>';
+  h+='<div class="kv"><span>예상 수량</span><b>'+(r.estQty?r.estQty+'개':'-')+'</b></div>';
+  h+='<div class="kv"><span>실제 수량</span><b>'+(r.finalQty?r.finalQty+'개':'지원기사 입력 대기')+'</b></div>';
+  h+='<div class="kv" style="border:none"><span>정산금</span><b class="price">'+(r.finalQty?money(reqTotal(r)):(r.estQty?money(estTotal(r))+' (예상)':'-'))+'</b></div></div>';
+  h+=routeInfoCard(r);
+  // 매칭협상 상세(들어온 조건)
+  if(r.status==='nego')h+='<div class="card" style="border-left:5px solid #00acc1"><div style="font-size:12px;font-weight:900;color:#00838f;margin-bottom:5px">🤝 협상 조건 ('+r.negBy+' 제안)</div><div class="kv"><span>유형</span><b>'+r.aptType+'</b></div><div class="kv"><span>예상 수량</span><b>'+(r.estQty||0)+'개</b></div><div class="kv"><span>제안 단가</span><b class="price">'+money(r.negUnit)+'</b></div><div class="kv" style="border:none"><span>정산</span><b>'+(r.settle==='개인'?'개인정산':'정산일정산')+'</b></div></div>';
+  // 지원자 카드
+  if(r.supporters&&r.supporters.length&&r.status!=='nego'){
+    h+='<div style="font-size:12px;font-weight:900;color:#0d3b66;margin:4px 2px 6px">🚚 '+(r.status==='open'?'신청한 지원자':(r.status==='collabreq'?'협업 제안 지원자':'매칭된 지원자'))+' '+r.supporters.length+'명'+(r.collab?(' · 모집 '+r.needCount+'명'):'')+'</div>';
+    r.supporters.forEach(function(s,i){var st=s.state||'joined';
+      h+='<div class="supcard"><div class="suphead"><span class="supn '+(st==='picked'||st==='accepted'?'acc':(st==='declined'?'dec':''))+'">'+(i+1)+'</span><span style="flex:1">지원자 '+(i+1)+' · '+s.name+(s.company!==MYCOMPNAME?' <span class="badge b-purple">'+s.company+'</span>':'')+'</span>'+stateBadge(st)+'</div>';
+      h+='<div style="font-size:11.5px;color:#5a6b7c;margin-top:5px">📞 '+s.phone+(r.settle==='개인'?('<br>'+(r.acctShare?('💳 '+(s.acct||'(공유됨)')):'🔒 계좌 공유 미동의 — 개인간 협의')):'')+'</div>';
+      // 등록기사: 모집중 → 업무확정(한명)/포기
+      if(iReq&&r.status==='open')h+='<div class="supbtns"><button class="sbtn sb-ok" onclick="pickOne('+r.id+','+i+')">✅ 업무 확정</button><button class="sbtn sb-no" onclick="dropSup('+r.id+','+i+')">✖ 포기</button></div>';
+      // 지원기사 본인: 모집중 → 지원취소 / 협업제안 → 수락·거절
+      if(s.name===ME&&r.status==='open')h+='<div class="supbtns"><button class="sbtn sb-no" onclick="leaveSup('+r.id+')">🚪 지원 취소</button></div>';
+      if(s.name===ME&&r.status==='collabreq'&&st==='invited')h+='<div class="supbtns"><button class="sbtn sb-ok" onclick="acceptCollab('+r.id+')">🤝 협업 수락</button><button class="sbtn sb-no" onclick="declineCollab('+r.id+')">✖ 거절</button></div>';
+      h+='</div>';
+    });
+  }
+  // 액션
+  if(r.status==='open'){
+    if(iReq){
+      var sc=(r.supporters||[]);
+      if(sc.length){
+        if(!r.collab&&sc.length>=2)h+='<div class="note" style="margin-top:8px">👥 <b>1명 모집</b>인데 '+sc.length+'명 지원. <b>한 명만 업무 확정</b>하거나, <b>2명 모두에게 협업 요청</b>을 보내 둘 다 수락 시 협업으로 진행.</div><button class="btn b1" style="background:linear-gradient(135deg,#303f9f,#3949ab)" onclick="proposeCollab('+r.id+')">👥 '+sc.length+'명 모두에게 협업 요청</button>';
+        else if(r.collab)h+='<div class="note" style="margin-top:8px">👥 협업 모집('+r.needCount+'명). 지원자에게 <b>협업 요청</b>을 보내 수락받거나, 한 명만 <b>업무 확정</b>.</div><button class="btn b1" style="background:linear-gradient(135deg,#303f9f,#3949ab)" onclick="proposeCollab('+r.id+')">👥 협업 요청 보내기</button>';
+        else h+='<div class="note" style="margin-top:8px">💡 지원자를 <b>업무 확정</b>하면 매칭 완료.</div>';
+      } else h+='<div class="note">지원자 대기 중…'+(r.collab?(' (협업 '+r.needCount+'명 모집)'):'')+'</div>';
+    } else h+='<button class="btn b1" onclick="applyReq('+r.id+')">✋ 지원 신청</button>';
+  }
+  else if(r.status==='collabreq'){
+    if(iReq){var acc=r.supporters.filter(function(s){return s.state==='accepted';}).length;var pend=r.supporters.filter(function(s){return s.state==='invited';}).length;
+      h+='<div class="note">👥 협업 제안 전송됨 · 수락 대기'+(pend?(' ('+pend+'명 대기중)'):'')+'. <b>둘 다 수락 시 협업</b>, 한 명만 수락 시 그 한 명만 업무 확정.</div>';
+      h+='<button class="btn b1" '+(acc?'':'style="opacity:.5"')+' onclick="finalizeCollab('+r.id+')">'+(acc>=2?('🤝 협업 확정 ('+acc+'명)'):(acc===1?'✅ 업무 확정 (수락 1명)':'수락 대기 중'))+'</button>';
+    } else if(iSup)h+='<div class="note">🤝 협업 제안을 받았습니다. 위 카드에서 <b>수락/거절</b>하세요. 함께 제안받은 기사가 모두 수락하면 협업으로 확정됩니다.</div>';
+  }
+  else if(r.status==='nego'){
+    if(iSup&&!iReq)h+='<div class="note">🤝 <b>'+r.negBy+'</b> 기사가 매칭 협상을 보냈습니다. 조건 확인 후 확정하세요.</div><div class="supbtns"><button class="sbtn sb-ok" style="padding:13px" onclick="confirmNego('+r.id+')">✅ 확정</button><button class="sbtn sb-no" style="padding:13px" onclick="rejectNego('+r.id+')">✖ 거절</button></div>';
+    else if(iReq)h+='<div class="note">🤝 매칭 협상 전송됨 · 상대 확정 대기.</div>';
+  }
+  else if(r.status==='confirm'){
+    if(iReq&&!iSup)h+='<div class="note">🟡 <b>'+r.supporters[0].name+'</b> 기사가 역지원 내역을 등록했습니다. 확인 후 확정하세요.</div><div class="supbtns"><button class="sbtn sb-ok" style="padding:13px" onclick="confirmVia('+r.id+')">✅ 확정 (정산 반영)</button><button class="sbtn sb-no" style="padding:13px" onclick="rejectVia('+r.id+')">✖ 거절</button></div>';
+    else if(iSup)h+='<div class="note">📤 <b>'+r.requester+'</b> 기사에게 확정 요청 전송됨 · 상대 확정 대기.</div>';
+  }
+  else if(r.status==='matched'){if(iSup)h+='<div class="note">협업 진행 중. 완료 후 <b>실제 수량</b>을 입력하세요.</div><button class="btn b-warn" onclick="enterQty('+r.id+')">📦 실제 수량 입력·제출</button>';else if(iReq)h+='<div class="note">지원 기사 <b>실제 수량 제출 대기</b> 중입니다.</div>';h+=LOCK;}
+  else if(r.status==='qty'){if(iReq)h+='<div class="card"><div class="kv"><span>제출 실제 수량</span><b>'+r.finalQty+'개</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+money(reqTotal(r))+'</b></div></div><button class="btn b2" onclick="confirmDone('+r.id+')">✅ 수량 확인 · 최종 확정</button>';else if(iSup)h+='<div class="note">수량 제출 완료 · 등록기사 최종 확정 대기.</div>';h+=LOCK;}
+  else if(r.status==='done'){h+='<div class="card" style="border-left:5px solid #2e7d32"><div class="row"><span class="badge b-green">✅ 완료·정산 확정</span></div><div class="kv" style="margin-top:6px"><span>최종 수량</span><b>'+r.finalQty+'개</b></div><div class="kv"><span>정산 방식</span><b>'+(r.settle==='개인'?'개인 정산':'정산일 정산')+'</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+money(reqTotal(r))+'</b></div></div>'+LOCK;}
+  return h;
+}
+function applyReq(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters||[];r.supporters.push({name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'});bpSaveReq(r);toast('✋ 지원 신청 · 등록기사 확정 대기');render();}
+function pickOne(id,i){var r=reqs.find(function(x){return x.id===id;});r.supporters=[Object.assign(r.supporters[i],{state:'picked'})];r.collab=false;r.needCount=1;r.status='matched';bpSaveReq(r);toast('✅ '+r.supporters[0].name+' 업무 확정 · 매칭 완료');render();}
+function dropSup(id,i){var r=reqs.find(function(x){return x.id===id;});var nm=r.supporters[i].name;r.supporters.splice(i,1);bpSaveReq(r);toast('✖ '+nm+' 포기');render();}
+function leaveSup(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters.filter(function(s){return s.name!==ME;});bpSaveReq(r);toast('🚪 지원 취소');render();}
+function proposeCollab(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='invited';});r.status='collabreq';bpSaveReq(r);toast('👥 협업 요청 전송 · 지원자 수락 대기');render();}
+function acceptCollab(id){var r=reqs.find(function(x){return x.id===id;});var s=r.supporters.find(function(x){return x.name===ME;});if(s)s.state='accepted';bpSaveReq(r);toast('🤝 협업 수락 · 상대 수락 시 협업 확정');render();}
+function declineCollab(id){var r=reqs.find(function(x){return x.id===id;});var s=r.supporters.find(function(x){return x.name===ME;});if(s)s.state='declined';bpSaveReq(r);toast('✖ 협업 거절');render();}
+function finalizeCollab(id){var r=reqs.find(function(x){return x.id===id;});var acc=r.supporters.filter(function(s){return s.state==='accepted';});if(!acc.length){toast('수락한 지원자가 없습니다');return;}if(acc.length>=2){r.collab=true;r.needCount=acc.length;acc.forEach(function(s){s.state='picked';});r.supporters=acc;toast('🤝 협업 확정 ('+acc.length+'명)');}else{acc[0].state='picked';r.collab=false;r.needCount=1;r.supporters=[acc[0]];toast('✅ '+acc[0].name+' 업무 확정 (수락 1명)');}r.status='matched';bpSaveReq(r);render();}
+function confirmNego(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='picked';});r.finalQty=0;r.status='matched';bpSaveReq(r);toast('✅ 협상 확정 · 진행');render();}
+function rejectNego(id){var r=reqs.find(function(x){return x.id===id;});r.status='rejected';bpSaveReq(r);toast('✖ 협상 거절');go('sup');}
+function confirmVia(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='picked';});r.status=r.finalQty?'done':'matched';bpSaveReq(r);toast('✅ 확정 · 정산 반영');render();}
+function rejectVia(id){var r=reqs.find(function(x){return x.id===id;});r.status='rejected';bpSaveReq(r);toast('✖ 거절 처리');go('mine');}
+function enterQty(id){var r=reqs.find(function(x){return x.id===id;});var v=prompt('실제 완료 수량 입력',r.estQty||'');if(v==null)return;r.finalQty=parseInt(v||'0',10)||0;r.status='qty';bpSaveReq(r);toast('📦 실제 수량 제출 · 등록기사 확인 대기');render();}
+function confirmDone(id){var r=reqs.find(function(x){return x.id===id;});r.status='done';bpSaveReq(r);toast('✅ 최종 확정 · 정산 반영');render();}
+
+// ── 허브 연동 데이터 레이어 ──
+function dbToReq(x){return {id:x.id,requester:x.requester,rcomp:x.rcomp,rphone:x.rphone,date:x.date,mode:x.mode,aptType:x.apt_type,routes:x.routes||[],routeInfo:x.route_info||'',mapImg:x.map_img||'',estQty:x.est_qty,finalQty:x.final_qty,extra:x.extra||0,settle:x.settle,acctShare:x.acct_share,collab:x.collab,needCount:x.need_count||1,negUnit:x.neg_unit,negBy:x.neg_by,viaSupport:x.via_support,status:x.status,supporters:x.supporters||[],unit:x.unit,company_id:x.company_id};}
+function dbToSlot(x){return {id:x.id,driver:x.driver_name,company:x.driver_company,date:x.date,type:x.type,qty:x.qty,unit:x.unit,status:x.status,company_id:x.company_id};}
+function reqToDb(r){return {company_id:r.company_id||MYCOMP,requester:r.requester,rcomp:r.rcomp,rphone:r.rphone,date:r.date,mode:r.mode,apt_type:r.aptType||null,routes:r.routes||[],route_info:r.routeInfo||'',map_img:r.mapImg||'',est_qty:r.estQty||null,final_qty:r.finalQty||null,extra:r.extra||0,settle:r.settle,acct_share:!!r.acctShare,collab:!!r.collab,need_count:r.needCount||1,neg_unit:r.negUnit||null,neg_by:r.negBy||null,via_support:!!r.viaSupport,status:r.status,supporters:r.supporters||[],unit:r.unit||null,updated_at:new Date().toISOString()};}
+function reload(){loadData().then(function(){render();});}
+function bpNewReq(r){var db=reqToDb(r);sb.from('bp_requests').insert(db).then(function(res){if(res&&res.error)toast('저장오류');reload();});}
+function bpSaveReq(r){sb.from('bp_requests').update(reqToDb(r)).eq('id',r.id).then(function(res){if(res&&res.error)toast('저장오류');reload();});}
+function bpNewSlot(s){sb.from('bp_slots').insert({company_id:MYCOMP,driver_name:s.driver,driver_company:s.company,date:s.date,type:s.type,qty:s.qty,unit:s.unit,status:s.status||'open'}).then(function(){reload();});}
+function bpSaveSlot(s){sb.from('bp_slots').update({status:s.status}).eq('id',s.id).then(function(){});}
+async function loadData(){
+  var rq=await sb.from('bp_requests').select('*').in('company_id',APPROVED_IDS).order('date',{ascending:true});
+  reqs=((rq&&rq.data)||[]).map(dbToReq);
+  var sl=await sb.from('bp_slots').select('*').in('company_id',APPROVED_IDS).order('date',{ascending:true});
+  slots=((sl&&sl.data)||[]).map(dbToSlot);
+}
+function pendingHtml(c){return '<div style="padding:34px 16px;text-align:center"><div style="font-size:46px">⏳</div><div style="font-size:17px;font-weight:900;color:#123a6b;margin-top:12px">백업 공유 · 승인 대기</div><div class="note" style="margin-top:16px">'+(c?('<b>'+(c.name||MYCOMPNAME)+'</b> 업체는 아직 <b>승인</b>되지 않았습니다.'):('<b>'+MYCOMPNAME+'</b> 업체가 허브에 <b>참여 요청</b>되었습니다.'))+'<br>팀플렉스(오너) 관리자의 승인 후 이용할 수 있습니다.</div></div>';}
+async function boot(){
+  try{
+    var cr=await sb.from('bp_companies').select('*').eq('id',MYCOMP).maybeSingle();
+    var meComp=cr&&cr.data;
+    if(!meComp){ try{await sb.from('bp_companies').insert({id:MYCOMP,name:MYCOMPNAME,approved:false,active:true,contact:ME});}catch(e){} document.getElementById('scr').innerHTML=pendingHtml(null); return; }
+    if(!meComp.approved && !meComp.is_owner){ document.getElementById('scr').innerHTML=pendingHtml(meComp); return; }
+    var ap=await sb.from('bp_companies').select('id').eq('approved',true);
+    APPROVED_IDS=((ap&&ap.data)||[]).map(function(x){return x.id;}); if(!APPROVED_IDS.length)APPROVED_IDS=[MYCOMP];
+    var cf=await sb.from('bp_company_config').select('*').eq('company_id',MYCOMP).maybeSingle();
+    if(cf&&cf.data){HYEONADD=cf.data.hyeon_add;RATE['특정일']['아파트']=cf.data.teuk_apt;RATE['특정일']['지번']=cf.data.teuk_jib;APTP['아파트']=cf.data.teuk_apt;APTP['지번']=cf.data.teuk_jib;APTP['아파트+지번']=Math.round((cf.data.teuk_apt+cf.data.teuk_jib)/2);}
+    var rt=await sb.from('bp_company_routes').select('route_name,base_price').eq('company_id',MYCOMP);
+    ROUTES={};((rt&&rt.data)||[]).forEach(function(x){ROUTES[x.route_name]=x.base_price;});
+    var dv=await sb.from('bp_company_drivers').select('name,account_no,bank_name,phone').eq('company_id',MYCOMP);
+    DRIVERS=((dv&&dv.data)||[]).map(function(x){return x.name;});
+    var mine=((dv&&dv.data)||[]).find(function(x){return x.name===ME;}); if(mine){MYACCT=((mine.bank_name||'')+' '+(mine.account_no||'')).trim();}
+    await loadData();
+    render();
+  }catch(e){document.getElementById('scr').innerHTML='<div class="note">연결 오류: '+((e&&e.message)||e)+'</div>';}
+}
+boot();
+
+</script>
+</body></html>

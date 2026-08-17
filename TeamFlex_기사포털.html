@@ -3394,6 +3394,9 @@ function openCfgSubMenu(){
         '<button onclick="closeCfgSubMenu();pushStatusAdmin()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e7f0ff;border:2px solid #b8ccff;border-radius:14px;font-size:15px;font-weight:700;color:#1546b0;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F514;</span><div style="flex:1;min-width:0"><div>구독 관리</div><div style="font-size:11px;font-weight:400;color:#5b83c9;margin-top:2px">실시간 구독자·미구독자 확인</div></div>'+
         '</button>'+
+        '<button onclick="closeCfgSubMenu();openBackupShare()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e0f7fa;border:2px solid #80deea;border-radius:14px;font-size:15px;font-weight:700;color:#00838f;cursor:pointer;text-align:left;box-sizing:border-box">'+
+          '<span style="font-size:24px;flex-shrink:0">&#x1F91D;</span><div style="flex:1;min-width:0"><div>백업 공유</div><div style="font-size:11px;font-weight:400;color:#4dbfcc;margin-top:2px">타업체 매칭·정산 연동 (승인 업체)</div></div>'+
+        '</button>'+
         '<button onclick="closeCfgSubMenu();go(\'sv\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e8f7ee;border:2px solid #a5d6bb;border-radius:14px;font-size:15px;font-weight:700;color:#1f7a4d;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1FA7A;</span><div style="flex:1;min-width:0"><div>서버 감시</div><div style="font-size:11px;font-weight:400;color:#4caf82;margin-top:2px">폴러 상태·서버화면·푸시 알림</div></div>'+
         '</button>'+
@@ -3408,6 +3411,21 @@ function closeCfgSubMenu(){
   var sheet=document.getElementById('cfg-sub-sheet');
   if(sheet)sheet.remove();
 }
+// ── 백업 공유 (공용 허브 · 독립 모듈 iframe) ──────────────────────────────
+function openBackupShare(){
+  if(!(CU&&(CU.role==='admin'||CU.role==='leader'))){alert('관리자·팀장 전용입니다.');return;}
+  var old=document.getElementById('bpshare-ov');if(old)old.remove();
+  var nm=encodeURIComponent((CU&&CU.name)||'');
+  var role=(CU&&CU.role)||'admin';
+  var url='backup_share.html?name='+nm+'&comp=teamflex&cn='+encodeURIComponent('팀플렉스')+'&role='+encodeURIComponent(role)+'&v='+Date.now();
+  var ov=document.createElement('div');
+  ov.id='bpshare-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:11000;background:#0e2238;display:flex;flex-direction:column';
+  ov.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,#123a6b,#1565c0);color:#fff;flex-shrink:0"><button onclick="closeBackupShare()" style="background:rgba(255,255,255,.22);border:none;color:#fff;font-size:15px;font-weight:900;border-radius:9px;padding:7px 14px;cursor:pointer">‹ 닫기</button><div style="font-size:15px;font-weight:800">&#x1F91D; 백업 공유</div></div>'+
+    '<iframe src="'+url+'" style="flex:1;border:none;width:100%;background:#0e2238" allow="clipboard-write"></iframe>';
+  document.body.appendChild(ov);
+}
+function closeBackupShare(){var o=document.getElementById('bpshare-ov');if(o)o.remove();}
 // ── 일반 사용자(팀장/조장/기사) 설정 서브메뉴 ────────────────────────────────
 function openUserSubMenu(){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
