@@ -6978,10 +6978,27 @@ function _dhCss(){return '<style>'
 +'.dhw .bx{flex:1;border:1.5px solid #e6ebf1;border-radius:11px;padding:11px 8px;background:#f8fafc;text-align:center;font-size:13px;font-weight:800;color:#33475b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
 +'.dhw .dhacts{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}'+'.dhw .dhacts>.rsel,.dhw .dhacts>.mini{flex:1 1 auto;min-width:54px;text-align:center;justify-content:center;display:inline-flex;align-items:center;white-space:nowrap}'+'.dhw .dhacts select{border-radius:10px;padding:6px 22px 6px 10px;border:1.6px solid #d5e2f0;font-size:11px;font-weight:800;height:34px;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right 7px center;background-image:url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27><path d=%27M0 0l5 6 5-6z%27 fill=%27%23566%27/></svg>")}'
 +'</style>';}
+var _hotline=null;
+async function loadHotline(){
+  if(!sbClient){_hotline=_hotline||'';return _hotline;}
+  try{var r=await sbClient.from('app_settings').select('value').eq('key','coupang_hotline').maybeSingle();
+    _hotline=(r&&r.data&&r.data.value!=null)?String(r.data.value).replace(/^"|"$/g,'').trim():'';}catch(e){_hotline=_hotline||'';}
+  return _hotline;
+}
+async function saveHotline(num){_hotline=num;try{if(sbClient)await sbClient.from('app_settings').upsert({key:'coupang_hotline',value:num},{onConflict:'key'});}catch(e){}}
+function hotlineDial(){var n=(_hotline||'').replace(/[^0-9+]/g,'');if(!n){alert('쿠팡 핫라인 번호가 아직 설정되지 않았습니다.\n관리자에게 문의하세요.');return;}location.href='tel:'+n;}
+function hotlineEdit(){
+  if(!(CU&&CU.role==='admin')){alert('관리자만 변경할 수 있습니다.');return;}
+  var cur=_hotline||'';var v=prompt('☎ 쿠팡 핫라인 전화번호를 입력하세요.\n(기사들이 비상연락망에서 이 번호로 바로 전화합니다)',cur);
+  if(v===null)return;v=v.trim();
+  saveHotline(v).then(function(){try{if(typeof showToast==='function')showToast('☎ 쿠팡 핫라인 저장: '+(v||'(삭제)'),true);}catch(e){}var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();});
+}
+window.hotlineDial=hotlineDial;window.hotlineEdit=hotlineEdit;
 function pgDriverHub(){
   var db=getDB();var isAdm=CU&&CU.role==='admin';
   if(_driverExt===null){_loadDriverExt().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();});}
   if(typeof _badgeLoaded!=='undefined'&&!_badgeLoaded&&typeof loadBadgeData==='function'){loadBadgeData().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();});}
+  if(typeof _hotline!=='undefined'&&_hotline===null&&typeof loadHotline==='function'){loadHotline().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();});}
   var ext=_driverExt||{};
   var byName=function(a,b){return (a.name||'').localeCompare((b.name||''),'ko');};
   var _cfg=(typeof getCfg==='function'?getCfg():{})||{};var _aid=_cfg.adminId||ROOT_ADMIN.id;
@@ -6992,7 +7009,7 @@ function pgDriverHub(){
   var cntMain=main.filter(function(d){return _dhDrole(d,ext)!=='대표';});
   var withPh=cntMain.filter(function(d){var e=_dhMerge(d.name,ext,db);return _deDig(e.phone).length>=10;}).length;
   var ctN=(typeof ctDone==='function')?cntMain.filter(function(d){try{return ctDone(d.name);}catch(e){return false;}}).length:0;
-  var h=_dhCss()+'<div class="dhw"><div class="stit">&#x1F5C2;&#xFE0F; 기사 정보 통합관리</div>'
+  var h=_dhCss()+'<div class="dhw"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div class="stit" style="margin-bottom:0">&#x1F5C2;&#xFE0F; 기사 정보 통합관리</div>'+(isAdm?'<button onclick="hotlineEdit()" style="flex-shrink:0;background:#fff0f0;color:#d32f2f;border:1.5px solid #ef9a9a;border-radius:12px;padding:7px 11px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap">☎ 핫라인'+(_hotline?(' '+_hotline):' 설정')+'</button>':'')+'</div>'
    +'<div style="font-size:11.5px;color:#667;margin:-2px 2px 10px">권한·정지·삭제 + 전화·차량·상세정보를 한 화면에서. <b>대표·관리자 그룹은 관리자에게만 표시</b>.</div>'
    +'<div style="display:flex;gap:8px;margin-bottom:10px">'
      +'<div style="flex:1;background:#eef1ff;border-radius:11px;padding:9px 6px;text-align:center"><div style="font-size:19px;font-weight:900;color:#3949ab">'+cntMain.length+'</div><div style="font-size:10px;color:#7986cb">전체(대표 제외)</div></div>'
@@ -8595,6 +8612,7 @@ function pgEmergencyContact(){
   var db=getDB();
   if(typeof _driverExt!=='undefined'&&_driverExt===null&&typeof _loadDriverExt==='function'){_loadDriverExt().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='er')mc.innerHTML=pgEmergencyContact();});}
   if(typeof _badgeLoaded!=='undefined'&&!_badgeLoaded&&typeof loadBadgeData==='function'){loadBadgeData().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='er')mc.innerHTML=pgEmergencyContact();});}
+  if(typeof _hotline!=='undefined'&&_hotline===null&&typeof loadHotline==='function'){loadHotline().then(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='er')mc.innerHTML=pgEmergencyContact();});}
   var canManage=(CU.role==='admin'||CU.role==='leader');
   var roleOrder={admin:0,leader:1,sub:2,driver:3};
   var roleLabel={'admin':'관리자','leader':'팀장','sub':'조장','driver':'기사'};
@@ -8624,6 +8642,7 @@ function pgEmergencyContact(){
   return _featureBar('emergency')+'<div style="padding:0 2px">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
       '<div class="stit" style="margin-bottom:0">📞 비상연락망</div>'+
+      '<button onclick="hotlineDial()" style="flex-shrink:0;background:linear-gradient(135deg,#ff5252,#d32f2f);color:#fff;border:none;border-radius:12px;padding:9px 13px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 2px 8px rgba(211,47,47,.3);white-space:nowrap">🚨 쿠팡 핫라인</button>'+
     '</div>'+
     adminBar+
     '<div style="position:relative;margin-bottom:12px">'+
