@@ -4364,6 +4364,7 @@ function launchApp(){
   }, 2000);
   setTimeout(function(){try{_pushStatusCheck();}catch(e){}}, 3800);
   setTimeout(function(){try{ensurePushEnv();}catch(e){}}, 2600);
+  if(CU&&CU.role!=='admin'){setTimeout(function(){try{_loadMyBadges();}catch(e){}},1600);}
   // 주기적 백그라운드 체크 등록 (앱 꺼져 있어도 15분마다 Supabase 조회)
   _registerPeriodicSync();
   // ── 시작 팝업 체인: 공지 → 당일 라우트 → 스케줄 변경 순으로 순차 표시 ──
@@ -9014,26 +9015,40 @@ function inspComplete(name){
   for(var i=start;i<=today;i++){var dd=days[i]||days[String(i)];if(!dd||!(dd.done||dd.off))return false;}
   return true;
 }
+async function _loadMyBadges(){
+  if(!CU||CU.role==='admin'||!sbClient)return;
+  try{ if(typeof hcLoadMine==='function' && !window._hcMineLoaded){ hcLoadMine(); } }catch(e){}
+  try{
+    var d=new Date(Date.now()+9*3600000);var ym=d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2);
+    var key='insp_'+encodeURIComponent(CU.name)+'_'+ym;
+    var r=await sbClient.from('app_settings').select('value').eq('key',key).maybeSingle();
+    var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){}}
+    var days=(v&&v.days)||{};
+    if(!_inspMap)_inspMap={}; _inspMap[CU.name]=days; _badgeLoaded=true; window._myInspLoaded=true;
+  }catch(e){ window._myInspLoaded=true; }
+  try{updateHeaderBadges();}catch(e){}
+}
+window._loadMyBadges=_loadMyBadges;
 function updateHeaderBadges(){try{
   if(!CU)return;var el=document.getElementById('han-bdg');var har=document.getElementById('har');
   if(CU.role==='admin'){ if(el)el.innerHTML=''; return; }
   var name=CU.name;
   var subOn=!!window._pushOn;
   var ctOk=(typeof ctDone==='function'&&ctDone(name));
-  var hcOk=!!(window._badgeLoaded&&typeof hcNorm==='function'&&window._hcDoneSet&&_hcDoneSet[hcNorm(name)]);
-  var inspOk=(typeof inspComplete==='function'&&inspComplete(name));
-  var inspBad=(typeof inspWarn==='function'&&inspWarn(name));
+  var hcLoaded=!!window._hcMineLoaded; var hcOk=!!window._hcMine;
+  var inspLoaded=!!window._myInspLoaded; var inspOk=(inspLoaded&&typeof inspComplete==='function'&&inspComplete(name)); var inspBad=(inspLoaded&&typeof inspWarn==='function'&&inspWarn(name));
+  if((!hcLoaded||!inspLoaded)&&typeof _loadMyBadges==='function'&&!window._badgesLoading){window._badgesLoading=true;setTimeout(function(){window._badgesLoading=false;try{_loadMyBadges();}catch(e){}},60);}
   var done='';
   if(subOn)done+='<span class="hb hb-sub">🔔 구독</span>';
   if(ctOk)done+='<span class="hb hb-done">📄 계약✓</span>';
-  if(hcOk)done+='<span class="hb hb-done">💪 건강✓</span>';
-  if(inspOk)done+='<span class="hb hb-gold">🔧 점검✓</span>';
+  if(hcLoaded&&hcOk)done+='<span class="hb hb-done">💪 건강✓</span>';
+  if(inspLoaded&&inspOk)done+='<span class="hb hb-gold">🔧 점검✓</span>';
   if(el)el.innerHTML=done?('<span class="hb-group">'+done+'</span>'):'';
   var need='';
   if(!subOn)need+='<span class="hb-need n1">🔔 구독 필요</span>';
   if(!ctOk)need+='<span class="hb-need n4">📄 계약 필요</span>';
-  if(!hcOk)need+='<span class="hb-need n3">💪 건강체크 필요</span>';
-  if(!inspOk)need+='<span class="hb-need n2'+(inspBad?' danger':'')+'">🔧 <span class="hbw">차량점검 필요</span></span>';
+  if(hcLoaded&&!hcOk)need+='<span class="hb-need n3">💪 건강체크 필요</span>';
+  if(inspLoaded&&!inspOk)need+='<span class="hb-need n2'+(inspBad?' danger':'')+'">🔧 <span class="hbw">차량점검 필요</span></span>';
   if(har)har.innerHTML='<div style="display:flex;align-items:center;flex-wrap:wrap"><span class="hbrand">TeamFlex</span>'+need+'</div>';
 }catch(e){}}
 window.updateHeaderBadges=updateHeaderBadges;
