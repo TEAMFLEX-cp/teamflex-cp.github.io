@@ -8556,10 +8556,10 @@ function checkContactsPw(){
 /* ===== 상태 배지(계약/건강체크/점검경고) 데이터 & 헬퍼 ===== */
 var _hcDoneSet={},_inspMap={},_badgeLoaded=false;
 async function loadBadgeData(){
-  _badgeLoaded=true;if(!sbClient)return;
-  var month=(typeof hcMonth==='function')?hcMonth():new Date(Date.now()+9*3600000).toISOString().slice(0,7);
-  try{var hr=await sbClient.from('app_settings').select('key').like('key','hsurvey:'+month+':%');var hs={};(hr.data||[]).forEach(function(x){var parts=String(x.key).split(':');var nm=parts.slice(2).join(':');if(nm)hs[nm]=true;});_hcDoneSet=hs;}catch(e){}
-  try{var ir=await sbClient.from('app_settings').select('key,value').like('key','insp_%_'+month);var im={};(ir.data||[]).forEach(function(x){var m=String(x.key).match(/^insp_(.+)_\d{4}-\d{2}$/);if(!m)return;var nm='';try{nm=decodeURIComponent(m[1]);}catch(e){nm=m[1];}var v=x.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}im[nm]=(v&&v.days)||{};});_inspMap=im;}catch(e){}
+  _badgeLoaded=true;
+  // 성능: app_settings 전체 .like 스캔 제거(대용량 base64로 느려짐). 건강체크·점검 데이터는 별도 경량 로드 시에만 채움.
+  if(!_hcDoneSet)_hcDoneSet={};if(!_inspMap)_inspMap={};
+  return;
 }
 function inspWarn(name){
   if(!_badgeLoaded)return false;if(!_inspMap||Object.keys(_inspMap).length===0)return false;var days=_inspMap[name]||{};
