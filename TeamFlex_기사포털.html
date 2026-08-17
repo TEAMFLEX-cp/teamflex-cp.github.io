@@ -1973,6 +1973,7 @@ async function ctEnableNotif(ev){
     if(perm==='granted'){
       if(typeof registerSW==='function'){try{await registerSW();}catch(e){}}
       if(typeof subscribePush==='function'){try{await subscribePush();}catch(e){}}
+      try{if(typeof _pushStatusCheck==='function')await _pushStatusCheck();}catch(e){}
       try{showToast('🔔 알림이 켜졌어요! 이제 요청이 오면 알림을 받습니다',true);}catch(_){}
       try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();else{var mc=document.getElementById('mc');if(mc&&typeof pgHome==='function')mc.innerHTML=pgHome();}}catch(e){}
     }else if(perm==='denied'){try{showToast('알림이 차단됨 — 크롬 주소창 자물쇠 → 알림 → 허용으로 바꿔주세요',false);}catch(_){}}
@@ -4148,9 +4149,10 @@ function launchApp(){
   // 로그인 시 push 구독 driver_name 항상 갱신 (계정 전환 대응)
   setTimeout(function(){
     if(Notification.permission==='granted'){
-      registerSW().then(function(){subscribePush();});
-    }
+      registerSW().then(function(){subscribePush().then(function(){try{_pushStatusCheck();}catch(e){}});});
+    } else { try{_pushStatusCheck();}catch(e){} }
   }, 2000);
+  setTimeout(function(){try{_pushStatusCheck();}catch(e){}}, 3800);
   // 주기적 백그라운드 체크 등록 (앱 꺼져 있어도 15분마다 Supabase 조회)
   _registerPeriodicSync();
   // ── 시작 팝업 체인: 공지 → 당일 라우트 → 스케줄 변경 순으로 순차 표시 ──
@@ -8728,8 +8730,11 @@ function inspComplete(name){
 }
 function updateHeaderBadges(){try{var el=document.getElementById('han-bdg');if(!el||!CU)return;el.innerHTML=(typeof _statusBadges==='function')?_statusBadges(CU.name):'';}catch(e){}}
 window.updateHeaderBadges=updateHeaderBadges;
+function _pushStatusCheck(){return (async function(){var ok=false;try{if(typeof Notification!=='undefined'&&Notification.permission==='granted'&&_swReg&&_swReg.pushManager){var sub=await _swReg.pushManager.getSubscription();ok=!!sub;}}catch(e){ok=false;}window._pushOn=ok;try{if(typeof updateHeaderBadges==='function')updateHeaderBadges();}catch(e){}return ok;})();}
+window._pushStatusCheck=_pushStatusCheck;
 function _statusBadges(name){
   var h='';
+  try{if(window._pushOn&&CU&&name===CU.name){h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:#e7f0ff;color:#1546b0;border:1px solid #b8ccff">🔔 알림 ON</span> ';}}catch(e){}
   try{if(typeof ctDone==='function'&&ctDone(name)){var ap=(typeof ctApprovedOf==='function'&&ctApprovedOf(name,'wc'));h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:'+(ap?'#e7f6ec':'#e3f2fd')+';color:'+(ap?'#1b7a3f':'#1565c0')+';border:1px solid '+(ap?'#a8e0bd':'#bcdcff')+'">📄 '+(ap?'계약완료':'계약작성')+'</span> ';}}catch(e){}
   try{if(_badgeLoaded&&typeof hcNorm==='function'&&_hcDoneSet[hcNorm(name)]){h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:#eaf6de;color:#3b6d11;border:1px solid #c7e39a">💪 건강체크</span> ';}}catch(e){}
   try{if(inspComplete(name)){h+='<span class="tfgold" style="font-size:9px;font-weight:900;padding:2px 8px;border-radius:9px;background:#e7f6ec;color:#1b7a3f">🔧 점검-완료</span> ';}else if(inspWarn(name)){h+='<span style="font-size:9px;font-weight:900;padding:2px 7px;border-radius:9px;background:#c62828;color:#fff;display:inline-flex;align-items:center;gap:3px">⚠ <span style="color:#ffe600;animation:tfblink .8s steps(1,end) infinite">점검-경고</span></span> ';}}catch(e){}
