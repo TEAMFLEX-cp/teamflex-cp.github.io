@@ -10226,7 +10226,7 @@ function mdRenderList(cases){
                     '<span style="margin-left:auto;font-size:10px;color:#9575cd;font-weight:700;flex-shrink:0">⏱ '+_doneTm(it._t)+'</span>'+
                   '</div>'+
                   '<div style="font-size:11px;color:#666;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+mdEsc(_desc)+'</div>'+
-                  ((CU&&CU.role==='admin'&&(r.teams_response_status==='send_failed'||(r.payload&&r.payload.photos&&r.payload.photos.length>0)))?'<button onclick="event.stopPropagation();rqResend('+r.id+')" style="margin-top:6px;padding:5px 12px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">🔄 다시 전송(사진 인라인)</button>':'')+
+                  ((CU&&CU.role==='admin'&&(r.teams_response_status==='send_failed'||r.has_photos))?'<button onclick="event.stopPropagation();rqResend('+r.id+')" style="margin-top:6px;padding:5px 12px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">🔄 다시 전송(사진 인라인)</button>':'')+
                 '</div>';
               }
               var c=it.c;
@@ -15024,7 +15024,7 @@ async function mdLoadRequests(){
   try{
     var _rall=[],_rfrom=0,_reff=null;
     while(true){
-      var {data,error} = await sbClient.from('requests').select('*').order('created_at',{ascending:false}).range(_rfrom,_rfrom+999);
+      var {data,error} = await sbClient.from('requests_light').select('*').order('created_at',{ascending:false}).range(_rfrom,_rfrom+999);
       if(error) throw error;
       if(!data){break;}
       _rall=_rall.concat(data);
@@ -15188,6 +15188,19 @@ function rqBuildCard(r){
   '</div>';
 }
 
+// 각종요청 상세 사진 지연 로드 (목록은 경량 뷰로 받고, 상세 열 때만 사진 조회)
+async function _rqLoadPhotos(id){
+  try{
+    var box=document.getElementById('rq-ph-'+id); if(!box) return;
+    var res=await sbClient.from('requests').select('payload').eq('id',id).single();
+    var ph=(res&&res.data&&res.data.payload&&res.data.payload.photos)||[];
+    box=document.getElementById('rq-ph-'+id); if(!box) return;
+    if(!ph.length){ box.remove(); return; }
+    var h='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">';
+    ph.forEach(function(p){ if(p) h+='<img src="'+p+'" onclick="rqOpenPhoto(this)" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid #e0e0e0;cursor:pointer">'; });
+    h+='</div>'; box.outerHTML=h;
+  }catch(e){ var b=document.getElementById('rq-ph-'+id); if(b)b.textContent='사진 로드 실패'; }
+}
 // ── 요청 상세 팝업 ────────────────────────────────────────────────
 function rqShowPopup(id){
   var r = (_rqCases||[]).find(function(c){return c.id===id;});
@@ -15206,6 +15219,9 @@ function rqShowPopup(id){
       if(p) photosHtml+='<img src="'+p+'" onclick="rqOpenPhoto(this)" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid #e0e0e0;cursor:pointer">';
     });
     photosHtml+='</div>';
+  } else if(r.has_photos){
+    photosHtml='<div id="rq-ph-'+id+'" style="margin-top:10px;font-size:12px;color:#8aa">🖼 사진 불러오는 중…</div>';
+    setTimeout(function(){ _rqLoadPhotos(id); }, 0);
   }
   var stsColor={pending:'#ff9800',approved:'#4caf50',rejected:'#f44336'};
   var stsLbl={pending:'⏳ 승인대기',approved:'✅ 승인완료',rejected:'❌ 반려됨'};
@@ -15319,7 +15335,9 @@ async function rqApprove(id){
     await sbClient.from('requests').update({
       status:'approved', approved_by:CU.name, approved_at:new Date().toISOString(), updated_at:new Date().toISOString()
     }).eq('id',id);
-    await rqSendToTeams(r.payload&&r.payload.text?r.payload.text:'', r.payload&&r.payload.photos?r.payload.photos:[], id);
+    var _rf=await sbClient.from('requests').select('payload').eq('id',id).single();
+    var _fp=(_rf&&_rf.data&&_rf.data.payload)||r.payload||{};
+    await rqSendToTeams(_fp.text||'', _fp.photos||[], id);
     r.status='approved'; r.teams_sent=false;
     alert('✅ 승인 완료!\n클라우드PC 폴러가 팀즈 채팅방에 1분 내 자동 전송합니다.');
     rqClosePopup();
