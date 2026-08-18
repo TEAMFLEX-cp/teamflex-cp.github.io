@@ -1,5 +1,5 @@
 // TeamFlex Service Worker v347 — v346 원복(잘못된 consignment 필드로 PDD미스 판정 오류 → 복구)
-const CACHE_NAME = 'teamflex-v534';
+const CACHE_NAME = 'teamflex-v535';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -36,26 +36,23 @@ self.addEventListener('fetch', e => {
   //   → 접속은 항상 즉시(네트워크 대기 X = 스플래시 멈춤 방지), 절단된 파일은 캐시에 안 박힘.
   const isDoc = e.request.mode === 'navigate' || url.indexOf('TeamFlex_') >= 0 || url.endsWith('.html') || url.endsWith('/');
   if (isDoc) {
-    // 네트워크 우선(온라인이면 항상 최신 HTML) + 3.5s 타임아웃 시 캐시 폴백(오프라인/느린망 hang 방지)
+    // [프리즈 방지·핵심] 캐시 우선 — 캐시에 셸이 있으면 '대기 0'으로 즉시 렌더(로고 멈춤 원천 차단).
+    //   최신본은 백그라운드로 받아 캐시에 갱신 → 다음 실행 때 반영. 새 배포는 SW 버전업→reload로 즉시 적용.
+    //   캐시가 아예 없을 때만(최초 설치·프리캐시 실패) 네트워크를 기다리되 8초 타임아웃으로 무한 hang 차단.
     e.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match(e.request);
-      try {
-        const resp = await Promise.race([
-          fetch(e.request),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('t/o')), 3500))
-        ]);
+      const netP = fetch(e.request).then(resp => {
         if (resp && resp.ok) {
-          try {
-            const txt = await resp.clone().text();
-            if (txt.indexOf('</html>') >= 0) { try { await cache.put(e.request, resp.clone()); } catch (_) {} }
-          } catch (_) {}
-          return resp;
+          resp.clone().text().then(txt => {
+            if (txt.indexOf('</html>') >= 0) cache.put(e.request, resp.clone()).catch(() => {});
+          }).catch(() => {});
         }
-        return cached || resp;
-      } catch (_) {
-        return cached || fetch(e.request).catch(() => cached);
-      }
+        return resp;
+      }).catch(() => null);
+      if (cached) return cached;                     // 캐시 있으면 즉시
+      const net = await Promise.race([netP, new Promise(r => setTimeout(() => r(null), 8000))]);
+      return net || new Response('<!doctype html><meta charset="utf-8"><body style="font-family:sans-serif;text-align:center;padding:44px;color:#33475b"><h2>TeamFlex</h2><p>네트워크 연결 후 새로고침 해주세요.</p></body>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     })());
     return;
   }
