@@ -3339,10 +3339,9 @@ function doManualRefresh(){
 
 // ── Service Worker 자동 업데이트 (새 SW 활성화 시 페이지 자동 리로드) ─────
 if('serviceWorker' in navigator){
-  var _swRefreshing=false;
   navigator.serviceWorker.addEventListener('controllerchange',function(){
-    if(_swRefreshing)return;          // 재진입 가드 — 무한 새로고침(로고에서 멈춤) 방지
-    _swRefreshing=true;
+    // [로고멈춤 방지] 세션당 최대 1회만 재로드 — reload 후에도 유지되는 sessionStorage로 무한 새로고침 루프 차단.
+    try{ if(sessionStorage.getItem('tf_sw_reloaded'))return; sessionStorage.setItem('tf_sw_reloaded','1'); }catch(_e){}
     window.location.reload();
   });
   navigator.serviceWorker.ready.then(function(reg){
