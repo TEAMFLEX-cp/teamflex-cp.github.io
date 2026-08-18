@@ -7392,6 +7392,7 @@ function _dhCss(){return '<style>'
 +'.dhw .callbtn.main{background:linear-gradient(135deg,#2e9e5b,#1e7d44)}.dhw .callbtn.sub{background:linear-gradient(135deg,#3f7fe0,#2f5fc8)}.dhw .callbtn.off{background:#eef2f6;color:#9aa7b4;font-weight:600}'
 +'.dhw .boxrow{display:flex;gap:7px}'
 +'.dhw .bx{flex:1;border:1.5px solid #e6ebf1;border-radius:11px;padding:11px 8px;background:#f8fafc;text-align:center;font-size:13px;font-weight:800;color:#33475b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
++'.dhw .bx.car{background:#e8f1fd;border-color:#bcd6f5;color:#1a5bb8}.dhw .bx.id{background:#fff3e0;border-color:#f3d19b;color:#b26a00}.dhw .bx.off{background:#eef2f6;border-color:#e2e8ee;color:#9aa7b4;font-weight:600}'
 +'.dhw .dhacts{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}'+'.dhw .dhacts>.rsel,.dhw .dhacts>.mini{flex:1 1 auto;min-width:54px;text-align:center;justify-content:center;display:inline-flex;align-items:center;white-space:nowrap}'+'.dhw .dhacts select{border-radius:10px;padding:6px 22px 6px 10px;border:1.6px solid #d5e2f0;font-size:11px;font-weight:800;height:34px;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right 7px center;background-image:url("data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 width=%2710%27 height=%276%27><path d=%27M0 0l5 6 5-6z%27 fill=%27%23566%27/></svg>")}'
 +'</style>';}
 var _hotline=null;
@@ -7482,7 +7483,7 @@ function _dhCard(d,ext,db,isAdm){
    +acts
    +'<div class="chips"><span class="chip bd">&#x1F382; '+(_dhBirth(e.jumin)||'--')+'</span><span class="chip car">&#x1F697; '+(e.car||'차량 미입력')+'</span><span class="chip fu">&#x26A1; '+(e.fuel||'-')+'</span></div>'
    +'<div class="callrow">'+callMain+callSub+'</div>'
-   +'<div class="boxrow"><div class="bx">&#x1F69A; '+(e.carno||'-')+'</div><div class="bx">&#x1F6D2; '+(e.cpid||'-')+'</div></div>'
+   +'<div class="boxrow"><div class="bx'+(e.carno?' car':' off')+'">&#x1F69A; '+(e.carno||'-')+'</div><div class="bx'+(e.cpid?' id':' off')+'">&#x1F6D2; '+(e.cpid||'-')+'</div></div>'
    +'</div>';
 }
 function dhSearch(q){q=(q||'').trim().toLowerCase();document.querySelectorAll('#dh-list .pcard').forEach(function(c){c.style.display=(!q||c.getAttribute('data-s').indexOf(q)>=0)?'':'none';});}
