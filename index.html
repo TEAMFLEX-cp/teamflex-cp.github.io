@@ -12175,7 +12175,7 @@ function gfTruck(c,x,y,vy){var rot=Math.max(-.38,Math.min(.6,vy*0.045));
  wh(-18);wh(20);
  c.restore();}
 function gFlapStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gfc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🚚</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gfc" style="border-radius:16px;width:auto;height:92vh;max-width:97vw;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🚚</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('gfc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,440)),H=Math.max(440,Math.min((window.innerHeight||640)-128,860));cv.width=W;cv.height=H;
   var GND=H-28,PW=58,gap=Math.max(125,Math.round(H*0.30)),bx=Math.round(W*0.30);
@@ -12226,7 +12226,7 @@ function gtJack(c,x,y,side,over,swing){c.save();c.translate(x,y);if(side==='righ
   c.fillStyle='#90a4ae';c.beginPath();c.moveTo(13,-12);c.lineTo(20,-9);c.lineTo(18,1);c.lineTo(12,3);c.closePath();c.fill();
   c.restore();c.restore();}
 function gTimberStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gtc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 좌/우 탭(←→)으로 나무 찍기 🪓 · 가지를 피하세요!</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gtc" style="border-radius:16px;width:auto;height:92vh;max-width:97vw;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 좌/우 탭(←→)으로 나무 찍기 🪓 · 가지를 피하세요!</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('gtc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,420)),H=Math.max(440,Math.min((window.innerHeight||640)-128,800));cv.width=W;cv.height=H;
   var SH=Math.round(H*0.108);var segs=[];for(var i=0;i<9;i++)segs.push({branch:i<2?null:gtBranch()});
@@ -12269,7 +12269,7 @@ function gTimberKey(e){if(GH.view!=='timber')return;if(e.key==='ArrowLeft'){e.pr
 /* ════════ 게임: 나이프 히트 ════════ */
 var GK={};
 function gKnifeStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gkc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭(스페이스)으로 칼 던지기 🔪 · 🍎 +5 · 칼끼리 닿으면 끝!</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gkc" style="border-radius:16px;width:auto;height:92vh;max-width:97vw;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭(스페이스)으로 칼 던지기 🔪 · 🍎 +5 · 칼끼리 닿으면 끝!</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('gkc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,420)),H=Math.max(440,Math.min((window.innerHeight||640)-128,800));cv.width=W;cv.height=H;
   var R=Math.round(Math.min(W,H)*0.165);
@@ -12357,7 +12357,7 @@ function gSichuanTap(e){if(!GSC.c)return;if(GSC.done){gSichuanStart();return;}if
   if(GSC.grid[a.r][a.c].k===GSC.grid[b.r][b.c].k&&gscMatch(a,b)){GSC.sel=null;gscRemove(a,b);}
   else GSC.sel={r:r,c:col};}
 function gSichuanStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gscc" width="330" height="470" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">같은 타일 2개 탭 → 이어지면 제거 🀄 · 라운드마다 패가 늘어요!</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gscc" width="330" height="470" style="border-radius:16px;width:auto;height:92vh;max-width:97vw;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">같은 타일 2개 탭 → 이어지면 제거 🀄 · 라운드마다 패가 늘어요!</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('gscc');cv.width=330;cv.height=470;
   GSC={c:cv.getContext('2d'),cv:cv,W:330,H:470,TW:50,TH:52,HEAD:60,grid:[],cols:6,rows:4,OX:15,OY:90,sel:null,parts:[],done:false,msg:0,flash:null,round:1,started:false,t0:0,elapsed:0,finalT:0,score:0,splash:0};
@@ -12379,7 +12379,7 @@ function gSichuanStart(){var st=document.getElementById('g-stage');if(!st)return
 /* ════════ 게임3: Stack ════════ */
 var GS={};
 function gStackStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gsc" width="300" height="460" style="background:linear-gradient(#1a1a2e,#16213e);border-radius:12px;width:auto;height:auto;max-width:100%;max-height:88vh;display:block;margin:0 auto;touch-action:none;cursor:pointer"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭해서 블록 멈추기 · 칼같이 쌓아요!</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gsc" width="300" height="460" style="background:linear-gradient(#1a1a2e,#16213e);border-radius:12px;width:auto;height:88vh;max-width:97vw;display:block;margin:0 auto;touch-action:none;cursor:pointer"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭해서 블록 멈추기 · 칼같이 쌓아요!</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('gsc');var bw=130;var W=Math.max(280,Math.min((window.innerWidth||360)-14,460)),H=Math.max(420,Math.min((window.innerHeight||640)-128,900));cv.width=W;cv.height=H;
   GS={cv:cv,cx:cv.getContext('2d'),W:W,H:H,bh:26,stack:[{x:(W-bw)/2,w:bw}],cur:null,dir:1,spd:2.2,sc:0,over:false};
@@ -12433,7 +12433,7 @@ function gTetKey(e){if(GH.view!=='tetris')return;var k=e.key;if(k==='ArrowLeft')
 function gTetCellDraw(c,x,y,s,col,al){c.globalAlpha=al||1;c.fillStyle=col;c.fillRect(x,y,s,s);c.fillStyle='rgba(255,255,255,.30)';c.fillRect(x,y,s,Math.max(2,s*0.16));c.fillRect(x,y,Math.max(2,s*0.16),s);c.fillStyle='rgba(0,0,0,.28)';c.fillRect(x,y+s-Math.max(2,s*0.16),s,Math.max(2,s*0.16));c.fillRect(x+s-Math.max(2,s*0.16),y,Math.max(2,s*0.16),s);c.globalAlpha=1;}
 function gTetMini(c,t,bx,by,ms){var cs=gTetCellsOf(t,0,0,0);var minc=9,maxc=0,minr=9,maxr=0;for(var i=0;i<4;i++){minc=Math.min(minc,cs[i][1]);maxc=Math.max(maxc,cs[i][1]);minr=Math.min(minr,cs[i][0]);maxr=Math.max(maxr,cs[i][0]);}var w=(maxc-minc+1),h=(maxr-minr+1);var ox=bx-(minc*ms)-(w*ms)/2,oy=by-(minr*ms)-(h*ms)/2;for(var j=0;j<4;j++)gTetCellDraw(c,ox+cs[j][1]*ms,oy+cs[j][0]*ms,ms-1,GT_P[t].c,1);}
 function gTetStart(){var st=document.getElementById('g-stage');if(!st)return;var cell=Math.max(13,Math.min(30,Math.floor((Math.min(window.innerWidth||360,480)-16)/15),Math.floor(((window.innerHeight||640)-150)/20)));var bw=cell*10,panelX=bw+10,pw=cell*4.6,W=Math.ceil(bw+12+pw),H=cell*20;
-  st.innerHTML='<div style="text-align:center"><canvas id="gtc" width="'+W+'" height="'+H+'" style="background:#0b0e1a;border-radius:10px;border:1px solid #ffffff22;width:auto;height:auto;max-width:100%;max-height:86vh;display:block;margin:0 auto"></canvas>'
+  st.innerHTML='<div style="text-align:center"><canvas id="gtc" width="'+W+'" height="'+H+'" style="background:#0b0e1a;border-radius:10px;border:1px solid #ffffff22;width:auto;height:86vh;max-width:97vw;display:block;margin:0 auto"></canvas>'
    +'<div style="display:flex;justify-content:center;gap:7px;margin-top:12px;flex-wrap:wrap">'
    +'<button onclick="gTetHold()" style="'+gTetBtn('#455a64')+'">HOLD</button>'
    +'<button onclick="gTetMove(-1)" style="'+gTetBtn()+'">◀</button>'
@@ -12472,7 +12472,7 @@ var GU_R=[14,18,23,29,36,44,53,63,74,86];
 var GU_C=['#e74c3c','#ff7979','#9b59b6','#f6b93b','#fa83b4','#7bed9f','#26de81','#e056fd','#ff9f43','#20bf6b'];
 var GU_NM=['🍒','🍓','🍇','🍊','🍑','🍏','🍎','🍐','🍍','🍉'];
 function gSuikaStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="guc" width="320" height="470" style="background:linear-gradient(#fff7e6,#ffe0b2);border-radius:14px;width:auto;height:auto;max-width:100%;max-height:88vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:inset 0 0 0 4px #d7a86e"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">움직여 위치 잡고 탭해서 떨어뜨리기 · 같은 과일끼리 합쳐요!</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="guc" width="320" height="470" style="background:linear-gradient(#fff7e6,#ffe0b2);border-radius:14px;width:auto;height:88vh;max-width:97vw;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:inset 0 0 0 4px #d7a86e"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">움직여 위치 잡고 탭해서 떨어뜨리기 · 같은 과일끼리 합쳐요!</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('guc'),W=Math.max(300,Math.min((window.innerWidth||360)-14,460)),H=Math.max(430,Math.min((window.innerHeight||640)-128,900));cv.width=W;cv.height=H;
   GU={cv:cv,cx:cv.getContext('2d'),W:W,H:H,top:84,fruits:[],sc:0,over:false,cool:0,cx0:W/2,next:Math.floor(Math.random()*5),ovf:0,pops:[]};
@@ -12569,7 +12569,7 @@ function gCloud(c,x,y,s){c.save();c.globalAlpha=.9;c.fillStyle='#fff';c.beginPat
 /* ════════ 게임: 팀플 러너 ════════ */
 var GR={};
 function gRunStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="grc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🏃</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="grc" style="border-radius:16px;width:auto;height:92vh;max-width:97vw;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 탭 / 스페이스로 점프 🏃</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('grc');var W=Math.max(320,Math.min((window.innerWidth||360)-14,460)),H=Math.max(300,Math.min((window.innerHeight||640)-150,520));cv.width=W;cv.height=H;
   var GND=H-40,CX=Math.round(W*0.24);
@@ -12602,7 +12602,7 @@ function gRunKey(e){if(GH.view!=='runner')return;if(e.code==='Space'||e.key===' 
 /* ════════ 게임: 팀플 무한점프 ════════ */
 var GJ={};
 function gJumpStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gjc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.28)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 좌/우 탭 또는 ←→ 로 이동 · 택배 상자 밟고 위로! 🏢</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gjc" style="border-radius:16px;width:auto;height:92vh;max-width:97vw;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.28)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">화면 좌/우 탭 또는 ←→ 로 이동 · 택배 상자 밟고 위로! 🏢</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('gjc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,420)),H=Math.max(440,Math.min((window.innerHeight||640)-128,840));cv.width=W;cv.height=H;
   var gapY=Math.round(H/9),plats=[],pkgs=[];
@@ -12689,7 +12689,7 @@ function gMatchKey(e){if(GH.view!=='match')return;if((e.code==='Space'||e.key===
 /* ════════ 게임: 택배 쌓기 타워 ════════ */
 var GW={};
 function gTowerStart(){var st=document.getElementById('g-stage');if(!st)return;
-  st.innerHTML='<div style="text-align:center"><canvas id="gwc" style="border-radius:16px;width:auto;height:auto;max-width:100%;max-height:92vh;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭/스페이스로 상자 내려놓기 · 흔들리는 택배차에 정확히! 🧱</div></div>';
+  st.innerHTML='<div style="text-align:center"><canvas id="gwc" style="border-radius:16px;width:auto;height:92vh;max-width:97vw;display:block;margin:0 auto;touch-action:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.25)"></canvas><div style="font-size:11px;color:#90a4ae;margin-top:8px">탭/스페이스로 상자 내려놓기 · 흔들리는 택배차에 정확히! 🧱</div></div>';
   if(GH.raf){try{cancelAnimationFrame(GH.raf);}catch(e){}}var my=++GH.gen;
   var cv=document.getElementById('gwc');var W=Math.max(300,Math.min((window.innerWidth||360)-14,420)),H=Math.max(440,Math.min((window.innerHeight||640)-128,820));cv.width=W;cv.height=H;
   var BH=24,bw=Math.round(W*0.34);
