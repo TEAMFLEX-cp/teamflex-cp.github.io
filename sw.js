@@ -1,15 +1,27 @@
 // TeamFlex Service Worker v347 — v346 원복(잘못된 consignment 필드로 PDD미스 판정 오류 → 복구)
-const CACHE_NAME = 'teamflex-v530';
+const CACHE_NAME = 'teamflex-v531';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
 // ── 설치 / 활성화 ─────────────────────────────────────────────────────────────
-self.addEventListener('install', () => self.skipWaiting());
+// [프리즈 방지] 설치 시 앱 셸(HTML)을 현재 버전 캐시에 미리 담아둔다.
+//   → 업데이트 직후 reload 시 네트워크가 느려도 캐시로 즉시 렌더(로고 멈춤 방지).
+self.addEventListener('install', e => {
+  e.waitUntil((async () => {
+    try {
+      const c = await caches.open(CACHE_NAME);
+      await Promise.all(['/', '/index.html', '/TeamFlex_기사포털.html']
+        .map(u => c.add(u).catch(() => {})));
+    } catch (_) {}
+    await self.skipWaiting();
+  })());
+});
 
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      // [프리즈 방지] 현재 버전 캐시는 남기고(방금 담은 셸 보존) 옛 버전만 삭제.
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });

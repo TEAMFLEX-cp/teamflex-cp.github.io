@@ -3339,7 +3339,10 @@ function doManualRefresh(){
 
 // ── Service Worker 자동 업데이트 (새 SW 활성화 시 페이지 자동 리로드) ─────
 if('serviceWorker' in navigator){
+  var _swRefreshing=false;
   navigator.serviceWorker.addEventListener('controllerchange',function(){
+    if(_swRefreshing)return;          // 재진입 가드 — 무한 새로고침(로고에서 멈춤) 방지
+    _swRefreshing=true;
     window.location.reload();
   });
   navigator.serviceWorker.ready.then(function(reg){
@@ -15003,24 +15006,9 @@ async function rqSendToTeams(text, photos, requestId){
 }
 
 function rqNotifyApprovers(type, text){
-  if(!sbClient) return;
-  // 정책: 각종요청 알림은 '신청한 본인'에게만. 관리자/총괄/팀장에게는 보내지 않는다.
-  var typeLabels={damage:'파손요청',route:'라우트변경',return:'반품이관',dup:'이중출고건',scan:'스캔삭제',lost:'분실처리',pretake:'전취건 반납 확인 요청',lostret:'분실건 반납 확인 요청',work:'업무신청'};
-  var lbl = typeLabels[type]||'각종요청';
-  try{
-    var _who=(CU&&CU.name)||''; if(!_who) return;
-    // 60초 내 동일 신청 중복 발송 방지
-    var _key='rqsub:'+type+':'+_who+':'+((text||'')+'').slice(0,24);
-    rqNotifyApprovers._sent=rqNotifyApprovers._sent||{};
-    var _now=Date.now();
-    if(rqNotifyApprovers._sent[_key] && (_now-rqNotifyApprovers._sent[_key])<60000) return;
-    rqNotifyApprovers._sent[_key]=_now;
-    fetch(SB_URL+'/functions/v1/send-push',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SB_KEY},
-      body:JSON.stringify({title:'📝 '+lbl+' 접수',body:_who+'님의 '+lbl+' 신청이 접수되었습니다.',target_name:_who,data:{url:'/?tab=rq',type:'request'}})
-    });
-  }catch(e){}
+  // 각종요청 '접수' 푸시는 서버 poller(teams_poller.py)가 신청한 본인에게 1회 발송한다.
+  // 앱에서도 보내면 본인에게 푸시가 2번(앱+서버) 가므로, 앱 발송은 하지 않는다(중복 방지).
+  return;
 }
 
 // ── 오배송 탭에서 요청 불러오기 ────────────────────────────────────
