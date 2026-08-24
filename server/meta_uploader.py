@@ -232,13 +232,25 @@ def upload(file_path, target_week=None, kind=None):
                                  "if(!b)return {found:false};const dis=b.disabled||b.getAttribute('disabled')!=null||/disabled/.test(String(b.className));"
                                  "const r=b.getBoundingClientRect();return {found:true,x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2),dis:!!dis};})()")
                     log("스케줄저장 버튼: " + str(sv0))
-                    if (not os.environ.get("RESET_PROBE")) and sv0 and sv0.get("found") and not sv0.get("dis"):
-                        _rclick_xy(sv0["x"], sv0["y"]); log("초기화후 '스케줄 저장하기' 클릭"); time.sleep(2.5)
-                        _sc = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|저장|저장하기|예|네)$/.test((x.textContent||'').trim())||/저장하시겠|확인했습니다/.test(x.textContent||''));if(b){b.click();return (b.textContent||'').trim();}return 'NONE';})()")
-                        log("저장 확인창: " + str(_sc)); time.sleep(3.5)
+                    _savedok = False
+                    if (not os.environ.get("RESET_PROBE")) and sv0 and sv0.get("found"):
+                        for _sv_try in range(3):
+                            b2 = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/스케줄\\s*저장/.test(x.textContent||''));"
+                                        "if(!b)return null;const dis=b.disabled||b.getAttribute('disabled')!=null||/disabled/.test(String(b.className));"
+                                        "const r=b.getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2),dis:!!dis};})()")
+                            if not b2:
+                                break
+                            if b2.get("dis"):   # 저장 버튼 비활성 = 더 저장할 게 없음 = 저장 완료됨
+                                _savedok = True; break
+                            _rclick_xy(b2["x"], b2["y"]); log("초기화후 '스케줄 저장하기' 클릭 시도 %d" % (_sv_try + 1)); time.sleep(2)
+                            _sc = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|저장|저장하기|예|네)$/.test((x.textContent||'').trim())||/저장하시겠|확인했습니다/.test(x.textContent||''));if(b){b.click();return (b.textContent||'').trim();}return 'NONE';})()")
+                            if _sc != 'NONE':
+                                log("저장 확인창: " + str(_sc))
+                            time.sleep(3)
+                        log("초기화 저장 결과: " + ("✅ 저장 완료(버튼 비활성화됨)" if _savedok else "저장 클릭 완료(상태 미확정)"))
                         cdp.shot("/tmp/meta_14b_saved.png")
                     else:
-                        log("[주의] 스케줄 저장하기 클릭 못함(없음/비활성) → " + str(sv0))
+                        log("[주의] 스케줄 저장하기 버튼 없음/진단모드 → " + str(sv0))
                         cdp.shot("/tmp/meta_14b_saved.png")
                 else:
                     log("초기화 버튼 못 찾음 — 초기화 없이 진행")
