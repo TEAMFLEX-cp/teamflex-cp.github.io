@@ -6511,21 +6511,22 @@ async function _sxDoTableDown(){
   var st=document.getElementById('sx-status');
   try{
     var ws0=SCHED_WK;
-    var q=await sbClient.from('weekly_schedules').select('work_date,route,route_raw,driver_name,grp_leaders,share').eq('week_start',ws0);
+    var q=await sbClient.from('weekly_schedules').select('id,work_date,route,route_raw,driver_name,grp_leaders,share').eq('week_start',ws0).order('id',{ascending:true});
     var data=(q&&q.data)||[];
     if(!data.length){alert('이 주차 스케줄 데이터가 없습니다.');if(st)st.textContent='';return;}
     var dates=Array.from(new Set(data.map(function(r){return r.work_date;}))).sort();
-    var byKey={},order=[];
-    data.forEach(function(r){var gl=r.grp_leaders;if(typeof gl==='string'){try{gl=JSON.parse(gl);}catch(e){gl=[];}}gl=gl||[];var lk=gl.join('·');var rr=r.route_raw||r.route||'';var key=lk+'|||'+rr;if(!byKey[key]){byKey[key]={leader:lk,camp:(String(rr).charAt(0)==='8'?'일산8':'일산3'),route:rr,d:{}};order.push(key);}if(r.driver_name)byKey[key].d[r.work_date]=r.driver_name;});
+    // 앱 화면과 동일 순서: id순으로 훑되 팀장/조장(그룹)별로 묶고, 그룹 내 라우트는 최초등장 순.
+    var byKey={},grpOrder=[],grpRoutes={};
+    data.forEach(function(r){var gl=r.grp_leaders;if(typeof gl==='string'){try{gl=JSON.parse(gl);}catch(e){gl=[];}}gl=gl||[];var lk=gl.join('·');var rr=r.route_raw||r.route||'';var key=lk+'|||'+rr;if(!(lk in grpRoutes)){grpRoutes[lk]=[];grpOrder.push(lk);}if(!byKey[key]){byKey[key]={leader:lk,camp:(String(rr).charAt(0)==='8'?'일산8':'일산3'),route:rr,d:{}};grpRoutes[lk].push(rr);}if(r.driver_name)byKey[key].d[r.work_date]=r.driver_name;});
     var hdr=['팀장·조장','캠프','라우트'].concat(dates.map(function(d){return _sxDateVal(d);}));
     var aoa=[hdr];
-    order.forEach(function(key){var o=byKey[key];var row=[o.leader,o.camp,o.route];dates.forEach(function(d){row.push(o.d[d]||'');});aoa.push(row);});
+    grpOrder.forEach(function(lk){grpRoutes[lk].forEach(function(rr){var o=byKey[lk+'|||'+rr];var row=[o.leader,o.camp,o.route];dates.forEach(function(d){row.push(o.d[d]||'');});aoa.push(row);});});
     var wb=XLSX.utils.book_new();var sh=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
     for(var c=3;c<hdr.length;c++){var ad=XLSX.utils.encode_cell({r:0,c:c});if(sh[ad])sh[ad].z='m/d';}
     sh['!cols']=[{wch:16},{wch:8},{wch:12}].concat(dates.map(function(){return {wch:11};}));
     XLSX.utils.book_append_sheet(wb,sh,'스케줄표');
     XLSX.writeFile(wb,_sxWeekLabel(ws0)+'_스케줄표.xlsx');
-    if(st)st.textContent='✅ 표 다운로드 ('+order.length+'행)';
+    if(st)st.textContent='✅ 표 다운로드 ('+(aoa.length-1)+'행)';
   }catch(e){if(st)st.textContent='';alert('표 다운로드 오류: '+((e&&e.message)||e));}
 }
 function _sxCellDate(v){if(v instanceof Date&&!isNaN(v.getTime()))return v.getFullYear()+'-'+('0'+(v.getMonth()+1)).slice(-2)+'-'+('0'+v.getDate()).slice(-2);var s=String(v||'');var m=s.match(/(\d{4})-(\d{2})-(\d{2})/);if(m)return m[1]+'-'+m[2]+'-'+m[3];return '';}
