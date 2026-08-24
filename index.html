@@ -6672,11 +6672,12 @@ function _metaPollJobs(jids,label){
       }
       if(fin>=total){
         clearInterval(timer);
-        if(failed===0){try{showToast('✅ '+label+' 쿠팡 반영 성공 완료',true);}catch(e){}}
+        if(failed===0){try{showToast('✅ '+label+' 쿠팡 반영 성공 완료',true);}catch(e){}try{_metaFlash('✅ '+label+' 메타어드민 반영 완료','success');}catch(e){}}
         else{
           var _emsg=(failRows[0]&&failRows[0].result)||'';
           try{showToast('❌ '+label+' 반영 실패 ('+failed+'건)',false);}catch(e){}
-          try{alert('❌ 메타 반영 실패 ('+failed+'/'+total+')\n\n쿠팡 오류내역:\n'+(_emsg||'(사유 미확인 — 서버 로그 확인)')+'\n\n※ 대부분 기사 쿠팡 아이디가 비어있거나 잘못된 경우입니다. 기사정보에서 아이디를 채워주세요.');}catch(e){}
+          try{_metaFlash('❌ '+label+' 메타 반영 실패 — '+String(_emsg).slice(0,40),'fail');}catch(e){}
+          try{alert('❌ 메타 반영 실패 ('+failed+'/'+total+')\n\n쿠팡 오류내역:\n'+(_emsg||'(사유 미확인 — 서버 로그 확인)')+'\n\n※ 아이디가 비어있거나, 같은 기사가 중복된 경우입니다.');}catch(e){}
         }
       }
     }catch(e){}
@@ -6727,6 +6728,16 @@ async function _sxDoChanged(){
         aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,dnm,''),'휴무','','']);n++;});
       if(curNew){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,curNew,''),_SX_CFG.status,rot,routeStr]);n++;}
     });
+    // ★ 중복 제거: 쿠팡은 같은 (업무일·캠프명·웨이브·아이디)가 2번 나오면 거부함 → 1행만 남기고 '출근'을 우선
+    var _seen={},_ded=[aoa[0]];
+    for(var _ri=1;_ri<aoa.length;_ri++){var _r=aoa[_ri];
+      var _dv=(_r[0]&&_r[0].getTime)?_r[0].getTime():String(_r[0]);
+      var _dk=_dv+'|'+_r[2]+'|'+_r[3]+'|'+norm_name_js(String(_r[4]||''));
+      var _isWork=(_r[5]===_SX_CFG.status);
+      if(!(_dk in _seen)){_seen[_dk]=_ded.length;_ded.push(_r);}
+      else if(_isWork && _ded[_seen[_dk]][5]!==_SX_CFG.status){_ded[_seen[_dk]]=_r;} // 기존이 휴무면 출근으로 교체
+    }
+    aoa=_ded;n=aoa.length-1;
     if(aoa.length<2){if(!window._sxSilent)alert('순변경(net)이 없습니다. (원복된 변경만 있음)');if(st)st.textContent='';return;}
     var wb=XLSX.utils.book_new();var sh=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
     sh['!cols']=[{wch:18},{wch:16},{wch:8},{wch:8},{wch:16},{wch:8},{wch:14},{wch:22}];
@@ -6761,13 +6772,25 @@ function toggleEdit(){
     try{_autoMetaChanged(window._sxEditWk||SCHED_WK);}catch(e){}
   }
 }
-// 수정 완료 시 그 주차의 변경분을 메타어드민에 자동 반영 (권한무관 — 자동 시스템 동작)
+// 역할(관리자/팀장/총괄) 무관 상태 배너 — 화면 상단 중앙에 진행/성공/실패 표시
+function _metaFlash(msg,kind){
+  try{
+    var el=document.getElementById('metaFlashBar');
+    if(!el){el=document.createElement('div');el.id='metaFlashBar';el.style.cssText='position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99999;max-width:92%;padding:11px 18px;border-radius:14px;font-size:14px;font-weight:800;box-shadow:0 6px 24px rgba(0,0,0,.28);text-align:center;transition:opacity .3s;color:#fff';document.body.appendChild(el);}
+    el.style.background=(kind==='success'?'#1e9e63':(kind==='fail'?'#d64545':(kind==='info'?'#607d8b':'#1565c0')));
+    el.textContent=msg;el.style.display='block';el.style.opacity='1';
+    if(el._t)clearTimeout(el._t);
+    if(kind!=='progress'){el._t=setTimeout(function(){el.style.opacity='0';setTimeout(function(){el.style.display='none';},350);},kind==='fail'?9000:4500);}
+  }catch(e){}
+}
+// 수정 완료 시 그 주차의 변경분을 메타어드민에 자동 반영 (권한무관 — 관리자·팀장·총괄 모두)
 function _autoMetaChanged(wk){
   if(!sbClient)return;
   var st=document.getElementById('sx-status');
   if(st)st.textContent='📤 수정 내용 메타 자동 반영 준비…';
+  _metaFlash('📤 메타어드민 반영 준비 중…','progress');
   hcLoadXLSX(function(ok){
-    if(!ok){if(st)st.textContent='엑셀 모듈 로드 실패';return;}
+    if(!ok){if(st)st.textContent='엑셀 모듈 로드 실패';_metaFlash('❌ 엑셀 모듈 로드 실패','fail');return;}
     (async function(){
       var _svWk=SCHED_WK;
       try{
@@ -6775,12 +6798,13 @@ function _autoMetaChanged(wk){
         window._sxMetaCap=true;window._sxMetaB64='';window._sxSilent=true;
         await _sxDoChanged();
         window._sxMetaCap=false;window._sxSilent=false;
-        if(!window._sxMetaB64){if(st)st.textContent='📭 반영할 변경분이 없습니다';return;}
+        if(!window._sxMetaB64){if(st)st.textContent='📭 반영할 변경분이 없습니다';_metaFlash('📭 반영할 변경분이 없습니다','info');return;}
         var jid=await _metaCreateJob('changed',SCHED_WK,window._sxMetaFname,window._sxMetaB64);
         if(st)st.textContent='📤 수정 → 메타 자동 반영 요청됨 (#'+(jid||'')+') · 처리중…';
+        _metaFlash('📤 메타어드민 반영 중… (서버 처리중)','progress');
         try{showToast('📤 수정 완료 → 메타어드민 자동 반영 요청 (서버 처리중)',true);}catch(e){}
         if(jid)_metaPollJobs([jid],'수정 반영');
-      }catch(e){if(st)st.textContent='';}
+      }catch(e){if(st)st.textContent='';_metaFlash('❌ 메타 반영 준비 오류','fail');}
       finally{window._sxMetaCap=false;window._sxSilent=false;SCHED_WK=_svWk;}
     })();
   });
