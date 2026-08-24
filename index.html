@@ -6490,7 +6490,7 @@ async function _sxDoList(){
     var ws0=SCHED_WK;
     var q=await sbClient.from('weekly_schedules').select('work_date,route,route_raw,driver_name,drv_suffix,share').eq('week_start',ws0);
     var data=(q&&q.data)||[];
-    if(!data.length){alert('이 주차 스케줄 데이터가 없습니다. (Supabase weekly_schedules)');if(st)st.textContent='';return;}
+    if(!data.length){if(!window._sxMetaCap)alert('이 주차 스케줄 데이터가 없습니다. (Supabase weekly_schedules)');if(st)st.textContent='';return;}
     var didmap=await _sxDidMap();
     var rows=_sxBuildList(data,didmap);
     if(!rows.length){alert('생성된 리스트가 없습니다.');if(st)st.textContent='';return;}
@@ -6500,7 +6500,7 @@ async function _sxDoList(){
     sh['!cols']=[{wch:18},{wch:16},{wch:8},{wch:8},{wch:16},{wch:8},{wch:14},{wch:22}];
     for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}
     XLSX.utils.book_append_sheet(wb,sh,'스케줄리스트');
-    XLSX.writeFile(wb,_sxWeekLabel(ws0)+'_리스트.xlsx');
+    _sxOut(wb,_sxWeekLabel(ws0)+'_리스트.xlsx');
     if(st)st.textContent='✅ 리스트 '+rows.length+'행 다운로드';
     try{showToast('✅ 리스트 다운로드 ('+rows.length+'행)',true);}catch(e){}
   }catch(e){if(st)st.textContent='';alert('리스트 생성 오류: '+((e&&e.message)||e));}
@@ -6553,6 +6553,55 @@ async function _sxDoTableUp(file){
   }catch(e){if(st)st.textContent='';alert('표 업로드 오류: '+((e&&e.message)||e));}
 }
 /* ── 변경분만 다운로드 (변경이력 → 이전기사 휴무 / 새기사 출근) ── */
+// ── 메타어드민(쿠팡) 업로드: 엑셀 base64 캡처 + 작업큐 등록 ──────────────
+window._sxMetaCap=false;window._sxMetaB64='';window._sxMetaFname='';
+function _sxOut(wb,fname){
+  // 평소엔 파일 다운로드. 메타업로드 캡처 모드면 base64로 담아둠(다운로드 X).
+  if(window._sxMetaCap){try{window._sxMetaB64=XLSX.write(wb,{type:'base64',bookType:'xlsx'});window._sxMetaFname=fname;}catch(e){window._sxMetaB64='';}return;}
+  XLSX.writeFile(wb,fname);
+}
+async function _metaCreateJob(kind,week,fname,b64){
+  if(!b64)throw new Error('빈 파일');
+  var res=await sbClient.from('meta_upload_jobs').insert({kind:kind,week_start:week||null,fname:fname||null,xlsx_b64:b64,status:'pending',requested_by:(CU&&CU.name)||''}).select('id').single();
+  return (res&&res.data&&res.data.id)||null;
+}
+function metaUpload(kind){
+  if(!(CU&&CU.role==='admin')){alert('관리자만 가능합니다.');return;}
+  if(!sbClient){alert('서버 연결이 없습니다.');return;}
+  var _label={full:'전체 주차',week:'주차별',changed:'변경분'}[kind]||kind;
+  if(!confirm('메타어드민(쿠팡)에 ['+_label+'] 스케줄을 업로드 요청할까요?\n\n서버가 fly.coupang에 자동 반영합니다.'))return;
+  var st=document.getElementById('sx-status');if(st)st.textContent='메타 업로드 준비…';
+  hcLoadXLSX(function(ok){
+    if(!ok){if(st)st.textContent='엑셀 모듈 로드 실패';return;}
+    (async function(){
+      try{
+        if(kind==='full'){
+          var keys=(typeof getWeekKeys==='function')?getWeekKeys():[SCHED_WK];
+          var _sv=SCHED_WK,n=0;
+          for(var i=0;i<keys.length;i++){
+            SCHED_WK=keys[i];window._sxMetaCap=true;window._sxMetaB64='';
+            try{await _sxDoList();}catch(e){}
+            window._sxMetaCap=false;
+            if(window._sxMetaB64){try{await _metaCreateJob('week',keys[i],window._sxMetaFname,window._sxMetaB64);n++;}catch(e){}}
+          }
+          SCHED_WK=_sv;
+          if(st)st.textContent='✅ 전체 '+n+'개 주차 메타 업로드 요청됨';
+          try{showToast('✅ 전체 '+n+'개 주차 메타 반영 요청 (서버 처리중)',true);}catch(e){}
+          try{_reRenderCurTab();}catch(e){}
+        } else {
+          window._sxMetaCap=true;window._sxMetaB64='';
+          if(kind==='changed'){await _sxDoChanged();}else{await _sxDoList();}
+          window._sxMetaCap=false;
+          if(!window._sxMetaB64){if(st)st.textContent='';return;}
+          var jid=await _metaCreateJob(kind==='changed'?'changed':'week',SCHED_WK,window._sxMetaFname,window._sxMetaB64);
+          if(st)st.textContent='✅ 메타 업로드 요청됨 (#'+(jid||'')+')';
+          try{showToast('✅ '+_label+' 메타 반영 요청 (서버 처리중)',true);}catch(e){}
+        }
+      }catch(e){if(st)st.textContent='';alert('메타 업로드 요청 오류: '+((e&&e.message)||e));}
+      finally{window._sxMetaCap=false;}
+    })();
+  });
+}
 function schedDownloadChanged(){if(!(CU&&CU.role==='admin'))return;var st=document.getElementById('sx-status');if(st)st.textContent='엑셀 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='엑셀 모듈 로드 실패';return;}_sxDoChanged();});}
 async function _sxDoChanged(){
   var st=document.getElementById('sx-status');
@@ -6592,7 +6641,7 @@ async function _sxDoChanged(){
     sh['!cols']=[{wch:18},{wch:16},{wch:8},{wch:8},{wch:16},{wch:8},{wch:14},{wch:22}];
     for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}
     XLSX.utils.book_append_sheet(wb,sh,'변경리스트');
-    XLSX.writeFile(wb,_sxWeekLabel(ws0)+'_변경리스트.xlsx');
+    _sxOut(wb,_sxWeekLabel(ws0)+'_변경리스트.xlsx');
     if(st)st.textContent='✅ 변경분 '+n+'행'+(skipHumu?(' (휴무 제외 '+skipHumu+')'):'');
     try{showToast('✅ 변경분 '+n+'행'+(skipHumu?(' · 근무있어 휴무제외 '+skipHumu):''),true);}catch(e){}
   }catch(e){if(st)st.textContent='';alert('변경분 생성 오류: '+((e&&e.message)||e));}
@@ -6655,7 +6704,7 @@ function pgFullSched(){
       '<button class="sxbtn b1" onclick="schedDownloadTable()">📊 표다운</button>'+
       '<button class="sxbtn b2" onclick="document.getElementById(\'sx-tbl-file\').click()">📤 표업로드</button>'+
       '<button class="sxbtn b3" onclick="schedDownloadList()">📋 리스트</button>'+
-      '<button class="sxbtn b4" onclick="schedDownloadChanged()">🔴 변경분</button>'+
+      '<button class="sxbtn b4" onclick="metaUpload(\'changed\')" title="변경분 쿠팡 메타 자동 반영">🔴 변경분<span style="font-size:8px;background:#1e9e63;color:#fff;border-radius:6px;padding:0 4px;margin-left:3px;vertical-align:middle">↑쿠팡</span></button>'+
     '</div>'+
     '<div id="sx-status" style="'+_wrap+';text-align:center;font-size:11px;color:#00695c;font-weight:700;margin-bottom:5px"></div>'
   ):'';
@@ -6665,7 +6714,9 @@ function pgFullSched(){
   var _permH=_isAdm?('<button class="sxLog" style="flex:0 0 auto;padding:0 11px;background:linear-gradient(135deg,#7b4fd6,#5a2fb0)" onclick="openSchedPermPopup()">⚙️ 수정권한</button>'):'';
   var _editH=_canEd?('<div class="sxEditWrap" onclick="toggleEdit()"><div class="sxEditInner'+(EDIT_MODE?' on':'')+'">'+(EDIT_MODE?'✔️ 완료':'✏️ 수정')+'</div></div>'):'';
   var _logH=_isAdm?('<button class="sxLog" onclick="go(\'sl\')">📋 변경이력'+(_unL?'<span class="sxBadge">'+(_unL>9?'9+':_unL)+'</span>':'')+'</button>'):'';
-  var _sxAct=(_permH||_editH||_logH)?('<div style="'+_wrap+';display:flex;gap:6px;margin-bottom:8px">'+_permH+_editH+_logH+'</div>'):'';
+  var _metaFullH=_isAdm?('<button class="sxLog" style="flex:0 0 auto;padding:0 10px;background:linear-gradient(135deg,#e0563b,#b83a22)" onclick="metaUpload(\'full\')" title="전체 주차 쿠팡 메타 반영">⬆️ 전체</button>'):'';
+  var _metaWeekH=_isAdm?('<button class="sxLog" style="flex:0 0 auto;padding:0 10px;background:linear-gradient(135deg,#1e9e63,#127a48)" onclick="metaUpload(\'week\')" title="이번 주차 쿠팡 메타 반영">⬆️ 주차별</button>'):'';
+  var _sxAct=(_permH||_editH||_logH)?('<div style="'+_wrap+';display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">'+_permH+_metaFullH+_metaWeekH+_editH+_logH+'</div>'):'';
   var h='<div class="sched-sticky-nav">'+_sxExp+_sxAct+nav+'</div>';
 
   // Detect today / sat / sun columns
