@@ -3236,6 +3236,12 @@ function _reRenderCurTab(){
   var m=t.match(/go\('(\w+)'\)/);
   if(!m)return;
   if(m[1]==='rl')return;  // 룰렛 탭은 캔버스 애니메이션 보존 위해 자동 재렌더 제외
+  // ★ 스케줄 탭 '편집 중'이면 go()가 EDIT_MODE를 꺼버리므로, 편집모드 유지한 채 스케줄만 재렌더
+  if((m[1]==='fs'||m[1]==='as') && EDIT_MODE){
+    var _mcE=document.getElementById('mc');var _st0=_mcE?_mcE.scrollTop:0;
+    if(_mcE){_mcE.innerHTML=pgFullSched();requestAnimationFrame(function(){var _x=document.getElementById('mc');if(_x)_x.scrollTop=_st0;try{initSchedScrollSync();}catch(e){}});}
+    return;
+  }
   // 스크롤 위치 저장 (재렌더 후 복원)
   var mc=document.getElementById('mc');
   var mcST=mc?mc.scrollTop:0;
@@ -6368,8 +6374,17 @@ async function _loadMetaStatusBanner(){
       var res=j.status==='failed'?('<span style="color:#c62828;font-size:11px"> · '+String(j.result||'').slice(0,50)+'</span>'):'';
       return '<div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;flex-wrap:wrap"><b style="color:'+col+'">'+ic+'</b><b style="color:#33517a">'+(kmap[j.kind]||j.kind)+'</b><span style="color:#888">'+wk+'</span><span style="color:#aab;font-size:11px">'+t+'</span>'+res+'</div>';
     }).join('');
-    el.innerHTML='<div style="background:#f4f8fd;border:1px solid #d9e6f5;border-radius:12px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:#33517a;margin-bottom:6px">📡 메타어드민 반영 상태 (최근 8건)</div>'+html+'</div>';
+    var clr=(CU&&CU.role==='admin')?'<button onclick="_clearMetaStatus()" style="float:right;background:transparent;border:1px solid #c9d8ea;color:#6A90B0;font-size:11px;padding:2px 9px;border-radius:12px;cursor:pointer">🗑 지우기</button>':'';
+    el.innerHTML='<div style="background:#f4f8fd;border:1px solid #d9e6f5;border-radius:12px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:#33517a;margin-bottom:6px">📡 메타어드민 반영 상태 (최근 8건)'+clr+'</div>'+html+'</div>';
   }catch(e){el.innerHTML='';}
+}
+// 메타 반영 상태 기록 삭제 (완료/실패 건만 — 진행중 작업은 유지)
+async function _clearMetaStatus(){
+  if(!(CU&&CU.role==='admin'))return;
+  if(!confirm('메타어드민 반영 상태 기록을 지울까요?\n(스케줄·변경이력은 그대로 유지됩니다)'))return;
+  try{await sbClient.from('meta_upload_jobs').delete().in('status',['done','failed']);}catch(e){}
+  try{_loadMetaStatusBanner();}catch(e){}
+  try{showToast('✅ 메타 반영 상태 기록 삭제됨',true);}catch(e){}
 }
 
 function _mergeSchedLogs(shared,local){
