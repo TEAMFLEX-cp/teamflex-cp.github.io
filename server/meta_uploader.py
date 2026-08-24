@@ -222,6 +222,15 @@ def upload(file_path, target_week=None, kind=None):
                     # 초기화 확인 다이얼로그가 뜨면 확인
                     cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|예|네|초기화)$/.test((x.textContent||'').trim())||/초기화하시겠|비우시겠/.test(x.textContent||''));if(b){b.click();return 1;}return 0;})()")
                     time.sleep(2)
+                    # ★ 초기화 후 반드시 '스케줄 저장하기'로 빈 상태를 저장(커밋)한 뒤 업로드해야 반영됨
+                    sv0 = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/스케줄\\s*저장/.test(x.textContent||''));"
+                                 "if(!b)return null;const r=b.getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};})()")
+                    if sv0:
+                        _rclick_xy(sv0["x"], sv0["y"]); log("초기화 후 '스케줄 저장하기' 클릭"); time.sleep(2)
+                        cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|저장|저장하기|예|네)$/.test((x.textContent||'').trim())||/저장하시겠|확인했습니다/.test(x.textContent||''));if(b){b.click();return 1;}return 0;})()")
+                        time.sleep(3)
+                    else:
+                        log("초기화 후 '스케줄 저장하기' 버튼 못 찾음")
                 else:
                     log("초기화 버튼 못 찾음 — 초기화 없이 진행")
             cdp.shot("/tmp/meta_15_ready.png")
