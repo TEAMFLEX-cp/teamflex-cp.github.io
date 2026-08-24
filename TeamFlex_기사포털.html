@@ -6556,8 +6556,12 @@ async function _sxDoTableUp(file){
 // ── 메타어드민(쿠팡) 업로드: 엑셀 base64 캡처 + 작업큐 등록 ──────────────
 window._sxMetaCap=false;window._sxMetaB64='';window._sxMetaFname='';
 function _sxOut(wb,fname){
-  // 평소엔 파일 다운로드. 메타업로드 캡처 모드면 base64로 담아둠(다운로드 X).
-  if(window._sxMetaCap){try{window._sxMetaB64=XLSX.write(wb,{type:'base64',bookType:'xlsx'});window._sxMetaFname=fname;}catch(e){window._sxMetaB64='';}return;}
+  // 메타업로드 캡처 모드면 base64로 담아 서버 전송 + '검증용으로 폰/PC에도 같은 엑셀을 다운로드'
+  if(window._sxMetaCap){
+    try{window._sxMetaB64=XLSX.write(wb,{type:'base64',bookType:'xlsx'});window._sxMetaFname=fname;}catch(e){window._sxMetaB64='';}
+    try{XLSX.writeFile(wb,fname);}catch(e){}   // ★ 업로드하는 그 파일을 로컬에도 저장(기록·검증용)
+    return;
+  }
   XLSX.writeFile(wb,fname);
 }
 async function _metaCreateJob(kind,week,fname,b64){
@@ -6671,10 +6675,12 @@ async function _sxDoChanged(){
     var aoa=[['업무일','사업자등록번호','캠프명','웨이브','아이디','업무상태','회전','업무라우트']];var n=0,skipHumu=0;
     Object.keys(net).sort().forEach(function(key){var c=net[key];
       var curNew=currentByRoute[c.workDate+'|'+c.route]||c.newDriver;   // 출근 = 최종 스케줄의 현재 배정 기사(진실)
-      if((c.oldDriver||'')===(curNew||''))return;
+      // ★ 되돌림(정원준→문병국→정원준)이라도 그 사이 중간상태(문병국)가 이미 메타에 올라갔을 수 있음.
+      //   → 라우트를 건너뛰지 않고, 항상 '현재 배정 기사'를 출근으로 다시 보내 메타를 앱 현재상태와 강제 일치시킨다.
       var routes=_sxSplitRt(c.route||'');var first=routes[0]||'';var night=_sxIsNight(first);var baseRt=first.replace(/\s*\(.*?\)/g,'').trim();
       var camp=baseRt.charAt(0)==='8'?'일산8':'일산3';var wave=night?_SX_CFG.night_wave:_SX_CFG.day_wave;var rot=night?_SX_CFG.night_rot:_SX_CFG.day_rot;var routeStr=routes.join(',');
-      if(c.oldDriver){ if(_sxWorking(c.workDate,c.oldDriver)){skipHumu++;} else {aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,c.oldDriver,''),'휴무','','']);n++;} }
+      // 이전 기사는 '현재 배정자와 다르고' + '그날 다른 곳에서 근무 안 할 때'만 휴무 처리 (되돌림이면 이전자=현재자이므로 휴무 안 함)
+      if(c.oldDriver && norm_name_js(c.oldDriver)!==norm_name_js(curNew||'')){ if(_sxWorking(c.workDate,c.oldDriver)){skipHumu++;} else {aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,c.oldDriver,''),'휴무','','']);n++;} }
       if(curNew){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,curNew,''),_SX_CFG.status,rot,routeStr]);n++;}
     });
     if(aoa.length<2){alert('순변경(net)이 없습니다. (원복된 변경만 있음)');if(st)st.textContent='';return;}
