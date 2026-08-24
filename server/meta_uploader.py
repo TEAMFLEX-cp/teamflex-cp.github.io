@@ -232,7 +232,7 @@ def upload(file_path, target_week=None, kind=None):
                                  "if(!b)return {found:false};const dis=b.disabled||b.getAttribute('disabled')!=null||/disabled/.test(String(b.className));"
                                  "const r=b.getBoundingClientRect();return {found:true,x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2),dis:!!dis};})()")
                     log("스케줄저장 버튼: " + str(sv0))
-                    if sv0 and sv0.get("found") and not sv0.get("dis"):
+                    if (not os.environ.get("RESET_PROBE")) and sv0 and sv0.get("found") and not sv0.get("dis"):
                         _rclick_xy(sv0["x"], sv0["y"]); log("초기화후 '스케줄 저장하기' 클릭"); time.sleep(2.5)
                         _sc = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|저장|저장하기|예|네)$/.test((x.textContent||'').trim())||/저장하시겠|확인했습니다/.test(x.textContent||''));if(b){b.click();return (b.textContent||'').trim();}return 'NONE';})()")
                         log("저장 확인창: " + str(_sc)); time.sleep(3.5)
@@ -242,6 +242,9 @@ def upload(file_path, target_week=None, kind=None):
                         cdp.shot("/tmp/meta_14b_saved.png")
                 else:
                     log("초기화 버튼 못 찾음 — 초기화 없이 진행")
+                if os.environ.get("RESET_PROBE"):
+                    log("RESET_PROBE: 저장/업로드 생략(진단 종료 — 저장 안 했으니 그 주차 미변경)")
+                    LAST_RESULT = "RESET_PROBE"; return False
             cdp.shot("/tmp/meta_15_ready.png")
 
         # 2~5) 업로드 모달 → 파일 주입 → 최종 업로드 → 결과 판별
