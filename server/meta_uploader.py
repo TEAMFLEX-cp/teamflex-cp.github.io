@@ -77,8 +77,20 @@ class CDP:
         try: self.ws.close()
         except Exception: pass
 
-def upload(file_path, target_week=None):
+def upload(file_path, target_week=None, kind=None):
     global LAST_RESULT
+    # 주차별/전체(전체교체)는 '당일 포함 주차' 금지 (방어) — KST 기준
+    if kind in ("week", "full") and target_week:
+        import datetime as _dt
+        _kst = (_dt.datetime.utcnow() + _dt.timedelta(hours=9)).strftime("%Y-%m-%d")
+        try:
+            _ws = _dt.datetime.strptime(str(target_week)[:10], "%Y-%m-%d")
+            _we = (_ws + _dt.timedelta(days=6)).strftime("%Y-%m-%d")
+            if str(target_week)[:10] <= _kst <= _we:
+                LAST_RESULT = "당일 포함 주차는 주차별/전체 업로드 불가(초기화 위험) — 다음 주차부터만 가능"
+                log("[FAIL] " + LAST_RESULT); return False
+        except Exception:
+            pass
     file_path = os.path.abspath(file_path)
     if not os.path.exists(file_path):
         log("파일이 없습니다: " + file_path); return False
@@ -201,6 +213,17 @@ def upload(file_path, target_week=None):
             if cur2 != target_week:
                 LAST_RESULT = "검색 후 주차 불일치: %s (목표 %s)" % (cur2, target_week)
                 log("[FAIL] " + LAST_RESULT); return False
+            # ★ 주차별/전체(전체교체)는 업로드 전 '초기화'로 그 주차 기존 스케줄을 비운다 (변경분은 초기화 금지)
+            if kind in ("week", "full"):
+                rz = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/초\\s*기\\s*화/.test(x.textContent||''));"
+                            "if(!b)return null;const r=b.getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};})()")
+                if rz:
+                    _rclick_xy(rz["x"], rz["y"]); log("초기화 클릭 (주차별/전체 전체교체)"); time.sleep(1.5)
+                    # 초기화 확인 다이얼로그가 뜨면 확인
+                    cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|예|네|초기화)$/.test((x.textContent||'').trim())||/초기화하시겠|비우시겠/.test(x.textContent||''));if(b){b.click();return 1;}return 0;})()")
+                    time.sleep(2)
+                else:
+                    log("초기화 버튼 못 찾음 — 초기화 없이 진행")
             cdp.shot("/tmp/meta_15_ready.png")
 
         # 2~5) 업로드 모달 → 파일 주입 → 최종 업로드 → 결과 판별

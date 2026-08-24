@@ -51,7 +51,7 @@ def process(job):
         with open(path, "wb") as f:
             f.write(base64.b64decode(b64))
         log(f"파일 저장: {path} ({os.path.getsize(path)} bytes)")
-        ok = meta_uploader.upload(path, job.get("week_start"))
+        ok = meta_uploader.upload(path, job.get("week_start"), job.get("kind"))
         tag = " (DRY_RUN)" if meta_uploader.DRY_RUN else ""
         detail = getattr(meta_uploader, "LAST_RESULT", "") or ("OK" if ok else "FAIL")
         _patch(jid, {"status": "done" if ok else "failed", "result": (detail + tag)[:800]})

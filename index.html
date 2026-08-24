@@ -6608,7 +6608,15 @@ async function _metaCreateJob(kind,week,fname,b64){
 function metaUpload(kind){
   if(!(CU&&CU.role==='admin')){alert('관리자만 가능합니다.');return;}
   if(!sbClient){alert('서버 연결이 없습니다.');return;}
-  var _label={full:'전체 주차(다음 주차부터)',week:'주차별',changed:'변경분'}[kind]||kind;
+  // ★ 주차별(초기화+전체교체)은 '당일이 포함된 주차'에는 금지 — 운영 중인 주차 초기화는 위험
+  if(kind==='week'){
+    var _wk=AW[SCHED_WK];var _tod=todStr();
+    if(_wk&&_wk.s&&_wk.e&&_wk.s<=_tod&&_tod<=_wk.e){
+      alert('⚠ 당일이 포함된 주차는 [주차별] 업로드를 할 수 없습니다.\n\n주차별은 그 주차를 초기화 후 전체 교체하는데,\n이미 운영 중인 이번 주를 초기화하면 위험합니다.\n\n※ 이번 주 개별 변경은 "변경분"을 사용하세요.\n※ 주차별은 다음 주차부터 가능합니다.');
+      return;
+    }
+  }
+  var _label={full:'전체 주차(다음 주차부터)',week:'주차별(초기화 후 전체교체)',changed:'변경분'}[kind]||kind;
   if(!confirm('메타어드민(쿠팡)에 ['+_label+'] 스케줄을 업로드 요청할까요?\n\n서버가 fly.coupang에 자동 반영합니다.'))return;
   var st=document.getElementById('sx-status');if(st)st.textContent='메타 업로드 준비…';
   hcLoadXLSX(function(ok){
