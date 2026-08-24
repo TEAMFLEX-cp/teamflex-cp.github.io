@@ -6343,12 +6343,33 @@ function pgSchedLog(){
     ?'<button onclick="clearSchedLog()" style="background:transparent;border:1px solid #2A4A6A;color:#6A90B0;font-size:12px;padding:6px 16px;border-radius:20px;cursor:pointer;float:right">전체 삭제</button>'
     :'';
 
+  try{setTimeout(_loadMetaStatusBanner,50);}catch(e){}
   return _featureBar('sched')+
     '<div class="stit">업무 변경이력'
     +'<span style="font-size:12px;color:#6A90B0;font-weight:400;margin-left:8px">최근 '+displayLog.length+'건</span>'
     +clearBtn+'</div>'
-    +'<div style="clear:both;margin-bottom:12px"></div>'
+    +'<div style="clear:both;margin-bottom:10px"></div>'
+    +'<div id="metaStatusBanner" style="margin:0 0 12px"></div>'
     +cards;
+}
+// 변경이력 상단: 메타어드민(쿠팡) 반영 성공/실패 상태 표시
+async function _loadMetaStatusBanner(){
+  var el=document.getElementById('metaStatusBanner');if(!el||!sbClient)return;
+  try{
+    var r=await sbClient.from('meta_upload_jobs').select('id,kind,week_start,status,result,updated_at').order('id',{ascending:false}).limit(8);
+    var rows=(r&&r.data)||[];
+    if(!rows.length){el.innerHTML='';return;}
+    var kmap={full:'전체',week:'주차별',changed:'변경분'};
+    var html=rows.map(function(j){
+      var ic=j.status==='done'?'✅ 성공':(j.status==='failed'?'❌ 실패':'⏳ 처리중');
+      var col=j.status==='done'?'#1c7a45':(j.status==='failed'?'#c62828':'#b26a00');
+      var wk=(j.week_start||'').replace(/^\d{4}-/,'');
+      var t='';try{t=new Date(j.updated_at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){}
+      var res=j.status==='failed'?('<span style="color:#c62828;font-size:11px"> · '+String(j.result||'').slice(0,50)+'</span>'):'';
+      return '<div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;flex-wrap:wrap"><b style="color:'+col+'">'+ic+'</b><b style="color:#33517a">'+(kmap[j.kind]||j.kind)+'</b><span style="color:#888">'+wk+'</span><span style="color:#aab;font-size:11px">'+t+'</span>'+res+'</div>';
+    }).join('');
+    el.innerHTML='<div style="background:#f4f8fd;border:1px solid #d9e6f5;border-radius:12px;padding:10px 12px"><div style="font-size:12px;font-weight:800;color:#33517a;margin-bottom:6px">📡 메타어드민 반영 상태 (최근 8건)</div>'+html+'</div>';
+  }catch(e){el.innerHTML='';}
 }
 
 function _mergeSchedLogs(shared,local){
@@ -6659,7 +6680,7 @@ async function _sxDoChanged(){
     var log=(typeof _mergeSchedLogs==='function')?_mergeSchedLogs(sharedLog,localLog):sharedLog;
     if(!Array.isArray(log))log=[];
     var scoped=log.filter(function(c){return weekDates[c.workDate];});
-    if(!scoped.length){var _sd=Array.from(new Set(log.map(function(c){return c.workDate;}).filter(Boolean))).sort().slice(-10).join(', ');alert('이 주차('+_sxWeekLabel(ws0)+')의 변경 건이 없습니다.\n\n전체 변경이력: '+log.length+'건\n변경된 날짜: '+(_sd||'없음')+'\n\n※ 변경분은 지금 보고 있는 주차의 변경만 담습니다. 변경한 날짜가 포함된 주차로 이동 후 눌러주세요.');if(st)st.textContent='';return;}
+    if(!scoped.length){if(!window._sxSilent){var _sd=Array.from(new Set(log.map(function(c){return c.workDate;}).filter(Boolean))).sort().slice(-10).join(', ');alert('이 주차('+_sxWeekLabel(ws0)+')의 변경 건이 없습니다.\n\n전체 변경이력: '+log.length+'건\n변경된 날짜: '+(_sd||'없음')+'\n\n※ 변경분은 지금 보고 있는 주차의 변경만 담습니다. 변경한 날짜가 포함된 주차로 이동 후 눌러주세요.');}if(st)st.textContent='';return;}
     // net 처리: (날짜|라우트)별 최초 oldDriver, 최종 newDriver
     var net={};
     scoped.forEach(function(c){var key=c.workDate+'|'+c.route;var at=c.at||'';if(!net[key]){net[key]={workDate:c.workDate,route:c.route,oldDriver:c.oldDriver||'',newDriver:c.newDriver||'',oldAt:at,newAt:at};}else{if(at>net[key].newAt){net[key].newDriver=c.newDriver||'';net[key].newAt=at;}if(at<net[key].oldAt){net[key].oldDriver=c.oldDriver||'';net[key].oldAt=at;}}});
@@ -6683,7 +6704,7 @@ async function _sxDoChanged(){
       if(c.oldDriver && norm_name_js(c.oldDriver)!==norm_name_js(curNew||'')){ if(_sxWorking(c.workDate,c.oldDriver)){skipHumu++;} else {aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,c.oldDriver,''),'휴무','','']);n++;} }
       if(curNew){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,curNew,''),_SX_CFG.status,rot,routeStr]);n++;}
     });
-    if(aoa.length<2){alert('순변경(net)이 없습니다. (원복된 변경만 있음)');if(st)st.textContent='';return;}
+    if(aoa.length<2){if(!window._sxSilent)alert('순변경(net)이 없습니다. (원복된 변경만 있음)');if(st)st.textContent='';return;}
     var wb=XLSX.utils.book_new();var sh=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
     sh['!cols']=[{wch:18},{wch:16},{wch:8},{wch:8},{wch:16},{wch:8},{wch:14},{wch:22}];
     for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}
@@ -6706,9 +6727,39 @@ function toggleEdit(){
     }
     if(allLocked){alert(_schedLockMsg(lastReason));return;}
   }
+  var _wasEdit=EDIT_MODE;
   EDIT_MODE=!EDIT_MODE;
   document.getElementById('mc').innerHTML=pgFullSched();
   requestAnimationFrame(initSchedScrollSync);
+  // ★ 수정 완료(편집 종료)이고 이번 세션에 변경이 있었으면 → 메타어드민 자동 반영 (팀장 포함)
+  if(_wasEdit && !EDIT_MODE && window._sxEditChanged){
+    window._sxEditChanged=false;
+    try{_autoMetaChanged(window._sxEditWk||SCHED_WK);}catch(e){}
+  }
+}
+// 수정 완료 시 그 주차의 변경분을 메타어드민에 자동 반영 (권한무관 — 자동 시스템 동작)
+function _autoMetaChanged(wk){
+  if(!sbClient)return;
+  var st=document.getElementById('sx-status');
+  if(st)st.textContent='📤 수정 내용 메타 자동 반영 준비…';
+  hcLoadXLSX(function(ok){
+    if(!ok){if(st)st.textContent='엑셀 모듈 로드 실패';return;}
+    (async function(){
+      var _svWk=SCHED_WK;
+      try{
+        if(wk)SCHED_WK=wk;
+        window._sxMetaCap=true;window._sxMetaB64='';window._sxSilent=true;
+        await _sxDoChanged();
+        window._sxMetaCap=false;window._sxSilent=false;
+        if(!window._sxMetaB64){if(st)st.textContent='📭 반영할 변경분이 없습니다';return;}
+        var jid=await _metaCreateJob('changed',SCHED_WK,window._sxMetaFname,window._sxMetaB64);
+        if(st)st.textContent='📤 수정 → 메타 자동 반영 요청됨 (#'+(jid||'')+') · 처리중…';
+        try{showToast('📤 수정 완료 → 메타어드민 자동 반영 요청 (서버 처리중)',true);}catch(e){}
+        if(jid)_metaPollJobs([jid],'수정 반영');
+      }catch(e){if(st)st.textContent='';}
+      finally{window._sxMetaCap=false;window._sxSilent=false;SCHED_WK=_svWk;}
+    })();
+  });
 }
 function colClass(di,todIdx){
   if(di===todIdx)return 'tod-col';
@@ -7002,6 +7053,7 @@ async function saveSplitAssign(){
   closeEditCell();
   await sbSaveSplit(ws,route,dt,allSame?null:share,mainDriver);
   try{_pushSharedSchedChange(dt,route,'',summary);}catch(e){}
+  window._sxEditChanged=true; window._sxEditWk=ws;   // 수정 완료 시 메타 자동반영용
   try{if(typeof schedRefresh==='function')schedRefresh();}catch(e){}
 }
 async function sbSaveSplit(ws,rr,dt,share,mainDriver){
@@ -7086,6 +7138,7 @@ function saveEditCell(){
   if(newName!==orig){
     try{_addSchedChange(EC_STATE.date,EC_STATE.route,orig,newName,CU?CU.name:'');}catch(e){}
     try{_pushSharedSchedChange(EC_STATE.date,EC_STATE.route,orig,newName);}catch(e){}
+    window._sxEditChanged=true; window._sxEditWk=EC_STATE.wk;   // 수정 완료 시 메타 자동반영용
   }
 }
 
