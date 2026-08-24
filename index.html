@@ -6568,7 +6568,7 @@ async function _metaCreateJob(kind,week,fname,b64){
 function metaUpload(kind){
   if(!(CU&&CU.role==='admin')){alert('관리자만 가능합니다.');return;}
   if(!sbClient){alert('서버 연결이 없습니다.');return;}
-  var _label={full:'전체 주차',week:'주차별',changed:'변경분'}[kind]||kind;
+  var _label={full:'전체 주차(다음 주차부터)',week:'주차별',changed:'변경분'}[kind]||kind;
   if(!confirm('메타어드민(쿠팡)에 ['+_label+'] 스케줄을 업로드 요청할까요?\n\n서버가 fly.coupang에 자동 반영합니다.'))return;
   var st=document.getElementById('sx-status');if(st)st.textContent='메타 업로드 준비…';
   hcLoadXLSX(function(ok){
@@ -6576,31 +6576,72 @@ function metaUpload(kind){
     (async function(){
       try{
         if(kind==='full'){
-          var keys=(typeof getWeekKeys==='function')?getWeekKeys():[SCHED_WK];
-          var _sv=SCHED_WK,n=0;
+          var _allKeys=(typeof getWeekKeys==='function')?getWeekKeys():[SCHED_WK];
+          var _tod=todStr();
+          // 당일 기준 '다음 주차부터'만 반영 (현재/과거 주차는 쿠팡에서 변경 불가)
+          var keys=_allKeys.filter(function(k){return AW[k]&&AW[k].s&&AW[k].s>_tod;});
+          if(!keys.length){if(st)st.textContent='';alert('당일 기준 다음 주차부터 반영할 스케줄이 없습니다.\n(현재/과거 주차는 쿠팡에서 변경할 수 없습니다)');return;}
+          var _sv=SCHED_WK,n=0,_jids=[];
           for(var i=0;i<keys.length;i++){
             SCHED_WK=keys[i];window._sxMetaCap=true;window._sxMetaB64='';
             try{await _sxDoList();}catch(e){}
             window._sxMetaCap=false;
-            if(window._sxMetaB64){try{await _metaCreateJob('week',keys[i],window._sxMetaFname,window._sxMetaB64);n++;}catch(e){}}
+            if(window._sxMetaB64){try{var _jf=await _metaCreateJob('week',keys[i],window._sxMetaFname,window._sxMetaB64);if(_jf)_jids.push(_jf);n++;}catch(e){}}
           }
           SCHED_WK=_sv;
-          if(st)st.textContent='✅ 전체 '+n+'개 주차 메타 업로드 요청됨';
-          try{showToast('✅ 전체 '+n+'개 주차 메타 반영 요청 (서버 처리중)',true);}catch(e){}
+          if(st)st.textContent='📤 전체 '+n+'개 주차 요청됨 (서버 처리중…)';
+          try{showToast('📤 전체 '+n+'개 주차 메타 반영 요청 (서버 처리중)',true);}catch(e){}
           try{_reRenderCurTab();}catch(e){}
+          _metaPollJobs(_jids,'전체 '+n+'개 주차');
         } else {
           window._sxMetaCap=true;window._sxMetaB64='';
           if(kind==='changed'){await _sxDoChanged();}else{await _sxDoList();}
           window._sxMetaCap=false;
           if(!window._sxMetaB64){if(st)st.textContent='';return;}
           var jid=await _metaCreateJob(kind==='changed'?'changed':'week',SCHED_WK,window._sxMetaFname,window._sxMetaB64);
-          if(st)st.textContent='✅ 메타 업로드 요청됨 (#'+(jid||'')+')';
-          try{showToast('✅ '+_label+' 메타 반영 요청 (서버 처리중)',true);}catch(e){}
+          if(st)st.textContent='📤 메타 업로드 요청됨 (#'+(jid||'')+') · 서버 처리중…';
+          try{showToast('📤 '+_label+' 메타 반영 요청 (서버 처리중)',true);}catch(e){}
+          if(jid)_metaPollJobs([jid],_label);
         }
       }catch(e){if(st)st.textContent='';alert('메타 업로드 요청 오류: '+((e&&e.message)||e));}
       finally{window._sxMetaCap=false;}
     })();
   });
+}
+// 메타 업로드 작업(들)의 서버 처리 상태를 폴링해 '성공 완료됨'까지 표시
+function _metaPollJobs(jids,label){
+  if(!sbClient||!jids||!jids.length)return;
+  var total=jids.length,tries=0,maxTries=80; // 80*3s ≈ 4분
+  var timer=setInterval(async function(){
+    tries++;
+    var st=document.getElementById('sx-status');
+    try{
+      var r=await sbClient.from('meta_upload_jobs').select('id,status,result').in('id',jids);
+      var rows=(r&&r.data)||[];
+      var done=rows.filter(function(x){return x.status==='done';}).length;
+      var failRows=rows.filter(function(x){return x.status==='failed';});
+      var failed=failRows.length;
+      var fin=done+failed;
+      if(st){
+        if(fin>=total){
+          if(failed===0)st.textContent='✅ '+label+' 성공 완료됨 ('+done+'/'+total+')';
+          else st.textContent='❌ '+label+' 실패 '+failed+(done?(' · 성공 '+done):'')+' (총 '+total+')';
+        }else{
+          st.textContent='📤 '+label+' 처리중… ('+fin+'/'+total+')';
+        }
+      }
+      if(fin>=total){
+        clearInterval(timer);
+        if(failed===0){try{showToast('✅ '+label+' 쿠팡 반영 성공 완료',true);}catch(e){}}
+        else{
+          var _emsg=(failRows[0]&&failRows[0].result)||'';
+          try{showToast('❌ '+label+' 반영 실패 ('+failed+'건)',false);}catch(e){}
+          try{alert('❌ 메타 반영 실패 ('+failed+'/'+total+')\n\n쿠팡 오류내역:\n'+(_emsg||'(사유 미확인 — 서버 로그 확인)')+'\n\n※ 대부분 기사 쿠팡 아이디가 비어있거나 잘못된 경우입니다. 기사정보에서 아이디를 채워주세요.');}catch(e){}
+        }
+      }
+    }catch(e){}
+    if(tries>=maxTries){clearInterval(timer);if(st&&st.textContent.indexOf('완료')<0)st.textContent='⌛ '+label+' 상태 확인 지연 · 서버 로그 확인 필요';}
+  },3000);
 }
 function schedDownloadChanged(){if(!(CU&&CU.role==='admin'))return;var st=document.getElementById('sx-status');if(st)st.textContent='엑셀 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='엑셀 모듈 로드 실패';return;}_sxDoChanged();});}
 async function _sxDoChanged(){
