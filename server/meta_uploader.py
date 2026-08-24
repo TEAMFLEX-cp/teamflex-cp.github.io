@@ -218,19 +218,28 @@ def upload(file_path, target_week=None, kind=None):
                 rz = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/초\\s*기\\s*화/.test(x.textContent||''));"
                             "if(!b)return null;const r=b.getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};})()")
                 if rz:
-                    _rclick_xy(rz["x"], rz["y"]); log("초기화 클릭 (주차별/전체 전체교체)"); time.sleep(1.5)
+                    _rclick_xy(rz["x"], rz["y"]); log("초기화 클릭 (주차별/전체 전체교체)"); time.sleep(1.8)
                     # 초기화 확인 다이얼로그가 뜨면 확인
-                    cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|예|네|초기화)$/.test((x.textContent||'').trim())||/초기화하시겠|비우시겠/.test(x.textContent||''));if(b){b.click();return 1;}return 0;})()")
-                    time.sleep(2)
-                    # ★ 초기화 후 반드시 '스케줄 저장하기'로 빈 상태를 저장(커밋)한 뒤 업로드해야 반영됨
+                    _cf = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|예|네|초기화)$/.test((x.textContent||'').trim())||/초기화하시겠|비우시겠/.test(x.textContent||''));if(b){b.click();return (b.textContent||'').trim();}return 'NO_CONFIRM';})()")
+                    log("초기화 확인창: " + str(_cf)); time.sleep(2.5)
+                    cdp.shot("/tmp/meta_14_reset.png")
+                    try:
+                        _bt = cdp.js("(()=>[...document.querySelectorAll('button')].map(b=>((b.textContent||'').replace(/\\s+/g,'').slice(0,10))+(b.disabled?'#DIS':'')).filter(function(s){return s&&s!=='#DIS';}).slice(0,40))()")
+                        log("초기화후 버튼상태: " + str(_bt))
+                    except Exception: pass
+                    # ★ 초기화 후 '스케줄 저장하기'로 빈 상태를 저장(커밋)한 뒤 업로드
                     sv0 = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/스케줄\\s*저장/.test(x.textContent||''));"
-                                 "if(!b)return null;const r=b.getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)};})()")
-                    if sv0:
-                        _rclick_xy(sv0["x"], sv0["y"]); log("초기화 후 '스케줄 저장하기' 클릭"); time.sleep(2)
-                        cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|저장|저장하기|예|네)$/.test((x.textContent||'').trim())||/저장하시겠|확인했습니다/.test(x.textContent||''));if(b){b.click();return 1;}return 0;})()")
-                        time.sleep(3)
+                                 "if(!b)return {found:false};const dis=b.disabled||b.getAttribute('disabled')!=null||/disabled/.test(String(b.className));"
+                                 "const r=b.getBoundingClientRect();return {found:true,x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2),dis:!!dis};})()")
+                    log("스케줄저장 버튼: " + str(sv0))
+                    if sv0 and sv0.get("found") and not sv0.get("dis"):
+                        _rclick_xy(sv0["x"], sv0["y"]); log("초기화후 '스케줄 저장하기' 클릭"); time.sleep(2.5)
+                        _sc = cdp.js("(()=>{const b=[...document.querySelectorAll('button')].find(x=>/^(확인|저장|저장하기|예|네)$/.test((x.textContent||'').trim())||/저장하시겠|확인했습니다/.test(x.textContent||''));if(b){b.click();return (b.textContent||'').trim();}return 'NONE';})()")
+                        log("저장 확인창: " + str(_sc)); time.sleep(3.5)
+                        cdp.shot("/tmp/meta_14b_saved.png")
                     else:
-                        log("초기화 후 '스케줄 저장하기' 버튼 못 찾음")
+                        log("[주의] 스케줄 저장하기 클릭 못함(없음/비활성) → " + str(sv0))
+                        cdp.shot("/tmp/meta_14b_saved.png")
                 else:
                     log("초기화 버튼 못 찾음 — 초기화 없이 진행")
             cdp.shot("/tmp/meta_15_ready.png")
