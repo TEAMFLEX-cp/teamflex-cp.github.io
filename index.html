@@ -274,7 +274,7 @@ table.ft th.sun-col{background:#f8bbd0;color:#880e4f}
 @keyframes sxSpin{to{transform:rotate(360deg)}}
 .sxEditInner{position:relative;display:flex;align-items:center;justify-content:center;gap:5px;background:#eaf3ff;color:#1a3a6b;border-radius:10px;padding:9px 2px;font-size:13px;font-weight:900}
 .sxEditInner.on{background:linear-gradient(135deg,#2e7d32,#1b5e20);color:#fff}
-.sxLog{flex:1;position:relative;border:none;border-radius:11px;padding:10px 2px;font-size:11.5px;font-weight:800;color:#fff;background:linear-gradient(135deg,#5a6b78,#3f515c);cursor:pointer;box-shadow:0 3px 8px rgba(63,81,92,.4);transition:transform .12s ease}
+.sxLog{flex:1;min-width:0;position:relative;border:none;border-radius:11px;padding:10px 2px;font-size:11.5px;font-weight:800;color:#fff;white-space:nowrap;background:linear-gradient(135deg,#5a6b78,#3f515c);cursor:pointer;box-shadow:0 3px 8px rgba(63,81,92,.4);transition:transform .12s ease}
 .sxLog:active{transform:scale(.94)}
 .sxBadge{position:absolute;top:-6px;right:-3px;min-width:17px;height:17px;line-height:17px;background:#e53935;color:#fff;border-radius:9px;font-size:9px;font-weight:900;padding:0 4px;box-shadow:0 0 0 2px #fff;animation:sxPulse 1.3s ease-in-out infinite}
 @keyframes sxPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
@@ -6752,12 +6752,12 @@ function pgFullSched(){
   var _canEd=(typeof canEdit==='function')?canEdit():(CU&&CU.role==='admin');
   var _isAdm=CU&&CU.role==='admin';
   var _unL=(typeof _unreadSchedLog==='function')?_unreadSchedLog():0;
-  var _permH=_isAdm?('<button class="sxLog" style="flex:0 0 auto;padding:0 11px;background:linear-gradient(135deg,#7b4fd6,#5a2fb0)" onclick="openSchedPermPopup()">⚙️ 수정권한</button>'):'';
-  var _editH=_canEd?('<div class="sxEditWrap" onclick="toggleEdit()"><div class="sxEditInner'+(EDIT_MODE?' on':'')+'">'+(EDIT_MODE?'✔️ 완료':'✏️ 수정')+'</div></div>'):'';
-  var _logH=_isAdm?('<button class="sxLog" onclick="go(\'sl\')">📋 변경이력'+(_unL?'<span class="sxBadge">'+(_unL>9?'9+':_unL)+'</span>':'')+'</button>'):'';
-  var _metaFullH=_isAdm?('<button class="sxLog" style="flex:0 0 auto;padding:0 10px;background:linear-gradient(135deg,#e0563b,#b83a22)" onclick="metaUpload(\'full\')" title="전체 주차 쿠팡 메타 반영">⬆️ 전체</button>'):'';
-  var _metaWeekH=_isAdm?('<button class="sxLog" style="flex:0 0 auto;padding:0 10px;background:linear-gradient(135deg,#1e9e63,#127a48)" onclick="metaUpload(\'week\')" title="이번 주차 쿠팡 메타 반영">⬆️ 주차별</button>'):'';
-  var _sxAct=(_permH||_editH||_logH)?('<div style="'+_wrap+';display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">'+_permH+_metaFullH+_metaWeekH+_editH+_logH+'</div>'):'';
+  var _permH=_isAdm?('<button class="sxLog" style="flex:1 1 0;padding:9px 3px;background:linear-gradient(135deg,#7b4fd6,#5a2fb0)" onclick="openSchedPermPopup()">⚙️ 권한</button>'):'';
+  var _editH=_canEd?('<div class="sxEditWrap" style="flex:1.5 1 0" onclick="toggleEdit()"><div class="sxEditInner'+(EDIT_MODE?' on':'')+'">'+(EDIT_MODE?'✔️ 완료':'✏️ 수정')+'</div></div>'):'';
+  var _logH=_isAdm?('<button class="sxLog" style="flex:1 1 0;padding:9px 3px" onclick="go(\'sl\')">📋 이력'+(_unL?'<span class="sxBadge">'+(_unL>9?'9+':_unL)+'</span>':'')+'</button>'):'';
+  var _metaFullH=_isAdm?('<button class="sxLog" style="flex:1 1 0;padding:9px 3px;background:linear-gradient(135deg,#e0563b,#b83a22)" onclick="metaUpload(\'full\')" title="전체 주차 쿠팡 메타 반영">⬆️ 전체</button>'):'';
+  var _metaWeekH=_isAdm?('<button class="sxLog" style="flex:1.2 1 0;padding:9px 3px;background:linear-gradient(135deg,#1e9e63,#127a48)" onclick="metaUpload(\'week\')" title="이번 주차 쿠팡 메타 반영">⬆️ 주차별</button>'):'';
+  var _sxAct=(_permH||_editH||_logH)?('<div style="'+_wrap+';display:flex;gap:5px;margin-bottom:8px;flex-wrap:nowrap">'+_permH+_metaFullH+_metaWeekH+_editH+_logH+'</div>'):'';
   var h='<div class="sched-sticky-nav">'+_sxExp+_sxAct+nav+'</div>';
 
   // Detect today / sat / sun columns
