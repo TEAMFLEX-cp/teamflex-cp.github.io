@@ -162,7 +162,11 @@ function render(){var s=document.getElementById('scr');
 function calHtml(){
   var first=new Date(CY,CM-1,1),startW=first.getDay(),days=new Date(CY,CM,0).getDate();
   var h='<div class="note"><b style="color:#7b1fa2">■</b> 요청(보라 배경) · <b style="color:#d4a800">◎</b> 지원가능(금색 회전 테두리). 날짜를 눌러 상세/등록.</div>';
-  h+='<div class="cal"><div class="caltop"><b>'+CY+'년 '+CM+'월</b></div>';
+  h+='<div class="cal"><div class="caltop" style="display:flex;align-items:center;justify-content:center;gap:16px">'
+    +'<span onclick="bpMonthNav(-1)" style="cursor:pointer;font-size:24px;font-weight:900;color:#1565c0;padding:2px 14px;user-select:none;line-height:1">‹</span>'
+    +'<b style="min-width:120px;text-align:center">'+CY+'년 '+CM+'월</b>'
+    +'<span onclick="bpMonthNav(1)" style="cursor:pointer;font-size:24px;font-weight:900;color:#1565c0;padding:2px 14px;user-select:none;line-height:1">›</span>'
+    +'</div>';
   h+='<div class="cw">'+['일','월','화','수','목','금','토'].map(function(w,i){return '<div style="color:'+(i===0?'#e53935':(i===6?'#1565c0':'#33475b'))+'">'+w+'</div>';}).join('')+'</div><div class="cg">';
   for(var p=0;p<startW;p++)h+='<div></div>';
   for(var d=1;d<=days;d++){var ds=dstr(CY,CM,d);var td=ds===TODAY;
@@ -179,6 +183,12 @@ function calHtml(){
   if(!tf.length)h+='<div class="note">없음</div>';
   tf.forEach(function(r){h+=reqCard(r);});
   return h;
+}
+function bpMonthNav(delta){
+  CM+=delta;
+  if(CM<1){CM=12;CY--;}else if(CM>12){CM=1;CY++;}
+  page='cal';sub=null;
+  render();
 }
 function openDay(ds){curDate=ds;sub='day';pushHist();render();}
 function dayHtml(){
