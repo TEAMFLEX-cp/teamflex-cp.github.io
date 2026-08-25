@@ -2708,8 +2708,9 @@ async function pushNotify(feat, opts){
   for(var i=0;i<always.length;i++){ var nm=String(always[i]).trim(); if(!nm||seen[nm])continue; if(_quiet&&!_QUIET_EXEMPT[nm])continue; seen[nm]=1; _pushSend({title:title,body:body,target_name:nm,data:data}); sent=true; }
   // 2) 역할 대상 (설정 없으면 defaultRoles로 폴백 → 기존 동작 보존)
   if(opts.roleBroadcast!==false && !_quiet){
-    var kroles=notifRolesFor(feat)||[];
-    if(!kroles.length && opts.defaultRoles) kroles=opts.defaultRoles.slice();
+    var kroles;
+    if(opts.forceRoles){ kroles=opts.forceRoles.slice(); }   // ★ 강제 역할 지정 → 저장된 설정 무시(예: 승인요청은 기사 제외 보장)
+    else { kroles=notifRolesFor(feat)||[]; if(!kroles.length && opts.defaultRoles) kroles=opts.defaultRoles.slice(); }
     kroles=kroles.concat(opts.extraRoles||[]);
     var er=_edgeRolesFromK(kroles);
     if(er.length){ _pushSend({title:title,body:body,target_roles:er,data:data}); sent=true; }
@@ -10942,7 +10943,8 @@ function mdPushToDriver(driverName,title,body,caseId){
   try{pushNotify('misdelivery',{always:[driverName],roleBroadcast:false,dedupeKey:'md:'+String(caseId)+':'+driverName,title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}});}catch(e){console.warn('[mdPushToDriver]',e);}
 }
 function mdPushToLeaders(title,body,caseId){
-  try{pushNotify('misdelivery',{roleBroadcast:true,defaultRoles:['총괄','팀장'],dedupeKey:'mdappr:'+String(caseId),title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}});}catch(e){console.warn('[mdPushToLeaders]',e);}
+  // 기사 답변 접수(승인요청) → 팀장·총괄·관리자만. 일반 기사·조장에게는 절대 발송 안 함(forceRoles).
+  try{pushNotify('misdelivery',{roleBroadcast:true,forceRoles:['총괄','팀장','관리자'],dedupeKey:'mdappr:'+String(caseId),title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}});}catch(e){console.warn('[mdPushToLeaders]',e);}
 }
 // 기타/미지정 오배송 건을 특정 기사에게 지정 (관리자·팀장 전용)
 async function mdAssignDriver(caseId){
