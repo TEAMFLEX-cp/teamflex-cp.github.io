@@ -119,6 +119,7 @@ function kToday(){var d=new Date(Date.now()+9*3600000);return d.getUTCFullYear()
 var TODAY=kToday(),CY=+TODAY.slice(0,4),CM=+TODAY.slice(5,7),TD=+TODAY.slice(8,10);
 function dstr(y,m,d){return y+'-'+pad(m)+'-'+pad(d);}
 function dBadge(ds){if(ds===TODAY)return '<span class="badge b-today">당일</span>';var p=ds.split('-');return '<span class="badge b-date">'+(+p[1])+'월'+(+p[2])+'일</span>';}
+function isPastDate(ds){return !!ds && String(ds) < TODAY;}  // 오늘 이전 = 지난 날짜(등록/지원 불가)
 function typeBadge(t){var m={'아파트':['#e3f2fd','#1565c0'],'지번':['#fff4e6','#e65100'],'아파트+지번':['#f6ecfb','#7b1fa2'],'ALL':['#e9f7ee','#2e7d32']}[t]||['#eceff1','#607d8b'];return '<span class="tbig" style="background:'+m[0]+';color:'+m[1]+'">'+t+'</span>';}
 var slots=[];
 // state: joined(신청)/invited(협업제안)/accepted(수락)/declined(거절)/picked(업무확정)
@@ -196,7 +197,9 @@ function dayHtml(){
   var sp=reqs.filter(function(r){return r.mode==='특정일'&&r.date===curDate&&r.status!=='rejected';});
   var p=curDate.split('-');
   var h='<div class="row"><span onclick="sub=null;render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">'+(+p[1])+'월 '+(+p[2])+'일</b>'+dBadge(curDate)+'</div>';
-  h+='<div style="margin:12px 0"><button class="btn b2" onclick="startAvailReg()">＋ 이 날 내 지원 가능 등록</button></div>';
+  h+= isPastDate(curDate)
+    ? '<div class="note" style="margin:12px 0;color:#b26a00;font-weight:800">⚠ 지난 날짜에는 지원 등록/요청을 할 수 없습니다.</div>'
+    : '<div style="margin:12px 0"><button class="btn b2" onclick="startAvailReg()">＋ 이 날 내 지원 가능 등록</button></div>';
   if(sp.length){h+='<div style="font-size:12.5px;font-weight:900;color:#0d3b66;margin:8px 2px 8px">📌 이 날 특정일 백업 요청</div>';sp.forEach(function(r){h+=reqCard(r);});}
   h+='<div style="font-size:12.5px;font-weight:900;color:#0d3b66;margin:14px 2px 8px">🙌 지원 가능 기사 (익명)</div>';
   if(!list.length)h+='<div class="note">없음</div>';
@@ -209,7 +212,7 @@ function dayHtml(){
   });
   return h;
 }
-function startAvailReg(){draft={type:'아파트',qty:'',unit:APTP['아파트']};sub='availReg';pushHist();render();}
+function startAvailReg(){if(isPastDate(curDate)){alert('지난 날짜에는 지원 등록을 할 수 없습니다.');return;}draft={type:'아파트',qty:'',unit:APTP['아파트']};sub='availReg';pushHist();render();}
 function aStep(d){draft.unit=Math.max(0,(draft.unit||0)+d);var i=document.getElementById('au');if(i)i.value=draft.unit;}
 function availRegHtml(){
   var h='<div class="row"><span onclick="sub=\'day\';render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">지원 가능 등록</b>'+dBadge(curDate)+'</div>';
@@ -340,7 +343,7 @@ function registerHtml(){
   h+='<div class="calc" id="calc-box">'+calcInner()+'</div><div style="margin-top:14px"><button class="btn b1" onclick="submitReq()">✅ 요청 등록</button></div>';
   return h;
 }
-function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;if(draft._editId){var ex=reqs.find(function(x){return x.id===draft._editId;})||{};r.id=draft._editId;r.supporters=ex.supporters||[];r.status=ex.status||'open';bpSaveReq(r);go('mine');toast('✏️ 요청 수정됨');}else{bpNewReq(r);bpBroadcast('📋 새 백업 요청',ME+'님이 '+bpLabel(r)+' 백업을 요청했습니다.');go('mine');toast('📨 요청 등록·전체 알림');}}
+function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}if(isPastDate(draft.date)){toast('지난 날짜에는 요청 등록을 할 수 없습니다.');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;if(draft._editId){var ex=reqs.find(function(x){return x.id===draft._editId;})||{};r.id=draft._editId;r.supporters=ex.supporters||[];r.status=ex.status||'open';bpSaveReq(r);go('mine');toast('✏️ 요청 수정됨');}else{bpNewReq(r);bpBroadcast('📋 새 백업 요청',ME+'님이 '+bpLabel(r)+' 백업을 요청했습니다.');go('mine');toast('📨 요청 등록·전체 알림');}}
 // ── 역지원 등록 ──
 function startSupReg(){draft={who:'',route:'',extra:0,qty:'',settle:'정산일',acctShare:false};sub='supReg';pushHist();render();}
 function sExtraStep(d){draft.extra=Math.max(0,(draft.extra||0)+d);render();}
