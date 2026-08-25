@@ -1827,7 +1827,7 @@ async function ctShareNow(names,type){ var ok=await ctaSet(names,type,'pending')
 async function ctNotifyOnce(names,type){
   if(!sbClient)return;var arr=Array.isArray(names)?names:[names];if(!arr.length)return;
   var lbl={wc:'위·수탁 계약서',badge_new:'배넘버 신규 서류',badge_renew:'배넘버 재허가 서류'}[type]||'계약서';
-  for(var i=0;i<arr.length;i++){try{await sendPushToAll('📄 '+lbl+' 작성 요청',arr[i]+'님, '+lbl+'를 작성해 주세요.',null,arr[i]);}catch(e){}}
+  for(var i=0;i<arr.length;i++){if(!pushGateAllows('contract',arr[i]))continue;try{await sendPushToAll('📄 '+lbl+' 작성 요청',arr[i]+'님, '+lbl+'를 작성해 주세요.',null,arr[i]);}catch(e){}}
 }
 window.ctNotifyOnce=ctNotifyOnce;
 async function ctReject(name,type){
@@ -2613,6 +2613,23 @@ window.loadNotifTargets=loadNotifTargets;
 function notifCfgOf(feat){return (_notifTargets&&_notifTargets[feat])||{};}
 function notifRolesFor(feat){var c=notifCfgOf(feat);var r=c.roles||{};var out=[];['총괄','팀장','조장','기사'].forEach(function(k){if(r[k])out.push(k);});return out;}
 window.notifRolesFor=notifRolesFor;
+// ★ 개인(해당 인원) 발송 게이트: 그 사람의 역할이 이 기능에서 '체크'돼 있어야 발송 허용. 관리자/대표는 항상. 설정 없으면 허용(기존 보존).
+function pushGateAllows(feat, name){
+  try{
+    var cfg=notifCfgOf(feat); if(cfg&&cfg.on===false)return false;   // 이 탭 알림 사용 꺼짐
+    var roles=notifRolesFor(feat);
+    if(!roles||!roles.length)return true;
+    var db=(typeof getDB==='function')?(getDB()||{}):{};
+    var u=db[name]; if(!u){for(var k in db){if(db[k]&&db[k].name===name){u=db[k];break;}}}
+    var r=(u&&u.role)||'';
+    if(r==='admin'||r==='대표')return true;
+    if(r==='leader')return roles.indexOf('총괄')>=0||roles.indexOf('팀장')>=0;
+    if(r==='sub')return roles.indexOf('조장')>=0;
+    if(r==='driver')return roles.indexOf('기사')>=0;
+    return true;
+  }catch(e){return true;}
+}
+window.pushGateAllows=pushGateAllows;
 var NOTIF_LABEL={ann:'공지사항',misdelivery:'오배송',fresh:'신선',tq:'팀수량',requests:'각종요청',settle:'정산',pback:'프레시백 소명자료',loss:'분실차감',weightfactor:'가중요인',earlymonth:'월초예상물량',sla:'SLA',healthcheck:'건강체크',schedule:'스케줄',sched:'스케줄',emergency:'비상연락망',contract:'계약서 관리'};
 var NOTIF_NOTE={
   ann:'전체 대상. 아래에서 체크한 역할에게 발송됩니다.',
@@ -8676,6 +8693,7 @@ async function sendSettleNotif(){
   var sent=0;var noSub=0;var failed=0;
   for(var i=0;i<drivers.length;i++){
     var driverName=drivers[i];
+    if(!pushGateAllows('settle',driverName)){continue;}   // 정산 역할 게이트(체크 해제된 역할 제외)
     if(statusEl)statusEl.textContent=(i+1)+'/'+drivers.length+'명 발송 중...';
     try{
       var r=await fetch(PUSH_EDGE_URL,{
@@ -10940,6 +10958,7 @@ function mdRenderModeBar(mode){
 
 // ── 푸시 알림 헬퍼 ────────────────────────────────────────────────────
 function mdPushToDriver(driverName,title,body,caseId){
+  if(!pushGateAllows('misdelivery',driverName))return;   // 해당 기사 역할 게이트(기사 체크 해제 시 제외)
   try{pushNotify('misdelivery',{always:[driverName],roleBroadcast:false,dedupeKey:'md:'+String(caseId)+':'+driverName,title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}});}catch(e){console.warn('[mdPushToDriver]',e);}
 }
 function mdPushToLeaders(title,body,caseId){
@@ -13541,6 +13560,8 @@ async function lossConfirm(wb){
 }
 async function lossPush(name){
   if(!name) return;
+  if(!pushGateAllows('loss',name)) return;   // 분실차감 역할 게이트(체크 해제된 역할 제외)
+  if(typeof isQuietHour==='function'&&isQuietHour()&&!(window._QUIET_EXEMPT&&_QUIET_EXEMPT[name])) return;  // 야간 금지
   try{ await fetch(PUSH_EDGE_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({title:'📉 분실 차감 확인 요청',body:'분실·파손 차감 내역을 확인하고 확정해주세요.',driver_name:name,data:{url:'/?tab=pb',type:'loss'}})}); }catch(e){}
 }
 async function lossPushOne(name){ await lossPush(name); try{showToast('✅ '+name+' 기사에게 푸시 전송',true);}catch(e){alert('✅ '+name+' 기사에게 푸시를 보냈습니다.');} }
@@ -13884,6 +13905,7 @@ async function pbNotifyPending(){
   var ok=0;
   for(var i=0;i<names.length;i++){
     var nm=names[i];
+    if(!pushGateAllows('pback',nm))continue;   // 프레시백 소명 역할 게이트
     try{
       var r=await fetch(PUSH_EDGE_URL,{method:'POST',
         headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
@@ -16163,7 +16185,7 @@ async function autoLogFreshPddMiss(missWorkers,todayStr,workerGroups,wPdd,wRoute
 /* ══════════ PDD MISS (사쿠라 버튼 → 팝업 / 정산월 26~25 / 역할 익명 / 상태·확정·삭제 / 공유활성화) ══════════ */
 var _PDD={log:[],share:false,month:0};
 var _PDD_D=100000;
-async function _pddPush(driverName,title,body){ try{ if(!driverName||!PUSH_EDGE_URL)return; await fetch(PUSH_EDGE_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({title:title,body:body,driver_name:driverName,data:{url:'/?tab=fr',type:'pdd_miss'}})}); }catch(e){} }
+async function _pddPush(driverName,title,body){ try{ if(!driverName||!PUSH_EDGE_URL)return; if(!pushGateAllows('fresh',driverName))return; if(typeof isQuietHour==='function'&&isQuietHour()&&!(window._QUIET_EXEMPT&&_QUIET_EXEMPT[driverName]))return; await fetch(PUSH_EDGE_URL,{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({title:title,body:body,driver_name:driverName,data:{url:'/?tab=fr',type:'pdd_miss'}})}); }catch(e){} }
 function _pddPeriod(off){
   var d=new Date(Date.now()+9*3600000);
   var y=d.getUTCFullYear(), mo=d.getUTCMonth(), day=d.getUTCDate();
