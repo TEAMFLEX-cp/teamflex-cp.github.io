@@ -13261,6 +13261,7 @@ async function _slaDo(file){var st=document.getElementById('sla-upl-status');
     var k0=Object.keys(months)[0];
     if(st)st.textContent='✅ 완료 · '+Object.keys(months).map(function(k){return k+'월';}).join(', ')+' ('+months[k0].routes.length+'개 라우트)';
     SLA_D=payload;SLA_VIEW='month';SLA_SEL=slaLatest();slaRender();try{showToast('✅ SLA 업로드 완료',true);}catch(e){}
+    try{pushNotify('sla',{roleBroadcast:true,defaultRoles:['총괄','팀장','조장','기사'],dedupeKey:'sla:'+(payload.updated||Date.now()),title:'📈 SLA 점수 업데이트',body:'새 SLA 점수가 공유됐습니다. 리스트확인 탭에서 확인하세요.',data:{url:'/?tab=pb'}});}catch(e){}
   }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
 function slaUndo(){_uplUndo('sla_data','sla_data_backup',slaInit);}
 /* ---- 월초 예상 물량 파서 ---- */
@@ -13296,6 +13297,7 @@ async function _emvDo(file){var st=document.getElementById('emv-upl-status');
     await _uplSaveBackup('early_month_volume','early_month_volume_backup',payload);
     if(st)st.textContent='✅ 완료 · '+d.dates.length+'일 · '+d.routes.length+'개 라우트';
     EMV_D=payload;EMV_VIEW='all';emvRender();try{showToast('✅ 월초물량 업로드 완료',true);}catch(e){}
+    try{pushNotify('earlymonth',{roleBroadcast:true,defaultRoles:['총괄','팀장','조장','기사'],dedupeKey:'emv:'+(payload.updated||Date.now()),title:'📦 월초 예상물량 업데이트',body:'새 월초 예상물량이 공유됐습니다. 리스트확인 탭에서 확인하세요.',data:{url:'/?tab=pb'}});}catch(e){}
   }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
 function emvUndo(){_uplUndo('early_month_volume','early_month_volume_backup',emvInit);}
 /* ---- 가중요인 파서 ---- */
@@ -13324,6 +13326,7 @@ async function _wfDo(file){var st=document.getElementById('wf-upl-status');
     await _uplSaveBackup('weight_factor_data','weight_factor_data_backup',payload);
     if(st)st.textContent='✅ 완료 · '+blocks.length+'개 주차블록 · '+blocks[0].routes.length+'개 라우트';
     WF_D=payload;wfRender();try{showToast('✅ 가중요인 업로드 완료',true);}catch(e){}
+    try{pushNotify('weightfactor',{roleBroadcast:true,defaultRoles:['총괄','팀장','조장','기사'],dedupeKey:'wf:'+(payload.updated||Date.now()),title:'⚖️ 가중요인 업데이트',body:'새 가중요인 자료가 공유됐습니다. 리스트확인 탭에서 확인하세요.',data:{url:'/?tab=pb'}});}catch(e){}
   }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
 function wfUndo(){_uplUndo('weight_factor_data','weight_factor_data_backup',wfInit);}
 function pgSlaPage(){
