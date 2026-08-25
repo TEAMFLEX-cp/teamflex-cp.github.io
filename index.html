@@ -10943,8 +10943,11 @@ function mdPushToDriver(driverName,title,body,caseId){
   try{pushNotify('misdelivery',{always:[driverName],roleBroadcast:false,dedupeKey:'md:'+String(caseId)+':'+driverName,title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}});}catch(e){console.warn('[mdPushToDriver]',e);}
 }
 function mdPushToLeaders(title,body,caseId){
-  // 기사 답변 접수(승인요청) → 팀장·총괄·관리자만. 일반 기사·조장에게는 절대 발송 안 함(forceRoles).
-  try{pushNotify('misdelivery',{roleBroadcast:true,forceRoles:['총괄','팀장','관리자'],dedupeKey:'mdappr:'+String(caseId),title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}});}catch(e){console.warn('[mdPushToLeaders]',e);}
+  // 승인요청 = 총괄·팀장 (단, 설정에서 체크된 역할만 = 게이트 존중) + 관리자는 항상 수신. 기사·조장에는 절대 안 감.
+  var _chk=(typeof notifRolesFor==='function'?(notifRolesFor('misdelivery')||[]):[]);
+  var _roles=['총괄','팀장'].filter(function(r){return _chk.indexOf(r)>=0;});
+  _roles.push('관리자');
+  try{pushNotify('misdelivery',{roleBroadcast:true,forceRoles:_roles,dedupeKey:'mdappr:'+String(caseId),title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}});}catch(e){console.warn('[mdPushToLeaders]',e);}
 }
 // 기타/미지정 오배송 건을 특정 기사에게 지정 (관리자·팀장 전용)
 async function mdAssignDriver(caseId){
