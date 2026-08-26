@@ -10762,7 +10762,7 @@ async function mdSendReply(caseId){
       }
     }
     var caseData=_mdCases.find(function(c){return c.id===caseId;});
-    if(caseData){mdPushToLeaders('📋 기사 답변 접수',CU.name+' 기사 답변 완료 ('+(caseData.waybill_no||'')+')',caseId);}
+    if(caseData){mdPushToLeaders('📋 승인 요청',CU.name+' 기사 답변 완료 · 승인 대기 ('+(caseData.waybill_no||'')+')',caseId);}
   }catch(e){
     console.error('[mdSendReply]',e);alert('전송 실패: '+e.message);
     if(btn){btn.disabled=false;btn.textContent='💬 답변 전송';}
