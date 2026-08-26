@@ -10843,7 +10843,7 @@ async function mdApproveReply(replyId,caseId){
     var caseDataA=_mdCases.find(function(c){return c.id===caseId;});
     if(caseDataA){
       mdPushToDriver(caseDataA.driver_name,'✅ 오배송 처리완료','팀장이 답변을 승인했습니다.',caseId);
-      mdPushToLeaders('✅ 오배송 승인완료',CU.name+' 승인 처리 ('+(caseDataA.waybill_no||'')+')',caseId);
+      // [제거] 승인완료(승인처리) 리더 푸시 — 불필요한 중복 알림이라 발송 안 함
     }
     await mdLoadCases();
   }catch(e){console.error('[mdApproveReply]',e);alert('승인 실패: '+e.message);}
@@ -10962,10 +10962,10 @@ function mdPushToDriver(driverName,title,body,caseId){
   try{pushNotify('misdelivery',{always:[driverName],roleBroadcast:false,dedupeKey:'md:'+String(caseId)+':'+driverName,title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_update'}});}catch(e){console.warn('[mdPushToDriver]',e);}
 }
 function mdPushToLeaders(title,body,caseId){
-  // 승인요청 = 총괄·팀장 (단, 설정에서 체크된 역할만 = 게이트 존중) + 관리자는 항상 수신. 기사·조장에는 절대 안 감.
+  // 승인요청/기사답변 = 총괄·팀장만 (설정 체크된 역할). 관리자·기사·조장 제외(관리자는 앱에서 확인).
   var _chk=(typeof notifRolesFor==='function'?(notifRolesFor('misdelivery')||[]):[]);
   var _roles=['총괄','팀장'].filter(function(r){return _chk.indexOf(r)>=0;});
-  _roles.push('관리자');
+  if(!_roles.length)_roles=['총괄','팀장'];
   try{pushNotify('misdelivery',{roleBroadcast:true,forceRoles:_roles,dedupeKey:'mdappr:'+String(caseId),title:title,body:body,data:{url:'/?tab=md',caseId:String(caseId),type:'misdelivery_reply'}});}catch(e){console.warn('[mdPushToLeaders]',e);}
 }
 // 기타/미지정 오배송 건을 특정 기사에게 지정 (관리자·팀장 전용)
@@ -11534,7 +11534,7 @@ async function mdApproveLatestReply(caseId){
       if(cD){
         cD.status='approved';
         mdPushToDriver(cD.driver_name,'✅ 오배송 처리완료','팀장이 답변을 승인했습니다.',caseId);
-        mdPushToLeaders('✅ 오배송 승인완료',CU.name+' 승인 처리 ('+(cD.waybill_no||'')+')',caseId);
+        // [제거] 승인완료(승인처리) 리더 푸시 — 불필요한 중복 알림이라 발송 안 함
       }
       await mdLoadCases();
     }else{
