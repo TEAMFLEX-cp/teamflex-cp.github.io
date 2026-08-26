@@ -3189,13 +3189,8 @@ function _queueSchedPush(workDate, route, oldDriver, newDriver){
     var body=lines.join('\n');
     var annId='sched_'+Date.now();
 
-    // ★ 수신 대상: 관리자·팀장만 전체, 해당 기사(oldDriver·newDriver)는 개인 발송
-    var db=getDB();
+    // ★ 수신 대상: 해당 담당자(기존 담당 + 새 담당)에게만. 관리자·총괄·팀장에게는 푸시 안 함(변경이력/앱에서 확인).
     var targets=new Set();
-    Object.keys(db).forEach(function(nm){
-      var u=db[nm];
-      if(u&&(u.role==='admin'||u.role==='leader'))targets.add(nm);
-    });
     changes.forEach(function(c){
       if(c.oldDriver)targets.add(c.oldDriver);
       if(c.newDriver)targets.add(c.newDriver);
