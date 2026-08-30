@@ -9264,18 +9264,21 @@ async function loadBadgeData(){
   if(!_hcDoneSet)_hcDoneSet={};if(!_inspMap)_inspMap={};
   return;
 }
+// 하루가 '처리됨'인지: 휴무(off) · 명시적 done · 점검항목(items) 입력됨 중 하나면 완료로 인정
+// (실제 저장 형태가 {off:false,items:{...}} 라 done 필드가 없음 → items 채워졌으면 점검완료로 본다)
+function _inspHandled(dd){ return !!(dd && (dd.done || dd.off || (dd.items && typeof dd.items==='object' && Object.keys(dd.items).length))); }
 function inspWarn(name){
   if(!_badgeLoaded)return false;if(!_inspMap||Object.keys(_inspMap).length===0)return false;var days=_inspMap[name]||{};
   var d=new Date(Date.now()+9*3600000);var today=d.getUTCDate();var last=0;
-  Object.keys(days).forEach(function(k){var dd=days[k];if(dd&&(dd.done||dd.off)){var n=parseInt(k,10);if(n<=today&&n>last)last=n;}});
+  Object.keys(days).forEach(function(k){var dd=days[k];if(_inspHandled(dd)){var n=parseInt(k,10);if(n<=today&&n>last)last=n;}});
   return (today-last)>=4;
 }
 function inspComplete(name){
   if(!_badgeLoaded)return false;if(!_inspMap||Object.keys(_inspMap).length===0)return false;var days=_inspMap[name];if(!days)return false;
   var d=new Date(Date.now()+9*3600000);var today=d.getUTCDate();
-  var rec=Object.keys(days).map(function(k){return parseInt(k,10);}).filter(function(n){return n>=1&&n<=today&&days[n]&&(days[n].done||days[n].off);});
+  var rec=Object.keys(days).map(function(k){return parseInt(k,10);}).filter(function(n){return n>=1&&n<=today&&_inspHandled(days[n]);});
   if(!rec.length)return false;var start=Math.min.apply(null,rec);
-  for(var i=start;i<=today;i++){var dd=days[i]||days[String(i)];if(!dd||!(dd.done||dd.off))return false;}
+  for(var i=start;i<=today;i++){var dd=days[i]||days[String(i)];if(!_inspHandled(dd))return false;}
   return true;
 }
 async function _loadMyBadges(){
@@ -10232,7 +10235,7 @@ function mdRenderList(cases){
   if(!el)return;
   var isAdmin=CU.role==='admin';
   var isLeader=CU.role==='leader'; // 조장(sub)은 현재 기사와 동일 → 팀장 권한 제외
-  var canDelete=isAdmin; // 삭제는 관리자만 가능
+  var canDelete=isAdmin||isLeader; // 삭제: 관리자 + 총괄·팀장
 
   // 날짜 필터 적용
   var allCount=(cases||[]).length;
@@ -10634,7 +10637,7 @@ function mdOpenMibaGroup(gi){
     var _actBtns=((isAdmin||isLeader)&&!r.done&&_primId)?
       '<div style="display:flex;gap:6px;margin-top:8px">'+
         '<button onclick="event.stopPropagation();mdSelfComplete('+_primId+')" style="flex:1;padding:7px;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">✅ 확인 후 처리완료(미전송)</button>'+
-        (isAdmin?'<button onclick="event.stopPropagation();mdDeleteCase('+_primId+')" style="padding:7px 11px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">🗑 삭제</button>':'')+
+        ((isAdmin||isLeader)?'<button onclick="event.stopPropagation();mdDeleteCase('+_primId+')" style="padding:7px 11px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">🗑 삭제</button>':'')+
       '</div>':'';
     return '<div style="background:#fff;border:1px solid #eceff1;border-radius:10px;padding:10px;margin-bottom:8px">'+
       '<div style="display:flex;align-items:center;gap:9px">'+
@@ -11333,7 +11336,7 @@ function mdOpenDetail(caseId){
       '<button '+(hasReply?'onclick="mdApproveLatestReply('+c.id+')"':'')+' style="'+apprStyle+'" '+(hasReply?'':'disabled')+'>'+apprLabel+'</button>'+
       ((isAdmin&&c.status==='replied')?'<button onclick="mdReopenApprovedCase('+c.id+')" style="width:100%;padding:11px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">🔄 반려 · 기사에게 재요청</button>':'')+
       (c._reshare?'<button onclick="mdLossRequest('+c.id+')" style="width:100%;padding:11px;background:#5e35b1;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer;margin-bottom:8px">📉 미처리 분실 (차감 요청)</button>':'')+
-      (isAdmin?
+      ((isAdmin||isLeader)?
         '<div style="display:flex;gap:8px">'+
           '<button onclick="mdMarkNotSent('+c.id+')" style="flex:1;padding:10px;background:#fff3e0;color:#e65100;border:1.5px solid #e65100;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">📤 미전송완료</button>'+
           '<button onclick="mdDeleteCase('+c.id+')" style="flex:1;padding:10px;background:#ffebee;color:#c62828;border:1.5px solid #c62828;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">🗑️ 삭제</button>'+
