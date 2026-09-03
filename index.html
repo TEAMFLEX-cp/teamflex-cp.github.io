@@ -3498,7 +3498,7 @@ function closeUserSubMenu(){
 /* ═══════════════ 📊 라우트 수량 데이터 · 브리핑 대시보드 (Supabase qty_stats) ═══════════════ */
 window._qtyPerm={leader:false};
 async function _loadQtyPerm(){try{if(!sbClient)return;var r=await sbClient.from('app_settings').select('value').eq('key','qty_perm').maybeSingle();if(r&&r.data&&r.data.value){var v=r.data.value;window._qtyPerm=(typeof v==='string')?JSON.parse(v):v;}}catch(e){}}
-function canViewQty(){if(!CU)return false;if(CU.role==='admin')return true;if(CU.role==='leader'&&window._qtyPerm&&window._qtyPerm.leader)return true;return false;}
+function canViewQty(){if(!CU)return false;if(CU.role==='admin')return true;var p=window._qtyPerm||{};if(CU.role==='leader'&&(p.leader||p['총괄']||p['팀장']))return true;return false;}
 async function _saveQtyPerm(){try{await sbClient.from('app_settings').upsert({key:'qty_perm',value:JSON.stringify(window._qtyPerm)},{onConflict:'key'});}catch(e){}}
 var QSD=null,QSWEEKS=[];
 var QS={WDATA:['월','화','수','목','금','토','일'],WDISP:['일','월','화','수','목','금','토']};
@@ -3508,11 +3508,14 @@ function _qsInjectCSS(){ if(document.getElementById('qs-style'))return; var s=do
 #qs-modal{position:fixed;inset:0;z-index:11000;background:rgba(12,24,45,.55);backdrop-filter:blur(3px);overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:'Pretendard',-apple-system,'맑은 고딕',sans-serif}
 .qs-sheet{background:radial-gradient(900px 400px at 15% -10%,#f4f8ff,transparent),#eef2f8;min-height:100%;max-width:1120px;margin:0 auto;box-shadow:0 0 60px rgba(0,0,0,.3)}
 .qs-top{position:sticky;top:0;z-index:5;background:linear-gradient(100deg,#0f2747,#1c3f6e);color:#fff;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.qs-top .t{font-size:16px;font-weight:800;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
-.qs-top .r{display:flex;align-items:center;gap:8px}
-.qs-mnav{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:20px;padding:3px 5px}
-.qs-mnav b{color:#fff;font-size:13px;padding:0 4px}
-.qs-x{background:rgba(255,255,255,.18);border:none;color:#fff;width:34px;height:34px;border-radius:11px;font-size:17px;cursor:pointer}
+.qs-top .t{font-size:15px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}
+.qs-x{background:rgba(255,255,255,.18);border:none;color:#fff;width:32px;height:32px;border-radius:10px;font-size:16px;cursor:pointer;flex-shrink:0}
+.qs-sub2{position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border-bottom:1px solid #e7edf5;padding:9px 14px}
+.qs-sub2lab{font-size:11px;color:#9aa7b8;font-weight:700;margin-right:auto}
+.qs-mnav{display:inline-flex;align-items:center;gap:5px;background:#eef4ff;border:1px solid #cfe0ff;border-radius:20px;padding:4px 8px}
+.qs-mnav b{color:#0f2747;font-size:13px;padding:0 4px}
+.qs-permb{background:#eef4ff;border:1.5px solid #cfe0ff;color:#2f6fed;border-radius:10px;padding:7px 13px;font-size:12.5px;font-weight:800;cursor:pointer}
+@media(max-width:520px){.qs-top .t{font-size:14px}.qs-body{padding:12px}.qs-kc{padding:12px 12px}.qs-panel{padding:12px}.qs-bars{height:140px}.qs-kc .k{font-size:11px}.qs-panel h4{font-size:13px}}
 .qs-tabs{display:flex;gap:5px;padding:10px 12px 0;background:#fff;border-bottom:1px solid #e7edf5;overflow-x:auto}
 .qs-tab{padding:10px 16px;font-size:13.5px;font-weight:700;color:#6b7787;border-radius:11px 11px 0 0;cursor:pointer;white-space:nowrap}
 .qs-tab.on{background:#eef4ff;color:#2f6fed}
@@ -3665,8 +3668,8 @@ var QSST={scopeYear:'2026',focus:null,cWD:new Set(['월','화','수','목','금'
 function _qsRenderShell(ov){
   var isAdm=CU&&CU.role==='admin';
   ov.querySelector('.qs-sheet').innerHTML=
-   '<div class="qs-top"><div class="t">📊 라우트 수량 데이터<span class="qs-mini" style="color:#bcd2f5;font-weight:600">'+(QSD.base_ym||'')+' 기준</span></div>'+
-     '<div class="r"><span class="qs-mnav">◀ <b>'+(QSD.base_ym||'')+'</b> ▶</span>'+(isAdm?'<button class="qs-x" title="총괄·팀장 공개 설정" onclick="qsPermToggle()" id="qs-perm" style="width:auto;padding:0 12px;font-size:12px;font-weight:800">'+(window._qtyPerm&&window._qtyPerm.leader?'👥 공개中':'🔒 관리자만')+'</button>':'')+'<button class="qs-x" onclick="closeQtyStats()">✕</button></div></div>'+
+   '<div class="qs-top"><div class="t">📊 라우트 수량 데이터</div><button class="qs-x" onclick="closeQtyStats()">✕</button></div>'+
+   '<div class="qs-sub2"><span class="qs-mnav">◀ <b>'+(QSD.base_ym||'')+'</b> ▶</span><span class="qs-sub2lab">기준월</span>'+(isAdm?'<button class="qs-permb" onclick="qsPermPopup()" id="qs-perm">'+_qsPermLabel()+'</button>':'')+'</div>'+
    '<div class="qs-tabs"><div class="qs-tab on" onclick="qsTab(0)">🏢 회사 전체·브리핑</div><div class="qs-tab" onclick="qsTab(1)">🚚 라우트별</div><div class="qs-tab" onclick="qsTab(2)">💰 예상 수익</div></div>'+
    '<div class="qs-body">'+
     '<div class="qs-pane on" id="qs-p0"><div class="qs-scopebar"><span class="lab">📌 브리핑 범위</span><div class="qs-ms" id="qsMScope"></div><span class="qs-badge" id="qsScopeBadge">전체</span><span class="qs-mini" id="qsScopeShare"></span></div><div id="qsCompOut"></div></div>'+
@@ -3687,7 +3690,23 @@ function _qsRenderShell(ov){
   qsCalc();
 }
 function qsTab(i){var ov=document.getElementById('qs-modal');if(!ov)return;ov.querySelectorAll('.qs-tab').forEach(function(t,x){t.classList.toggle('on',x==i);});ov.querySelectorAll('.qs-pane').forEach(function(p,x){p.classList.toggle('on',x==i);});}
-async function qsPermToggle(){window._qtyPerm=window._qtyPerm||{};window._qtyPerm.leader=!window._qtyPerm.leader;await _saveQtyPerm();var b=document.getElementById('qs-perm');if(b)b.textContent=window._qtyPerm.leader?'👥 공개中':'🔒 관리자만';showToast&&showToast(window._qtyPerm.leader?'✔ 총괄·팀장에게 공개':'🔒 관리자만 보기',true);}
+function _qsPermLabel(){var p=window._qtyPerm||{};var on=[];if(p['총괄']||p.leader)on.push('총괄');if(p['팀장']||p.leader)on.push('팀장');return on.length?('👥 '+on.join('·')):'🔒 관리자만';}
+function qsPermPopup(){var p=window._qtyPerm||{};var g=!!(p['총괄']||p.leader),t=!!(p['팀장']||p.leader);
+ var old=document.getElementById('qs-perm-pop');if(old)old.remove();
+ var d=document.createElement('div');d.id='qs-perm-pop';d.style.cssText='position:fixed;inset:0;z-index:11500;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center';
+ d.innerHTML='<div style="background:#fff;border-radius:16px;padding:20px;width:min(320px,88vw);box-shadow:0 16px 40px rgba(0,0,0,.3);font-family:inherit">'+
+   '<div style="font-size:15px;font-weight:800;color:#0f2747;margin-bottom:4px">🔑 열람 권한</div>'+
+   '<div style="font-size:11.5px;color:#6b7787;margin-bottom:14px">이 대시보드를 볼 수 있는 역할을 선택하세요.</div>'+
+   '<label style="display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:11px;background:#eef4ff;margin-bottom:8px;font-weight:800;color:#2f6fed"><input type="checkbox" checked disabled style="width:18px;height:18px"> 관리자 <span style="font-size:11px;font-weight:600;color:#9aa7b8;margin-left:auto">항상 열람</span></label>'+
+   '<label style="display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:11px;background:#f5f8fd;border:1.5px solid #dde7f4;margin-bottom:8px;font-weight:700;cursor:pointer;color:#334"><input type="checkbox" id="qsp-g" '+(g?'checked':'')+' style="width:18px;height:18px;accent-color:#2f6fed"> 총괄</label>'+
+   '<label style="display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:11px;background:#f5f8fd;border:1.5px solid #dde7f4;margin-bottom:14px;font-weight:700;cursor:pointer;color:#334"><input type="checkbox" id="qsp-t" '+(t?'checked':'')+' style="width:18px;height:18px;accent-color:#2f6fed"> 팀장</label>'+
+   '<div style="display:flex;gap:8px"><button onclick="document.getElementById(\'qs-perm-pop\').remove()" style="flex:1;padding:11px;border-radius:10px;border:none;background:#eef1f6;color:#6b7787;font-weight:800;cursor:pointer">취소</button><button onclick="qsPermApply()" style="flex:1;padding:11px;border-radius:10px;border:none;background:linear-gradient(90deg,#0f2747,#2f6fed);color:#fff;font-weight:800;cursor:pointer">적용</button></div></div>';
+ d.onclick=function(e){if(e.target===d)d.remove();};document.body.appendChild(d);}
+async function qsPermApply(){var g=document.getElementById('qsp-g').checked,t=document.getElementById('qsp-t').checked;
+ window._qtyPerm={'총괄':g,'팀장':t,leader:(g||t)};await _saveQtyPerm();
+ var b=document.getElementById('qs-perm');if(b)b.textContent=_qsPermLabel();
+ var pop=document.getElementById('qs-perm-pop');if(pop)pop.remove();
+ showToast&&showToast((g||t)?'✔ 열람 권한 적용됨':'🔒 관리자만',true);}
 
 function qsResetScope(){QSST.focus=null;qsRenderCompany(Array.from(QSMS['qsMScope'].committed));}
 function qsFocusMonth(m){QSST.focus=m;qsRenderCompany(Array.from(QSMS['qsMScope'].committed));}
