@@ -3635,9 +3635,9 @@ function _qsBuildWeeks(){QSWEEKS=(function(){var b=[];QSD.dates.forEach(function
 function _qsMonthKeys(){return (QSFULL&&QSFULL.months)?Object.keys(QSFULL.months).sort():[];}
 function _qsCanShift(dir){var ks=_qsMonthKeys();if(ks.length<2)return false;var i=ks.indexOf(QSD._cur||QSD.base_ym);return i>=0&&(i+dir>=0)&&(i+dir<ks.length);}
 function _qsShiftMonth(dir){var ks=_qsMonthKeys();var i=ks.indexOf(QSD._cur||QSD.base_ym);if(i<0)return;var j=i+dir;if(j<0||j>=ks.length)return;_qsApplyMonth(ks[j]);}
-function _qsApplyMonth(ym){if(!QSFULL||!QSFULL.months||!QSFULL.months[ym])return;var mb=QSFULL.months[ym];
+function _qsApplyMonth(ym,focusM){if(!QSFULL||!QSFULL.months||!QSFULL.months[ym])return;var mb=QSFULL.months[ym];
   ['dates','wdcount','comp','routes','order','camps','camp_tot','hasRoutes'].forEach(function(k){QSD[k]=mb[k];});
-  QSD._cur=ym; QSST.focus=null; _qsBuildWeeks();
+  QSD._cur=ym; QSST.scopeYear=ym.slice(0,4); QSST.focus=focusM||null; _qsBuildWeeks();
   var ov=document.getElementById('qs-modal'); if(ov)_qsRenderShell(ov);}
 function _qsWeekLbl(w){return w.name+'<span class="rng">'+w.range+'</span>';}
 function _qsAgg(sel){var N=QSD.dates.length,b31=new Array(N).fill(0),wb=new Array(7).fill(0),btot=0,ret=0,wsum=0;
@@ -3735,8 +3735,11 @@ async function qsPermApply(){var g=document.getElementById('qsp-g').checked,t=do
  var pop=document.getElementById('qs-perm-pop');if(pop)pop.remove();
  showToast&&showToast((g||t)?'✔ 열람 권한 적용됨':'🔒 관리자만',true);}
 
-function qsResetScope(){QSST.focus=null;qsRenderCompany(Array.from(QSMS['qsMScope'].committed));}
-function qsFocusMonth(m){QSST.focus=m;qsRenderCompany(Array.from(QSMS['qsMScope'].committed));}
+function qsResetScope(){QSST.focus=null;qsRenderCompany(_qsScopeSel());}
+function _qsScopeSel(){return (QSMS['qsMScope']?Array.from(QSMS['qsMScope'].committed):QSD.order.slice());}
+function qsFocusMonth(m){var ym=QSST.scopeYear+'-'+('0'+m).slice(-2);
+  if(QSFULL&&QSFULL.months&&QSFULL.months[ym]){ _qsApplyMonth(ym,m); }
+  else { QSST.focus=m; qsRenderCompany(_qsScopeSel()); }}
 function qsRenderCompany(sel){
   var RN=QSD.order.length,COMP8=QSD.comp.btot,N=QSD.dates.length;
   var isAll=sel.length==RN;
@@ -3750,6 +3753,7 @@ function qsRenderCompany(sel){
   var yA=(QSD.yr[cy]||[]).map(function(m){return [m[0],Math.round(a.btot*m[1]/COMP8)];});
   var yB=(QSD.yr[prev]||[]).map(function(m){return [m[0],Math.round(a.btot*m[1]/COMP8)];});
   var sum=function(arr){return arr.reduce(function(s,m){return s+m[1];},0);};
+  var sumPrevAligned=function(){return yB.slice(0,yA.length).reduce(function(s,m){return s+m[1];},0);};
   var moM=function(mi){if(mi<1||!yA[mi]||!yA[mi-1])return null;var c=yA[mi][1],p=yA[mi-1][1];return p?(c-p)/p*100:null;};
   var momCard=function(v,diff,label){return v==null?'<div class="qs-kc"><div class="k">📊 전월 대비</div><div class="v" style="font-size:20px">–</div><div class="d">'+label+'</div></div>':'<div class="qs-kc mom '+(v>=0?'up':'down')+'"><div class="k">📊 전월 대비</div><div class="v">'+(v>=0?'▲':'▼')+Math.abs(v).toFixed(1)+'<small>%</small></div><div class="d"><b class="'+(v>=0?'qs-up':'qs-down')+'">'+(v>=0?'+':'')+_qsFmt(diff)+'건</b> · '+label+'</div></div>';};
   var kHTML,banner='';
@@ -3759,13 +3763,13 @@ function qsRenderCompany(sel){
     '<div class="qs-kc g"><div class="k">전년 동월 대비</div><div class="v">'+(pc>=0?'▲':'▼')+Math.abs(pc).toFixed(1)+'<small>%</small></div><div class="d"><span class="qs-chip '+(pc>=0?'up':'down')+'">'+(pc>=0?'+':'')+_qsFmt(cq-pq)+'건</span> '+prev+'.'+QSST.focus+'월</div></div>'+
     momCard(moM(QSST.focus-1),QSST.focus>=2?yA[QSST.focus-1][1]-yA[QSST.focus-2][1]:0,QSST.focus+'월 vs '+(QSST.focus-1)+'월')+
     '<div class="qs-kc o"><div class="k">'+QSST.focus+'월 반품</div><div class="v">'+_qsFmt(rq)+'</div><div class="d">일평균 '+_qsFmt(rq/N)+' · 배송대비 '+(retR*100).toFixed(1)+'%</div></div>';
-  }else{var cyT=sum(yA),pyT=sum(yB),pc2=pyT?(cyT-pyT)/pyT*100:0,rT=Math.round(cyT*retR);
-   kHTML='<div class="qs-kc"><div class="k">연간 총 배송 ('+cy+')</div><div class="v">'+_qsFmt(cyT)+'</div><div class="d">'+(isAll?'전체 '+RN+'개':'선택 '+sel.length+'개 · '+share.toFixed(1)+'%')+' · 월평균 '+_qsFmt(cyT/yA.length)+'</div></div>'+
-    '<div class="qs-kc g"><div class="k">전년 대비 (연간)</div><div class="v">'+(pc2>=0?'▲':'▼')+Math.abs(pc2).toFixed(1)+'<small>%</small></div><div class="d"><span class="qs-chip '+(pc2>=0?'up':'down')+'">'+(pc2>=0?'+':'')+_qsFmt(cyT-pyT)+'건</span> ('+cy+' vs '+prev+')</div></div>'+
+  }else{var cyT=sum(yA),pyT=sumPrevAligned(),pc2=pyT?(cyT-pyT)/pyT*100:0,rT=Math.round(cyT*retR),Nmo=yA.length;
+   kHTML='<div class="qs-kc"><div class="k">누적 총 배송 ('+cy+' 1~'+Nmo+'월)</div><div class="v">'+_qsFmt(cyT)+'</div><div class="d">'+(isAll?'전체 '+RN+'개':'선택 '+sel.length+'개 · '+share.toFixed(1)+'%')+' · 월평균 '+_qsFmt(cyT/Nmo)+'</div></div>'+
+    '<div class="qs-kc g"><div class="k">전년 대비 (동기간)</div><div class="v">'+(pc2>=0?'▲':'▼')+Math.abs(pc2).toFixed(1)+'<small>%</small></div><div class="d"><span class="qs-chip '+(pc2>=0?'up':'down')+'">'+(pc2>=0?'+':'')+_qsFmt(cyT-pyT)+'건</span> '+prev+' 1~'+Nmo+'월 대비</div></div>'+
     momCard(moM(yA.length-1),yA.length>=2?yA[yA.length-1][1]-yA[yA.length-2][1]:0,'최신월 '+yA.length+'월 vs '+(yA.length-1)+'월')+
     '<div class="qs-kc o"><div class="k">연간 반품</div><div class="v">'+_qsFmt(rT)+'</div><div class="d">일평균 '+_qsFmt(rT/(yA.length*30.4))+' · 배송대비 '+(retR*100).toFixed(1)+'%</div></div>';}
-  var fbC=sum(yA)*fbPer,fbP=sum(yB)*fbPer,fbPc=fbP?(fbC-fbP)/fbP*100:0,daysYr=yA.length*30.4;
-  var fbPanel='<div class="qs-panel"><h4>🧊 프레시백 회수 금액 (연간) <span class="qs-mini">'+(isAll?'전체':'선택')+' · '+cy+' vs '+prev+'</span></h4><div class="qs-fbgrid"><div class="qs-fbb"><div class="k">1년 총 금액</div><div class="v">'+_qsFmt(fbC)+'<small>원</small></div></div><div class="qs-fbb"><div class="k">월평균</div><div class="v">'+_qsFmt(fbC/yA.length)+'<small>원</small></div></div><div class="qs-fbb"><div class="k">일평균</div><div class="v">'+_qsFmt(fbC/daysYr)+'<small>원</small></div></div><div class="qs-fbb '+(fbPc>=0?'up':'down')+'"><div class="k">전년 대비</div><div class="v">'+(fbPc>=0?'▲':'▼')+Math.abs(fbPc).toFixed(1)+'<small>%</small></div><div class="s">'+(fbPc>=0?'+':'')+_qsFmt(fbC-fbP)+'원</div></div></div></div>';
+  var fbC=sum(yA)*fbPer,fbP=sumPrevAligned()*fbPer,fbPc=fbP?(fbC-fbP)/fbP*100:0,daysYr=yA.length*30.4;
+  var fbPanel='<div class="qs-panel"><h4>🧊 프레시백 회수 금액 (누적) <span class="qs-mini">'+(isAll?'전체':'선택')+' · '+cy+' 1~'+yA.length+'월 vs '+prev+' 동기간</span></h4><div class="qs-fbgrid"><div class="qs-fbb"><div class="k">누적 총 금액</div><div class="v">'+_qsFmt(fbC)+'<small>원</small></div></div><div class="qs-fbb"><div class="k">월평균</div><div class="v">'+_qsFmt(fbC/yA.length)+'<small>원</small></div></div><div class="qs-fbb"><div class="k">일평균</div><div class="v">'+_qsFmt(fbC/daysYr)+'<small>원</small></div></div><div class="qs-fbb '+(fbPc>=0?'up':'down')+'"><div class="k">전년 대비 (동기간)</div><div class="v">'+(fbPc>=0?'▲':'▼')+Math.abs(fbPc).toFixed(1)+'<small>%</small></div><div class="s">'+(fbPc>=0?'+':'')+_qsFmt(fbC-fbP)+'원</div></div></div></div>';
   out.innerHTML=banner+'<div class="qs-kcards">'+kHTML+'</div>'+fbPanel+
     '<div class="qs-panel"><h4>📈 연도별 월 배송 · 전년 대비 <span style="display:flex;gap:8px;align-items:center"><select class="qs-ysel" id="qsYSel" onchange="QSST.scopeYear=this.value;qsResetScope()"><option '+(cy=='2026'?'selected':'')+'>2026</option><option '+(cy=='2025'?'selected':'')+'>2025</option></select><span class="qs-legend"><b style="color:#2f6fed">━ '+cy+'</b> <b style="color:#e5484d">┈ '+prev+'</b></span></h4><svg id="qsYChart" viewBox="0 0 680 190" style="width:100%;height:180px"></svg><div class="qs-mini" style="margin:2px 0 6px">💡 아래 표에서 월을 탭하면 그 달 상세로 전환</div><div style="max-height:200px;overflow-y:auto"><table class="qs-tbl"><thead><tr><th>월</th><th>'+prev+'</th><th>'+cy+'</th><th>증감</th><th>증감률</th></tr></thead><tbody id="qsYTable"></tbody></table></div></div>'+
     '<div class="qs-panel"><h4>📅 일별 배송/반품 <span class="qs-mini">'+(QSD._cur||QSD.base_ym||'')+' 실측</span> <span class="qs-legend"><b style="color:#2f6fed">■배송</b> <b style="color:#e5484d">■반품</b></span></h4><div class="qs-daily" id="qsCDaily"></div></div>'+
