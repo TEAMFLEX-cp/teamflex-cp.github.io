@@ -3614,6 +3614,26 @@ function _qsInjectCSS(){ if(document.getElementById('qs-style'))return; var s=do
 .qs-res .r.money .v{color:#ffd873}
 .qs-brk{font-size:12px;color:#4a586c;margin-top:11px;background:#f7faff;border:1px solid #e7edf5;border-radius:10px;padding:11px 12px;line-height:1.85}
 .qs-mini{font-size:11px;color:#9aa7b8}
+.qs-map-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#eef4ff;border:1px solid #d5e3fb;border-radius:12px;padding:12px;margin-bottom:14px}
+.qs-map-in{flex:1;min-width:150px;border:1.5px solid #cfd8e6;border-radius:9px;padding:10px 12px;font-size:14px}
+.qs-map-up{background:#2f6fed;color:#fff;border-radius:9px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
+.qs-map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.qs-map-card{background:#fff;border:1px solid #e3e8ef;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(20,40,80,.06)}
+.qs-map-card .thumb{aspect-ratio:4/3;background:#eef2f7 center/cover no-repeat;cursor:zoom-in;position:relative;display:flex;align-items:flex-end;justify-content:center}
+.qs-map-card .thumb .zoom{background:rgba(15,39,71,.62);color:#fff;font-size:11px;font-weight:700;padding:4px 8px;border-radius:8px;margin-bottom:8px;backdrop-filter:blur(2px)}
+.qs-map-card .cap{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:9px 11px}
+.qs-map-card .cap .nm{font-size:14px;font-weight:800;color:#0f2747;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qs-map-card .cap .tools{display:flex;gap:4px;flex-shrink:0}
+.qs-map-card .cap .mini{border:1px solid #d5deea;background:#f5f8fd;color:#33475b;border-radius:7px;width:26px;height:26px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.qs-map-card .cap .mini.del{color:#c0392b;border-color:#f2c9c2;background:#fdf1ef}
+#qs-map-view{position:fixed;inset:0;z-index:12000;background:#0b1420;display:flex;flex-direction:column}
+#qs-map-view .qmv-bar{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#0f2747;color:#fff;flex-shrink:0}
+#qs-map-view .qmv-nm{font-size:15px;font-weight:800;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#qs-map-view .qmv-hint{font-size:11px;color:#9db4d6;display:none}
+@media(min-width:640px){#qs-map-view .qmv-hint{display:inline}}
+#qs-map-view .qmv-x{background:rgba(255,255,255,.15);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0}
+#qs-map-view .qmv-stage{flex:1;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab}
+#qs-map-view .qmv-stage img{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center center;will-change:transform;user-select:none;-webkit-user-drag:none}
 `; document.head.appendChild(s);}
 
 async function openQtyStats(){ closeCfgSubMenu&&closeCfgSubMenu(); closeUserSubMenu&&closeUserSubMenu();
@@ -3705,15 +3725,17 @@ function _qsRenderShell(ov){
   ov.querySelector('.qs-sheet').innerHTML=
    '<div class="qs-top"><div class="t">📊 라우트 수량 데이터</div><button class="qs-x" onclick="closeQtyStats()">✕</button></div>'+
    '<div class="qs-sub2"><span class="qs-mnav" id="qs-kijun-wrap" style="display:none"><button class="mv" id="qs-mv-l" onclick="_qsSetKijun(-1)" '+(_qsCanShift(-1)?'':'disabled')+'>◀</button><b id="qs-curym">'+_qsCurK()+'</b><button class="mv" id="qs-mv-r" onclick="_qsSetKijun(1)" '+(_qsCanShift(1)?'':'disabled')+'>▶</button><span class="qs-sub2lab">기준월</span></span>'+(isAdm?'<button class="qs-permb" onclick="qsPermPopup()" id="qs-perm">'+_qsPermLabel()+'</button>':'')+'</div>'+
-   '<div class="qs-tabs"><div class="qs-tab on" onclick="qsTab(0)">🏢 회사 전체·브리핑</div><div class="qs-tab" onclick="qsTab(1)">🚚 라우트별</div><div class="qs-tab" onclick="qsTab(2)">💰 예상 수익</div></div>'+
+   '<div class="qs-tabs"><div class="qs-tab on" onclick="qsTab(0)">🏢 회사 전체·브리핑</div><div class="qs-tab" onclick="qsTab(1)">🚚 라우트별</div><div class="qs-tab" onclick="qsTab(2)">💰 예상 수익</div><div class="qs-tab" onclick="qsTab(3)">🗺️ 라우트 지도</div></div>'+
    '<div class="qs-body">'+
     '<div class="qs-pane on" id="qs-p0"><div class="qs-scopebar"><span class="lab">📌 브리핑 범위</span><div class="qs-ms" id="qsMScope"></div><span class="qs-badge" id="qsScopeBadge">전체</span><span class="qs-mini" id="qsScopeShare"></span></div><div id="qsCompOut"></div></div>'+
     '<div class="qs-pane" id="qs-p1"></div>'+
     '<div class="qs-pane" id="qs-p2"></div>'+
+    '<div class="qs-pane" id="qs-p3"></div>'+
    '</div>';
   _qsMakeMS('qsMScope',QSD.order,qsRenderCompany).render();
   qsRenderCompany(QSD.order.slice());
   _qsBuildRtPanes();
+  _qsRenderMap();
 }
 /* 라우트별(p1)·예상수익(p2) 패널 — 기준월(QSK) 기준으로 (재)구성 */
 function _qsBuildRtPanes(){
@@ -3735,7 +3757,8 @@ function _qsBuildRtPanes(){
   }
 }
 function qsTab(i){var ov=document.getElementById('qs-modal');if(!ov)return;ov.querySelectorAll('.qs-tab').forEach(function(t,x){t.classList.toggle('on',x==i);});ov.querySelectorAll('.qs-pane').forEach(function(p,x){p.classList.toggle('on',x==i);});
-  var kw=document.getElementById('qs-kijun-wrap');if(kw)kw.style.display=(i>=1)?'inline-flex':'none';}
+  var kw=document.getElementById('qs-kijun-wrap');if(kw)kw.style.display=(i==1||i==2)?'inline-flex':'none';
+  if(i==3)_qsRenderMap();}
 function _qsPermLabel(){var p=window._qtyPerm||{};var on=[];if(p['총괄']||p.leader)on.push('총괄');if(p['팀장']||p.leader)on.push('팀장');return on.length?('👥 '+on.join('·')):'🔒 관리자만';}
 function qsPermPopup(){var p=window._qtyPerm||{};var g=!!(p['총괄']||p.leader),t=!!(p['팀장']||p.leader);
  var old=document.getElementById('qs-perm-pop');if(old)old.remove();
@@ -3841,6 +3864,56 @@ function qsCalc(){var N=QSK.dates.length,RN=QSK.order.length,SUB=QSD.subsidy||10
    (QSST.INC.배송?'<br>📦 배송 '+_qsFmt(selB)+'건 × '+_qsFmt(effUnit)+'원 = <b>'+_qsFmt(selB*effUnit)+'원</b>':'')+(QSST.INC.반품?'<br>↩ 반품 '+_qsFmt(selR)+'건 × '+_qsFmt(effUnit)+'원(동일 배송단가) = <b>'+_qsFmt(selR*effUnit)+'원</b>':'')+(QSST.INC.프백?'<br>🧊 프백(예상 N분의1) <b>'+_qsFmt(selF)+'원</b>':'')+
    '<div style="margin-top:9px;padding-top:8px;border-top:1px dashed #e2d3b0;color:#c26a00;font-weight:700">⚠️ 배송·반품·수기 동일 배송단가 적용 · 가중요인 \'해당\' 유지 기준</div></div>';
 }
+
+/* ═══════════ 🗺️ 라우트 지도 ═══════════ */
+window._qsMaps=null;
+async function _qsLoadMaps(){try{if(!sbClient){window._qsMaps=window._qsMaps||[];return;}var r=await sbClient.from('app_settings').select('value').eq('key','route_maps').maybeSingle();var v=r&&r.data&&r.data.value;window._qsMaps=v?((typeof v==='string')?JSON.parse(v):v):[];}catch(e){window._qsMaps=window._qsMaps||[];}}
+async function _qsSaveMaps(){try{await sbClient.from('app_settings').upsert({key:'route_maps',value:JSON.stringify(window._qsMaps||[])},{onConflict:'key'});}catch(e){showToast&&showToast('지도 저장 실패',false);}}
+function _qsMapAdmin(){return !!(CU&&CU.role==='admin');}
+async function _qsRenderMap(){var el=document.getElementById('qs-p3');if(!el)return;
+  if(window._qsMaps===null){el.innerHTML='<div class="qs-loading">🗺️ 라우트 지도 불러오는 중…</div>';await _qsLoadMaps();}
+  var adm=_qsMapAdmin(),maps=window._qsMaps||[];
+  var add=adm?('<div class="qs-map-add"><input type="text" id="qsMapName" class="qs-map-in" placeholder="라우트 이름 (예: 808C)"><label class="qs-map-up">🖼️ 사진 선택 → 추가<input type="file" accept="image/*" style="display:none" onchange="qsMapPick(this)"></label><span class="qs-mini">이름 입력 후 사진 선택</span></div>'):'';
+  var grid=maps.length?('<div class="qs-map-grid">'+maps.map(function(m,i){return '<div class="qs-map-card"><div class="thumb" onclick="qsMapOpen('+i+')" style="background-image:url(\''+(m.url||'').replace(/'/g,"%27")+'\')"><span class="zoom">🔍 크게보기</span></div><div class="cap"><span class="nm" onclick="qsMapOpen('+i+')">'+(m.name||'이름없음')+'</span>'+(adm?'<span class="tools"><label class="mini" title="사진교체">↻<input type="file" accept="image/*" style="display:none" onchange="qsMapReplace('+i+',this)"></label><button class="mini" title="이름변경" onclick="qsMapRename('+i+')">✎</button><button class="mini del" title="삭제" onclick="qsMapDelete('+i+')">🗑</button></span>':'')+'</div></div>';}).join('')+'</div>'):('<div class="qs-empty" style="padding:44px 0">🗺️ 등록된 라우트 지도가 없습니다.'+(adm?'<br><span class="qs-mini">위에 이름을 입력하고 사진을 선택하세요.</span>':'<br><span class="qs-mini">관리자가 등록하면 표시됩니다.</span>')+'</div>');
+  el.innerHTML=add+grid;}
+async function qsMapPick(input){var f=input.files&&input.files[0];input.value='';if(!f)return;var ni=document.getElementById('qsMapName');var nm=(ni&&ni.value||'').trim();if(!nm){showToast&&showToast('라우트 이름을 먼저 입력하세요',false);if(ni)ni.focus();return;}await _qsMapUpload(nm,f,-1);if(ni)ni.value='';}
+async function _qsMapUpload(name,file,idx){try{showToast&&showToast('업로드 중…',true);
+  var ext=(file.type&&file.type.split('/').pop().replace('jpeg','jpg'))||'jpg';
+  var path='route-maps/'+Date.now()+'-'+Math.random().toString(36).slice(2,7)+'.'+ext;
+  var up=await sbClient.storage.from('photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:true});
+  if(up.error){showToast&&showToast('업로드 실패: '+up.error.message,false);return;}
+  var pu=sbClient.storage.from('photos').getPublicUrl(path),url=pu&&pu.data&&pu.data.publicUrl;
+  window._qsMaps=window._qsMaps||[];
+  if(idx>=0){window._qsMaps[idx].url=url;window._qsMaps[idx].updated_at=Date.now();}
+  else{window._qsMaps.push({name:name,url:url,updated_at:Date.now()});}
+  await _qsSaveMaps();await _qsRenderMap();showToast&&showToast('✔ 저장되었습니다',true);
+}catch(e){showToast&&showToast('오류: '+e,false);}}
+function qsMapReplace(idx,input){var f=input.files&&input.files[0];input.value='';if(!f||!window._qsMaps[idx])return;_qsMapUpload(window._qsMaps[idx].name,f,idx);}
+function qsMapRename(idx){if(!window._qsMaps[idx])return;var nn=prompt('라우트 이름 변경',window._qsMaps[idx].name||'');if(nn===null)return;nn=nn.trim();if(!nn)return;window._qsMaps[idx].name=nn;_qsSaveMaps();_qsRenderMap();}
+function qsMapDelete(idx){if(!window._qsMaps[idx])return;if(!confirm('이 라우트 지도를 삭제할까요?\n('+(window._qsMaps[idx].name||'')+')'))return;window._qsMaps.splice(idx,1);_qsSaveMaps();_qsRenderMap();}
+function qsMapOpen(idx){var m=(window._qsMaps||[])[idx];if(!m||!m.url)return;var old=document.getElementById('qs-map-view');if(old)old.remove();
+  var ov=document.createElement('div');ov.id='qs-map-view';
+  ov.innerHTML='<div class="qmv-bar"><span class="qmv-nm">🗺️ '+(m.name||'')+'</span><span class="qmv-hint">휠/손가락으로 확대 · 드래그 이동 · 더블탭 리셋</span><button class="qmv-x" onclick="qsMapClose()">✕</button></div><div class="qmv-stage" id="qmvStage"><img id="qmvImg" src="'+m.url+'" draggable="false"></div>';
+  document.body.appendChild(ov);
+  var img=document.getElementById('qmvImg');img.onload=function(){_qsMapZoom(document.getElementById('qmvStage'),img);};if(img.complete)img.onload();}
+function qsMapClose(){var v=document.getElementById('qs-map-view');if(v)v.remove();}
+function _qsMapZoom(stage,img){var scale=1,tx=0,ty=0,min=1,max=6;
+  function apply(){img.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';}
+  stage.addEventListener('wheel',function(e){e.preventDefault();var rect=stage.getBoundingClientRect();var cx=e.clientX-rect.left-rect.width/2,cy=e.clientY-rect.top-rect.height/2;var f=e.deltaY<0?1.15:1/1.15;var ns=Math.max(min,Math.min(max,scale*f)),k=ns/scale;tx=cx-(cx-tx)*k;ty=cy-(cy-ty)*k;scale=ns;if(scale<=1.001){tx=0;ty=0;}apply();},{passive:false});
+  stage.addEventListener('dblclick',function(){if(scale>1){scale=1;tx=0;ty=0;}else scale=2.4;apply();});
+  var drag=false,lx=0,ly=0;
+  stage.addEventListener('pointerdown',function(e){if(e.pointerType==='touch')return;drag=true;lx=e.clientX;ly=e.clientY;try{stage.setPointerCapture(e.pointerId);}catch(_){}});
+  stage.addEventListener('pointermove',function(e){if(!drag||e.pointerType==='touch')return;tx+=e.clientX-lx;ty+=e.clientY-ly;lx=e.clientX;ly=e.clientY;apply();});
+  stage.addEventListener('pointerup',function(e){drag=false;});
+  var touches={},pd=0,ps=1,pcx=0,pcy=0,ptx=0,pty=0,ptime=0;
+  stage.addEventListener('touchstart',function(e){for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];touches[t.identifier]={x:t.clientX,y:t.clientY};}var ks=Object.keys(touches);
+    if(ks.length===2){var a=touches[ks[0]],b=touches[ks[1]];pd=Math.hypot(a.x-b.x,a.y-b.y);ps=scale;var rect=stage.getBoundingClientRect();pcx=(a.x+b.x)/2-rect.left-rect.width/2;pcy=(a.y+b.y)/2-rect.top-rect.height/2;ptx=tx;pty=ty;}
+    else if(ks.length===1){var now=Date.now();if(now-ptime<300){if(scale>1){scale=1;tx=0;ty=0;}else scale=2.4;apply();}ptime=now;lx=touches[ks[0]].x;ly=touches[ks[0]].y;}},{passive:false});
+  stage.addEventListener('touchmove',function(e){e.preventDefault();for(var i=0;i<e.changedTouches.length;i++){var t=e.changedTouches[i];if(touches[t.identifier])touches[t.identifier]={x:t.clientX,y:t.clientY};}var ks=Object.keys(touches);
+    if(ks.length>=2){var a=touches[ks[0]],b=touches[ks[1]];var d=Math.hypot(a.x-b.x,a.y-b.y);var ns=Math.max(min,Math.min(max,ps*(d/(pd||1)))),k=ns/ps;tx=pcx-(pcx-ptx)*k;ty=pcy-(pcy-pty)*k;scale=ns;if(scale<=1.001){tx=0;ty=0;}apply();}
+    else if(ks.length===1){var t=touches[ks[0]];if(scale>1){tx+=t.x-lx;ty+=t.y-ly;}lx=t.x;ly=t.y;apply();}},{passive:false});
+  stage.addEventListener('touchend',function(e){for(var i=0;i<e.changedTouches.length;i++)delete touches[e.changedTouches[i].identifier];var ks=Object.keys(touches);if(ks.length<2)pd=0;if(ks.length===1){lx=touches[ks[0]].x;ly=touches[ks[0]].y;}});
+  apply();}
 
 // ── 안드로이드 뒤로가기 (popstate) 핸들러 ────────────────────────────
 window.addEventListener('popstate',function(e){
