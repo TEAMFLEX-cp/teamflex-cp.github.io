@@ -3636,7 +3636,7 @@ function _qsMonthKeys(){return (QSFULL&&QSFULL.months)?Object.keys(QSFULL.months
 function _qsCanShift(dir){var ks=_qsMonthKeys();if(ks.length<2)return false;var i=ks.indexOf(QSD._cur||QSD.base_ym);return i>=0&&(i+dir>=0)&&(i+dir<ks.length);}
 function _qsShiftMonth(dir){var ks=_qsMonthKeys();var i=ks.indexOf(QSD._cur||QSD.base_ym);if(i<0)return;var j=i+dir;if(j<0||j>=ks.length)return;_qsApplyMonth(ks[j]);}
 function _qsApplyMonth(ym){if(!QSFULL||!QSFULL.months||!QSFULL.months[ym])return;var mb=QSFULL.months[ym];
-  ['dates','wdcount','comp','routes','order','camps','camp_tot'].forEach(function(k){QSD[k]=mb[k];});
+  ['dates','wdcount','comp','routes','order','camps','camp_tot','hasRoutes'].forEach(function(k){QSD[k]=mb[k];});
   QSD._cur=ym; QSST.focus=null; _qsBuildWeeks();
   var ov=document.getElementById('qs-modal'); if(ov)_qsRenderShell(ov);}
 function _qsWeekLbl(w){return w.name+'<span class="rng">'+w.range+'</span>';}
