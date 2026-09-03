@@ -3640,7 +3640,7 @@ function _qsCurK(){return (QSK&&QSK._cur)||QSD.base_ym;}
 function _qsCanShift(dir){var ks=_qsMonthKeys();if(ks.length<2)return false;var i=ks.indexOf(_qsCurK());return i>=0&&(i+dir>=0)&&(i+dir<ks.length);}
 /* 기준월 변경 = 라우트별·예상수익만 갱신(탭 유지, 브리핑 영향 없음) */
 function _qsSetKijun(dir){var ks=_qsMonthKeys();var i=ks.indexOf(_qsCurK());if(i<0)return;var j=i+dir;if(j<0||j>=ks.length)return;
-  var ym=ks[j];QSK=QSFULL.months[ym];QSK._cur=ym;QSST.cSel=[];QSST.focus=null;_qsBuildWeeks();
+  var ym=ks[j];QSK=QSFULL.months[ym];QSK._cur=ym;_qsBuildWeeks();  // 선택 라우트(QSST.cSel)는 유지
   var lab=document.getElementById('qs-curym');if(lab)lab.textContent=ym;
   var L=document.getElementById('qs-mv-l'),R=document.getElementById('qs-mv-r');
   if(L)L.disabled=!_qsCanShift(-1);if(R)R.disabled=!_qsCanShift(1);
@@ -3728,9 +3728,10 @@ function _qsBuildRtPanes(){
         '<div id="qsCalcOut"></div></div>'+
       '<div class="qs-mini">🧊 프레시백: 기사별 프레시백 회수 금액이 반영되기 때문에, 예상 계산 시에는 전체 회수금액의 N분의 1로 대략적인 예상 금액을 측정합니다.</div>'):noRtNote;
   if(hasR){
-    _qsMakeMS('qsMSrt',[],qsApplyRoute).render();
-    _qsMakeMS('qsMSc',[],function(sel){QSST.cSel=sel;qsCalc();}).render();
-    qsRenderRtTable([]); qsApplyRoute([]); qsCalc();
+    var keep=(QSST.cSel||[]).filter(function(r){return QSK.routes&&QSK.routes[r];});  // 기준월 바뀌어도 선택 유지
+    _qsMakeMS('qsMSrt',keep,qsApplyRoute).render();
+    _qsMakeMS('qsMSc',keep,function(sel){QSST.cSel=sel;qsCalc();}).render();
+    qsApplyRoute(keep);
   }
 }
 function qsTab(i){var ov=document.getElementById('qs-modal');if(!ov)return;ov.querySelectorAll('.qs-tab').forEach(function(t,x){t.classList.toggle('on',x==i);});ov.querySelectorAll('.qs-pane').forEach(function(p,x){p.classList.toggle('on',x==i);});
