@@ -4990,7 +4990,7 @@ async function _annFetchBrief(){
   try{ await _annLoadMyReads(); }catch(e){}
   window._brfMd=0; window._brfPb=0;
   var _nm=(CU&&CU.name)||'';
-  try{ var mr=await sbClient.from('misdelivery_cases').select('id,waybill_no').eq('driver_name',_nm).eq('status','pending'); if(mr&&!mr.error&&mr.data){ var _sw={},_mc=0; mr.data.forEach(function(x){ var k=(x.waybill_no&&String(x.waybill_no).trim())?('w'+String(x.waybill_no).trim()):('i'+x.id); if(!_sw[k]){_sw[k]=1;_mc++;} }); window._brfMd=_mc; } }catch(e){}
+  try{ var mr=await sbClient.from('misdelivery_cases').select('id,waybill_no,created_at,occurred_at,status,category').eq('driver_name',_nm).eq('status','pending'); if(mr&&!mr.error&&mr.data){ var _sw={},_mc=0; mr.data.forEach(function(x){ if(typeof _mdNoAction==='function'&&_mdNoAction(x))return; /* 3일 경과 미조치 = 오배송 탭에서 '액션 불필요' 처리됨 → 홈 팝업 카운트도 동일하게 제외(유령 팝업 방지) */ var k=(x.waybill_no&&String(x.waybill_no).trim())?('w'+String(x.waybill_no).trim()):('i'+x.id); if(!_sw[k]){_sw[k]=1;_mc++;} }); window._brfMd=_mc; } }catch(e){}
   try{ var pr=await sbClient.from('pback_somyeong').select('driver_name').eq('period',pbPeriod()).eq('status','pending'); if(pr&&!pr.error&&pr.data){ var _pnn=norm_name_js(_nm||''); window._brfPb=pr.data.filter(function(x){return norm_name_js(x.driver_name||'')===_pnn;}).length; } }catch(e){}
 }
 function _brfBanners(){
