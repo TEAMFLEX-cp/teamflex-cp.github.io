@@ -3830,7 +3830,7 @@ function qsCalc(){var N=QSK.dates.length,RN=QSK.order.length,SUB=QSD.subsidy||10
   var a=_qsAgg(QSST.cSel,QSK),days=Array.from(QSST.cWD).reduce(function(s,w){return s+(QSK.wdcount[w]||0);},0);
   var baseUnit=a.unit-SUB, effUnit=QSST.sub?a.unit:baseUnit;
   var selB=0;Array.from(QSST.cWD).forEach(function(w){selB+=_qsWbOf(a.wb,w);});
-  var selR=a.btot?a.ret*(selB/a.btot):0, selF=(QSK.comp.fb/RN/N)*QSST.cSel.length*days;
+  var selR=a.btot?Math.round(a.ret*(selB/a.btot)):0, selF=Math.round((QSK.comp.fb/RN/N)*QSST.cSel.length*days);
   var qty=0,rev=0;if(QSST.INC.배송){qty+=selB;rev+=selB*effUnit;}if(QSST.INC.반품){qty+=selR;rev+=selR*effUnit;}if(QSST.INC.프백){rev+=selF;}
   var incs=[];if(QSST.INC.배송)incs.push('배송');if(QSST.INC.반품)incs.push('반품');if(QSST.INC.프백)incs.push('프백회수');
   out.innerHTML='<div class="qs-res"><div class="r"><div class="k">근무일수(월)</div><div class="v">'+days+'<small>일</small></div></div><div class="r"><div class="k">예상 수량'+(QSST.INC.반품?'(배송+반품)':'')+'</div><div class="v">'+_qsFmt(qty)+'</div></div><div class="r money"><div class="k">예상 수익</div><div class="v">'+_qsFmt(rev)+'<small>원</small></div></div></div>'+
