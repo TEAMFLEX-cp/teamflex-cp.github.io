@@ -3619,6 +3619,9 @@ function _qsInjectCSS(){ if(document.getElementById('qs-style'))return; var s=do
 .qs-tbl tr.sum td.qs-cur{background:#dbe8ff;color:#0b3ea8}
 .qs-tbl td.qs-prev,.qs-tbl th.qs-prev{color:#93a1b5;font-size:12px;font-variant-numeric:tabular-nums}
 .qs-nowtag{display:inline-block;background:#2f6fed;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:6px;vertical-align:middle;margin-left:2px}
+.qs-bars .c.pt .bb{background:repeating-linear-gradient(45deg,#c4ccd6,#c4ccd6 5px,#d7dde5 5px,#d7dde5 10px)!important;box-shadow:none!important}
+.qs-bars .c.pt .val{color:#93a1b5}
+.qs-bars .c .ptb{display:inline-block;background:#8a97a8;color:#fff;font-size:8px;font-weight:800;padding:0 4px;border-radius:5px;vertical-align:middle}
 .qs-map-add{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#eef4ff;border:1px solid #d5e3fb;border-radius:12px;padding:12px;margin-bottom:14px}
 .qs-map-in{flex:1;min-width:150px;border:1.5px solid #cfd8e6;border-radius:9px;padding:10px 12px;font-size:14px}
 .qs-map-up{background:#2f6fed;color:#fff;border-radius:9px;padding:10px 14px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
@@ -3674,7 +3677,24 @@ function _qsWeekLbl(w){return w.name+'<span class="rng">'+w.range+'</span>';}
 function _qsAgg(sel,D){D=D||QSD;var N=D.dates.length,b31=new Array(N).fill(0),wb=new Array(7).fill(0),btot=0,ret=0,wsum=0;
   sel.forEach(function(r){var R=D.routes[r];if(!R)return;R.b.forEach(function(x,i){b31[i]+=x;});R.wb.forEach(function(x,i){wb[i]+=x;});var rb=R.b.reduce(function(a,c){return a+c;},0);btot+=rb;ret+=R.ret;wsum+=rb*R.u;});
   return {b31:b31,wb:wb,btot:btot,ret:ret,unit:btot?wsum/btot:0};}
-function _qsWeeksOf(dates){var b=[];dates.forEach(function(d,i){var w=Math.floor(i/7);(b[w]=b[w]||[]).push(d[0]);});return b.map(function(ds,i){return {name:(i+1)+'주차',range:ds[0].replace('-','/')+'~'+ds[ds.length-1].replace('-','/')};});}
+/* 달력 기준 주차 — 일요일에 새 주 시작. 부분주(7일 미만=달력상 다음달과 겹침)는 partial=true */
+function _qsCalWeeks(dates){var g=[],cur=null;
+  dates.forEach(function(d,i){var wd=d[1];
+    if(cur===null||wd==='일'){ if(cur)g.push(cur); cur={idxs:[],first:d[0],last:d[0]}; }
+    cur.idxs.push(i); cur.last=d[0];});
+  if(cur)g.push(cur);
+  return g.map(function(w,i){return {name:(i+1)+'주차',range:w.first.replace('-','/')+'~'+w.last.replace('-','/'),idxs:w.idxs,partial:w.idxs.length<7};});}
+function _qsWeeksOf(dates){return _qsCalWeeks(dates);}
+/* 주차 막대 — 부분주는 회색+‘부분’표시, 평균은 '완전주'만으로 산정(중복/부분 제외) */
+function _qsWeekBars(barEl,tagEl,weeks,vals){
+  var fullV=vals.filter(function(v,i){return !weeks[i].partial;});
+  var avg=fullV.length?fullV.reduce(function(a,b){return a+b;},0)/fullV.length:0;
+  var mx=Math.max.apply(null,vals)||1;
+  barEl.innerHTML=weeks.map(function(w,i){var hi=!w.partial&&vals[i]>=avg,px=Math.max(vals[i]/mx*112,3);
+    return '<div class="c '+(hi?'hi':'')+(w.partial?' pt':'')+'"><div class="val">'+_qsFmt(vals[i])+(w.partial?' <span class="ptb">부분</span>':'')+'</div><div class="bb" style="height:'+px+'px"></div><div class="lb">'+w.name+'<span class="rng">'+w.range+'</span></div></div>';}).join('');
+  if(tagEl){var over=weeks.filter(function(w,i){return !w.partial&&vals[i]>=avg;}).map(function(w){return w.name;});
+    var hasPart=weeks.some(function(w){return w.partial;});
+    tagEl.innerHTML='완전주 평균 '+_qsFmt(avg)+' 이상: '+(over.join('·')||'-')+(hasPart?' <span class="qs-mini">· 부분주(다음달과 겹침) 합산엔 1회만·평균 제외</span>':'');}}
 /* comp.daily([MMDD,wd,배송,반품,프백]) 기반 일별 차트 — 배송수량 세로표기 */
 function _qsDailyC(el,dailyArr){var mx=Math.max.apply(null,dailyArr.map(function(x){return (x[2]||0)+(x[3]||0);}))||1;
   el.innerHTML=dailyArr.map(function(x){var b=x[2]||0,r=x[3]||0,tot=b+r||1,h=Math.max((b+r)/mx*150,8),wd=x[1];
@@ -3682,7 +3702,7 @@ function _qsDailyC(el,dailyArr){var mx=Math.max.apply(null,dailyArr.map(function
       +'<div class="rtop">'+(r?_qsFmt(r):'')+'</div>'
       +'<div class="stk" style="height:'+h+'px">'+(r?'<div class="s2" style="height:'+(r/tot*100)+'%"></div>':'')+'<div class="s1" style="height:'+(b/tot*100)+'%"><span class="bval">'+_qsFmt(b)+'</span></div></div>'
       +'<div class="dl">'+x[0]+'</div></div>';}).join('');}
-function _qsWeekAgg(b31){var wk=[];b31.forEach(function(x,i){var k=Math.floor(i/7);wk[k]=(wk[k]||0)+x;});return wk;}
+function _qsWeekAgg(b31,weeks){weeks=weeks||QSWEEKS;return weeks.map(function(w){return w.idxs.reduce(function(s,ix){return s+(b31[ix]||0);},0);});}
 function _qsBars(el,labels,vals){var mx=Math.max.apply(null,vals)||1,avg=vals.reduce(function(a,b){return a+b;},0)/vals.length;
   el.innerHTML=labels.map(function(L,i){var hi=vals[i]>=avg,px=Math.max(vals[i]/mx*112,3);return '<div class="c '+(hi?'hi':'')+'"><div class="val">'+_qsFmt(vals[i])+'</div><div class="bb" style="height:'+px+'px"></div><div class="lb">'+L+'</div></div>';}).join('');}
 function _qsAvgTag(el,vals,labs){var avg=vals.reduce(function(a,b){return a+b;},0)/vals.length;el.textContent='평균 '+_qsFmt(avg)+' 이상: '+labs.filter(function(l,i){return vals[i]>=avg;}).join('·');}
@@ -3827,7 +3847,7 @@ function qsRenderCompany(sel){
   // 일별/요일별/주차별 = 선택 월(chartYm) 실측 월합계(라우트 선택과 무관, 회사 전체 기준)
   _qsDailyC(document.getElementById('qsCDaily'),MB.comp.daily);
   var wdV=QS.WDISP.map(function(w){return (MB.comp.wdB&&MB.comp.wdB[w])||0;});_qsBars(document.getElementById('qsCWdBars'),QS.WDISP,wdV);_qsAvgTag(document.getElementById('qsCWdAvg'),wdV,QS.WDISP);
-  var mwk=_qsWeeksOf(MB.dates),wkV=(MB.comp.week||[]).map(function(x){return x[1];});_qsBars(document.getElementById('qsCWkBars'),mwk.map(_qsWeekLbl),wkV);_qsAvgTag(document.getElementById('qsCWkAvg'),wkV,mwk.map(function(w){return w.name;}));
+  var mwk=_qsCalWeeks(MB.dates),wkV=mwk.map(function(w){return w.idxs.reduce(function(s,ix){return s+((MB.comp.daily[ix]&&MB.comp.daily[ix][2])||0);},0);});_qsWeekBars(document.getElementById('qsCWkBars'),document.getElementById('qsCWkAvg'),mwk,wkV);
 }
 function qsRenderRtTable(sel){var N=QSK.dates.length,list=sel.length?QSK.order.filter(function(r){return sel.indexOf(r)>=0;}):QSK.order;
   var h=list.map(function(r){var R=QSK.routes[r],b=R.b.reduce(function(a,c){return a+c;},0),wd=R.b.filter(function(x){return x>0;}).length;return '<tr class="'+(sel.indexOf(r)>=0?'on':'')+'"><td>'+r+'</td><td>'+R.camp+'</td><td>'+_qsFmt(b)+'</td><td>'+_qsFmt(b/N)+'</td><td>'+wd+'</td><td>'+_qsFmt(R.ret)+'</td><td>'+_qsFmt(R.ret/N)+'</td></tr>';}).join('');
@@ -3841,7 +3861,7 @@ function qsApplyRoute(sel){var N=QSK.dates.length,RN=QSK.order.length,COMP8=QSK.
   out.innerHTML='<div class="qs-kcards"><div class="qs-kc"><div class="k">선택 '+sel.length+'개 월배송 <span class="qs-mini">('+(QSK._cur||'')+')</span></div><div class="v">'+_qsFmt(a.btot)+'</div><div class="d">전체대비 '+(a.btot/COMP8*100).toFixed(1)+'%</div></div><div class="qs-kc g"><div class="k">일평균 배송</div><div class="v">'+_qsFmt(a.btot/N)+'</div></div><div class="qs-kc o"><div class="k">합산 반품</div><div class="v">'+_qsFmt(a.ret)+'</div><div class="d">일평균 '+_qsFmt(a.ret/N)+' · '+(a.ret/a.btot*100).toFixed(1)+'%</div></div></div>'+
    '<div class="qs-row2"><div class="qs-panel"><h4>🗓️ 요일별 합산 <span class="qs-avgtag" id="qsRWdAvg"></span></h4><div class="qs-bars" id="qsRWd"></div></div><div class="qs-panel"><h4>📆 주차별 합산 <span class="qs-avgtag" id="qsRWkAvg"></span></h4><div class="qs-bars" id="qsRWk"></div></div></div>';
   var wdV=QS.WDISP.map(function(w){return _qsWbOf(a.wb,w);});_qsBars(document.getElementById('qsRWd'),QS.WDISP,wdV);_qsAvgTag(document.getElementById('qsRWdAvg'),wdV,QS.WDISP);
-  var wkV=_qsWeekAgg(a.b31);_qsBars(document.getElementById('qsRWk'),QSWEEKS.map(_qsWeekLbl),wkV);_qsAvgTag(document.getElementById('qsRWkAvg'),wkV,QSWEEKS.map(function(w){return w.name;}));
+  var wkV=_qsWeekAgg(a.b31,QSWEEKS);_qsWeekBars(document.getElementById('qsRWk'),document.getElementById('qsRWkAvg'),QSWEEKS,wkV);
 }
 var QSPRE={'주4일(월~목)':['월','화','수','목'],'주5일(월~금)':['월','화','수','목','금'],'주6일(월~토)':['월','화','수','목','금','토'],'주7일':['월','화','수','목','금','토','일']};
 function qsWdTog(w){QSST.cWD.has(w)?QSST.cWD.delete(w):QSST.cWD.add(w);qsCalc();}
