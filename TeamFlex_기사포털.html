@@ -11159,8 +11159,14 @@ async function mdSendGroupReply(gi){
     // 대표 케이스: 운송장 칸에 선택 송장들을 줄바꿈으로 → 폴러가 한 글에 여러 줄로 게시 (SQL/컬럼 불필요)
     await sbClient.from('misdelivery_cases').update({status:newStatus,waybill_no:combinedWb.join('\n')}).eq('id',primaryId);
     var otherIds=allIds.filter(function(id){return id!==primaryId;});
-    if(otherIds.length){await sbClient.from('misdelivery_cases').update({status:newStatus}).in('id',otherIds);}
-    allIds.forEach(function(id){var lc=_mdCases.find(function(x){return x.id===id;});if(lc)lc.status=newStatus;});
+    // [묶음 핵심] 나머지 건은 '대표 1건'에 묶였으므로 개별 승인요청으로 남기지 않고 바로 처리완료(approved).
+    //   → 승인요청 목록엔 대표 1건만 남고, 대표를 승인하면 팀즈에 묶음 1글로 게시됨. (반려 시 _mdBundleSibs로 복원)
+    if(otherIds.length){
+      await sbClient.from('misdelivery_cases').update({status:'approved'}).in('id',otherIds);
+      try{window._mdBundleSibs=window._mdBundleSibs||{};window._mdBundleSibs[primaryId]=otherIds.slice();}catch(_be){}
+    }
+    var _lcP=_mdCases.find(function(x){return x.id===primaryId;});if(_lcP)_lcP.status=newStatus;
+    otherIds.forEach(function(id){var lc=_mdCases.find(function(x){return x.id===id;});if(lc)lc.status='approved';});
     if(mode==='auto'&&ins.data){try{await mdPostToTeams(ins.data.id);}catch(_pe){}}
     delete _mdReplyPhotos[pid];
     if(mode!=='auto'){try{mdPostTeamsAck(primaryId);}catch(_ae){}}
@@ -11330,6 +11336,15 @@ async function mdRejectReply(replyId,caseId,reason){
     }
     var localCase=_mdCases.find(function(x){return x.id===caseId;});
     if(localCase)localCase.status='rejected'; // 로컬 캐시는 항상 rejected
+    // [묶음 복원] 이 대표건에 묶여 처리완료됐던 나머지 건들도 함께 재요청(pending) 상태로 되돌림
+    try{
+      var _sibs=(window._mdBundleSibs&&window._mdBundleSibs[caseId])||[];
+      if(_sibs.length){
+        await sbClient.from('misdelivery_cases').update({status:'pending'}).in('id',_sibs);
+        _sibs.forEach(function(_sid){var _l=_mdCases.find(function(x){return x.id===_sid;});if(_l)_l.status='pending';});
+        delete window._mdBundleSibs[caseId];
+      }
+    }catch(_re){console.warn('[bundle reopen]',_re);}
     var caseData=_mdCases.find(function(c){return c.id===caseId;});
     if(caseData)mdPushToDriver(caseData.driver_name,'↩ 재답변 요청','['+CU.name+'] '+(reason||'재답변을 요청했습니다.'),caseId);
     document.getElementById('md-detail-modal').style.display='none';
