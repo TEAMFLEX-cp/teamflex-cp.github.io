@@ -7332,20 +7332,16 @@ function pgFullSched(){
   ):'';
   var _canEd=(typeof canEdit==='function')?canEdit():(CU&&CU.role==='admin');
   var _isAdm=CU&&CU.role==='admin';
-  // 총괄·팀장(비관리자 편집권한자)에게도 [변경분] 메타어드민 반영 버튼 제공
-  var _sxChangedRow=(!_isAdm && _canEd)?(
-    '<div style="'+_wrap+';display:flex;gap:6px;margin-bottom:6px">'+
-      '<button class="sxbtn b4" style="flex:1" onclick="metaUpload(\'changed\')" title="이번 주차 변경분을 쿠팡 메타어드민에 반영">🔴 변경분 메타어드민 반영<span style="font-size:8px;background:#1e9e63;color:#fff;border-radius:6px;padding:0 4px;margin-left:4px;vertical-align:middle">↑쿠팡</span></button>'+
-    '</div>'+
-    '<div id="sx-status" style="'+_wrap+';text-align:center;font-size:11px;color:#00695c;font-weight:700;margin-bottom:5px"></div>'
-  ):'';
+  // 총괄·팀장(비관리자 편집권한자): [변경분] 버튼을 수정 버튼과 같은 줄에 배치
+  var _changedH=(!_isAdm && _canEd)?('<button class="sxLog" style="flex:1.2 1 0;padding:9px 3px;background:linear-gradient(135deg,#e0563b,#b83a22)" onclick="metaUpload(\'changed\')" title="이번 주차 변경분을 쿠팡 메타어드민에 반영">🔴 변경분<span style="font-size:8px;background:#1e9e63;color:#fff;border-radius:6px;padding:0 4px;margin-left:3px;vertical-align:middle">↑쿠팡</span></button>'):'';
+  var _sxChangedRow=(!_isAdm && _canEd)?('<div id="sx-status" style="'+_wrap+';text-align:center;font-size:11px;color:#00695c;font-weight:700;margin:2px 0 5px"></div>'):'';
   var _unL=(typeof _unreadSchedLog==='function')?_unreadSchedLog():0;
   var _permH=_isAdm?('<button class="sxLog" style="flex:1 1 0;padding:9px 3px;background:linear-gradient(135deg,#7b4fd6,#5a2fb0)" onclick="openSchedPermPopup()">⚙️ 권한</button>'):'';
   var _editH=_canEd?('<div class="sxEditWrap" style="flex:1.5 1 0" onclick="toggleEdit()"><div class="sxEditInner'+(EDIT_MODE?' on':'')+'">'+(EDIT_MODE?'✔️ 완료':'✏️ 수정')+'</div></div>'):'';
   var _logH=_isAdm?('<button class="sxLog" style="flex:1 1 0;padding:9px 3px" onclick="go(\'sl\')">📋 이력'+(_unL?'<span class="sxBadge">'+(_unL>9?'9+':_unL)+'</span>':'')+'</button>'):'';
   var _metaFullH=_isAdm?('<button class="sxLog" style="flex:1 1 0;padding:9px 3px;background:linear-gradient(135deg,#e0563b,#b83a22)" onclick="metaUpload(\'full\')" title="전체 주차 쿠팡 메타 반영">⬆️ 전체</button>'):'';
   var _metaWeekH=_isAdm?('<button class="sxLog" style="flex:1.2 1 0;padding:9px 3px;background:linear-gradient(135deg,#1e9e63,#127a48)" onclick="metaUpload(\'week\')" title="이번 주차 쿠팡 메타 반영">⬆️ 주차별</button>'):'';
-  var _sxAct=(_permH||_editH||_logH)?('<div style="'+_wrap+';display:flex;gap:5px;margin-bottom:8px;flex-wrap:nowrap">'+_permH+_metaFullH+_metaWeekH+_editH+_logH+'</div>'):'';
+  var _sxAct=(_permH||_editH||_logH||_changedH)?('<div style="'+_wrap+';display:flex;gap:5px;margin-bottom:8px;flex-wrap:nowrap">'+_permH+_metaFullH+_metaWeekH+_editH+_changedH+_logH+'</div>'):'';
   var h='<div class="sched-sticky-nav">'+_sxExp+_sxAct+_sxChangedRow+nav+'</div>';
 
   // Detect today / sat / sun columns
