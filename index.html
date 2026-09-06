@@ -228,7 +228,7 @@ table.ft{width:auto;border-collapse:collapse;font-size:12px;min-width:520px;tabl
 .sched-new{position:relative;z-index:1}
 .sched-new::after{content:"";position:absolute;inset:0;border-radius:7px;padding:2px;background:linear-gradient(135deg,#ff0040,#ff8a00,#ffe600,#00e676,#00b0ff,#7c4dff,#ff0040);background-size:300% 300%;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:schedRainbow 3s linear infinite;pointer-events:none;z-index:2}
 @keyframes schedRainbow{0%{background-position:0% 50%}100%{background-position:300% 50%}}
-.sched-new-badge{position:absolute;top:-6px;left:-4px;z-index:3;font-size:8px;font-weight:900;color:#fff;background:linear-gradient(135deg,#ff2d55,#ff8a00);padding:1px 5px;border-radius:7px;line-height:1.3;letter-spacing:.3px;box-shadow:0 1px 3px rgba(0,0,0,.3);transform:rotate(-8deg);font-style:italic}
+.sched-new-badge{position:absolute;top:1px;left:1px;z-index:5;font-size:7px;font-weight:900;color:#fff;background:linear-gradient(135deg,#ff2d55,#ff8a00);padding:0 4px;border-radius:0 7px 7px 0;line-height:1.5;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.35);font-style:italic;text-transform:uppercase;pointer-events:none}
 .share-cell{background:#FFF9C4 !important;cursor:pointer;position:relative}
 .share-cell:active{background:#FFF176 !important}
 .share-badge{display:inline-block;background:#F57F17;color:#fff;border-radius:8px;font-size:9px;padding:1px 4px;margin-left:2px;vertical-align:middle;font-weight:700}
@@ -7421,7 +7421,11 @@ function pgFullSched(){
   }
   if(!SCHED_WK)SCHED_WK=findCurWeek();
   var wk=AW[SCHED_WK];var ovr=getSchedOvr();var today=todStr();
-  var _newKeys=_schedNewKeySet();   // 변경분 New 표시용 (근무일 안 지난 순변경 셀)
+  // ★ 공유 변경로그 캐시가 아직 없으면(기사 등 변경이력 탭 미방문) 백그라운드 로드 후 재렌더 → New 배지가 모든 역할에 표시됨
+  if(_sharedSchedLogCache===null && typeof _loadSharedSchedLog==='function'){
+    try{_loadSharedSchedLog().then(function(){var mc=document.getElementById('mc');if(mc&&(CUR_TAB==='fs'||CUR_TAB==='as')){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);}});}catch(e){}
+  }
+  var _newKeys=_schedNewKeySet();   // 변경분 New 표시용 (건드린 라우트·근무일 안 지남)
   var keys=getWeekKeys();var idx=keys.indexOf(SCHED_WK);
   var prevDis=idx<=0?'disabled':'';var nextDis=idx>=keys.length-1?'disabled':'';
   var curWk=findCurWeek();
