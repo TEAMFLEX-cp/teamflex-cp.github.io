@@ -15047,7 +15047,7 @@ function rqDamageForm(){
     '<div id="rq-dm-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
     '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
-    '<textarea class="rq-paste" id="rq-dm-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호 자동 추출됩니다" oninput="rqParseDamage()">'+rqEsc(window._rqDmRaw||'')+'</textarea>'+
+    '<textarea class="rq-paste" id="rq-dm-paste" placeholder="📋 운송장·주문번호를 붙여넣으면 자동으로 행 분리 됨&#10;✅ 여러 건을 동시에 붙여넣기 해도 자동 처리 됨" oninput="rqParseDamage()">'+rqEsc(window._rqDmRaw||'')+'</textarea>'+
     '<div class="rq-parsed" id="rq-dm-parsed">'+
       '<div><span style="color:#888;font-size:11px">운송장번호: </span><span id="rq-dm-wb-val" style="font-weight:700;color:'+(wb?'#222':'#bbb')+'">'+(wb||'자동 추출 대기')+'</span></div>'+
       '<div><span style="color:#888;font-size:11px">주문번호: </span><span id="rq-dm-od-val" style="font-weight:700;color:'+(od?'#222':'#999')+'">'+(od||'자동 추출 대기')+'</span></div>'+
@@ -15507,7 +15507,7 @@ function rqUpdateDupPreview(){
   var r=rqDupRet(); var rel=document.getElementById('rq-dup-ret'); if(rel) rel.textContent=(r==null?'-':r)+' 개';
   var pairs=rqParsePairs(window._rqDupRaw||'');
   var hint=document.getElementById('rq-dup-hint');
-  if(hint){ hint.textContent=pairs.length?('✅ '+pairs.length+'건 인식'):'운송장·주문번호를 붙여넣으면 자동 분리됩니다'; }
+  if(hint){ hint.style.display=pairs.length?'':'none'; hint.textContent=pairs.length?('✅ '+pairs.length+'건 인식'):''; }
   var ok=rqDupOk();
   var btn=document.getElementById('rq-dup-btn');
   if(btn){ btn.disabled=!ok; btn.className='rq-btn '+(ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):''); btn.innerHTML=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청'; }
@@ -15541,8 +15541,8 @@ function rqDupForm(){
     '<div id="rq-dup-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
     '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
-    '<textarea class="rq-paste" id="rq-dup-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호 자동 분리 (여러 건 가능)" oninput="window._rqDupRaw=this.value;rqUpdateDupPreview()">'+rqEsc(raw)+'</textarea>'+
-    '<div class="rq-hint" id="rq-dup-hint">'+(pairs.length?('✅ '+pairs.length+'건 인식'):'운송장·주문번호를 붙여넣으면 자동 분리됩니다')+'</div>'+
+    '<textarea class="rq-paste" id="rq-dup-paste" placeholder="📋 운송장·주문번호를 붙여넣으면 자동으로 행 분리 됨&#10;✅ 여러 건을 동시에 붙여넣기 해도 자동 처리 됨" oninput="window._rqDupRaw=this.value;rqUpdateDupPreview()">'+rqEsc(raw)+'</textarea>'+
+    '<div class="rq-hint" id="rq-dup-hint"'+(pairs.length?'':' style="display:none"')+'>'+(pairs.length?('✅ '+pairs.length+'건 인식'):'')+'</div>'+
     '<div style="display:flex;gap:8px;margin:6px 0 4px">'+
       '<div style="flex:1"><label class="rq-label">총 수량 <span class="rq-req">필수</span></label><input class="rq-inp" id="rq-dup-total" type="number" inputmode="numeric" min="0" placeholder="개" value="'+rqEsc(total)+'" oninput="window._rqDupTotal=this.value;rqUpdateDupPreview()"></div>'+
       '<div style="flex:1"><label class="rq-label">배송 <span class="rq-req">필수</span></label><input class="rq-inp" id="rq-dup-deliver" type="number" inputmode="numeric" min="0" placeholder="개" value="'+rqEsc(deliver)+'" oninput="window._rqDupDeliver=this.value;rqUpdateDupPreview()"></div>'+
@@ -15931,8 +15931,8 @@ function rqSimpleForm(type, title, pfx, previewFn){
     '<div id="'+pfx+'-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
     '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
-    '<textarea class="rq-paste" id="'+pfx+'-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호를 자동으로 행 분리합니다 (여러 건 가능)" oninput="rqParseSimple(\''+ pfx +'\')">'+rqEsc(raw)+'</textarea>'+
-    '<div class="rq-hint" id="'+pfx+'-hint">'+(okv?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'📋 붙여넣기만 하면 자동 행분리 · 여러 건 동시 붙여넣기도 OK')+'</div>'+
+    '<textarea class="rq-paste" id="'+pfx+'-paste" placeholder="📋 운송장·주문번호를 붙여넣으면 자동으로 행 분리 됨&#10;✅ 여러 건을 동시에 붙여넣기 해도 자동 처리 됨" oninput="rqParseSimple(\''+ pfx +'\')">'+rqEsc(raw)+'</textarea>'+
+    '<div class="rq-hint" id="'+pfx+'-hint"'+(okv?'':' style="display:none"')+'>'+(okv?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'')+'</div>'+
     '<label class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</label>'+
     '<div class="rq-preview-box" id="'+pfx+'-preview">'+rqEsc(previewFn(pairs))+'</div>'+
     '<button class="rq-btn '+btnClass+'" id="'+pfx+'-btn" onclick="rqSendSimple(\''+ type +'\',\''+ pfx +'\')" '+(!okv?'disabled':'')+'>'+btnTxt+'</button>'+
@@ -15947,7 +15947,7 @@ function rqParseSimple(pfx){
   var fn=window[pfx+'-prevFn'];
   var prev=document.getElementById(pfx+'-preview'); if(prev&&fn) prev.textContent=fn(pairs);
   var hint=document.getElementById(pfx+'-hint');
-  if(hint){ hint.textContent=okv?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'📋 붙여넣기만 하면 자동 행분리 · 여러 건 동시 붙여넣기도 OK'; hint.style.background=okv?'#e8f5e9':'#fff8e1'; hint.style.color=okv?'#2e7d32':'#c62828'; }
+  if(hint){ hint.style.display=okv?'':'none'; hint.textContent=okv?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):''; hint.style.background='#e8f5e9'; hint.style.color='#2e7d32'; }
   var btn=document.getElementById(pfx+'-btn');
   if(btn){ btn.disabled=!okv; btn.className='rq-btn '+(okv?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):''); btn.innerHTML=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청'; }
 }
