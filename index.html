@@ -15571,7 +15571,8 @@ function _rqWaitEnsureInputs(){
     document.body.appendChild(i);
   });
 }
-function rqWaitPick(which){var s=_rqWaitSel();if(!s.length){alert('먼저 운송장을 선택하세요.');return;}_rqWaitEnsureInputs();var f=document.getElementById('rq-wait-file-'+which);if(f)f.click();}
+window._rqWaitTarget=window._rqWaitTarget||null;
+function rqWaitPick(which){var s=_rqWaitSel();if(!s.length){alert('먼저 운송장을 선택하세요.');return;}window._rqWaitTarget=null;/* 일괄=선택건 */_rqWaitEnsureInputs();var f=document.getElementById('rq-wait-file-'+which);if(f)f.click();}
 function rqWaitFileSelected(which){
   var inp=document.getElementById('rq-wait-file-'+which);if(!inp||!inp.files[0])return;var file=inp.files[0];
   var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){
@@ -15579,9 +15580,12 @@ function rqWaitFileSelected(which){
     if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
     canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h);
     var b64=canvas.toDataURL('image/jpeg',0.75);
-    var cnt=_rqWaitSel().length;
-    _rqWaitSel().forEach(function(wt){window._rqWaitPhoto[wt.id]=b64;});
-    try{showToast('🖼️ 선택 '+cnt+'건에 사진 첨부(공통)',true);}catch(e){}
+    // 대상: 개별('이 건만')이면 그 건만, 아니면 선택(체크)된 건들
+    var ids=(window._rqWaitTarget&&window._rqWaitTarget.length)?window._rqWaitTarget.slice():_rqWaitSel().map(function(w){return w.id;});
+    window._rqWaitTarget=null;
+    if(!ids.length){return;}
+    ids.forEach(function(id){window._rqWaitPhoto[id]=b64;});
+    try{showToast('🖼️ '+ids.length+'건에 사진 첨부',true);}catch(e){}
     // ★ 촬영 후 앱이 다른 화면으로 나가도 → 대기 화면으로 강제 복귀(앱 resume 렌더보다 뒤에 실행)
     _rqTab='pretakewait';
     function _rqBackToWait(){
@@ -15596,7 +15600,7 @@ function rqWaitFileSelected(which){
     setTimeout(_rqBackToWait,400);
   };img.src=e.target.result;};reader.readAsDataURL(file);inp.value='';
 }
-function rqWaitAttachOne(id,which){window._rqWaitSelMap[id]=true;rqWaitPick(which||'gal');}
+function rqWaitAttachOne(id,which){window._rqWaitTarget=[id];/* 이 건만 */_rqWaitEnsureInputs();var f=document.getElementById('rq-wait-file-'+(which||'gal'));if(f)f.click();}
 async function rqWaitSend(){
   var s=_rqWaitSel();if(!s.length){alert('먼저 운송장을 선택하세요.');return;}
   var no=s.filter(function(w){return !window._rqWaitPhoto[w.id];});
