@@ -6675,7 +6675,25 @@ function annLightbox(u){
 function annPickPhoto(cam){var inp=document.getElementById('ann-file-inp');if(!inp)return;if(cam)inp.setAttribute('capture','camera');else inp.removeAttribute('capture');inp.value='';inp.click();}
 function annHandlePhoto(input){var files=Array.from(input.files||[]);if(!files.length)return;files.forEach(function(f){_annPhotos.push(f);});annRenderPreview();}
 function annRemovePhoto(i){_annPhotos.splice(i,1);annRenderPreview();}
-function annRenderPreview(){var prev=document.getElementById('ann-fpreview');if(!prev)return;prev.innerHTML='';_annPhotos.forEach(function(f,i){var fr=new FileReader();fr.onload=function(e){var d=document.createElement('div');d.style.cssText='position:relative;display:inline-block;margin:2px';d.innerHTML='<img src="'+e.target.result+'" style="width:62px;height:62px;object-fit:cover;border-radius:8px"><button type="button" onclick="annRemovePhoto('+i+')" style="position:absolute;top:-6px;right:-6px;background:#c62828;color:#fff;border:none;border-radius:50%;width:19px;height:19px;font-size:11px;cursor:pointer;line-height:1;padding:0">✕</button>';prev.appendChild(d);};fr.readAsDataURL(f);});}
+function annMovePhoto(i,dir){var j=i+dir;if(j<0||j>=_annPhotos.length)return;var t=_annPhotos[i];_annPhotos[i]=_annPhotos[j];_annPhotos[j]=t;annRenderPreview();}
+function annRenderPreview(){var prev=document.getElementById('ann-fpreview');if(!prev)return;
+  // 이전 objectURL 정리
+  try{(prev._ourls||[]).forEach(function(u){URL.revokeObjectURL(u);});}catch(e){}
+  prev._ourls=[]; prev.innerHTML='';
+  if(!_annPhotos.length)return;
+  if(_annPhotos.length>1){var tip=document.createElement('div');tip.style.cssText='width:100%;font-size:11px;color:#8a97a8;margin:2px 0 4px';tip.textContent='◀ ▶ 로 순서 변경 · 넣은/변경한 순서대로 올라갑니다';prev.appendChild(tip);}
+  _annPhotos.forEach(function(f,i){
+    var u=URL.createObjectURL(f);prev._ourls.push(u);   // 동기 → 순서 보장
+    var d=document.createElement('div');d.style.cssText='position:relative;display:inline-block;margin:3px;vertical-align:top';
+    d.innerHTML='<span style="position:absolute;top:-6px;left:-6px;background:#2f6fed;color:#fff;border-radius:50%;width:19px;height:19px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;z-index:2">'+(i+1)+'</span>'+
+      '<img src="'+u+'" style="width:66px;height:66px;object-fit:cover;border-radius:8px;border:1px solid #e0e5ea">'+
+      '<button type="button" onclick="annRemovePhoto('+i+')" style="position:absolute;top:-6px;right:-6px;background:#c62828;color:#fff;border:none;border-radius:50%;width:19px;height:19px;font-size:11px;cursor:pointer;line-height:1;padding:0;z-index:2">✕</button>'+
+      '<div style="display:flex;gap:2px;margin-top:3px">'+
+        '<button type="button" onclick="annMovePhoto('+i+',-1)" '+(i===0?'disabled':'')+' style="flex:1;padding:3px 0;border:1px solid #cfd8e6;background:'+(i===0?'#f4f6f8':'#eef4ff')+';color:'+(i===0?'#bbb':'#2f6fed')+';border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">◀</button>'+
+        '<button type="button" onclick="annMovePhoto('+i+',1)" '+(i===_annPhotos.length-1?'disabled':'')+' style="flex:1;padding:3px 0;border:1px solid #cfd8e6;background:'+(i===_annPhotos.length-1?'#f4f6f8':'#eef4ff')+';color:'+(i===_annPhotos.length-1?'#bbb':'#2f6fed')+';border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">▶</button>'+
+      '</div>';
+    prev.appendChild(d);
+  });}
 async function annUploadPhotos(){var urls=[];for(var i=0;i<_annPhotos.length;i++){var file=_annPhotos[i];var ext='jpg';if(file.type){ext=file.type.split('/').pop().replace('jpeg','jpg');}var path='ann-photos/'+Date.now()+'-'+i+'.'+ext;try{var up=await sbClient.storage.from('photos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:true});if(!up.error){var pu=sbClient.storage.from('photos').getPublicUrl(path);if(pu&&pu.data&&pu.data.publicUrl)urls.push(pu.data.publicUrl);}else{console.error('annUpload',up.error);}}catch(e){console.error('annUpload ex',e);}}return urls;}
 
 // ── MY SCHEDULE (arrow navigation) ───────────────────────────────────
