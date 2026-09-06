@@ -7016,8 +7016,9 @@ async function _sxDidMap(){var map={};try{var q=await sbClient.from('drivers').s
 function _sxDid(map,name,sfx){name=String(name||'').trim();if(!name)return '';if(sfx&&map[name+sfx])return map[name+sfx];if(map[name])return map[name];var b=_sxParseSuf(name);if(map[b[0]])return map[b[0]];return name;}
 // 기사 등록 여부(진짜 아이디로 매핑되는지) — 미등록(서민지1 등)은 변경분 엑셀에서 제외
 function _sxReg(map,name){name=String(name||'').trim();if(!name)return false;if(map[name])return true;try{var b=_sxParseSuf(name);return !!map[b[0]];}catch(e){return false;}}
-// 쿠팡에서 이미 수정 불가한 날짜(과거) — 변경분 엑셀에서 제외 (오늘 이전)
-function _sxDateLocked(workDate){try{var t=new Date();t.setHours(0,0,0,0);var td=t.getFullYear()+'-'+('0'+(t.getMonth()+1)).slice(-2)+'-'+('0'+t.getDate()).slice(-2);return String(workDate)<td;}catch(e){return false;}}
+// 쿠팡 변경분 업로드 가능 범위: '모레(D+2)'부터만 가능.
+//   과거·오늘·내일(D, D+1)은 쿠팡에서 변경 불가 → 변경분 엑셀에서 제외 (관리자 포함 공통).
+function _sxDateLocked(workDate){try{var t=new Date();t.setHours(0,0,0,0);t.setDate(t.getDate()+2);var b=t.getFullYear()+'-'+('0'+(t.getMonth()+1)).slice(-2)+'-'+('0'+t.getDate()).slice(-2);return String(workDate)<b;}catch(e){return false;}}
 function _sxBuildList(data,didmap){
   var seenRaws={};data.forEach(function(r){var raw=r.route_raw||r.route||'';var d=r.work_date;if(raw){if(!seenRaws[d])seenRaws[d]=[];if(seenRaws[d].indexOf(raw)<0)seenRaws[d].push(raw);}});
   var allRawsSet={};Object.keys(seenRaws).forEach(function(d){seenRaws[d].forEach(function(x){allRawsSet[x]=1;});});
@@ -7300,7 +7301,7 @@ async function _sxDoChanged(){
     for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}
     XLSX.utils.book_append_sheet(wb,sh,'변경리스트');
     _sxOut(wb,_sxWeekLabel(ws0)+'_변경리스트.xlsx');
-    var _exTxt=(skipPast?(' · 지난날짜제외 '+skipPast):'')+(skipUnreg?(' · 미등록제외 '+skipUnreg):'')+(skipHumu?(' · 근무중휴무제외 '+skipHumu):'');
+    var _exTxt=(skipPast?(' · 변경불가일(D+1이내)제외 '+skipPast):'')+(skipUnreg?(' · 미등록제외 '+skipUnreg):'')+(skipHumu?(' · 근무중휴무제외 '+skipHumu):'');
     if(st)st.textContent='✅ 변경분 '+n+'행'+_exTxt;
     try{showToast('✅ 변경분 '+n+'행'+_exTxt,true);}catch(e){}
   }catch(e){if(st)st.textContent='';alert('변경분 생성 오류: '+((e&&e.message)||e));}
