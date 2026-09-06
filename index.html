@@ -951,8 +951,9 @@ async function _sxMarkUploaded(ids){
   // 로컬 로그도 동일 표시
   try{var ll=_getSchedLog()||[];var lc=0;ll.forEach(function(c){if(c&&idset[c.id]&&!c.uploaded){c.uploaded=true;lc++;}});if(lc&&typeof _saveSchedLog==='function')_saveSchedLog(ll);}catch(e){}
 }
-// ★ 변경된 스케줄 셀 표시용: (근무일|라우트) 중 '원본 대비 순변경'이면서 '근무일이 아직 안 지난' 것만 New 표시.
-//    변경로그(공유+로컬)에서 라우트별 최초 oldDriver / 최종 newDriver 비교 → 순변경일 때만. 근무일<오늘이면 제외.
+// ★ 변경된 스케줄 셀 표시용: '수정 이력이 있는(=건드린) 라우트'이면서 '근무일이 아직 안 지난' 셀에 New 표시.
+//    변경분 엑셀이 '건드린 라우트 전부'를 반영하는 것과 동일 기준. 근무일<오늘이면 자동 소멸.
+//    (전체를 문병국으로 돌렸다가 되돌려도, 그 날짜/라우트는 건드린 것이므로 근무일 전까지는 New)
 function _schedNewKeySet(){
   try{
     var shared=Array.isArray(_sharedSchedLogCache)?_sharedSchedLogCache:[];
@@ -960,16 +961,14 @@ function _schedNewKeySet(){
     var log=(typeof _mergeSchedLogs==='function')?_mergeSchedLogs(shared,local):shared.concat(local);
     if(!Array.isArray(log))log=[];
     var today=(typeof todStr==='function')?todStr():'';
-    var agg={};
+    var set={};
     log.forEach(function(c){
       if(!c||!c.workDate||!c.route)return;
-      if(today&&String(c.workDate)<today)return;   // 근무일이 지났으면 제외
-      var k=c.workDate+'|'+c.route;var at=c.at||'';
-      if(!agg[k])agg[k]={oldD:c.oldDriver||'',newD:c.newDriver||'',oldAt:at,newAt:at};
-      else{if(at>=agg[k].newAt){agg[k].newD=c.newDriver||'';agg[k].newAt=at;}if(at<agg[k].oldAt){agg[k].oldD=c.oldDriver||'';agg[k].oldAt=at;}}
+      if(today&&String(c.workDate)<today)return;   // 근무일이 지났으면 제외(소멸)
+      // 라우트가 콤마/복합이면 각 서브라우트도 키로 등록(셀은 route_raw 단위로 렌더됨)
+      String(c.route).split(',').forEach(function(rr){rr=rr.trim();if(rr)set[c.workDate+'|'+rr]=1;});
+      set[c.workDate+'|'+c.route]=1;
     });
-    var set={};
-    Object.keys(agg).forEach(function(k){var a=agg[k];if(norm_name_js(a.oldD||'')!==norm_name_js(a.newD||''))set[k]=1;});
     return set;
   }catch(e){return {};}
 }
@@ -7312,14 +7311,21 @@ async function _sxDoChanged(){
       if(curNew && _sxReg(didmap,curNew)){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,curNew,''),_SX_CFG.status,rot,routeStr]);n++;}
       else if(curNew){skipUnreg++;}
     });
-    // ★ 중복 제거: 쿠팡은 같은 (업무일·캠프명·웨이브·아이디)가 2번 나오면 거부함 → 1행만 남기고 '출근'을 우선
+    // ★ 중복 제거: 쿠팡은 같은 (업무일·캠프명·웨이브·아이디)가 2번 나오면 거부함 → 1기사=1행.
+    //   단, 같은 기사가 같은 날 '여러 라우트'를 맡으면(316C+316D) 행을 삭제하지 말고 라우트를 합쳐야 함.
+    function _mergeRtStr(a,b){var s={};String(a||'').split(',').concat(String(b||'').split(',')).forEach(function(x){x=x.trim();if(x)s[x]=1;});return Object.keys(s).sort().join(',');}
     var _seen={},_ded=[aoa[0]];
     for(var _ri=1;_ri<aoa.length;_ri++){var _r=aoa[_ri];
       var _dv=(_r[0]&&_r[0].getTime)?_r[0].getTime():String(_r[0]);
       var _dk=_dv+'|'+_r[2]+'|'+_r[3]+'|'+norm_name_js(String(_r[4]||''));
       var _isWork=(_r[5]===_SX_CFG.status);
       if(!(_dk in _seen)){_seen[_dk]=_ded.length;_ded.push(_r);}
-      else if(_isWork && _ded[_seen[_dk]][5]!==_SX_CFG.status){_ded[_seen[_dk]]=_r;} // 기존이 휴무면 출근으로 교체
+      else{
+        var _ex=_ded[_seen[_dk]];var _exWork=(_ex[5]===_SX_CFG.status);
+        if(_isWork && _exWork){_ex[7]=_mergeRtStr(_ex[7],_r[7]);}      // 같은 기사·같은 날 여러 라우트 → 라우트 합치기
+        else if(_isWork && !_exWork){_ded[_seen[_dk]]=_r;}             // 기존 휴무 → 출근으로 교체
+        // else: 기존 출근 + 새 휴무 → 무시(출근 우선)
+      }
     }
     aoa=_ded;n=aoa.length-1;
     // ★ 최종 방어 필터: 아이디 칸이 '진짜 등록된 로그인ID'가 아닌 행은 무조건 삭제.
