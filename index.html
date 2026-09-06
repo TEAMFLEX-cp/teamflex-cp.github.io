@@ -3250,6 +3250,9 @@ function _reRenderCurTab(){
   var m=t.match(/go\('(\w+)'\)/);
   if(!m)return;
   if(m[1]==='rl')return;  // 룰렛 탭은 캔버스 애니메이션 보존 위해 자동 재렌더 제외
+  // ★ 각종요청 폼 작성 중(파손·라우트·반품이관·이중출고·스캔삭제·분실·전취/분실 반납·사진대기 등)이면
+  //   앱 복귀/자동동기화로 인한 자동 재렌더를 건너뛴다 → 입력·선택·촬영 상태 보존 (랜딩으로 튐 방지)
+  if(m[1]==='rq' && typeof _rqTab!=='undefined' && _rqTab){ return; }
   // ★ 스케줄 탭 '편집 중'이면 go()가 EDIT_MODE를 꺼버리므로, 편집모드 유지한 채 스케줄만 재렌더
   if((m[1]==='fs'||m[1]==='as') && EDIT_MODE){
     var _mcE=document.getElementById('mc');var _st0=_mcE?_mcE.scrollTop:0;
