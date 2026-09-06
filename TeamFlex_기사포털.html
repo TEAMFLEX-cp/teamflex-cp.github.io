@@ -224,6 +224,11 @@ input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-sel
 .ftw::-webkit-scrollbar{display:none;}
 table.ft{width:auto;border-collapse:collapse;font-size:12px;min-width:520px;table-layout:fixed}
 /* 쉐어 셀 */
+/* 변경된 스케줄(근무일 안 지남) — New 배지 + 무지개 테두리 */
+.sched-new{position:relative;z-index:1}
+.sched-new::after{content:"";position:absolute;inset:0;border-radius:7px;padding:2px;background:linear-gradient(135deg,#ff0040,#ff8a00,#ffe600,#00e676,#00b0ff,#7c4dff,#ff0040);background-size:300% 300%;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:schedRainbow 3s linear infinite;pointer-events:none;z-index:2}
+@keyframes schedRainbow{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+.sched-new-badge{position:absolute;top:-6px;left:-4px;z-index:3;font-size:8px;font-weight:900;color:#fff;background:linear-gradient(135deg,#ff2d55,#ff8a00);padding:1px 5px;border-radius:7px;line-height:1.3;letter-spacing:.3px;box-shadow:0 1px 3px rgba(0,0,0,.3);transform:rotate(-8deg);font-style:italic}
 .share-cell{background:#FFF9C4 !important;cursor:pointer;position:relative}
 .share-cell:active{background:#FFF176 !important}
 .share-badge{display:inline-block;background:#F57F17;color:#fff;border-radius:8px;font-size:9px;padding:1px 4px;margin-left:2px;vertical-align:middle;font-weight:700}
@@ -945,6 +950,28 @@ async function _sxMarkUploaded(ids){
   }catch(e){console.warn('[_sxMarkUploaded]',e);}
   // 로컬 로그도 동일 표시
   try{var ll=_getSchedLog()||[];var lc=0;ll.forEach(function(c){if(c&&idset[c.id]&&!c.uploaded){c.uploaded=true;lc++;}});if(lc&&typeof _saveSchedLog==='function')_saveSchedLog(ll);}catch(e){}
+}
+// ★ 변경된 스케줄 셀 표시용: (근무일|라우트) 중 '원본 대비 순변경'이면서 '근무일이 아직 안 지난' 것만 New 표시.
+//    변경로그(공유+로컬)에서 라우트별 최초 oldDriver / 최종 newDriver 비교 → 순변경일 때만. 근무일<오늘이면 제외.
+function _schedNewKeySet(){
+  try{
+    var shared=Array.isArray(_sharedSchedLogCache)?_sharedSchedLogCache:[];
+    var local=[];try{local=_getSchedLog()||[];}catch(e){}
+    var log=(typeof _mergeSchedLogs==='function')?_mergeSchedLogs(shared,local):shared.concat(local);
+    if(!Array.isArray(log))log=[];
+    var today=(typeof todStr==='function')?todStr():'';
+    var agg={};
+    log.forEach(function(c){
+      if(!c||!c.workDate||!c.route)return;
+      if(today&&String(c.workDate)<today)return;   // 근무일이 지났으면 제외
+      var k=c.workDate+'|'+c.route;var at=c.at||'';
+      if(!agg[k])agg[k]={oldD:c.oldDriver||'',newD:c.newDriver||'',oldAt:at,newAt:at};
+      else{if(at>=agg[k].newAt){agg[k].newD=c.newDriver||'';agg[k].newAt=at;}if(at<agg[k].oldAt){agg[k].oldD=c.oldDriver||'';agg[k].oldAt=at;}}
+    });
+    var set={};
+    Object.keys(agg).forEach(function(k){var a=agg[k];if(norm_name_js(a.oldD||'')!==norm_name_js(a.newD||''))set[k]=1;});
+    return set;
+  }catch(e){return {};}
 }
 async function _clearSharedSchedLog(){
   if(!sbClient)return;
@@ -7378,6 +7405,7 @@ function pgFullSched(){
   }
   if(!SCHED_WK)SCHED_WK=findCurWeek();
   var wk=AW[SCHED_WK];var ovr=getSchedOvr();var today=todStr();
+  var _newKeys=_schedNewKeySet();   // 변경분 New 표시용 (근무일 안 지난 순변경 셀)
   var keys=getWeekKeys();var idx=keys.indexOf(SCHED_WK);
   var prevDis=idx<=0?'disabled':'';var nextDis=idx>=keys.length-1?'disabled':'';
   var curWk=findCurWeek();
@@ -7453,7 +7481,13 @@ function pgFullSched(){
     var leaderBaseNames=g.l.map(function(ln){return ln.replace(/\s*(팀장|조장)$/,'').trim();});
     var tjBaseNames=g.l.filter(function(ln){return ln.indexOf('팀장')>=0;}).map(function(ln){return ln.replace(/\s*팀장$/,'').trim();});
     // Build rowspan map: same driver on consecutive routes in same date column → merge
+    // ★ 편집 모드에서는 병합하지 않음 — 병합하면 서로 다른 route_raw(316D·316C)를 한 셀로 묶어
+    //    수정 시 한 라우트만 저장되고 나머지는 옛 값이 남아 엑셀에서 개별 인식이 안 됨.
+    //    편집 중에는 모든 라우트를 개별 셀로 노출해 각각 기사를 지정·저장한다.
     var spanMap={};
+    if(EDIT_MODE){
+      for(var _ei=0;_ei<g.rt.length;_ei++){for(var _ej=0;_ej<wk.dt.length;_ej++){spanMap[_ei+'_'+_ej]=1;}}
+    } else
     for(var di2=0;di2<wk.dt.length;di2++){
       var dt2=wk.dt[di2];
       var ri2=0;
@@ -7502,6 +7536,11 @@ function pgFullSched(){
         var ddisp=dBase?(isTJ?'★':'')+dBase+(dp.suf?'<span style="font-size:9px;background:#E3F2FD;color:#1565C0;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;vertical-align:middle">'+dp.suf+'</span>':''):'';
         // sat/sun color ONLY on <th> headers — never on data <td> cells
         var tdCC=(cc==='tod-col')?'tod-col':'';
+        // ★ 변경된 스케줄(순변경·근무일 안 지남) → New 배지 + 무지개 테두리. spanVal로 병합된 라우트도 함께 검사.
+        var _isNew=false;
+        if(_newKeys){ if(_newKeys[dt+'|'+route])_isNew=true; else if(spanVal>1){for(var _sk=0;_sk<spanVal;_sk++){var _rr2=(g.rt[ri+_sk]&&g.rt[ri+_sk].r);if(_rr2&&_newKeys[dt+'|'+_rr2]){_isNew=true;break;}}} }
+        var newCls=_isNew?' sched-new':'';
+        var newBadge=_isNew?'<span class="sched-new-badge">New</span>':'';
         var rowspanAttr='';if(spanVal>1)rowspanAttr=' rowspan="'+spanVal+'"';
         // Per-leader cell color: each leader uses their own LC color, not the group color
         var cellGC=isLead&&LCM[dBase]?LCM[dBase]:gc;
@@ -7530,18 +7569,18 @@ function pgFullSched(){
             var _spn=norm_name_js(_sp.d||'');var _spTj=(_spn&&ALL_TJ.indexOf(_spn)>=0)?'★':'';
             _splitLines+='<div style="font-size:11px;line-height:1.45;white-space:nowrap;padding:1px 0"><b style="color:#1565C0">'+escQ(_sr)+'</b> : '+_spTj+escQ(_spn)+'</div>';
           }
-          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+'"'+rowspanAttr
+          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+newCls+'"'+rowspanAttr
             +(EDIT_MODE?' onclick="openSplitCell(this)" style="cursor:pointer;background:#FFF8E1"':'')
             +' data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-route="'+escQ(routeDisp)+'" data-dt="'+dt+'" data-share="'+shareJson+'">'
-            +_splitLines
+            +newBadge+_splitLines
             +(EDIT_MODE?'<div style="font-size:9px;color:#E65100;font-weight:700;margin-top:1px">✏ 분할수정</div>':'')
             +'</td>';
         } else if(EDIT_MODE){
           var eStyle=isLead?(' style="background:'+cellGC.lt+';color:'+cellGC.mtx+';font-weight:800"'):'';
-          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+' editable"'+eStyle+rowspanAttr+' onclick="openEditCell(this)" data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-rt="'+route+'" data-dt="'+dt+'" data-driver="'+dBase+'">'+ddisp+'</td>';
+          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+' editable'+newCls+'"'+eStyle+rowspanAttr+' onclick="openEditCell(this)" data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-rt="'+route+'" data-dt="'+dt+'" data-driver="'+dBase+'">'+newBadge+ddisp+'</td>';
         } else {
           var lStyle=isLead?(' style="background:'+cellGC.lt+';color:'+cellGC.mtx+';font-weight:800"'):'';
-          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+'"'+lStyle+rowspanAttr+'>'+ddisp+'</td>';
+          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+newCls+'"'+lStyle+rowspanAttr+'>'+newBadge+ddisp+'</td>';
         }
       }
       rows+='<tr>'+routeCell+cells+'</tr>';
