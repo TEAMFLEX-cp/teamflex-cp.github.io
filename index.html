@@ -932,6 +932,20 @@ async function _loadSharedSchedLog(){
   }catch(e){console.warn('[_loadSharedSchedLog]',e);}
   return [];
 }
+// ★ 변경분 업로드 성공 시 해당 로그 항목에 uploaded 표시 → 다음 변경분에서 제외(델타)
+async function _sxMarkUploaded(ids){
+  if(!sbClient||!ids||!ids.length)return;
+  var idset={};ids.forEach(function(x){if(x)idset[x]=1;});
+  try{
+    var r=await sbClient.from('app_settings').select('value').eq('key','sched_change_log').maybeSingle();
+    var cur=[];if(r&&r.data&&r.data.value){var v=r.data.value;cur=(typeof v==='string')?JSON.parse(v):v;}
+    if(!Array.isArray(cur))cur=[];
+    var ch=0;cur.forEach(function(c){if(c&&idset[c.id]&&!c.uploaded){c.uploaded=true;c.uploadedAt=new Date().toISOString();ch++;}});
+    if(ch){await sbClient.from('app_settings').upsert({key:'sched_change_log',value:JSON.stringify(cur)},{onConflict:'key'});_sharedSchedLogCache=cur;}
+  }catch(e){console.warn('[_sxMarkUploaded]',e);}
+  // 로컬 로그도 동일 표시
+  try{var ll=_getSchedLog()||[];var lc=0;ll.forEach(function(c){if(c&&idset[c.id]&&!c.uploaded){c.uploaded=true;lc++;}});if(lc&&typeof _saveSchedLog==='function')_saveSchedLog(ll);}catch(e){}
+}
 async function _clearSharedSchedLog(){
   if(!sbClient)return;
   try{await sbClient.from('app_settings').upsert({key:'sched_change_log',value:'[]'},{onConflict:'key'});_sharedSchedLogCache=[];}
@@ -7000,6 +7014,10 @@ function _sxParseSuf(nm){var s=String(nm||'').trim();var m=s.match(/^(.+?)([A-Z]
 function _sxIsNight(rt){var b=String(rt).replace(/\s*\(.*?\)/g,'').trim().toUpperCase();for(var i=0;i<_SX_NIGHT.length;i++){var n=_SX_NIGHT[i].toUpperCase();if(b===n||b.indexOf(n)>=0||n.indexOf(b)>=0)return true;}var m=b.match(/^(\d+)/);if(m){for(var j=0;j<_SX_NIGHT.length;j++){var nm=_SX_NIGHT[j].match(/^(\d+)/);if(nm&&nm[1]===m[1])return true;}}return false;}
 async function _sxDidMap(){var map={};try{var q=await sbClient.from('drivers').select('name,login_id,driver_id');(q.data||[]).forEach(function(d){if(d.name){var id=String(d.login_id||d.driver_id||'').replace(/@df$/i,'').trim();/* 아이디 값이 한글이면 가짜(이름이 잘못 등록된 항목)이므로 무시 → 접미어 제거로 진짜 아이디를 찾게 함 */if(id&&!/[가-힣]/.test(id))map[d.name]=id;}});}catch(e){}return map;}
 function _sxDid(map,name,sfx){name=String(name||'').trim();if(!name)return '';if(sfx&&map[name+sfx])return map[name+sfx];if(map[name])return map[name];var b=_sxParseSuf(name);if(map[b[0]])return map[b[0]];return name;}
+// 기사 등록 여부(진짜 아이디로 매핑되는지) — 미등록(서민지1 등)은 변경분 엑셀에서 제외
+function _sxReg(map,name){name=String(name||'').trim();if(!name)return false;if(map[name])return true;try{var b=_sxParseSuf(name);return !!map[b[0]];}catch(e){return false;}}
+// 쿠팡에서 이미 수정 불가한 날짜(과거) — 변경분 엑셀에서 제외 (오늘 이전)
+function _sxDateLocked(workDate){try{var t=new Date();t.setHours(0,0,0,0);var td=t.getFullYear()+'-'+('0'+(t.getMonth()+1)).slice(-2)+'-'+('0'+t.getDate()).slice(-2);return String(workDate)<td;}catch(e){return false;}}
 function _sxBuildList(data,didmap){
   var seenRaws={};data.forEach(function(r){var raw=r.route_raw||r.route||'';var d=r.work_date;if(raw){if(!seenRaws[d])seenRaws[d]=[];if(seenRaws[d].indexOf(raw)<0)seenRaws[d].push(raw);}});
   var allRawsSet={};Object.keys(seenRaws).forEach(function(d){seenRaws[d].forEach(function(x){allRawsSet[x]=1;});});
@@ -7168,7 +7186,8 @@ function metaUpload(kind){
           var jid=await _metaCreateJob(kind==='changed'?'changed':'week',SCHED_WK,window._sxMetaFname,window._sxMetaB64);
           if(st)st.textContent='📤 메타 업로드 요청됨 (#'+(jid||'')+') · 서버 처리중…';
           try{showToast('📤 '+_label+' 메타 반영 요청 (서버 처리중)',true);}catch(e){}
-          if(jid)_metaPollJobs([jid],_label);
+          var _mkIds=(kind==='changed')?(window._sxPendingChangedIds||[]):null;
+          if(jid)_metaPollJobs([jid],_label,_mkIds);
         }
       }catch(e){if(st)st.textContent='';alert('메타 업로드 요청 오류: '+((e&&e.message)||e));}
       finally{window._sxMetaCap=false;}
@@ -7176,7 +7195,7 @@ function metaUpload(kind){
   });
 }
 // 메타 업로드 작업(들)의 서버 처리 상태를 폴링해 '성공 완료됨'까지 표시
-function _metaPollJobs(jids,label){
+function _metaPollJobs(jids,label,markIds){
   if(!sbClient||!jids||!jids.length)return;
   var total=jids.length,tries=0,maxTries=80; // 80*3s ≈ 4분
   var timer=setInterval(async function(){
@@ -7199,7 +7218,8 @@ function _metaPollJobs(jids,label){
       }
       if(fin>=total){
         clearInterval(timer);
-        if(failed===0){try{showToast('✅ '+label+' 쿠팡 반영 성공 완료',true);}catch(e){}try{_metaFlash('✅ '+label+' 메타어드민 반영 완료','success');}catch(e){}}
+        if(failed===0){try{showToast('✅ '+label+' 쿠팡 반영 성공 완료',true);}catch(e){}try{_metaFlash('✅ '+label+' 메타어드민 반영 완료','success');}catch(e){}
+          if(markIds&&markIds.length){try{await _sxMarkUploaded(markIds);}catch(e){}}}
         else{
           var _emsg=(failRows[0]&&failRows[0].result)||'';
           try{showToast('❌ '+label+' 반영 실패 ('+failed+'건)',false);}catch(e){}
@@ -7222,7 +7242,9 @@ async function _sxDoChanged(){
     var localLog=[];try{localLog=_getSchedLog()||[];}catch(e){}
     var log=(typeof _mergeSchedLogs==='function')?_mergeSchedLogs(sharedLog,localLog):sharedLog;
     if(!Array.isArray(log))log=[];
-    var scoped=log.filter(function(c){return weekDates[c.workDate];});
+    // ★ 이미 변경분으로 업로드 성공한 항목은 제외(델타) — uploaded 플래그가 붙은 건 다음 변경분에서 빠짐
+    var scoped=log.filter(function(c){return weekDates[c.workDate] && !c.uploaded;});
+    window._sxPendingChangedIds=scoped.map(function(c){return c.id;}).filter(Boolean);
     if(!scoped.length){if(!window._sxSilent){var _sd=Array.from(new Set(log.map(function(c){return c.workDate;}).filter(Boolean))).sort().slice(-10).join(', ');alert('이 주차('+_sxWeekLabel(ws0)+')의 변경 건이 없습니다.\n\n전체 변경이력: '+log.length+'건\n변경된 날짜: '+(_sd||'없음')+'\n\n※ 변경분은 지금 보고 있는 주차의 변경만 담습니다. 변경한 날짜가 포함된 주차로 이동 후 눌러주세요.');}if(st)st.textContent='';return;}
     // net 처리: (날짜|라우트)별 최초 oldDriver, 최종 newDriver
     var net={};
@@ -7241,7 +7263,10 @@ async function _sxDoChanged(){
     function _sxWorking(date,nm){return !!(workingByDate[date]&&workingByDate[date][norm_name_js(nm||'')]);}
     var didmap=await _sxDidMap();
     var aoa=[['업무일','사업자등록번호','캠프명','웨이브','아이디','업무상태','회전','업무라우트']];var n=0,skipHumu=0;
+    var skipPast=0,skipUnreg=0;
     Object.keys(net).sort().forEach(function(key){var c=net[key];
+      // ★ 이미 지난 날짜(오늘 이전)는 쿠팡 메타에서도 수정 불가 → 변경분 엑셀에서 제외
+      if(_sxDateLocked(c.workDate)){skipPast++;return;}
       var curNew=currentByRoute[c.workDate+'|'+c.route]||c.newDriver;   // 출근 = 최종 스케줄의 현재 배정 기사(진실)
       // ★ 되돌림(정원준→문병국→정원준)이라도 그 사이 중간상태(문병국)가 이미 메타에 올라갔을 수 있음.
       //   → 라우트를 건너뛰지 않고, 항상 '현재 배정 기사'를 출근으로 다시 보내 메타를 앱 현재상태와 강제 일치시킨다.
@@ -7251,9 +7276,13 @@ async function _sxDoChanged(){
       // (정원준→문병국→정원준: 정원준=현재라 제외, 문병국=휴무 → 중간에 올라갔던 문병국이 확실히 빠짐)
       Object.keys(c.drv||{}).forEach(function(nk){var dnm=c.drv[nk];
         if(norm_name_js(dnm)===norm_name_js(curNew||''))return;
+        // ★ 기사 미등록 이름(서민지1 등)은 엑셀에 이력으로 남기지 않고 그냥 제외
+        if(!_sxReg(didmap,dnm)){skipUnreg++;return;}
         if(_sxWorking(c.workDate,dnm)){skipHumu++;return;}
         aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,dnm,''),'휴무','','']);n++;});
-      if(curNew){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,curNew,''),_SX_CFG.status,rot,routeStr]);n++;}
+      // ★ 현재 배정 기사도 미등록이면 출근행 생략(엑셀에 남기지 않음)
+      if(curNew && _sxReg(didmap,curNew)){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,curNew,''),_SX_CFG.status,rot,routeStr]);n++;}
+      else if(curNew){skipUnreg++;}
     });
     // ★ 중복 제거: 쿠팡은 같은 (업무일·캠프명·웨이브·아이디)가 2번 나오면 거부함 → 1행만 남기고 '출근'을 우선
     var _seen={},_ded=[aoa[0]];
@@ -7271,8 +7300,9 @@ async function _sxDoChanged(){
     for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}
     XLSX.utils.book_append_sheet(wb,sh,'변경리스트');
     _sxOut(wb,_sxWeekLabel(ws0)+'_변경리스트.xlsx');
-    if(st)st.textContent='✅ 변경분 '+n+'행'+(skipHumu?(' (휴무 제외 '+skipHumu+')'):'');
-    try{showToast('✅ 변경분 '+n+'행'+(skipHumu?(' · 근무있어 휴무제외 '+skipHumu):''),true);}catch(e){}
+    var _exTxt=(skipPast?(' · 지난날짜제외 '+skipPast):'')+(skipUnreg?(' · 미등록제외 '+skipUnreg):'')+(skipHumu?(' · 근무중휴무제외 '+skipHumu):'');
+    if(st)st.textContent='✅ 변경분 '+n+'행'+_exTxt;
+    try{showToast('✅ 변경분 '+n+'행'+_exTxt,true);}catch(e){}
   }catch(e){if(st)st.textContent='';alert('변경분 생성 오류: '+((e&&e.message)||e));}
 }
 function toggleEdit(){
@@ -7330,7 +7360,7 @@ function _autoMetaChanged(wk){
         if(st)st.textContent='📤 수정 → 메타 자동 반영 요청됨 (#'+(jid||'')+') · 처리중…';
         _metaFlash('📤 메타어드민 반영 중… (서버 처리중)','progress');
         try{showToast('📤 수정 완료 → 메타어드민 자동 반영 요청 (서버 처리중)',true);}catch(e){}
-        if(jid)_metaPollJobs([jid],'수정 반영');
+        if(jid)_metaPollJobs([jid],'수정 반영',window._sxPendingChangedIds||[]);
       }catch(e){if(st)st.textContent='';_metaFlash('❌ 메타 반영 준비 오류','fail');}
       finally{window._sxMetaCap=false;window._sxSilent=false;SCHED_WK=_svWk;}
     })();
