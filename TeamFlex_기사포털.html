@@ -15476,17 +15476,21 @@ function rqRetForm(kind){
     rtnWarnBoxRq()+'<label class="rq-label">📋 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
     '<textarea class="rq-paste" id="rq-ret-'+kind+'-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호 자동 분리 (여러 건 가능)" oninput="window._rqRetRaw[\''+kind+'\']=this.value;rqUpdateRetPreview(\''+kind+'\')">'+rqEsc(raw)+'</textarea>'+
     '<div class="rq-hint" id="rq-ret-'+kind+'-hint">'+(pairs.length?('✅ '+pairs.length+'건 인식'):'운송장·주문번호를 붙여넣으면 자동 분리됩니다')+'</div>'+
-    '<label class="rq-label" style="margin-top:6px">📷 사진 <span class="rq-req">필수</span></label>'+
-    (hasPhoto?'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32">✅ 사진 첨부 완료</div>':'<div class="rq-hint">사진 1장을 꼭 첨부해야 전송 가능합니다</div>')+
-    photoArea+
-    '<input type="file" id="rq-ret-'+kind+'-file-cam" accept="image/*" capture="camera" style="display:none" onchange="rqRetFileSelected(\''+kind+'\',\'cam\')">'+
-    '<input type="file" id="rq-ret-'+kind+'-file-gal" accept="image/*" style="display:none" onchange="rqRetFileSelected(\''+kind+'\',\'gal\')">'+
-    '<div class="rq-label" style="margin-bottom:4px">💬 팀즈 전송 미리보기</div>'+
-    '<div class="rq-preview-box" id="rq-ret-'+kind+'-preview">'+rqEsc(rqRetPreviewText(kind))+'</div>'+
-    '<button class="rq-btn '+btnClass+'" id="rq-ret-'+kind+'-btn" onclick="rqSendRet(\''+kind+'\')" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
-    (kind==='pretake'?('<div style="border-top:1px dashed #eadfce;margin:12px 0 8px"></div>'+
-      '<button class="rq-btn" style="background:#fff6ee;color:#c2531b;border:1.5px solid #ffcc80" onclick="rqRetSaveWait(\''+kind+'\')">＋ 사진 입력 대기로 저장 (운송장만)</button>'+
-      '<div style="font-size:11px;color:#a08a6a;text-align:center;margin-top:6px;line-height:1.6">💡 배송 중엔 운송장만 저장 → 캠프 반납 후 <b>📸 전취건 사진 입력 대기</b>에서 사진 붙여 전송</div>'):'')+
+    (kind!=='pretake'?(
+      '<label class="rq-label" style="margin-top:6px">📷 사진 <span class="rq-req">필수</span></label>'+
+      (hasPhoto?'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32">✅ 사진 첨부 완료</div>':'<div class="rq-hint">사진 1장을 꼭 첨부해야 전송 가능합니다</div>')+
+      photoArea+
+      '<input type="file" id="rq-ret-'+kind+'-file-cam" accept="image/*" capture="camera" style="display:none" onchange="rqRetFileSelected(\''+kind+'\',\'cam\')">'+
+      '<input type="file" id="rq-ret-'+kind+'-file-gal" accept="image/*" style="display:none" onchange="rqRetFileSelected(\''+kind+'\',\'gal\')">'+
+      '<div class="rq-label" style="margin-bottom:4px">💬 팀즈 전송 미리보기</div>'+
+      '<div class="rq-preview-box" id="rq-ret-'+kind+'-preview">'+rqEsc(rqRetPreviewText(kind))+'</div>'+
+      '<button class="rq-btn '+btnClass+'" id="rq-ret-'+kind+'-btn" onclick="rqSendRet(\''+kind+'\')" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'
+    ):(
+      '<div class="rq-label" style="margin-bottom:4px;margin-top:6px">💬 팀즈 전송 미리보기 <span style="font-size:10px;color:#a08a6a;font-weight:600">(사진은 대기에서 첨부)</span></div>'+
+      '<div class="rq-preview-box" id="rq-ret-'+kind+'-preview">'+rqEsc(rqRetPreviewText(kind))+'</div>'+
+      '<button class="rq-btn" style="background:#ef6a2b;color:#fff;font-size:15px" onclick="rqRetSaveWait(\''+kind+'\')">＋ 사진 입력 대기로 저장</button>'+
+      '<div style="font-size:11px;color:#a08a6a;text-align:center;margin-top:7px;line-height:1.6">💡 여기선 운송장만 저장돼요. 캠프 반납 후 <b>📸 전취건 사진 입력 대기</b>에서 사진 붙여 전송.</div>'
+    ))+
   '</div>';
 }
 async function rqSendRet(kind){
@@ -15504,9 +15508,11 @@ window._rqWait=window._rqWait||[]; window._rqWaitSelMap=window._rqWaitSelMap||{}
 async function rqWaitCountRefresh(){
   if(!sbClient)return;
   try{
-    var camp=rqGetCamp();
-    var r=await sbClient.from('requests').select('id,payload').eq('type','pretake').eq('status','photo_wait');
-    var rows=((r&&r.data)||[]).filter(function(x){return !x.payload||!x.payload.camp||x.payload.camp===camp;});
+    var camp=rqGetCamp(); var me=(CU&&(CU.id||CU.name))||'', myName=(CU&&CU.name)||'';
+    var r=await sbClient.from('requests').select('id,payload,requester_name,requester_id').eq('type','pretake').eq('status','photo_wait');
+    var rows=((r&&r.data)||[]).filter(function(x){
+      var mine=(x.requester_id&&x.requester_id===me)||(x.requester_name&&x.requester_name===myName);
+      return mine&&(!x.payload||!x.payload.camp||x.payload.camp===camp); });
     var b=document.getElementById('rq-wait-badge');
     if(b){ if(rows.length){b.textContent=rows.length;b.style.display='inline-block';}else{b.style.display='none';} }
   }catch(e){}
@@ -15529,15 +15535,19 @@ function rqRetWaitForm(){
   if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
   return '<div class="rq-card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:14px;font-weight:800;color:#c2531b">📸 전취건 사진 입력 대기</div><span id="rq-wait-cnt" style="background:#ef6a2b;color:#fff;border-radius:12px;font-size:12px;font-weight:800;padding:2px 10px">…</span></div>'+
     '<div style="font-size:11.5px;color:#a08a6a;line-height:1.6;margin-bottom:6px">운송장 체크 → 사진 한 번 첨부(공통) → 한번에 전송. 사진 없는 건은 전송에서 제외됩니다.</div>'+
-    '<input type="file" id="rq-wait-file" accept="image/*" style="display:none" onchange="rqWaitFileSelected()">'+
+    '<input type="file" id="rq-wait-file-gal" accept="image/*" style="display:none" onchange="rqWaitFileSelected(\'gal\')">'+
+    '<input type="file" id="rq-wait-file-cam" accept="image/*" capture="camera" style="display:none" onchange="rqWaitFileSelected(\'cam\')">'+
     '<div id="rq-wait-body"><div style="text-align:center;color:#bbb;padding:24px;font-size:13px">불러오는 중…</div></div></div>';
 }
 async function rqWaitLoad(){
   if(!sbClient)return;
   try{
-    var camp=rqGetCamp();
-    var r=await sbClient.from('requests').select('id,payload,requester_name,created_at').eq('type','pretake').eq('status','photo_wait').order('id',{ascending:true});
-    var rows=((r&&r.data)||[]).filter(function(x){return !x.payload||!x.payload.camp||x.payload.camp===camp;});
+    var camp=rqGetCamp(); var me=(CU&&(CU.id||CU.name))||'', myName=(CU&&CU.name)||'';
+    var r=await sbClient.from('requests').select('id,payload,requester_name,requester_id,created_at').eq('type','pretake').eq('status','photo_wait').order('id',{ascending:true});
+    var rows=((r&&r.data)||[]).filter(function(x){
+      var mine=(x.requester_id&&x.requester_id===me)||(x.requester_name&&x.requester_name===myName);
+      var okCamp=(!x.payload||!x.payload.camp||x.payload.camp===camp);
+      return mine&&okCamp; });
     window._rqWait=rows.map(function(x){return {id:x.id,wb:(x.payload&&x.payload.wb)||'',od:(x.payload&&x.payload.od)||'',batch:(x.payload&&x.payload.batch)||'-',by:x.requester_name||'',camp:(x.payload&&x.payload.camp)||camp};});
     rqWaitRender();
   }catch(e){var b=document.getElementById('rq-wait-body');if(b)b.innerHTML='<div style="color:#c62828;padding:16px;text-align:center;font-size:12px">불러오기 실패: '+((e&&e.message)||e)+'</div>';}
@@ -15546,9 +15556,9 @@ function _rqWaitSel(){return window._rqWait.filter(function(w){return window._rq
 function rqWaitToggle(id){window._rqWaitSelMap[id]=!window._rqWaitSelMap[id];rqWaitRender();}
 function rqWaitPickAll(){var all=window._rqWait.length&&window._rqWait.every(function(w){return window._rqWaitSelMap[w.id];});window._rqWait.forEach(function(w){window._rqWaitSelMap[w.id]=!all;});rqWaitRender();}
 function rqWaitPickBatch(b){var items=window._rqWait.filter(function(w){return w.batch===b;});var all=items.every(function(w){return window._rqWaitSelMap[w.id];});items.forEach(function(w){window._rqWaitSelMap[w.id]=!all;});rqWaitRender();}
-function rqWaitAttachClick(){var s=_rqWaitSel();if(!s.length){alert('먼저 운송장을 선택하세요.');return;}var f=document.getElementById('rq-wait-file');if(f)f.click();}
-function rqWaitFileSelected(){
-  var inp=document.getElementById('rq-wait-file');if(!inp||!inp.files[0])return;var file=inp.files[0];
+function rqWaitPick(which){var s=_rqWaitSel();if(!s.length){alert('먼저 운송장을 선택하세요.');return;}var f=document.getElementById('rq-wait-file-'+which);if(f)f.click();}
+function rqWaitFileSelected(which){
+  var inp=document.getElementById('rq-wait-file-'+which);if(!inp||!inp.files[0])return;var file=inp.files[0];
   var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){
     var canvas=document.createElement('canvas'),max=800,w=img.width,h=img.height;
     if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
@@ -15559,7 +15569,7 @@ function rqWaitFileSelected(){
     rqWaitRender();
   };img.src=e.target.result;};reader.readAsDataURL(file);inp.value='';
 }
-function rqWaitAttachOne(id){window._rqWaitSelMap[id]=true;rqWaitAttachClick();}
+function rqWaitAttachOne(id){window._rqWaitSelMap[id]=true;rqWaitPick('gal');}
 async function rqWaitSend(){
   var s=_rqWaitSel();if(!s.length){alert('먼저 운송장을 선택하세요.');return;}
   var no=s.filter(function(w){return !window._rqWaitPhoto[w.id];});
@@ -15583,9 +15593,10 @@ function rqWaitRender(){
   var nsel=_rqWaitSel().length,allon=list.length&&list.every(function(w){return window._rqWaitSelMap[w.id];});
   var bar='<div style="position:sticky;top:0;background:#fff;border:1.5px solid #ffd0b3;border-radius:12px;padding:10px 11px;margin-bottom:10px">'+
     '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:#33475b"><input type="checkbox" style="width:20px;height:20px;accent-color:#ef6a2b" '+(allon?'checked':'')+' onclick="rqWaitPickAll()"><span>전체 선택</span><span style="margin-left:auto;color:#c2531b">'+nsel+'건 선택</span></div>'+
-    '<div style="display:flex;gap:8px;margin-top:9px">'+
-      '<button class="rq-btn" style="flex:1;margin:0;padding:10px 4px;font-size:12px;'+(nsel?'background:#e9f1ff;color:#2f6fed;border:1.5px solid #b7d0f7':'background:#eef1f5;color:#8894a5')+'" onclick="rqWaitAttachClick()">🖼️ 선택 건 사진 첨부</button>'+
-      '<button class="rq-btn" style="flex:1;margin:0;padding:10px 4px;font-size:12px;'+(nsel?'background:#e8f5ec;color:#1f7a45;border:1.5px solid #a7d8bb':'background:#eef1f5;color:#8894a5')+'" onclick="rqWaitSend()">📤 선택 건 전송</button>'+
+    '<div style="display:flex;gap:6px;margin-top:9px">'+
+      '<button class="rq-btn" style="flex:1;margin:0;padding:10px 4px;font-size:12px;'+(nsel?'background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7':'background:#eef1f5;color:#8894a5')+'" onclick="rqWaitPick(\'cam\')">📷 촬영</button>'+
+      '<button class="rq-btn" style="flex:1;margin:0;padding:10px 4px;font-size:12px;'+(nsel?'background:#e8eaf6;color:#3949ab;border:1.5px solid #9fa8da':'background:#eef1f5;color:#8894a5')+'" onclick="rqWaitPick(\'gal\')">🖼️ 사진첨부</button>'+
+      '<button class="rq-btn" style="flex:1.1;margin:0;padding:10px 4px;font-size:12px;'+(nsel?'background:#e8f5ec;color:#1f7a45;border:1.5px solid #a7d8bb':'background:#eef1f5;color:#8894a5')+'" onclick="rqWaitSend()">📤 전송</button>'+
     '</div></div>';
   var batches=[];list.forEach(function(w){if(batches.indexOf(w.batch)<0)batches.push(w.batch);});
   var html=batches.map(function(b){
