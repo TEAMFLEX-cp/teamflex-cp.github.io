@@ -2966,6 +2966,7 @@ function _nextPopup(){
 // ── 모든 날짜 비교는 한국(KST) 기준 ──
 function kstToday(){return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
 function kstDateStr(d){var x=new Date(d);return isNaN(x.getTime())?'':x.toLocaleDateString('en-CA',{timeZone:'Asia/Seoul'});}
+function kstDateTime(d){var x=new Date(d);if(isNaN(x.getTime()))return '';var k=new Date(x.getTime()+(x.getTimezoneOffset()*60000)+9*3600000);return (k.getMonth()+1)+'/'+k.getDate()+' '+k.getHours()+':'+('0'+k.getMinutes()).slice(-2);}
 function isQuietHour(){
   // 차단창 = [시작, 종료). 기본 22:00~06:59 차단(=07:00부터 허용). 관리자 설정(시작/종료)으로 조정 가능.
   // 설정값(cfg) 단일소스 — 클라우드 허용창 의존 제거(야간 누수 방지). 폴러는 pushHours를 별도로 읽음(saveQuietHours가 동기화).
@@ -10601,7 +10602,7 @@ async function mdAutoArchive(cases){
   var now=Date.now();
   // archived_at이 있는 경우만(이미 완료 처리된 것), created_at 기준 사용 금지
   // approved 상태인 케이스 중 approved된 지 24시간 이상 지난 것만 아카이브
-  // approved_at 컬럼이 없으므로 관리자가 수동 삭제 or Teams 게시 완료 시점 기준
+  // posted_at 컬럼이 없으므로 관리자가 수동 삭제 or Teams 게시 완료 시점 기준
   // 안전을 위해: Teams에 게시 완료(posted_to_teams=true)된 것만, 생성 후 48시간 경과 시 아카이브
   try{
     var approvedIds=cases.filter(function(c){return c.status==='approved';}).map(function(c){return c.id;});
@@ -11154,7 +11155,7 @@ async function mdSendGroupReply(gi){
     var combinedWb=[],allIds=[];
     chosen.forEach(function(ri){var r=g.rows[ri];var w=(r.wb||'').trim();if(w&&combinedWb.indexOf(w)<0)combinedWb.push(w);r.cases.forEach(function(c){if(allIds.indexOf(c.id)<0)allIds.push(c.id);});});
     var primaryId=g.rows[chosen[0]].latest.id;
-    var ins=await sbClient.from('misdelivery_replies').insert({case_id:primaryId,reply_text:txt,replied_by:CU.name,replied_by_id:CU.id,approval_status:apprSt,posted_to_teams:false,reply_photo_urls:photoUrls.length?photoUrls:null,proxy_writer:isProxy?CU.name:null,proxy_role:isProxy?CU.role:null,approved_by:isProxy?CU.name:null}).select().single();
+    var ins=await sbClient.from('misdelivery_replies').insert({case_id:primaryId,reply_text:txt,replied_by:CU.name,replied_by_id:CU.id,approval_status:apprSt,posted_to_teams:false,reply_photo_urls:photoUrls.length?photoUrls:null,proxy_writer:isProxy?CU.name:null,proxy_role:isProxy?CU.role:null,approved_by:isProxy?CU.name:null,posted_at:isProxy?new Date().toISOString():null}).select().single();
     if(ins.error)throw ins.error;
     // 대표 케이스: 운송장 칸에 선택 송장들을 줄바꿈으로 → 폴러가 한 글에 여러 줄로 게시 (SQL/컬럼 불필요)
     await sbClient.from('misdelivery_cases').update({status:newStatus,waybill_no:combinedWb.join('\n')}).eq('id',primaryId);
@@ -11201,6 +11202,7 @@ async function mdSendReply(caseId){
       proxy_writer:isProxyApprover?CU.name:null,
       proxy_role:isProxyApprover?CU.role:null,
       approved_by:isProxyApprover?CU.name:null,
+      posted_at:isProxyApprover?new Date().toISOString():null,
     }).select().single();
     if(rErr)throw rErr;
     var newStatus=(mode==='auto'||isProxyApprover)?'approved':'replied';
@@ -11242,7 +11244,7 @@ async function mdSelfComplete(caseId){
       replied_by:CU.name,replied_by_id:CU.id,
       approval_status:'approved',posted_to_teams:true,
       reply_photo_urls:_selfPhotos.length?_selfPhotos:null,
-      proxy_writer:CU.name,proxy_role:CU.role,approved_by:CU.name
+      proxy_writer:CU.name,proxy_role:CU.role,approved_by:CU.name,posted_at:new Date().toISOString()
     });
     delete _mdReplyPhotos[caseId];
     await sbClient.from('misdelivery_cases').update({status:'approved'}).eq('id',caseId);
@@ -11293,7 +11295,7 @@ async function mdPostTeamsAck(caseId){
 async function mdApproveReply(replyId,caseId){
   if(!sbClient)return;
   try{
-    await sbClient.from('misdelivery_replies').update({approval_status:'approved',approved_by:CU.name}).eq('id',replyId);
+    await sbClient.from('misdelivery_replies').update({approval_status:'approved',approved_by:CU.name,posted_at:new Date().toISOString()}).eq('id',replyId);
     await mdPostToTeams(replyId);
     await sbClient.from('misdelivery_cases').update({status:'approved'}).eq('id',caseId);
     var card=document.getElementById('md-card-'+caseId);
@@ -11915,7 +11917,7 @@ async function mdLoadModalReply(caseId,isAdmin,isLeader){
                r.approval_status==='pending'?'팀장 승인 대기 ⏳':'처리됨';
   // 활동 이력
   var actionHist='';
-  if(r.approved_by)actionHist+='<div style="font-size:10px;color:#43a047;margin-top:3px">✅ 승인: '+mdEsc(r.approved_by)+'</div>';
+  if(r.approved_by)actionHist+='<div style="font-size:10px;color:#43a047;margin-top:3px">✅ 승인: '+mdEsc(r.approved_by)+(r.posted_at?' ('+kstDateTime(r.posted_at)+')':'')+'</div>';
   if(r.rejected_by)actionHist+=
     '<div style="background:#fff3e0;border-left:3px solid #e65100;border-radius:6px;padding:6px 8px;margin-top:6px">'+
       '<div style="font-size:10px;font-weight:700;color:#e65100">↩ 재요청: '+mdEsc(r.rejected_by)+(r.rejected_at?' ('+kstDateStr(r.rejected_at)+')':'')+'</div>'+
@@ -11950,7 +11952,7 @@ async function mdLoadModalReply(caseId,isAdmin,isLeader){
     '<div style="font-size:12px;font-weight:700;color:#3c4043;margin-bottom:6px">📝 답변'+proxyBadge+'</div>'+
     '<div id="md-edit-area-'+r.id+'" style="font-size:13px;color:#1a1a1a;line-height:1.6;white-space:pre-wrap">'+mdEsc(r.reply_text)+'</div>'+
     replyPhotos+
-    '<div class="md-replied-meta">'+mdEsc(r.replied_by)+' · '+modeText+'</div>'+
+    '<div class="md-replied-meta">'+mdEsc(r.replied_by)+(r.created_at?' · 답변 '+kstDateTime(r.created_at):'')+' · '+modeText+'</div>'+
     actionHist+
     leaderBtns+
   '</div>';
@@ -16047,7 +16049,7 @@ async function rqApprove(id){
   if(!r){alert('요청을 찾을 수 없습니다.');return;}
   try{
     await sbClient.from('requests').update({
-      status:'approved', approved_by:CU.name, approved_at:new Date().toISOString(), updated_at:new Date().toISOString()
+      status:'approved', approved_by:CU.name, posted_at:new Date().toISOString(), updated_at:new Date().toISOString()
     }).eq('id',id);
     var _rf=await sbClient.from('requests').select('payload').eq('id',id).single();
     var _fp=(_rf&&_rf.data&&_rf.data.payload)||r.payload||{};
