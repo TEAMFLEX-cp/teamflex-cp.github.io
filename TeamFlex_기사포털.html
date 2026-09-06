@@ -3240,8 +3240,22 @@ function markAnnRead(annId){
 }
 
 // ── 공통: 동기화 후 현재 탭 재렌더 헬퍼 ─────────────────────────────
-function _reRenderCurTab(){
+// 작성/작업 중 여부 — true면 자동 재렌더를 막아 입력·선택·촬영·스크롤 보존
+function _isUserBusy(){
+  try{
+    var ae=document.activeElement;
+    if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.isContentEditable))return true;
+    if(typeof _rqTab!=='undefined'&&_rqTab)return true;            // 각종요청 폼 작성 중
+    if(typeof EDIT_MODE!=='undefined'&&EDIT_MODE)return true;      // 스케줄 편집 중
+    if(window._ctScreenOpen)return true;                          // 계약서 화면
+    var ids=['md-detail-modal','qs-modal','rq-notice-ov','bpshare-ov','cfg-sub-sheet','usr-sub-sheet','gh-pop','ann-write-ov','md-popup-back'];
+    for(var i=0;i<ids.length;i++){var el=document.getElementById(ids[i]);if(el&&el.style.display!=='none')return true;}
+  }catch(e){}
+  return false;
+}
+function _reRenderCurTab(force){
   if(window._ctScreenOpen)return;
+  if(!force && _isUserBusy())return;   // ★ 자동(비강제) 재렌더는 작업 중이면 건너뜀
   if(!CU)return;
   var cur=document.querySelector('.ni.on');
   if(!cur)return;
@@ -3284,16 +3298,18 @@ loadAdminCfgFromSB().then(function(){
   return Promise.all([syncFromSupabase(), loadFeatureControls(), loadSchedSettings()]);
 }).then(function(){
   console.log('Supabase 동기화 완료');
-  _reRenderCurTab();
+  _reRenderCurTab(true);
   try{ if(typeof refreshNavBadges==='function')refreshNavBadges(); }catch(e){}
   try{ if(!window._navIv)window._navIv=setInterval(function(){try{refreshNavBadges();}catch(e){}},60000); }catch(e){}
 }).catch(function(e){console.warn('동기화 실패',e);_reRenderCurTab();});
 
-// ── 앱 복귀 시 즉시 동기화 (화면 전환 → 앱으로 돌아올 때) ───────────
+// ── 앱 복귀 시: 데이터만 조용히 동기화 (화면 자동 재렌더 X — 작성/작업 중 홈으로 튐·버벅임 방지) ──
+//   최신 화면이 필요하면 헤더의 '새로고침' 버튼을 누르면 됨. (앱 실행 시엔 최초 렌더로 최신 반영)
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden&&sbClient){
     Promise.all([syncFromSupabase(), loadFeatureControls(), loadSchedSettings()])
-      .then(function(){_reRenderCurTab();}).catch(function(){});
+      .then(function(){ try{ if(typeof refreshNavBadges==='function')refreshNavBadges(); }catch(e){} })
+      .catch(function(){});
   }
 });
 
@@ -3347,11 +3363,11 @@ function doManualRefresh(){
   if(sbClient){
     // 기사/공지 동기화 + 스케줄(share 포함) 동기화 동시 실행
     Promise.all([syncFromSupabase(), schedRefresh()]).then(function(){
-      _reRenderCurTab();
+      _reRenderCurTab(true);
       if(btn){btn.disabled=false;btn.innerHTML='&#x1F504; 새로고침';}
       showToast('✅ 업데이트 완료',false);
     }).catch(function(){
-      _reRenderCurTab();
+      _reRenderCurTab(true);
       if(btn){btn.disabled=false;btn.innerHTML='&#x1F504; 새로고침';}
       showToast('⚠ 일부 동기화 실패',false);
     });
