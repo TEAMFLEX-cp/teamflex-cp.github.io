@@ -15550,7 +15550,7 @@ async function rqWaitLoad(){
       if(isAdm) return okCamp;   // 관리자: 전체 대기건 조회
       var mine=(x.requester_id&&x.requester_id===me)||(x.requester_name&&x.requester_name===myName);
       return mine&&okCamp; });
-    window._rqWait=rows.map(function(x){return {id:x.id,wb:(x.payload&&x.payload.wb)||'',od:(x.payload&&x.payload.od)||'',batch:(x.payload&&x.payload.batch)||'-',by:x.requester_name||'',camp:(x.payload&&x.payload.camp)||camp};});
+    window._rqWait=rows.map(function(x){return {id:x.id,wb:(x.payload&&x.payload.wb)||'',od:(x.payload&&x.payload.od)||'',batch:(x.payload&&x.payload.batch)||'-',by:x.requester_name||'',camp:(x.payload&&x.payload.camp)||camp,ts:x.created_at||''};});
     rqWaitRender();
   }catch(e){var b=document.getElementById('rq-wait-body');if(b)b.innerHTML='<div style="color:#c62828;padding:16px;text-align:center;font-size:12px">불러오기 실패: '+((e&&e.message)||e)+'</div>';}
 }
@@ -15579,12 +15579,18 @@ function rqWaitFileSelected(which){
     var cnt=_rqWaitSel().length;
     _rqWaitSel().forEach(function(wt){window._rqWaitPhoto[wt.id]=b64;});
     try{showToast('🖼️ 선택 '+cnt+'건에 사진 첨부(공통)',true);}catch(e){}
-    // ★ 촬영 후 앱이 다른 화면으로 나갔어도 → 대기 화면으로 자동 복귀(사진 상태 유지, 바로 전송 가능)
-    if(document.getElementById('rq-wait-body')){ rqWaitRender(); }
-    else {
-      try{ if(typeof go==='function' && typeof CUR_TAB!=='undefined' && CUR_TAB!=='rq') go('rq'); }catch(e){}
-      try{ _rqTab='pretakewait'; if(typeof _rqSelectTab==='function') _rqSelectTab('pretakewait'); }catch(e){}
+    // ★ 촬영 후 앱이 다른 화면으로 나가도 → 대기 화면으로 강제 복귀(앱 resume 렌더보다 뒤에 실행)
+    _rqTab='pretakewait';
+    function _rqBackToWait(){
+      try{ if(typeof CUR_TAB!=='undefined' && CUR_TAB!=='rq' && typeof go==='function'){ go('rq'); } }catch(e){}
+      try{ _rqTab='pretakewait';
+        if(document.getElementById('rq-wait-body')){ rqWaitRender(); }
+        else if(typeof _rqSelectTab==='function'){ _rqSelectTab('pretakewait'); }
+      }catch(e){}
     }
+    _rqBackToWait();
+    setTimeout(_rqBackToWait,120);   // resume 렌더가 늦게 들어와도 다시 대기화면으로
+    setTimeout(_rqBackToWait,400);
   };img.src=e.target.result;};reader.readAsDataURL(file);inp.value='';
 }
 function rqWaitAttachOne(id,which){window._rqWaitSelMap[id]=true;rqWaitPick(which||'gal');}
@@ -15638,7 +15644,9 @@ function rqWaitRender(){
         '<div style="flex:1;min-width:0">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><span style="font-weight:800;color:#33475b;font-size:12.5px;flex:1;min-width:0">🚚 '+rqEsc(w.wb)+'</span>'+(hasP?'<span style="font-size:10.5px;font-weight:800;background:#e3f4e8;color:#2d6040;border:1px solid #a5d6a7;border-radius:7px;padding:1px 7px">🖼️ 사진</span>':'<span style="font-size:10.5px;font-weight:800;background:#fff3d6;color:#a5731a;border:1px solid #f0d79a;border-radius:7px;padding:1px 7px">📸 대기</span>')+(isAdm?'<button style="border:none;background:#fdecea;color:#c0392b;border-radius:7px;width:26px;height:24px;font-size:12px;cursor:pointer;flex-shrink:0" title="관리자 삭제" onclick="rqWaitDelete('+w.id+')">🗑</button>':'')+'</div>'+
           '<div style="font-size:11.5px;color:#8a97a8;margin-top:2px">주문 '+(w.od?rqEsc(w.od):'—')+' · '+rqEsc(w.by||'')+'</div>'+
-          (hasP?'':'<div style="display:flex;gap:6px;margin-top:7px"><button style="flex:1;padding:7px;background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer" onclick="rqWaitAttachOne('+w.id+',\'cam\')">📷 촬영</button><button style="flex:1;padding:7px;background:#e8eaf6;color:#3949ab;border:1.5px solid #9fa8da;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer" onclick="rqWaitAttachOne('+w.id+',\'gal\')">🖼️ 사진첨부</button></div>')+
+          '<div style="font-size:10.5px;color:#b0a48f;margin-top:1px">🕒 등록 '+(w.ts?kstDateTime(w.ts):'-')+'</div>'+
+          (hasP?('<div style="display:flex;align-items:center;gap:8px;margin-top:7px"><img src="'+window._rqWaitPhoto[w.id]+'" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1.5px solid #a5d6a7"><span style="font-size:11.5px;color:#2d6040;font-weight:800">✅ 사진 첨부됨</span><button style="margin-left:auto;padding:5px 9px;background:#f4f6f8;color:#8894a5;border:1px solid #dfe4ea;border-radius:7px;font-size:11px;cursor:pointer" onclick="delete window._rqWaitPhoto['+w.id+'];rqWaitRender()">사진 변경</button></div>')
+            :('<div style="display:flex;gap:6px;margin-top:7px"><button style="flex:1;padding:7px;background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer" onclick="rqWaitAttachOne('+w.id+',\'cam\')">📷 촬영</button><button style="flex:1;padding:7px;background:#e8eaf6;color:#3949ab;border:1.5px solid #9fa8da;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer" onclick="rqWaitAttachOne('+w.id+',\'gal\')">🖼️ 사진첨부</button></div>'))+
         '</div></div>';
     }).join('');
   }).join('');
