@@ -6660,15 +6660,22 @@ var _annPhotos=[];
 function annSplit(b){b=b||'';var tg=[];var mt=b.indexOf('[[TFTG]]');if(mt>=0){var af=b.slice(mt+8);var ei=af.indexOf('[[TFIMG]]');var ts=(ei>=0)?af.slice(0,ei):af;tg=ts.split('|').filter(Boolean);b=b.slice(0,mt)+((ei>=0)?af.slice(ei):'');}var m=b.indexOf('[[TFIMG]]');if(m<0)return{t:b,imgs:[],targets:tg};return{t:b.slice(0,m).replace(/\s+$/,''),imgs:b.slice(m+9).split('|').filter(Boolean),targets:tg};}
 function _annVisibleTo(a){if(!a||!a.targets||!a.targets.length)return true;if(CU&&CU.role==='admin')return true;return !!(CU&&a.targets.indexOf(CU.name)>=0);}
 window._annVisibleTo=_annVisibleTo;
-function annImgRow(imgs){if(!imgs||!imgs.length)return '';var h='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';imgs.forEach(function(u){h+='<img src="'+u+'" onclick="annLightbox(\''+u+'\')" style="width:calc(50% - 4px);max-height:230px;object-fit:cover;border-radius:10px;cursor:pointer;border:1px solid #e6e6ea">';});h+='</div>';return h;}
-function annLightbox(u){
+function annImgRow(imgs){if(!imgs||!imgs.length)return '';window._annLbImgs=imgs.slice();var h='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';imgs.forEach(function(u,i){h+='<img src="'+u+'" onclick="annLightbox('+i+')" style="width:calc(50% - 4px);max-height:230px;object-fit:cover;border-radius:10px;cursor:pointer;border:1px solid #e6e6ea">';});h+='</div>';return h;}
+function annLightbox(idx){
+  var list=(window._annLbImgs&&window._annLbImgs.length)?window._annLbImgs:[];
+  if(typeof idx==='string'){ list=[idx]; idx=0; }   // 하위호환(단일 URL)
+  if(!list.length)return; var cur=idx||0; var u=list[cur];
+  var multi=list.length>1;
   var o=document.createElement('div');
   o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:99999;display:flex;flex-direction:column';
   o.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;flex:0 0 auto;position:relative;z-index:3"><div style="display:flex;gap:8px"><button class="alb-b" data-a="out">−</button><button class="alb-b" data-a="in">＋</button><button class="alb-b" data-a="reset">1:1</button></div><div style="display:flex;gap:8px"><button class="alb-b" data-a="dl">⬇</button><button class="alb-b" data-a="close">✕</button></div></div>'
     +'<div class="alb-wrap" style="flex:1;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none"><img class="alb-img" src="'+u+'" style="display:block;max-width:100%;max-height:100%;object-fit:contain;will-change:transform;transform-origin:center center;user-select:none;-webkit-user-drag:none"></div>'
-    +'<div style="text-align:center;color:rgba(255,255,255,.55);font-size:12px;padding:7px 10px 10px">두 손가락으로 확대·축소 · 드래그로 이동 · 더블탭 확대</div>';
+    +(multi?('<div style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 14px 18px;position:relative;z-index:3"><button class="alb-nav" data-a="prev" style="background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.32);border-radius:24px;padding:12px 22px;font-size:18px;font-weight:800;cursor:pointer">◀ 이전</button><span class="alb-cnt" style="color:#fff;font-size:15px;font-weight:800;min-width:60px;text-align:center">'+(cur+1)+' / '+list.length+'</span><button class="alb-nav" data-a="next" style="background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.32);border-radius:24px;padding:12px 22px;font-size:18px;font-weight:800;cursor:pointer">다음 ▶</button></div>')
+      :'<div style="text-align:center;color:rgba(255,255,255,.55);font-size:12px;padding:7px 10px 10px">두 손가락으로 확대·축소 · 드래그로 이동 · 더블탭 확대</div>');
   document.body.appendChild(o);
   var img=o.querySelector('.alb-img'),wrap=o.querySelector('.alb-wrap');
+  function _showAt(ci){cur=(ci+list.length)%list.length;u=list[cur];img.src=u;img._s=1;img._tx=0;img._ty=0;img.style.transform='';var c=o.querySelector('.alb-cnt');if(c)c.textContent=(cur+1)+' / '+list.length;}
+  o.querySelectorAll('.alb-nav').forEach(function(nb){nb.onclick=function(e){e.stopPropagation();_showAt(cur+(nb.getAttribute('data-a')==='next'?1:-1));};});
   if(typeof attachPinchZoom==='function')attachPinchZoom(img); else {img._s=1;img._tx=0;img._ty=0;}
   function apply(){img.style.transform='translate('+(img._tx||0)+'px,'+(img._ty||0)+'px) scale('+(img._s||1)+')';}
   var md=false,mx=0,my=0;
@@ -14701,10 +14708,21 @@ function pgRequest(){
   '</div>';
   window._rqCamp = rqGetCamp();
 
+  // 폼 진입 시(_rqTab): 제목·캠프·요청선택을 한 줄로 압축(공간 절약)
+  if(_rqTab){
+    var campC='<select id="rq-camp-select" onchange="rqSetCamp(this.value)" style="padding:5px 8px;border:1.5px solid #7986cb;border-radius:8px;font-size:12px;font-weight:700;color:#3949ab;background:#fff;cursor:pointer;min-width:0;max-width:150px">'+
+      '<option value="일산3캠프"'+(rqGetCamp()==='일산3캠프'?' selected':'')+'>일산3캠프</option>'+
+      '<option value="일산8캠프2wave"'+(rqGetCamp()==='일산8캠프2wave'?' selected':'')+'>일산8캠프2wave</option></select>';
+    var oneLine='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:nowrap;background:#e8eaf6;border-radius:10px;padding:7px 10px">'+
+      '<span style="font-size:13px;font-weight:800;color:#283593;white-space:nowrap">📝 각종요청</span>'+
+      '<span style="font-size:11px;font-weight:700;color:#7986cb;white-space:nowrap">🏢</span>'+campC+
+      '<button onclick="rqBackToLanding()" style="margin-left:auto;background:#fff;border:1.5px solid #c5cae9;border-radius:9px;padding:6px 10px;color:#3949ab;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;flex-shrink:0">← 요청 선택</button>'+
+    '</div>';
+    return oneLine+adminBar+'<div id="rq-body"></div>';
+  }
   return '<div class="stit">&#x1F4DD; 각종 요청</div>'+
     adminBar+
     campSelect+
-    (_rqTab ? rqBackBar() : '')+
     '<div id="rq-body"></div>';
 }
 
@@ -15299,7 +15317,7 @@ function rqReturnForm(){
     '<input class="rq-inp" id="rq-rtn-to" placeholder="ID 또는 이름 정확히" value="'+rqEsc(toVal)+'" oninput="window._rqRtnTo=this.value;rqUpdateReturnPreview()">'+
     '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
     '<textarea class="rq-paste" id="rq-rtn-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호를 자동으로 행 분리합니다 (여러 건 가능)" oninput="window._rqRtnRaw=this.value;rqUpdateReturnPreview()">'+rqEsc(raw)+'</textarea>'+
-    '<div class="rq-hint" id="rq-rtn-hint">'+(pairs.length?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'운송장·주문번호를 붙여넣으면 자동으로 행 분리됩니다')+'</div>'+
+    '<div class="rq-hint" id="rq-rtn-hint">'+(pairs.length?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'📋 붙여넣기만 하면 자동 행분리 · 여러 건 동시 붙여넣기도 OK')+'</div>'+
     '<label class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</label>'+
     '<div class="rq-preview-box" id="rq-rtn-preview">'+rqEsc(rqReturnPreviewText())+'</div>'+
     '<button class="rq-btn '+btnClass+'" id="rq-rtn-btn" onclick="rqSendReturn()" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
@@ -15321,7 +15339,7 @@ function rqUpdateReturnPreview(){
   var pairs = rqParsePairs(window._rqRtnRaw||'');
   var ok   = from && to && pairs.some(function(p){return (p.wb||'').trim();});
   var hint = document.getElementById('rq-rtn-hint');
-  if(hint){ hint.textContent=pairs.length?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'운송장·주문번호를 붙여넣으면 자동으로 행 분리됩니다'; hint.style.background=pairs.length?'#e8f5e9':'#fff8e1'; hint.style.color=pairs.length?'#2e7d32':'#c62828'; }
+  if(hint){ hint.textContent=pairs.length?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'📋 붙여넣기만 하면 자동 행분리 · 여러 건 동시 붙여넣기도 OK'; hint.style.background=pairs.length?'#e8f5e9':'#fff8e1'; hint.style.color=pairs.length?'#2e7d32':'#c62828'; }
   var btn  = document.getElementById('rq-rtn-btn');
   if(btn){
     btn.disabled=!ok;
@@ -15815,7 +15833,7 @@ function rqSimpleForm(type, title, pfx, previewFn){
     adminBox+
     '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
     '<textarea class="rq-paste" id="'+pfx+'-paste" placeholder="카카오톡·문자에서 복사한 내용 붙여넣기&#10;운송장번호·주문번호를 자동으로 행 분리합니다 (여러 건 가능)" oninput="rqParseSimple(\''+ pfx +'\')">'+rqEsc(raw)+'</textarea>'+
-    '<div class="rq-hint" id="'+pfx+'-hint">'+(okv?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'운송장·주문번호를 붙여넣으면 자동으로 행 분리됩니다')+'</div>'+
+    '<div class="rq-hint" id="'+pfx+'-hint">'+(okv?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'📋 붙여넣기만 하면 자동 행분리 · 여러 건 동시 붙여넣기도 OK')+'</div>'+
     '<label class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</label>'+
     '<div class="rq-preview-box" id="'+pfx+'-preview">'+rqEsc(previewFn(pairs))+'</div>'+
     '<button class="rq-btn '+btnClass+'" id="'+pfx+'-btn" onclick="rqSendSimple(\''+ type +'\',\''+ pfx +'\')" '+(!okv?'disabled':'')+'>'+btnTxt+'</button>'+
@@ -15830,7 +15848,7 @@ function rqParseSimple(pfx){
   var fn=window[pfx+'-prevFn'];
   var prev=document.getElementById(pfx+'-preview'); if(prev&&fn) prev.textContent=fn(pairs);
   var hint=document.getElementById(pfx+'-hint');
-  if(hint){ hint.textContent=okv?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'운송장·주문번호를 붙여넣으면 자동으로 행 분리됩니다'; hint.style.background=okv?'#e8f5e9':'#fff8e1'; hint.style.color=okv?'#2e7d32':'#c62828'; }
+  if(hint){ hint.textContent=okv?('✅ '+pairs.length+'건 인식 — 운송장/주문 자동 분리'):'📋 붙여넣기만 하면 자동 행분리 · 여러 건 동시 붙여넣기도 OK'; hint.style.background=okv?'#e8f5e9':'#fff8e1'; hint.style.color=okv?'#2e7d32':'#c62828'; }
   var btn=document.getElementById(pfx+'-btn');
   if(btn){ btn.disabled=!okv; btn.className='rq-btn '+(okv?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):''); btn.innerHTML=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청'; }
 }
