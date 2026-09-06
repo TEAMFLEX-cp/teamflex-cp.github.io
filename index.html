@@ -14731,6 +14731,8 @@ function rqLandingHtml(){
     '<button onclick="rqSwitchTab(\'pretake\')" style="'+_b+';'+_red+'">📥 전취건 반납 확인 요청</button>'+
     '<button onclick="rqSwitchTab(\'lostret\')" style="'+_b+';'+_red+'">🔎 분실건 반납 확인 요청</button>'+
   '</div>';
+  grid+='<button onclick="rqSwitchTab(\'pretakewait\')" id="rq-wait-landing-btn" style="'+_b+';border:2px solid #ffcc80;background:#fff6ee;color:#c2531b;margin-top:7px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px">📸 전취건 사진 입력 대기 <span id="rq-wait-badge" style="background:#ef6a2b;color:#fff;border-radius:11px;font-size:11px;font-weight:800;padding:1px 8px;display:none">0</span></button>';
+  setTimeout(function(){try{rqWaitCountRefresh();}catch(e){}},60);
   return '<div style="background:#f8f9ff;border:1px solid #d7dbf0;border-radius:12px;padding:12px 10px;margin-bottom:12px;display:flex;align-items:center">'+
     '<span style="flex:0 0 46px;text-align:center;font-size:40px;line-height:1">📝</span>'+
     '<div style="flex:1;min-width:0;text-align:center"><div style="font-size:13.5px;font-weight:700;color:#283593;line-height:1.5">요청 업무에 맞춰서 작성해주시기 바랍니다</div>'+
@@ -14800,6 +14802,7 @@ function rqRenderBody(){
   else if(_rqTab==='lost')   el.innerHTML = rqLostForm();
   else if(_rqTab==='pretake')el.innerHTML = rqRetForm('pretake');
   else if(_rqTab==='lostret')el.innerHTML = rqRetForm('lostret');
+  else if(_rqTab==='pretakewait'){el.innerHTML = rqRetWaitForm(); rqWaitLoad();}
   else if(_rqTab==='work')   el.innerHTML = rqWorkForm();
   rqUpdateDmBtn();
 }
@@ -15481,6 +15484,9 @@ function rqRetForm(kind){
     '<div class="rq-label" style="margin-bottom:4px">💬 팀즈 전송 미리보기</div>'+
     '<div class="rq-preview-box" id="rq-ret-'+kind+'-preview">'+rqEsc(rqRetPreviewText(kind))+'</div>'+
     '<button class="rq-btn '+btnClass+'" id="rq-ret-'+kind+'-btn" onclick="rqSendRet(\''+kind+'\')" '+(!ok?'disabled':'')+'>'+btnTxt+'</button>'+
+    (kind==='pretake'?('<div style="border-top:1px dashed #eadfce;margin:12px 0 8px"></div>'+
+      '<button class="rq-btn" style="background:#fff6ee;color:#c2531b;border:1.5px solid #ffcc80" onclick="rqRetSaveWait(\''+kind+'\')">＋ 사진 입력 대기로 저장 (운송장만)</button>'+
+      '<div style="font-size:11px;color:#a08a6a;text-align:center;margin-top:6px;line-height:1.6">💡 배송 중엔 운송장만 저장 → 캠프 반납 후 <b>📸 전취건 사진 입력 대기</b>에서 사진 붙여 전송</div>'):'')+
   '</div>';
 }
 async function rqSendRet(kind){
@@ -15491,6 +15497,111 @@ async function rqSendRet(kind){
   var _ok=await rqSubmit({type:kind, text:text, photos:(window._rqRetPhotos[kind]||[]).slice(), okId:'rq-ret-'+kind+'-ok'});
   if(!_ok) return;
   window._rqRetRaw[kind]='';window._rqRetPhotos[kind]=[]; rqRenderBody();
+}
+
+/* ══════ [전취건 사진 입력 대기] 운송장 먼저 저장 → 나중에 사진 붙여 일괄 전송 ══════ */
+window._rqWait=window._rqWait||[]; window._rqWaitSelMap=window._rqWaitSelMap||{}; window._rqWaitPhoto=window._rqWaitPhoto||{};
+async function rqWaitCountRefresh(){
+  if(!sbClient)return;
+  try{
+    var camp=rqGetCamp();
+    var r=await sbClient.from('requests').select('id,payload').eq('type','pretake').eq('status','photo_wait');
+    var rows=((r&&r.data)||[]).filter(function(x){return !x.payload||!x.payload.camp||x.payload.camp===camp;});
+    var b=document.getElementById('rq-wait-badge');
+    if(b){ if(rows.length){b.textContent=rows.length;b.style.display='inline-block';}else{b.style.display='none';} }
+  }catch(e){}
+}
+async function rqRetSaveWait(kind){
+  var pairs=rqParsePairs(window._rqRetRaw[kind]||'').filter(function(p){return (p.wb||'').trim();});
+  if(!pairs.length){alert('운송장번호를 인식하지 못했습니다. 붙여넣기 내용을 확인해주세요.');return;}
+  if(!sbClient){alert('서버 연결이 필요합니다.');return;}
+  var camp=rqGetCamp(); var batch='B'+Date.now();
+  try{
+    var rows=pairs.map(function(p){return {type:'pretake',status:'photo_wait',requester_id:(CU&&(CU.id||CU.name))||'',requester_name:(CU&&CU.name)||'',requester_role:(CU&&CU.role)||'',payload:{wb:p.wb,od:p.od||'',camp:camp,stage:'photo_wait',batch:batch,kind:kind},teams_sent:false,created_at:new Date().toISOString()};});
+    var ins=await sbClient.from('requests').insert(rows);
+    if(ins.error)throw new Error(ins.error.message);
+    window._rqRetRaw[kind]='';window._rqRetPhotos[kind]=[];
+    try{showToast('✅ '+pairs.length+'건 저장 — 사진 입력 대기로 이동',true);}catch(e){}
+    _rqSelectTab('pretakewait');
+  }catch(e){alert('저장 실패: '+((e&&e.message)||e));}
+}
+function rqRetWaitForm(){
+  if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
+  return '<div class="rq-card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:14px;font-weight:800;color:#c2531b">📸 전취건 사진 입력 대기</div><span id="rq-wait-cnt" style="background:#ef6a2b;color:#fff;border-radius:12px;font-size:12px;font-weight:800;padding:2px 10px">…</span></div>'+
+    '<div style="font-size:11.5px;color:#a08a6a;line-height:1.6;margin-bottom:6px">운송장 체크 → 사진 한 번 첨부(공통) → 한번에 전송. 사진 없는 건은 전송에서 제외됩니다.</div>'+
+    '<input type="file" id="rq-wait-file" accept="image/*" style="display:none" onchange="rqWaitFileSelected()">'+
+    '<div id="rq-wait-body"><div style="text-align:center;color:#bbb;padding:24px;font-size:13px">불러오는 중…</div></div></div>';
+}
+async function rqWaitLoad(){
+  if(!sbClient)return;
+  try{
+    var camp=rqGetCamp();
+    var r=await sbClient.from('requests').select('id,payload,requester_name,created_at').eq('type','pretake').eq('status','photo_wait').order('id',{ascending:true});
+    var rows=((r&&r.data)||[]).filter(function(x){return !x.payload||!x.payload.camp||x.payload.camp===camp;});
+    window._rqWait=rows.map(function(x){return {id:x.id,wb:(x.payload&&x.payload.wb)||'',od:(x.payload&&x.payload.od)||'',batch:(x.payload&&x.payload.batch)||'-',by:x.requester_name||'',camp:(x.payload&&x.payload.camp)||camp};});
+    rqWaitRender();
+  }catch(e){var b=document.getElementById('rq-wait-body');if(b)b.innerHTML='<div style="color:#c62828;padding:16px;text-align:center;font-size:12px">불러오기 실패: '+((e&&e.message)||e)+'</div>';}
+}
+function _rqWaitSel(){return window._rqWait.filter(function(w){return window._rqWaitSelMap[w.id];});}
+function rqWaitToggle(id){window._rqWaitSelMap[id]=!window._rqWaitSelMap[id];rqWaitRender();}
+function rqWaitPickAll(){var all=window._rqWait.length&&window._rqWait.every(function(w){return window._rqWaitSelMap[w.id];});window._rqWait.forEach(function(w){window._rqWaitSelMap[w.id]=!all;});rqWaitRender();}
+function rqWaitPickBatch(b){var items=window._rqWait.filter(function(w){return w.batch===b;});var all=items.every(function(w){return window._rqWaitSelMap[w.id];});items.forEach(function(w){window._rqWaitSelMap[w.id]=!all;});rqWaitRender();}
+function rqWaitAttachClick(){var s=_rqWaitSel();if(!s.length){alert('먼저 운송장을 선택하세요.');return;}var f=document.getElementById('rq-wait-file');if(f)f.click();}
+function rqWaitFileSelected(){
+  var inp=document.getElementById('rq-wait-file');if(!inp||!inp.files[0])return;var file=inp.files[0];
+  var reader=new FileReader();reader.onload=function(e){var img=new Image();img.onload=function(){
+    var canvas=document.createElement('canvas'),max=800,w=img.width,h=img.height;
+    if(w>max||h>max){if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;}}
+    canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h);
+    var b64=canvas.toDataURL('image/jpeg',0.75);
+    _rqWaitSel().forEach(function(wt){window._rqWaitPhoto[wt.id]=b64;});
+    try{showToast('🖼️ 선택 '+_rqWaitSel().length+'건에 사진 첨부(공통)',true);}catch(e){}
+    rqWaitRender();
+  };img.src=e.target.result;};reader.readAsDataURL(file);inp.value='';
+}
+function rqWaitAttachOne(id){window._rqWaitSelMap[id]=true;rqWaitAttachClick();}
+async function rqWaitSend(){
+  var s=_rqWaitSel();if(!s.length){alert('먼저 운송장을 선택하세요.');return;}
+  var no=s.filter(function(w){return !window._rqWaitPhoto[w.id];});
+  if(no.length){alert('사진이 없는 '+no.length+'건이 있습니다.\n사진을 먼저 첨부해주세요.');return;}
+  if(!confirm(s.length+'건을 팀즈로 전송할까요?'))return;
+  var sep='─'.repeat(12),okN=0;
+  for(var i=0;i<s.length;i++){var w=s[i];
+    var body='운송장번호: '+w.wb+'\n주문번호: '+(w.od||'');
+    var text='■ 전취건 반납 확인 요청 ['+w.camp+']\n'+sep+'\n'+body+'\n첨부사진: ✅\n\n전취건 반납하였습니다.\n'+sep+'\n요청자: '+((CU&&CU.name)||w.by||'');
+    var ok=await rqSubmit({type:'pretake',text:text,photos:[window._rqWaitPhoto[w.id]],camp:w.camp,okId:'rq-wait-cnt'});
+    if(ok){ try{await sbClient.from('requests').delete().eq('id',w.id); }catch(e){}
+      delete window._rqWaitSelMap[w.id];delete window._rqWaitPhoto[w.id];okN++; }
+  }
+  try{showToast('📤 팀즈 전송 완료 · '+okN+'건',true);}catch(e){}
+  rqWaitLoad();
+}
+function rqWaitRender(){
+  var box=document.getElementById('rq-wait-body');if(!box)return;
+  var list=window._rqWait||[]; var cntEl=document.getElementById('rq-wait-cnt');if(cntEl)cntEl.textContent=list.length+'건';
+  if(!list.length){box.innerHTML='<div style="text-align:center;color:#9aa7b8;padding:26px;font-size:13px;line-height:1.7">대기 중인 전취건이 없어요.<br><span style="font-size:11px">전취 등록에서 운송장을 저장하면 여기에 쌓여요.</span></div>';return;}
+  var nsel=_rqWaitSel().length,allon=list.length&&list.every(function(w){return window._rqWaitSelMap[w.id];});
+  var bar='<div style="position:sticky;top:0;background:#fff;border:1.5px solid #ffd0b3;border-radius:12px;padding:10px 11px;margin-bottom:10px">'+
+    '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:#33475b"><input type="checkbox" style="width:20px;height:20px;accent-color:#ef6a2b" '+(allon?'checked':'')+' onclick="rqWaitPickAll()"><span>전체 선택</span><span style="margin-left:auto;color:#c2531b">'+nsel+'건 선택</span></div>'+
+    '<div style="display:flex;gap:8px;margin-top:9px">'+
+      '<button class="rq-btn" style="flex:1;margin:0;padding:10px 4px;font-size:12px;'+(nsel?'background:#e9f1ff;color:#2f6fed;border:1.5px solid #b7d0f7':'background:#eef1f5;color:#8894a5')+'" onclick="rqWaitAttachClick()">🖼️ 선택 건 사진 첨부</button>'+
+      '<button class="rq-btn" style="flex:1;margin:0;padding:10px 4px;font-size:12px;'+(nsel?'background:#e8f5ec;color:#1f7a45;border:1.5px solid #a7d8bb':'background:#eef1f5;color:#8894a5')+'" onclick="rqWaitSend()">📤 선택 건 전송</button>'+
+    '</div></div>';
+  var batches=[];list.forEach(function(w){if(batches.indexOf(w.batch)<0)batches.push(w.batch);});
+  var html=batches.map(function(b){
+    var items=list.filter(function(w){return w.batch===b;});
+    var bh='<div style="display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:800;color:#a06a3a;background:#fbeede;border-radius:10px;padding:6px 10px;margin:4px 0"><span>📦 함께 올린 '+items.length+'건</span><span style="margin-left:auto;color:#c2531b;cursor:pointer" onclick="rqWaitPickBatch(\''+b+'\')">묶음 선택 ☑</span></div>';
+    return bh+items.map(function(w){var hasP=!!window._rqWaitPhoto[w.id];var on=!!window._rqWaitSelMap[w.id];
+      return '<div style="border:1px solid '+(on?'#f0a06a':'#f0d9c4')+';border-radius:12px;padding:10px;margin-bottom:8px;background:'+(on?'#fff3e9':'#fffaf4')+';display:flex;gap:9px">'+
+        '<input type="checkbox" style="width:22px;height:22px;flex-shrink:0;accent-color:#ef6a2b;margin-top:2px" '+(on?'checked':'')+' onclick="rqWaitToggle('+w.id+')">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:800;color:#33475b;font-size:12.5px">🚚 '+rqEsc(w.wb)+'</span>'+(hasP?'<span style="font-size:10.5px;font-weight:800;background:#e3f4e8;color:#2d6040;border:1px solid #a5d6a7;border-radius:7px;padding:1px 7px">🖼️ 사진</span>':'<span style="font-size:10.5px;font-weight:800;background:#fff3d6;color:#a5731a;border:1px solid #f0d79a;border-radius:7px;padding:1px 7px">📸 대기</span>')+'</div>'+
+          '<div style="font-size:11.5px;color:#8a97a8;margin-top:2px">주문 '+(w.od?rqEsc(w.od):'—')+' · '+rqEsc(w.by||'')+'</div>'+
+          (hasP?'':'<button style="margin-top:7px;width:100%;padding:7px;background:#e9f1ff;color:#2f6fed;border:1.5px solid #b7d0f7;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer" onclick="rqWaitAttachOne('+w.id+')">🖼️ 이 건만 사진</button>')+
+        '</div></div>';
+    }).join('');
+  }).join('');
+  box.innerHTML=bar+html;
 }
 
 // ── [업무신청] 이름·ID만 입력, 날짜·문구 자동 ────────────────────────
