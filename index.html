@@ -15569,7 +15569,7 @@ function rqWaitFileSelected(which){
     rqWaitRender();
   };img.src=e.target.result;};reader.readAsDataURL(file);inp.value='';
 }
-function rqWaitAttachOne(id){window._rqWaitSelMap[id]=true;rqWaitPick('gal');}
+function rqWaitAttachOne(id,which){window._rqWaitSelMap[id]=true;rqWaitPick(which||'gal');}
 async function rqWaitSend(){
   var s=_rqWaitSel();if(!s.length){alert('먼저 운송장을 선택하세요.');return;}
   var no=s.filter(function(w){return !window._rqWaitPhoto[w.id];});
@@ -15608,7 +15608,7 @@ function rqWaitRender(){
         '<div style="flex:1;min-width:0">'+
           '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:800;color:#33475b;font-size:12.5px">🚚 '+rqEsc(w.wb)+'</span>'+(hasP?'<span style="font-size:10.5px;font-weight:800;background:#e3f4e8;color:#2d6040;border:1px solid #a5d6a7;border-radius:7px;padding:1px 7px">🖼️ 사진</span>':'<span style="font-size:10.5px;font-weight:800;background:#fff3d6;color:#a5731a;border:1px solid #f0d79a;border-radius:7px;padding:1px 7px">📸 대기</span>')+'</div>'+
           '<div style="font-size:11.5px;color:#8a97a8;margin-top:2px">주문 '+(w.od?rqEsc(w.od):'—')+' · '+rqEsc(w.by||'')+'</div>'+
-          (hasP?'':'<button style="margin-top:7px;width:100%;padding:7px;background:#e9f1ff;color:#2f6fed;border:1.5px solid #b7d0f7;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer" onclick="rqWaitAttachOne('+w.id+')">🖼️ 이 건만 사진</button>')+
+          (hasP?'':'<div style="display:flex;gap:6px;margin-top:7px"><button style="flex:1;padding:7px;background:#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer" onclick="rqWaitAttachOne('+w.id+',\'cam\')">📷 촬영</button><button style="flex:1;padding:7px;background:#e8eaf6;color:#3949ab;border:1.5px solid #9fa8da;border-radius:8px;font-size:11.5px;font-weight:800;cursor:pointer" onclick="rqWaitAttachOne('+w.id+',\'gal\')">🖼️ 사진첨부</button></div>')+
         '</div></div>';
     }).join('');
   }).join('');
