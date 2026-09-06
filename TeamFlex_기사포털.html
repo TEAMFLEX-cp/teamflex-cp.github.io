@@ -7322,7 +7322,17 @@ async function _sxDoChanged(){
       else if(_isWork && _ded[_seen[_dk]][5]!==_SX_CFG.status){_ded[_seen[_dk]]=_r;} // 기존이 휴무면 출근으로 교체
     }
     aoa=_ded;n=aoa.length-1;
-    if(aoa.length<2){if(!window._sxSilent)alert('순변경(net)이 없습니다. (원복된 변경만 있음)');if(st)st.textContent='';return;}
+    // ★ 최종 방어 필터: 아이디 칸이 '진짜 등록된 로그인ID'가 아닌 행은 무조건 삭제.
+    //   (라우트코드가 아이디에 들어간 행, 빈칸, 미등록 한글이름 등은 쿠팡이 거부하므로 엑셀에 남기지 않음)
+    var _validIds={};Object.keys(didmap).forEach(function(nm){var v=String(didmap[nm]||'').trim();if(v)_validIds[v.toLowerCase()]=1;});
+    var _clean=[aoa[0]],_dropBad=0;
+    for(var _ci=1;_ci<aoa.length;_ci++){var _cr=aoa[_ci];var _idv=String(_cr[4]||'').trim();
+      // 유효 로그인ID: 등록된 아이디 목록에 있고, 영문/숫자/._- 로만 구성(한글·공백·콤마·슬래시·콜론 불가)
+      var _okId=_idv && _validIds[_idv.toLowerCase()] && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(_idv);
+      if(_okId)_clean.push(_cr);else _dropBad++;
+    }
+    aoa=_clean;n=aoa.length-1;skipUnreg+=_dropBad;
+    if(aoa.length<2){if(!window._sxSilent)alert('업로드할 유효한 변경분이 없습니다.\n(등록된 기사 아이디로 매핑되는 순변경이 없음)');if(st)st.textContent='';window._sxMetaB64='';return;}
     var wb=XLSX.utils.book_new();var sh=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});
     sh['!cols']=[{wch:18},{wch:16},{wch:8},{wch:8},{wch:16},{wch:8},{wch:14},{wch:22}];
     for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}
