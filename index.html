@@ -231,6 +231,12 @@ table.ft{width:auto;border-collapse:collapse;font-size:12px;min-width:520px;tabl
 .sched-new-badge{position:absolute;top:1px;left:1px;z-index:5;font-size:7px;font-weight:900;color:#fff;background:linear-gradient(135deg,#ff2d55,#ff8a00);padding:0 4px;border-radius:0 7px 7px 0;line-height:1.5;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.35);font-style:italic;text-transform:uppercase;pointer-events:none}
 @keyframes rpPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
 @keyframes rpBlink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.1)}}
+@keyframes truckBob{0%,100%{transform:translate(0,0)}25%{transform:translate(1px,-1.6px)}75%{transform:translate(-1px,0)}}
+@keyframes truckWheel{to{transform:rotate(360deg)}}
+@keyframes truckDash{0%{opacity:.9;transform:translateX(3px)}100%{opacity:0;transform:translateX(-9px)}}
+.tk-wheel{transform-box:fill-box;transform-origin:center;animation:truckWheel .55s linear infinite}
+.tk-svg{animation:truckBob .9s ease-in-out infinite}
+.tk-dash{position:absolute;height:2px;background:rgba(255,255,255,.75);border-radius:2px;animation:truckDash .7s linear infinite}
 @keyframes rpFlow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
 .rp-half-insp{align-self:stretch}
 .rp-half-insp>#insp-card-wrap{width:100%;display:flex}
@@ -5800,14 +5806,33 @@ function hbgApply(isHome){try{hbgInit();if(isHome===undefined)isHome=(typeof CUR
 function hbgHide(){var bg=document.getElementById('hbg');if(bg)bg.style.display='none';try{document.body.classList.remove('onhome');}catch(e){}}
 /* ── 홈 점검 카드 (미작성=강조 / 완료=차분 반투명) ── */
 function inspCardBody(state,cnt){
+  var _truck=_inspTruckSVG();
+  var _dashes='<span class="tk-dash" style="left:-4px;top:12px;width:9px"></span><span class="tk-dash" style="left:-4px;top:19px;width:7px;animation-delay:.22s"></span><span class="tk-dash" style="left:-4px;top:26px;width:8px;animation-delay:.42s"></span>';
+  var _gloss='<span style="position:absolute;top:-40%;left:-15%;width:55%;height:180%;background:linear-gradient(120deg,rgba(255,255,255,.28),transparent);transform:skewX(-18deg);pointer-events:none"></span>';
   if(state==='done'||state==='off'){
     var msg=state==='off'?'🛌 오늘 휴무':'✅ 점검 완료';
-    return '<div onclick="inspOpen()" style="cursor:pointer;height:100%;box-sizing:border-box;border-radius:15px;padding:13px 14px;margin-bottom:12px;background:linear-gradient(135deg,#8fb8e8,#b3d1f2);color:#fff;display:flex;align-items:center;gap:10px"><span style="font-size:26px;flex:0 0 auto">&#x1F69B;</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:900;white-space:nowrap">차량 일상점검</div><div style="font-size:11px;font-weight:800;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+msg+' · 이번달 '+cnt+'일</div></div></div>';
+    return '<div onclick="inspOpen()" style="cursor:pointer;position:relative;overflow:hidden;height:100%;box-sizing:border-box;border-radius:16px;padding:12px 13px;margin-bottom:12px;background:linear-gradient(135deg,#7fa8dd,#a9cbf0);box-shadow:0 4px 12px rgba(90,130,190,.28);color:#fff;display:flex;align-items:center;gap:11px">'+_gloss+
+      '<div style="position:relative;width:48px;height:34px;flex:0 0 auto;z-index:1">'+_truck+'</div>'+
+      '<div style="flex:1;min-width:0;position:relative;z-index:1"><div style="font-size:14px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.12)">차량 일상점검</div>'+
+      '<div style="font-size:11px;font-weight:800;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+msg+' · 이번달 '+cnt+'일</div></div></div>';
   }
-  return '<div onclick="inspOpen()" style="cursor:pointer;position:relative;overflow:hidden;height:100%;box-sizing:border-box;border-radius:15px;padding:13px 14px;margin-bottom:12px;background:linear-gradient(135deg,#5b8def,#7cb2f0);color:#fff;display:flex;align-items:center;gap:10px">'+
-    '<div style="font-size:27px;flex:0 0 auto;animation:hsp 1.4s infinite">&#x1F69B;</div>'+
-    '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:900;white-space:nowrap">차량 일상점검</div>'+
-    '<div style="margin-top:4px"><span style="font-size:11px;font-weight:900;background:rgba(255,255,255,.9);color:#2f5fb0;padding:2px 9px;border-radius:8px;white-space:nowrap;display:inline-block">🚨 오늘 점검 전</span></div></div></div>';
+  return '<div onclick="inspOpen()" style="cursor:pointer;position:relative;overflow:hidden;height:100%;box-sizing:border-box;border-radius:16px;padding:12px 13px;margin-bottom:12px;background:linear-gradient(135deg,#4a86e8,#6aa8f0 55%,#8ec5ff);box-shadow:0 5px 16px rgba(74,134,232,.38);color:#fff;display:flex;align-items:center;gap:11px">'+_gloss+
+    '<div style="position:relative;width:48px;height:34px;flex:0 0 auto;z-index:1">'+_dashes+_truck+'</div>'+
+    '<div style="flex:1;min-width:0;position:relative;z-index:1"><div style="font-size:14px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.15)">차량 일상점검</div>'+
+    '<div style="margin-top:4px"><span style="font-size:11px;font-weight:900;background:rgba(255,255,255,.95);color:#2f5fb0;padding:2px 9px;border-radius:8px;white-space:nowrap;display:inline-block;box-shadow:0 1px 3px rgba(0,0,0,.12)">🚨 오늘 점검 전</span></div></div></div>';
+}
+// 고퀄 주행 트럭 SVG (바퀴 회전 + 차체 흔들 + 유리 반사)
+function _inspTruckSVG(){
+  return '<svg class="tk-svg" viewBox="0 0 64 40" width="46" height="30" style="overflow:visible;position:absolute;right:0;top:2px">'+
+    '<ellipse cx="30" cy="37" rx="26" ry="2.4" fill="rgba(0,0,0,.14)"/>'+
+    '<rect x="2" y="9" width="33" height="19" rx="3.5" fill="#ffffff"/>'+
+    '<path d="M35 13 h11 l9 9.5 v5.5 h-20 z" fill="#e2eeff"/>'+
+    '<rect x="38.5" y="15.5" width="10" height="6.5" rx="1.6" fill="#7bb0f5"/>'+
+    '<rect x="39.5" y="16.2" width="4.5" height="5" rx="1" fill="#bcd8ff"/>'+
+    '<rect x="53" y="24" width="3" height="4" rx="1" fill="#ffd54f"/>'+
+    '<g class="tk-wheel"><circle cx="13" cy="30" r="5.6" fill="#263238"/><circle cx="13" cy="30" r="2.2" fill="#cfd8dc"/><rect x="12.2" y="25" width="1.6" height="10" rx=".8" fill="#90a4ae"/><rect x="8" y="29.2" width="10" height="1.6" rx=".8" fill="#90a4ae"/></g>'+
+    '<g class="tk-wheel"><circle cx="46" cy="30" r="5.6" fill="#263238"/><circle cx="46" cy="30" r="2.2" fill="#cfd8dc"/><rect x="45.2" y="25" width="1.6" height="10" rx=".8" fill="#90a4ae"/><rect x="41" y="29.2" width="10" height="1.6" rx=".8" fill="#90a4ae"/></g>'+
+    '</svg>';
 }
 function inspHomeCard(){return '<div id="insp-card-wrap">'+inspCardBody('todo',0)+'</div>';}
 function inspHomeLoad(){
@@ -14175,7 +14200,7 @@ function rpRender(){
       var tagTxt=(x.t.c3?('3등급 '+x.t.c3+'회'):('2등급 '+x.t.c2+'회'))+' '+ti.t;
       var trend=last4.slice().reverse().map(function(wk){var c=o[wk]||{};var col=rpGColor(c.pg);var rate=(c.pr==null?'':c.pr+'%');
         return '<div style="flex:1;text-align:center"><div style="font-size:9.5px;color:#8a969f;font-weight:700;margin-bottom:3px">'+rpWkNum(wk)+'주</div>'
-          +'<div style="border-radius:8px;padding:5px 0;background:'+col[0]+';color:'+col[1]+'"><div style="font-size:16px;font-weight:900;line-height:1">'+(c.pg||'-')+'</div><div style="font-size:9.5px;font-weight:800;margin-top:2px;opacity:.92">'+rate+'</div></div></div>';}).join('');
+          +'<div style="border-radius:8px;padding:5px 0;background:'+col[0]+';color:'+col[1]+'"><div style="font-size:13.5px;font-weight:900;line-height:1.05">'+(c.pg?c.pg+'등급':'-')+'</div><div style="font-size:9.5px;font-weight:800;margin-top:2px;opacity:.92">'+rate+'</div></div></div>';}).join('');
       var wvc=(rpWave(r.wave)==='야간')?'#e8eaf6;color:#3949ab':'#fff3e0;color:#e65100';
       var card='<div style="background:#fff;border-radius:12px;padding:12px 13px">'
         +'<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">'
