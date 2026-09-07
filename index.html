@@ -6085,7 +6085,6 @@ function pgHome(){
 var _rpHomeData;   // undefined=미로드, null/obj
 function _rpHomeEnsure(){
   if(_rpHomeData!==undefined)return;
-  if(!(CU&&(CU.role==='admin'||getFeatureCtrl('routeperf','active')))){_rpHomeData=null;return;}
   _rpHomeData=null;
   if(!sbClient)return;
   sbClient.from('app_settings').select('value').eq('key','route_perf_data').maybeSingle().then(function(q){
@@ -6097,14 +6096,10 @@ function _rpHomeEnsure(){
 }
 function _rpHomeRiskList(){
   var d=_rpHomeData; if(!d||!d.routes||!d.routes.length)return [];
-  if(!(CU&&(CU.role==='admin'||getFeatureCtrl('routeperf','active'))))return [];
   var desc=(d.weeks||[]).slice().sort(_rpWkAsc).reverse(); var last4=desc.slice(0,4);
-  var mineSet=null;
-  if(CU&&CU.role==='driver'){ try{ mineSet={}; (wfMyRoutes()||[]).forEach(function(r){mineSet[String(r).replace(/\s/g,'')]=1;}); }catch(e){ mineSet=null; } }
   var out=[];
   d.routes.forEach(function(r){ var t=_rpTier(r.cells||{},last4);
-    if(!t.k || t.c3<1)return;   // 홈 공유 기준: 3등급 1회 이상(경고·위험)만. 2등급만(주의)은 목록 페이지에서만.
-    if(mineSet){ var rk=String(r.route).replace(/\s/g,''); if(!mineSet[rk]&&!mineSet[rk.replace(/_/g,'')])return; }
+    if(!t.k || t.c3<1)return;   // 홈 공유 기준: 3등급 1회 이상(경고·위험)만 전체 공유. 2등급만(주의)은 목록 페이지에서만.
     out.push({route:r.route,wave:r.wave,k:t.k,c2:t.c2,c3:t.c3}); });
   out.sort(function(a,b){return _RP_TIER[a.k].o-_RP_TIER[b.k].o||b.c3-a.c3||b.c2-a.c2||rpRouteNum(a.route)-rpRouteNum(b.route);});
   return out;
@@ -14115,7 +14110,7 @@ function pgRpPage(){
   pbInjectStyle();
   var isAdm=CU&&CU.role==='admin';
   var bk='<div onclick="pbGoMenu()" style="cursor:pointer;font-size:13px;color:#00695c;font-weight:700;padding:12px 14px 4px">‹ 리스트확인</div>';
-  if(!isAdm && !getFeatureCtrl('routeperf','active')) return '<div class="pb-wrap">'+bk+'<div class="pb-empty">📊 라우트 수행율 확인 기능이 아직 활성화되지 않았습니다.</div></div>';
+  // 위험 라우트는 홈에 전체 공유되므로, 페이지도 누구나 열람 가능(관리자만 업로드/토글).
   return '<div class="pb-wrap">'+bk+'<div style="padding:2px 12px 16px"><div id="rp-root"><div class="pb-empty">불러오는 중…</div></div></div></div>';
 }
 async function rpInit(){
