@@ -6167,9 +6167,9 @@ function _slaHomeBelow(){
   var out=[]; M.routes.forEach(function(r){ if((r[1]||0)<avgTot)out.push(r[0]); }); return out;
 }
 function _homeMiniCard(onclick,bg,shadow,title,sub){
-  return '<div onclick="'+onclick+'" style="flex:1;min-width:0;cursor:pointer;border-radius:14px;padding:11px 6px;'+bg+';color:#fff;box-shadow:0 4px 11px '+shadow+';display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px">'+
-    '<div style="font-size:12.5px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.13)">'+title+'</div>'+
-    '<div style="font-size:9px;font-weight:800;opacity:.96;line-height:1.35;word-break:keep-all">'+sub+'</div></div>';
+  return '<div onclick="'+onclick+'" style="flex:1;min-width:0;cursor:pointer;border-radius:15px;padding:16px 8px;min-height:78px;'+bg+';color:#fff;box-shadow:0 4px 11px '+shadow+';display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px">'+
+    '<div style="font-size:16px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.15)">'+title+'</div>'+
+    '<div style="font-size:11.5px;font-weight:800;opacity:.97;line-height:1.4;word-break:keep-all">'+sub+'</div></div>';
 }
 function _rpHomeBannerMini(list){
   var danger=list.some(function(x){return x.k==='danger';}); var tier=_RP_TIER[list[0].k];
