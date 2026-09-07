@@ -14271,7 +14271,7 @@ function rpRender(){
     risky.forEach(function(x){
       var r=x.r, ti=_RP_TIER[x.t.k], o=r.cells||{};
       var tagTxt=(x.t.c3?('3등급 '+x.t.c3+'회'):('2등급 '+x.t.c2+'회'))+' '+ti.t;
-      var trend=last4.slice().reverse().map(function(wk){var c=o[wk]||{};var col=rpGColor(c.pg);var rate=(c.pr==null?'':c.pr+'%');
+      var trend=last4.slice().map(function(wk){var c=o[wk]||{};var col=rpGColor(c.pg);var rate=(c.pr==null?'':c.pr+'%');
         return '<div style="flex:1;text-align:center"><div style="font-size:9.5px;color:#8a969f;font-weight:700;margin-bottom:3px">'+rpWkNum(wk)+'주</div>'
           +'<div style="border-radius:8px;padding:5px 0;background:'+col[0]+';color:'+col[1]+'"><div style="font-size:13.5px;font-weight:900;line-height:1.05">'+(c.pg?c.pg+'등급':'-')+'</div><div style="font-size:9.5px;font-weight:800;margin-top:2px;opacity:.92">'+rate+'</div></div></div>';}).join('');
       var wvc=(rpWave(r.wave)==='야간')?'#e8eaf6;color:#3949ab':'#fff3e0;color:#e65100';
