@@ -14395,7 +14395,10 @@ function wfSumHtml(){
   var s1=0,s2=0,n1=0,n2=0,mih=0,cnt=[0,0,0,0];
   rs.forEach(function(r){ if(r.f1!=null){s1+=r.f1;n1++;} if(r.f2!=null){s2+=r.f2;n2++;} if(r.f1s==='미해당'||r.f2s==='미해당')mih++; var w=Math.max(wfG1(r.f1),wfG2(r.f2)); if(w>=0)cnt[w]++; });
   var a1=n1?(s1/n1).toFixed(1):'-', a2=n2?(s2/n2).toFixed(1):'-';
-  var list=(WF_FILT==='miss')?rs.filter(function(r){return r.f1s==='미해당'||r.f2s==='미해당';}):rs;
+  function _wfMiss(r){return r.f1s==='미해당'||r.f2s==='미해당';}
+  var _base=(WF_FILT==='miss')?rs.filter(_wfMiss):rs.slice();
+  // 미해당 라우트를 항상 상단 고정, 나머지는 라우트 번호 오름차순
+  var list=_base.sort(function(a,z){var ma=_wfMiss(a)?0:1,mz=_wfMiss(z)?0:1;if(ma!==mz)return ma-mz;var pa=String(a.route||'').match(/(\d+)/),pz=String(z.route||'').match(/(\d+)/);var na=pa?+pa[1]:0,nz=pz?+pz[1]:0;if(na!==nz)return na-nz;return String(a.route)<String(z.route)?-1:1;});
   var h='<div style="padding:2px 2px 10px;">';
   h+='<div style="font-size:13px;font-weight:800;color:#243b2e;margin:2px 2px 8px;">'+wfEsc(b.title||'가중요인 해당여부')+'</div>';
   h+='<div onclick="wfShow(\'mine\')" style="background:#5e35b1;color:#fff;border-radius:10px;padding:11px;text-align:center;font-size:13px;font-weight:800;margin-bottom:10px;cursor:pointer;">🔍 내 라우트 확인하기</div>';
@@ -14406,9 +14409,14 @@ function wfSumHtml(){
   h+='<div style="display:flex;align-items:center;gap:8px;margin:6px 2px;"><div style="font-size:12px;font-weight:800;color:#243b2e;">전체 라우트</div><div style="margin-left:auto;display:flex;gap:5px;">'+['all|전체 '+rs.length,'miss|미해당 '+mih].map(function(x){var p=x.split('|');var on=(WF_FILT===p[0]);return '<span onclick="wfFilt(\''+p[0]+'\')" style="background:'+(on?'#2d6040':'#fff')+';color:'+(on?'#fff':'#5a6b60')+';border:1px solid '+(on?'#2d6040':'#cdddd2')+';border-radius:12px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;">'+p[1]+'</span>';}).join('')+'</div></div>';
   h+='<div style="background:#fff;border:1px solid #eee;border-radius:10px;overflow:hidden;">'+
      '<div style="display:flex;background:#f4f6f2;padding:6px 12px;font-size:10.5px;color:#8a968d;font-weight:700;"><div style="flex:1;">라우트</div><div style="width:92px;text-align:center;">가중요인1</div><div style="width:92px;text-align:center;">가중요인2</div></div>';
-  list.forEach(function(r){ h+='<div style="display:flex;align-items:center;padding:6px 12px;border-top:1px solid #f2f2f2;font-size:12px;"><div style="flex:1;font-weight:700;color:#37473c;">'+wfEsc(r.route||'')+'</div>'+
-    '<div style="width:92px;text-align:center;">'+(r.f1==null?'-':wfChip(r.f1.toFixed(2),wfG1(r.f1)))+'<div style="font-size:10px;margin-top:1px;">'+wfStat(r.f1s)+'</div></div>'+
-    '<div style="width:92px;text-align:center;">'+(r.f2==null?'-':wfChip(r.f2.toFixed(2),wfG2(r.f2)))+'<div style="font-size:10px;margin-top:1px;">'+wfStat(r.f2s)+'</div></div></div>'; });
+  list.forEach(function(r){ var miss=_wfMiss(r);
+    var badge=miss?'<span style="margin-left:6px;font-size:9.5px;font-weight:900;color:#fff;background:#c62828;border-radius:6px;padding:2px 7px;box-shadow:0 1px 4px #ffcdd2;animation:rpBlink 1s infinite">미해당</span>':'';
+    var cells='<div style="flex:1;font-weight:800;color:#37473c;display:flex;align-items:center;">'+wfEsc(r.route||'')+badge+'</div>'+
+      '<div style="width:92px;text-align:center;">'+(r.f1==null?'-':wfChip(r.f1.toFixed(2),wfG1(r.f1)))+'<div style="font-size:10px;margin-top:1px;">'+wfStat(r.f1s)+'</div></div>'+
+      '<div style="width:92px;text-align:center;">'+(r.f2==null?'-':wfChip(r.f2.toFixed(2),wfG2(r.f2)))+'<div style="font-size:10px;margin-top:1px;">'+wfStat(r.f2s)+'</div></div>';
+    if(miss) h+='<div class="rprow rprow-danger"><div style="display:flex;align-items:center;padding:7px 12px;font-size:12px;background:#fff;border-radius:9px;overflow:hidden;">'+cells+'</div></div>';
+    else h+='<div style="display:flex;align-items:center;padding:6px 12px;border-top:1px solid #f2f2f2;font-size:12px;">'+cells+'</div>';
+  });
   h+='</div></div>'; return h;
 }
 function wfMineHtml(){
