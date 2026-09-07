@@ -230,6 +230,7 @@ table.ft{width:auto;border-collapse:collapse;font-size:12px;min-width:520px;tabl
 @keyframes schedRainbow{0%{background-position:0% 50%}100%{background-position:300% 50%}}
 .sched-new-badge{position:absolute;top:1px;left:1px;z-index:5;font-size:7px;font-weight:900;color:#fff;background:linear-gradient(135deg,#ff2d55,#ff8a00);padding:0 4px;border-radius:0 7px 7px 0;line-height:1.5;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.35);font-style:italic;text-transform:uppercase;pointer-events:none}
 @keyframes rpPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+@keyframes rpBlink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.1)}}
 @keyframes rpFlow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
 .rp-half-insp{align-self:stretch}
 .rp-half-insp>#insp-card-wrap{width:100%;display:flex}
@@ -14181,7 +14182,7 @@ function rpRender(){
           +'<span style="font-size:22px'+(x.t.k==='danger'?';animation:rpPulse 1s infinite':'')+'">'+ti.ic+'</span>'
           +'<span style="font-size:17px;font-weight:900;color:'+ti.cl+'">'+rpEsc(r.route)+'</span>'
           +'<span style="font-size:10px;font-weight:800;border-radius:5px;padding:1px 6px;background:'+wvc+'">'+rpWave(r.wave)+'</span>'
-          +'<span style="background:'+ti.cl+';color:#fff;border-radius:9px;padding:4px 11px;font-size:12.5px;font-weight:900;box-shadow:0 1px 4px '+ti.bd+'">'+tagTxt+'</span>'
+          +'<span style="background:'+ti.cl+';color:#fff;border-radius:9px;padding:4px 11px;font-size:12.5px;font-weight:900;box-shadow:0 1px 4px '+ti.bd+';animation:rpBlink 1s infinite">'+tagTxt+'</span>'
         +'</div>'
         +'<div style="display:flex;gap:6px;margin-top:11px">'+trend+'</div></div>';
       h+='<div style="border-radius:14px;padding:2px;margin-bottom:9px;background:'+ti.grad+';background-size:200% 200%;animation:rpFlow 2.4s linear infinite">'+card+'</div>';
@@ -14214,8 +14215,8 @@ function rpRender(){
     var pg=c.pg,pr=c.pr,rg=c.rg,rr=c.rr;
     var wv=rpWave(r.wave); var wvc=(wv==='야간')?['#e8eaf6','#3949ab']:['#fff3e0','#e65100'];
     var ti=t.k?_RP_TIER[t.k]:null;
-    var badge=ti?('<span style="flex:0 0 auto;margin-right:5px;font-size:9px;font-weight:900;color:#fff;background:'+ti.cl+';border-radius:6px;padding:1px 5px">'+ti.t+'</span>'):'';
-    var cells='<div style="flex:1;min-width:0;padding:9px 8px;font-weight:800;color:#0b3d38;display:flex;align-items:center">'+badge+rpEsc(r.route)+'</div>'
+    var badge=ti?('<span style="flex:0 0 auto;margin-left:6px;font-size:9.5px;font-weight:900;color:#fff;background:'+ti.cl+';border-radius:6px;padding:2px 7px;box-shadow:0 1px 4px '+ti.bd+';animation:rpBlink 1s infinite">'+ti.t+'</span>'):'';
+    var cells='<div style="flex:1;min-width:0;padding:9px 8px;font-weight:800;color:#0b3d38;display:flex;align-items:center">'+rpEsc(r.route)+badge+'</div>'
       +_cell(CW.gu,'<span style="background:'+wvc[0]+';color:'+wvc[1]+';border-radius:5px;padding:1px 5px;font-size:10px;font-weight:800">'+wv+'</span>')
       +_cell(CW.pg,(pg==null?'<span style="color:#ccc">-</span>':rpChip(pg,rpGColor(pg))))
       +_cell(CW.pr,(pr==null?'-':pr+'%'),'font-weight:800;color:'+(pr!=null&&pr<90?'#c62828':'#37473c'))
