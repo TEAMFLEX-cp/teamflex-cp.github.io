@@ -229,6 +229,8 @@ table.ft{width:auto;border-collapse:collapse;font-size:12px;min-width:520px;tabl
 .sched-new::after{content:"";position:absolute;inset:0;border-radius:7px;padding:2px;background:linear-gradient(135deg,#ff0040,#ff8a00,#ffe600,#00e676,#00b0ff,#7c4dff,#ff0040);background-size:300% 300%;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:schedRainbow 3s linear infinite;pointer-events:none;z-index:2}
 @keyframes schedRainbow{0%{background-position:0% 50%}100%{background-position:300% 50%}}
 .sched-new-badge{position:absolute;top:1px;left:1px;z-index:5;font-size:7px;font-weight:900;color:#fff;background:linear-gradient(135deg,#ff2d55,#ff8a00);padding:0 4px;border-radius:0 7px 7px 0;line-height:1.5;letter-spacing:.2px;box-shadow:0 1px 2px rgba(0,0,0,.35);font-style:italic;text-transform:uppercase;pointer-events:none}
+@keyframes rpPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+@keyframes rpFlow{0%{background-position:0% 50%}100%{background-position:200% 50%}}
 .share-cell{background:#FFF9C4 !important;cursor:pointer;position:relative}
 .share-cell:active{background:#FFF176 !important}
 .share-badge{display:inline-block;background:#F57F17;color:#fff;border-radius:8px;font-size:9px;padding:1px 4px;margin-left:2px;vertical-align:middle;font-weight:700}
@@ -13945,19 +13947,30 @@ async function _wfDo(file){var st=document.getElementById('wf-upl-status');
     try{pushNotify('weightfactor',{roleBroadcast:true,defaultRoles:['총괄','팀장','조장','기사'],dedupeKey:'wf:'+(payload.updated||Date.now()),title:'⚖️ 가중요인 업데이트',body:'새 가중요인 자료가 공유됐습니다. 리스트확인 탭에서 확인하세요.',data:{url:'/?tab=pb'}});}catch(e){}
   }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
 function wfUndo(){_uplUndo('weight_factor_data','weight_factor_data_backup',wfInit);}
-/* ════════ 라우트 수행율 (앱) — 본사 WK 수행률 안내 엑셀 ════════ */
-var RP_D=null, RP_WK=0;
+/* ════════ 라우트 수행율 (앱) — 본사 WK 수행률 엑셀 (누적 병합·최근4주) ════════ */
+var RP_D=null, RP_SEL=null;
 function rpEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function rpWave(w){w=String(w||'').toUpperCase();if(w.indexOf('W1')>=0||w.indexOf('야')>=0)return '야간';if(w.indexOf('W2')>=0||w.indexOf('주')>=0)return '주간';return w||'-';}
 function rpWkNum(lbl){var m=String(lbl||'').match(/(\d+)/);return m?parseInt(m[1],10):null;}
 function rpWkRange(wkNum){ if(wkNum==null)return ''; var aWk=36, aStart=new Date(2026,7,30); /* WK36 = 8/30~9/5 */
   var start=new Date(aStart.getTime()+(wkNum-aWk)*7*86400000); var end=new Date(start.getTime()+6*86400000);
   var f=function(d){return (d.getMonth()+1)+'/'+d.getDate();}; return f(start)+'~'+f(end); }
-function rpWkLabel(lbl){ var n=rpWkNum(lbl); if(n==null)return String(lbl||''); var rg=rpWkRange(n); return n+'주차'+(rg?' ('+rg+')':''); }
-function rpGColor(g){var n=parseInt(g,10);if(isNaN(n))return['#f6f6f6','#aaa'];if(n<=1)return['#e8f3ec','#2d6040'];if(n===2)return['#FFF2CC','#806000'];return['#FFC7CE','#9C0006'];}
+function rpGColor(g){var n=parseInt(g,10);if(isNaN(n))return['#f6f6f6','#aaa'];if(n<=1)return['#e8f3ec','#2d6040'];if(n===2)return['#FFF2CC','#8a6a00'];return['#FFD9DD','#c62828'];}
+function rpGSolid(g){var n=parseInt(g,10);if(isNaN(n))return'#d0d0d0';if(n<=1)return'#2d6040';if(n===2)return'#c58a00';return'#c62828';}
 function rpRColor(v){if(v==null)return['#f6f6f6','#aaa'];if(v>=99)return['#e8f3ec','#2d6040'];if(v>=96)return['#FFF2CC','#806000'];if(v>=90)return['#FBDDC9','#b4530f'];return['#FFC7CE','#9C0006'];}
-function rpChip(txt,col){return '<span style="display:inline-block;background:'+col[0]+';color:'+col[1]+';border-radius:6px;padding:2px 7px;font-size:11.5px;font-weight:800;min-width:34px">'+txt+'</span>';}
+function rpChip(txt,col){return '<span style="display:inline-block;background:'+col[0]+';color:'+col[1]+';border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800;min-width:30px">'+txt+'</span>';}
 function rpRouteNum(rt){var m=String(rt||'').match(/(\d+)/);return m?parseInt(m[1],10):999999;}
+function _rpWkAsc(a,b){return (rpWkNum(a)||0)-(rpWkNum(b)||0);}
+// 저장형식(구/신) 정규화 → {weeks, map:{route:{wave,camp,cells:{WK:{pg,pr,rg,rr}}}}}
+function _rpNorm(p){
+  var map={},weeks=(p&&Array.isArray(p.weeks))?p.weeks.slice():[];
+  (p&&p.routes||[]).forEach(function(r){
+    var cells=r.cells;
+    if(!cells){ cells={}; weeks.forEach(function(wk,i){ cells[wk]={pg:(r.pg||[])[i]!=null?r.pg[i]:null,pr:(r.pr||[])[i]!=null?r.pr[i]:null,rg:(r.rg||[])[i]!=null?r.rg[i]:null,rr:(r.rr||[])[i]!=null?r.rr[i]:null}; }); }
+    map[r.route]={wave:r.wave,camp:r.camp,cells:cells};
+  });
+  return {weeks:weeks,map:map};
+}
 function _parseRP(rows){
   var cell=_uplCell(rows),mr=rows.length,mc=_uplMaxCol(rows);
   var hdr=0,found=false;
@@ -13966,7 +13979,7 @@ function _parseRP(rows){
   var wc=2;for(var c=1;c<=mc;c++){if(String(cell(hdr,c)).trim().toLowerCase()==='wave'){wc=c;break;}}
   var routeCol=wc+2;
   var labels=[];for(var c=routeCol+1;c<=mc;c++){var v=String(cell(hdr,c)).trim();if(!v)break;labels.push(v);}
-  var weeks=[],seen={};for(var i=0;i<labels.length;i++){if(seen[labels[i]]!=null)break;seen[labels[i]]=i;weeks.push(labels[i]);}
+  var weeks=[],seen={};for(var i=0;i<labels.length;i++){if(seen[labels[i]]!=null)break;seen[labels[i]]=i;weeks.push('WK'+(rpWkNum(labels[i])||labels[i]));}
   var nw=weeks.length||4;
   var base=routeCol+1, bPG=base, bPR=base+nw, bRG=base+2*nw, bRR=base+3*nw;
   var wkNum=null;
@@ -13978,9 +13991,9 @@ function _parseRP(rows){
   for(var r=hdr+1;r<=mr;r++){
     var rt=_s(r,routeCol);if(rt==null)continue;
     if(/^(total|route|wave)$/i.test(rt))continue;
-    var pg=[],pr=[],rg=[],rr=[];
-    for(var k=0;k<nw;k++){pg.push(_s(r,bPG+k));pr.push(_n(r,bPR+k));rg.push(_s(r,bRG+k));rr.push(_n(r,bRR+k));}
-    out.push({wave:_s(r,wc),camp:_s(r,wc+1),route:rt,pg:pg,pr:pr,rg:rg,rr:rr});
+    var cells={};
+    for(var k=0;k<nw;k++){cells[weeks[k]]={pg:_s(r,bPG+k),pr:_n(r,bPR+k),rg:_s(r,bRG+k),rr:_n(r,bRR+k)};}
+    out.push({route:rt,wave:_s(r,wc),camp:_s(r,wc+1),cells:cells});
   }
   return {wkNum:wkNum,weeks:weeks,routes:out};
 }
@@ -13988,74 +14001,147 @@ function rpImport(file){if(!file)return;var st=document.getElementById('rp-upl-s
 async function _rpDo(file){var st=document.getElementById('rp-upl-status');
   try{if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var d=_parseRP(rows);
     if(!d||!d.routes.length){if(st)st.textContent='❌ 데이터를 못 찾았어요. (Wave/Route 헤더 확인)';return;}
-    var payload={updated:_uplStamp(),wkNum:d.wkNum,weeks:d.weeks,routes:d.routes};
+    // 기존 누적본 로드 → 주차 병합(겹치는 주차는 새 값으로 갱신, 지난 주차는 보존)
+    var cur=null;try{var cr=await sbClient.from('app_settings').select('value').eq('key','route_perf_data').maybeSingle();if(cr&&cr.data&&cr.data.value)cur=typeof cr.data.value==='string'?JSON.parse(cr.data.value):cr.data.value;}catch(e){}
+    var A=_rpNorm(cur), B=_rpNorm(d);
+    var map=A.map;
+    Object.keys(B.map).forEach(function(rt){ var e=map[rt]||{wave:B.map[rt].wave,camp:B.map[rt].camp,cells:{}}; if(B.map[rt].wave)e.wave=B.map[rt].wave; if(B.map[rt].camp)e.camp=B.map[rt].camp; var bc=B.map[rt].cells; Object.keys(bc).forEach(function(wk){e.cells[wk]=bc[wk];}); map[rt]=e; });
+    var wset={};A.weeks.forEach(function(w){wset[w]=1;});B.weeks.forEach(function(w){wset[w]=1;});
+    var weeks=Object.keys(wset).sort(_rpWkAsc);
+    var routes=Object.keys(map).map(function(rt){return {route:rt,wave:map[rt].wave,camp:map[rt].camp,cells:map[rt].cells};});
+    var maxWk=weeks.length?rpWkNum(weeks[weeks.length-1]):d.wkNum;
+    var payload={updated:_uplStamp(),wkNum:maxWk,weeks:weeks,routes:routes};
     await _uplSaveBackup('route_perf_data','route_perf_data_backup',payload);
-    if(st)st.textContent='✅ 완료 · '+(d.wkNum!=null?('WK'+d.wkNum+' · '):'')+d.routes.length+'개 라우트';
-    RP_D=payload;RP_WK=0;rpRender();try{showToast('✅ 라우트 수행율 업로드 완료',true);}catch(e){}
+    if(st)st.textContent='✅ 완료 · WK'+d.wkNum+' 병합 · 누적 '+weeks.length+'주('+weeks.map(rpWkNum).join(',')+') · '+routes.length+'개 라우트';
+    RP_D=payload;RP_SEL=null;rpRender();try{showToast('✅ 라우트 수행율 업로드·병합 완료',true);}catch(e){}
     try{pushNotify('routeperf',{roleBroadcast:true,defaultRoles:['총괄','팀장','조장','기사'],dedupeKey:'rp:'+(payload.updated||Date.now()),title:'📊 라우트 수행율 업데이트',body:'새 라우트 수행율 자료가 공유됐습니다. 리스트확인 탭에서 확인하세요.',data:{url:'/?tab=pb'}});}catch(e){}
   }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
 function rpUndo(){_uplUndo('route_perf_data','route_perf_data_backup',rpInit);}
+function _rpAdminBox(){
+  if(!(CU&&CU.role==='admin'))return '';
+  var on=getFeatureCtrl('routeperf','active');
+  return '<div style="background:#fff;border:1px solid #cfe3df;border-radius:12px;padding:10px 11px;margin-bottom:11px">'
+    +'<div style="font-size:12px;font-weight:800;color:#00695c;margin-bottom:7px">⚙️ 관리자 · 라우트 수행율</div>'
+    +'<input type="file" id="rp-file" accept=".xlsx,.xls" style="display:none" onchange="rpImport(this.files[0]);this.value=&#39;&#39;">'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +'<button onclick="document.getElementById(&#39;rp-file&#39;).click()" style="flex:1 1 46%;padding:9px;background:#00695c;color:#fff;border:none;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">📎 엑셀 선택</button>'
+      +'<button onclick="rpUndo()" style="flex:1 1 46%;padding:9px;background:#fff;color:#c62828;border:1px solid #ef9a9a;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">↩️ 되돌리기</button>'
+      +'<button onclick="saveFeatureCtrl(&#39;routeperf&#39;,&#39;active&#39;,!getFeatureCtrl(&#39;routeperf&#39;,&#39;active&#39;));setTimeout(rpRender,350)" style="flex:1 1 46%;padding:9px;border:none;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer;background:'+(on?'#2e7d32':'#bdbdbd')+';color:#fff">'+(on?'✅ 활성화됨':'⛔ 비활성화')+'</button>'
+      +'<button onclick="openNotifCfg(&#39;routeperf&#39;)" style="flex:1 1 46%;padding:9px;background:#eef2ff;color:#3949ab;border:1px solid #c5cae9;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">🔔 알림 설정</button>'
+    +'</div><div id="rp-upl-status" style="font-size:11.5px;color:#666;margin-top:7px;line-height:1.5"></div></div>';
+}
 function pgRpPage(){
   pbInjectStyle();
   var isAdm=CU&&CU.role==='admin';
   var bk='<div onclick="pbGoMenu()" style="cursor:pointer;font-size:13px;color:#00695c;font-weight:700;padding:12px 14px 4px">‹ 리스트확인</div>';
   if(!isAdm && !getFeatureCtrl('routeperf','active')) return '<div class="pb-wrap">'+bk+'<div class="pb-empty">📊 라우트 수행율 확인 기능이 아직 활성화되지 않았습니다.</div></div>';
-  return '<div class="pb-wrap">'+bk+'<div style="padding:2px 12px 16px">'+_featureBar('routeperf')+'<div id="rp-root"><div class="pb-empty">불러오는 중…</div></div></div></div>';
+  return '<div class="pb-wrap">'+bk+'<div style="padding:2px 12px 16px"><div id="rp-root"><div class="pb-empty">불러오는 중…</div></div></div></div>';
 }
 async function rpInit(){
   var root=document.getElementById('rp-root'); if(!root)return; RP_D=null;
   try{ var q=await sbClient.from('app_settings').select('value').eq('key','route_perf_data').maybeSingle();
        if(q&&q.data&&q.data.value){ RP_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
-  RP_WK=0; rpRender();
+  // 구(舊)형식(주차 배열) → 신형식(cells) 정규화 (기존 업로드분도 정상 표시)
+  if(RP_D&&RP_D.routes&&RP_D.routes.length&&!RP_D.routes[0].cells){
+    var N=_rpNorm(RP_D);
+    RP_D={updated:RP_D.updated,wkNum:RP_D.wkNum,weeks:N.weeks.slice().sort(_rpWkAsc),
+      routes:Object.keys(N.map).map(function(rt){return {route:rt,wave:N.map[rt].wave,camp:N.map[rt].camp,cells:N.map[rt].cells};})};
+  }
+  RP_SEL=null; rpRender();
 }
-function rpSetWk(i){RP_WK=i;rpRender();}
+// 위험 등급: 최근 4주 기준 — 3등급 2회↑=위험 / 3등급 1회↑=경고 / 2등급 2회↑=주의
+function _rpTier(cells,last4){
+  var c2=0,c3=0;
+  last4.forEach(function(wk){var n=parseInt((cells[wk]||{}).pg,10);if(n===2)c2++;else if(n>=3)c3++;});
+  var k=(c3>=2)?'danger':(c3>=1?'warn':(c2>=2?'caution':''));
+  return {k:k,c2:c2,c3:c3};
+}
+var _RP_TIER={danger:{o:0,ic:'🚨',t:'위험',bg:'#ffebee',bd:'#ffcdd2',cl:'#c62828'},warn:{o:1,ic:'⚠️',t:'경고',bg:'#fff3e0',bd:'#ffcc80',cl:'#e65100'},caution:{o:2,ic:'🟡',t:'주의',bg:'#fffde7',bd:'#ffe082',cl:'#a17e00'}};
+function rpStep(d){
+  if(!RP_D)return; var desc=(RP_D.weeks||[]).slice().sort(_rpWkAsc).reverse();
+  var i=desc.indexOf(RP_SEL); if(i<0)i=0; i=Math.min(desc.length-1,Math.max(0,i+d)); RP_SEL=desc[i]; rpRender();
+}
+function rpPick(wk){RP_SEL=wk;rpRender();}
 function rpRender(){
   var root=document.getElementById('rp-root'); if(!root)return;
-  var _uc=(CU&&CU.role==='admin')?_uplCard('rp','라우트 수행율','#00695c'):'';
-  if(!RP_D||!RP_D.routes||!RP_D.routes.length){ root.innerHTML=_uc+'<div class="pb-empty">아직 공유된 라우트 수행율 자료가 없습니다.<br><span style="font-size:11px;color:#999">관리자가 본사 WK 수행률 엑셀을 업로드하면 표시됩니다.</span></div>'; return; }
-  var weeks=RP_D.weeks||['WK'+RP_D.wkNum]; if(RP_WK>=weeks.length)RP_WK=0;
-  var wi=RP_WK;
-  var rs=(RP_D.routes||[]).slice().sort(function(a,z){var na=rpRouteNum(a.route),nz=rpRouteNum(z.route);if(na!==nz)return na-nz;return String(a.route)<String(z.route)?-1:1;});
-  // 주차 선택 pills
-  var pills='<div style="display:flex;flex-wrap:wrap;gap:6px;margin:2px 2px 10px">'+weeks.map(function(w,i){var on=(i===wi);return '<span onclick="rpSetWk('+i+')" style="background:'+(on?'#00695c':'#fff')+';color:'+(on?'#fff':'#00695c')+';border:1.5px solid #00695c;border-radius:14px;padding:4px 12px;font-size:11.5px;font-weight:800;cursor:pointer">'+rpWkNum(w)+'주차</span>';}).join('')+'</div>';
-  // 요약 평균 (선택 주차)
+  var adm=_rpAdminBox();
+  if(!RP_D||!RP_D.routes||!RP_D.routes.length){ root.innerHTML=adm+'<div class="pb-empty">아직 공유된 라우트 수행율 자료가 없습니다.<br><span style="font-size:11px;color:#999">관리자가 본사 WK 수행률 엑셀을 업로드하면 표시됩니다.</span></div>'; return; }
+  var desc=(RP_D.weeks||[]).slice().sort(_rpWkAsc).reverse();   // 최신 주차가 앞
+  if(!RP_SEL||desc.indexOf(RP_SEL)<0)RP_SEL=desc[0];
+  var sel=RP_SEL, si=desc.indexOf(sel);
+  var last4=desc.slice(0,4);                                    // 위험 판정 = 최근 4주
+  var routes=RP_D.routes||[];
+  function cellOf(r,wk){return (r.cells&&r.cells[wk])||{};}
+  // ── 위험/경고/주의 분류 ──
+  var risky=[],normal=[];
+  routes.forEach(function(r){var t=_rpTier(r.cells||{},last4); if(t.k)risky.push({r:r,t:t}); else normal.push(r);});
+  risky.sort(function(a,b){return _RP_TIER[a.t.k].o-_RP_TIER[b.t.k].o || b.t.c3-a.t.c3 || b.t.c2-a.t.c2 || rpRouteNum(a.r.route)-rpRouteNum(b.r.route);});
+  normal.sort(function(a,z){var na=rpRouteNum(a.route),nz=rpRouteNum(z.route);return na!==nz?na-nz:(String(a.route)<String(z.route)?-1:1);});
+  // ── 요약 (선택 주차) ──
   var sPr=0,nPr=0,sRr=0,nRr=0;
-  rs.forEach(function(r){ var pv=r.pr&&r.pr[wi]; if(pv!=null){sPr+=pv;nPr++;} var rv=r.rr&&r.rr[wi]; if(rv!=null){sRr+=rv;nRr++;} });
+  routes.forEach(function(r){var c=cellOf(r,sel);if(c.pr!=null){sPr+=c.pr;nPr++;}if(c.rr!=null){sRr+=c.rr;nRr++;}});
   var aPr=nPr?(sPr/nPr).toFixed(1)+'%':'-', aRr=nRr?(sRr/nRr).toFixed(1)+'%':'-';
-  var h='<div style="padding:2px 2px 10px">';
+  var h='';
+  h+=adm;
   h+='<div style="font-size:14px;font-weight:800;color:#0b3d38;margin:2px 2px 3px">📊 라우트 수행율</div>';
-  h+='<div style="font-size:12px;color:#4c7a73;font-weight:700;margin:0 2px 10px">'+rpEsc(rpWkLabel(weeks[wi]))+(RP_D.updated?' · <span style="color:#98a3af;font-weight:600">업데이트 '+rpEsc(RP_D.updated)+'</span>':'')+'</div>';
-  h+=pills;
-  h+='<div style="display:flex;gap:8px;margin-bottom:10px">'+
-     '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;text-align:center"><div style="font-size:11px;color:#8a968d">평일+주말 수행률 평균</div><div style="font-size:22px;font-weight:800;color:#0b3d38">'+aPr+'</div></div>'+
-     '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;text-align:center"><div style="font-size:11px;color:#8a968d">반품 회수률 평균</div><div style="font-size:22px;font-weight:800;color:#0b3d38">'+aRr+'</div></div></div>';
-  // 표 (오름차순)
-  h+='<div style="overflow-x:auto;border:1px solid #e6e6e6;border-radius:10px;background:#fff">'+
-     '<table style="border-collapse:collapse;font-size:12px;white-space:nowrap;width:100%">'+
-     '<thead><tr style="background:#e8f2f0;color:#0b3d38">'+
-       '<th style="position:sticky;left:0;background:#e8f2f0;border:1px solid #dfeae8;padding:7px 9px;text-align:left">라우트</th>'+
-       '<th style="border:1px solid #dfeae8;padding:7px 6px">구분</th>'+
-       '<th style="border:1px solid #dfeae8;padding:7px 6px">평일+주말<br>수행 등급</th>'+
-       '<th style="border:1px solid #dfeae8;padding:7px 6px">평일+주말<br>수행률</th>'+
-       '<th style="border:1px solid #dfeae8;padding:7px 6px">반품 회수<br>등급</th>'+
-       '<th style="border:1px solid #dfeae8;padding:7px 6px">반품<br>회수률</th>'+
-     '</tr></thead><tbody>';
-  rs.forEach(function(r){
-    var pg=r.pg&&r.pg[wi], pr=r.pr&&r.pr[wi], rg=r.rg&&r.rg[wi], rr=r.rr&&r.rr[wi];
+  h+='<div style="font-size:12px;color:#4c7a73;font-weight:700;margin:0 2px 10px">최근 4주치 기준'+(RP_D.updated?' · <span style="color:#98a3af;font-weight:600">업데이트 '+rpEsc(RP_D.updated)+'</span>':'')+'</div>';
+  // 요약 카드
+  h+='<div style="display:flex;gap:8px;margin-bottom:11px">'+
+     '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:9px;text-align:center"><div style="font-size:11px;color:#8a968d">평일+주말 수행률 평균</div><div style="font-size:21px;font-weight:800;color:#0b3d38">'+aPr+'</div></div>'+
+     '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:9px;text-align:center"><div style="font-size:11px;color:#8a968d">반품 회수률 평균</div><div style="font-size:21px;font-weight:800;color:#0b3d38">'+aRr+'</div></div></div>';
+  // ── 위험 라우트 섹션 (최근 4주) ──
+  if(risky.length){
+    h+='<div style="font-size:13px;font-weight:900;color:#c62828;margin:6px 2px 8px">🚨 위험 라우트 <span style="font-size:10.5px;color:#8a969f;font-weight:700">· 최근 4주 기준 자동 상단</span></div>';
+    risky.forEach(function(x){
+      var r=x.r, ti=_RP_TIER[x.t.k], o=r.cells||{};
+      var trend=last4.slice().reverse().map(function(wk){var c=o[wk]||{};var col=rpGColor(c.pg);return '<div style="flex:1;text-align:center"><div style="font-size:9.5px;color:#8a969f;font-weight:700;margin-bottom:3px">'+rpWkNum(wk)+'주</div><div style="border-radius:6px;padding:4px 0;font-size:13px;font-weight:900;background:'+col[0]+';color:'+col[1]+'">'+(c.pg||'-')+'</div></div>';}).join('');
+      var rates=last4.slice().reverse().map(function(wk){var v=(o[wk]||{}).pr;return v==null?'-':v+'%';}).join(' → ');
+      var tag=(x.t.c3?('3등급 '+x.t.c3+'회'):'')+((x.t.c3&&x.t.c2)?' · ':'')+(x.t.c2?('2등급 '+x.t.c2+'회'):'');
+      var card='<div style="background:#fff;border-radius:12px;padding:12px 13px">'
+        +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:22px'+(x.t.k==='danger'?';animation:rpPulse 1s infinite':'')+'">'+ti.ic+'</span>'
+        +'<span style="font-size:16px;font-weight:900;color:'+ti.cl+'">'+rpEsc(r.route)+'</span>'
+        +'<span style="font-size:9.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:2px;background:'+((rpWave(r.wave)==='야간')?'#e8eaf6;color:#3949ab':'#fff3e0;color:#e65100')+'">'+rpWave(r.wave)+'</span>'
+        +'<span style="margin-left:auto;background:'+ti.bg+';color:'+ti.cl+';border:1px solid '+ti.bd+';border-radius:9px;padding:3px 9px;font-size:11px;font-weight:900">'+ti.t+'</span></div>'
+        +'<div style="font-size:11.5px;color:#5a3030;margin:8px 0 8px;font-weight:700">'+rpEsc(tag)+' · 수행률 '+rates+'</div>'
+        +'<div style="display:flex;gap:5px">'+trend+'</div></div>';
+      if(x.t.k==='danger') h+='<div style="border-radius:14px;padding:2px;margin-bottom:9px;background:linear-gradient(135deg,#ff1744,#ff8a00,#ff1744);background-size:200% 200%;animation:rpFlow 2.4s linear infinite">'+card+'</div>';
+      else h+='<div style="border:2px solid '+ti.bd+';border-radius:14px;margin-bottom:9px">'+card+'</div>';
+    });
+  }
+  // ── 상단 고정 블록: 주차 네비 + 표 헤더 ──
+  var pillRow=desc.map(function(w){var o=(w===sel);return '<div onclick="rpPick(&#39;'+w+'&#39;)" style="flex:0 0 auto;border:1.5px solid #00695c;border-radius:11px;padding:4px 11px;cursor:pointer;text-align:center;line-height:1.15;background:'+(o?'#00695c':'#fff')+';color:'+(o?'#fff':'#00695c')+'"><div style="font-size:12.5px;font-weight:900">'+rpWkNum(w)+'주차</div><div style="font-size:9px;opacity:.85;margin-top:1px">'+rpWkRange(rpWkNum(w))+'</div></div>';}).join('');
+  var nav='<div style="display:flex;align-items:stretch;gap:6px">'
+    +'<button onclick="rpStep(1)"'+(si>=desc.length-1?' disabled':'')+' style="flex:0 0 auto;width:34px;border:1.5px solid #00695c;background:#fff;color:#00695c;border-radius:11px;font-size:17px;font-weight:900;cursor:pointer'+(si>=desc.length-1?';opacity:.3':'')+'">‹</button>'
+    +'<div style="flex:1;display:flex;gap:6px;overflow-x:auto;padding:1px">'+pillRow+'</div>'
+    +'<button onclick="rpStep(-1)"'+(si<=0?' disabled':'')+' style="flex:0 0 auto;width:34px;border:1.5px solid #00695c;background:#fff;color:#00695c;border-radius:11px;font-size:17px;font-weight:900;cursor:pointer'+(si<=0?';opacity:.3':'')+'">›</button></div>';
+  var hdrRow='<div style="display:flex;background:#e8f2f0;color:#0b3d38;font-size:10px;font-weight:800;border:1px solid #dfeae8;border-bottom:none;border-radius:9px 9px 0 0;margin-top:8px">'
+    +'<div style="flex:1;padding:7px 8px">라우트</div>'
+    +'<div style="width:44px;text-align:center;padding:7px 2px">구분</div>'
+    +'<div style="width:50px;text-align:center;padding:7px 2px">수행<br>등급</div>'
+    +'<div style="width:52px;text-align:center;padding:7px 2px">수행률</div>'
+    +'<div style="width:50px;text-align:center;padding:7px 2px">반품<br>등급</div>'
+    +'<div style="width:52px;text-align:center;padding:7px 2px">회수률</div></div>';
+  h+='<div style="position:sticky;top:0;z-index:30;background:#f4f6f8;margin:6px -12px 0;padding:6px 12px 0">'+nav+hdrRow+'</div>';
+  // ── 전체 라우트 리스트 (위험 상단 → 나머지 오름차순) ──
+  var listOrder=risky.map(function(x){return x.r;}).concat(normal);
+  var rowsH='<div style="border:1px solid #dfeae8;border-top:none;border-radius:0 0 10px 10px;background:#fff;overflow:hidden">';
+  listOrder.forEach(function(r){
+    var c=cellOf(r,sel); var t=_rpTier(r.cells||{},last4);
+    var pg=c.pg,pr=c.pr,rg=c.rg,rr=c.rr; var cur3=parseInt(pg,10)>=3;
     var wv=rpWave(r.wave); var wvc=(wv==='야간')?['#e8eaf6','#3949ab']:['#fff3e0','#e65100'];
-    h+='<tr>'+
-      '<td style="position:sticky;left:0;background:#fff;border:1px solid #eee;padding:6px 9px;font-weight:800;color:#0b3d38">'+rpEsc(r.route)+'</td>'+
-      '<td style="border:1px solid #eee;text-align:center;padding:6px"><span style="background:'+wvc[0]+';color:'+wvc[1]+';border-radius:6px;padding:2px 6px;font-size:10.5px;font-weight:800">'+wv+'</span></td>'+
-      '<td style="border:1px solid #eee;text-align:center;padding:6px">'+(pg==null?'<span style="color:#ccc">-</span>':rpChip(pg,rpGColor(pg)))+'</td>'+
-      '<td style="border:1px solid #eee;text-align:center;padding:6px">'+(pr==null?'<span style="color:#ccc">-</span>':rpChip(pr+'%',rpRColor(pr)))+'</td>'+
-      '<td style="border:1px solid #eee;text-align:center;padding:6px">'+(rg==null?'<span style="color:#ccc">-</span>':rpChip(rg,rpGColor(rg)))+'</td>'+
-      '<td style="border:1px solid #eee;text-align:center;padding:6px">'+(rr==null?'<span style="color:#ccc">-</span>':rpChip(rr+'%',rpRColor(rr)))+'</td>'+
-    '</tr>';
+    var lead=t.k?('<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+_RP_TIER[t.k].cl+';margin-right:5px'+(t.k==='danger'?';animation:rpPulse 1s infinite':'')+'"></span>'):'';
+    rowsH+='<div style="display:flex;align-items:center;font-size:12px;border-top:1px solid #f1f1f1;'+(cur3?'background:linear-gradient(90deg,#fff5f5,#fff)':'')+'">'
+      +'<div style="flex:1;padding:8px;font-weight:800;color:#0b3d38">'+lead+rpEsc(r.route)+'</div>'
+      +'<div style="width:44px;text-align:center;padding:6px 2px"><span style="background:'+wvc[0]+';color:'+wvc[1]+';border-radius:5px;padding:1px 5px;font-size:10px;font-weight:800">'+wv+'</span></div>'
+      +'<div style="width:50px;text-align:center;padding:6px 2px">'+(pg==null?'<span style="color:#ccc">-</span>':rpChip(pg,rpGColor(pg)))+'</div>'
+      +'<div style="width:52px;text-align:center;padding:6px 2px;font-weight:800;color:'+(pr!=null&&pr<90?'#c62828':'#37473c')+'">'+(pr==null?'-':pr+'%')+'</div>'
+      +'<div style="width:50px;text-align:center;padding:6px 2px">'+(rg==null?'<span style="color:#ccc">-</span>':rpChip(rg,rpGColor(rg)))+'</div>'
+      +'<div style="width:52px;text-align:center;padding:6px 2px;font-weight:800;color:#37473c">'+(rr==null?'-':rr+'%')+'</div></div>';
   });
-  h+='</tbody></table></div>';
-  h+='<div style="font-size:10.5px;color:#a7b0a9;margin:7px 2px">← 좌우로 밀어서 볼 수 있어요 · 등급 1=정상 · 오름차순(라우트 번호순) 정렬</div>';
-  h+='</div>';
-  root.innerHTML=_uc+h;
+  rowsH+='</div>';
+  h+=rowsH;
+  h+='<div style="font-size:10.5px;color:#a7b0a9;margin:8px 2px 4px">등급 1=정상·2=주의·3=경고 · 위험 라우트는 상단 고정 · 나머지는 라우트 번호 오름차순</div>';
+  root.innerHTML=h;
 }
 function pgSlaPage(){
   pbInjectStyle();
