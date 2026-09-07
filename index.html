@@ -249,6 +249,7 @@ table.ft{width:auto;border-collapse:collapse;font-size:12px;min-width:520px;tabl
 /* 라우트 수행율 리스트 - 티어별 회전 테두리 */
 .rprow{position:relative;border-radius:10px;margin:6px}
 .rprow::before{content:"";position:absolute;inset:0;border-radius:10px;padding:2px;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;background-size:250% 250%;animation:rpFlow 2.6s linear infinite;pointer-events:none;z-index:3}
+.rprow-cleanse::before{background:linear-gradient(135deg,#7a0000,#d32f2f,#7a0000)}
 .rprow-danger::before{background:linear-gradient(135deg,#ff1744,#ff8a00,#ff1744)}
 .rprow-warn::before{background:linear-gradient(135deg,#ff9100,#ffd54f,#ff9100)}
 .rprow-manage::before{background:linear-gradient(135deg,#2e7d32,#81c784,#2e7d32)}
@@ -6173,7 +6174,7 @@ function _homeMiniCard(onclick,bg,shadow,title,sub,deco){
     '<div style="position:relative;z-index:3;font-size:11.5px;font-weight:800;opacity:.98;line-height:1.4;word-break:keep-all">'+sub+'</div></div>';
 }
 function _rpHomeBannerMini(list){
-  var danger=list.some(function(x){return x.k==='danger';}); var tier=_RP_TIER[list[0].k];
+  var danger=list.some(function(x){return x.k==='danger'||x.k==='cleanse';}); var tier=_RP_TIER[list[0].k];
   var bg=danger?'background:linear-gradient(135deg,#ff1744,#ff7a00,#ff1744)':('background:linear-gradient(135deg,'+tier.cl+',#ff8a00)');
   var names=rpEsc(_homeNames(list.map(function(x){return x.route;})));
   var deco='<svg viewBox="0 0 40 40" width="58" height="58" style="position:absolute;right:-8px;bottom:-9px;opacity:.32;pointer-events:none;z-index:1"><path d="M6 30 L16 20 L23 26 L34 12" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M27 12 h7 v7" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -14222,13 +14223,14 @@ async function rpInit(){
 function _rpTier(cells,last4){
   var c2=0,c3=0;
   last4.forEach(function(wk){var n=parseInt((cells[wk]||{}).pg,10);if(n===2)c2++;else if(n>=3)c3++;});
-  var k=(c3>=2)?'danger':(c3>=1?'warn':(c2>=2?'caution':''));
+  var k=(c3>=3)?'cleanse':(c3>=2?'danger':(c3>=1?'warn':(c2>=2?'caution':'')));
   return {k:k,c2:c2,c3:c3};
 }
 var _RP_TIER={
-  danger:{o:0,ic:'🚨',t:'위험',bg:'#ffebee',bd:'#ffcdd2',cl:'#c62828',grad:'linear-gradient(135deg,#ff1744,#ff8a00,#ff1744)',bcls:'rprow-danger'},
-  warn:{o:1,ic:'⚠️',t:'경고',bg:'#fff3e0',bd:'#ffcc80',cl:'#e65100',grad:'linear-gradient(135deg,#ff9100,#ffd54f,#ff9100)',bcls:'rprow-warn'},
-  caution:{o:2,ic:'🟢',t:'관리',bg:'#e8f5e9',bd:'#a5d6a7',cl:'#2e7d32',grad:'linear-gradient(135deg,#2e7d32,#81c784,#2e7d32)',bcls:'rprow-manage'}
+  cleanse:{o:0,ic:'⛔',t:'클렌징 대상',bg:'#fce4ec',bd:'#f48fb1',cl:'#8e0000',grad:'linear-gradient(135deg,#7a0000,#d32f2f,#7a0000)',bcls:'rprow-cleanse'},
+  danger:{o:1,ic:'🚨',t:'위험',bg:'#ffebee',bd:'#ffcdd2',cl:'#c62828',grad:'linear-gradient(135deg,#ff1744,#ff8a00,#ff1744)',bcls:'rprow-danger'},
+  warn:{o:2,ic:'⚠️',t:'경고',bg:'#fff3e0',bd:'#ffcc80',cl:'#e65100',grad:'linear-gradient(135deg,#ff9100,#ffd54f,#ff9100)',bcls:'rprow-warn'},
+  caution:{o:3,ic:'🟢',t:'관리',bg:'#e8f5e9',bd:'#a5d6a7',cl:'#2e7d32',grad:'linear-gradient(135deg,#2e7d32,#81c784,#2e7d32)',bcls:'rprow-manage'}
 };
 function rpStep(d){
   if(!RP_D)return; var desc=(RP_D.weeks||[]).slice().sort(_rpWkAsc).reverse();
@@ -14264,7 +14266,7 @@ function rpRender(){
      '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:9px;text-align:center"><div style="font-size:11px;color:#8a968d">반품 회수률 평균</div><div style="font-size:21px;font-weight:800;color:#0b3d38">'+aRr+'</div></div></div>';
   // ── 위험 라우트 섹션 (최근 4주) ──
   if(risky.length){
-    h+='<div style="font-size:13px;font-weight:900;color:#c62828;margin:6px 2px 8px">🚨 관리·경고·위험 라우트 <span style="font-size:10.5px;color:#8a969f;font-weight:700">· 최근 4주 기준 자동 상단</span></div>';
+    h+='<div style="font-size:13px;font-weight:900;color:#c62828;margin:6px 2px 8px">🚨 관리·경고·위험·클렌징 라우트 <span style="font-size:10.5px;color:#8a969f;font-weight:700">· 최근 4주 기준 자동 상단</span></div>';
     risky.forEach(function(x){
       var r=x.r, ti=_RP_TIER[x.t.k], o=r.cells||{};
       var tagTxt=(x.t.c3?('3등급 '+x.t.c3+'회'):('2등급 '+x.t.c2+'회'))+' '+ti.t;
@@ -14274,7 +14276,7 @@ function rpRender(){
       var wvc=(rpWave(r.wave)==='야간')?'#e8eaf6;color:#3949ab':'#fff3e0;color:#e65100';
       var card='<div style="background:#fff;border-radius:12px;padding:12px 13px">'
         +'<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">'
-          +'<span style="font-size:22px'+(x.t.k==='danger'?';animation:rpPulse 1s infinite':'')+'">'+ti.ic+'</span>'
+          +'<span style="font-size:22px'+((x.t.k==='danger'||x.t.k==='cleanse')?';animation:rpPulse 1s infinite':'')+'">'+ti.ic+'</span>'
           +'<span style="font-size:17px;font-weight:900;color:'+ti.cl+'">'+rpEsc(r.route)+'</span>'
           +'<span style="font-size:10px;font-weight:800;border-radius:5px;padding:1px 6px;background:'+wvc+'">'+rpWave(r.wave)+'</span>'
           +'<span style="background:'+ti.cl+';color:#fff;border-radius:9px;padding:4px 11px;font-size:12.5px;font-weight:900;box-shadow:0 1px 4px '+ti.bd+';animation:rpBlink 1s infinite">'+tagTxt+'</span>'
@@ -14325,7 +14327,7 @@ function rpRender(){
   });
   rowsH+='</div>';
   h+=rowsH;
-  h+='<div style="font-size:10.5px;color:#a7b0a9;margin:8px 2px 4px;line-height:1.7">최근 4주 기준 · 테두리 <b style="color:#2e7d32">관리</b>(2등급 2회↑) · <b style="color:#e65100">경고</b>(3등급 1회) · <b style="color:#c62828">위험</b>(3등급 2회↑) · 위험도순 상단 고정, 나머지 번호순</div>';
+  h+='<div style="font-size:10.5px;color:#a7b0a9;margin:8px 2px 4px;line-height:1.7">최근 4주 기준 · <b style="color:#2e7d32">관리</b>(2등급 2회↑) · <b style="color:#e65100">경고</b>(3등급 1회) · <b style="color:#c62828">위험</b>(3등급 2회) · <b style="color:#8e0000">클렌징</b>(3등급 3회↑) · 위험도순 상단 고정, 나머지 번호순</div>';
   root.innerHTML=h;
 }
 function pgSlaPage(){
