@@ -242,9 +242,10 @@ table.ft{width:auto;border-collapse:collapse;font-size:12px;min-width:520px;tabl
 .rp-half-insp>#insp-card-wrap{width:100%;display:flex}
 .rp-half-insp>#insp-card-wrap>div{flex:1;margin-bottom:0!important;display:flex;flex-direction:column;justify-content:center}
 .rp-half-hc>div{flex:1;margin-bottom:0!important}
-@keyframes slaBadEdge{0%,100%{box-shadow:inset 0 0 0 2px #ff1744}50%{box-shadow:inset 0 0 0 2px rgba(255,23,68,.3)}}
-.sla-bad td{background:#fff4f4!important;animation:slaBadEdge 1.1s infinite}
-.sla-bad td:first-child{color:#c62828!important;font-weight:900!important}
+@keyframes slaDnBlink{0%,100%{opacity:1;transform:translateY(0)}50%{opacity:.25;transform:translateY(1px)}}
+.sla-dn{display:inline-block;margin-left:5px;color:#1565ff;font-weight:900;font-size:13px;animation:slaDnBlink .9s infinite}
+@keyframes slaBox{0%,100%{box-shadow:inset 0 0 0 2px #1565ff}50%{box-shadow:inset 0 0 0 2px rgba(21,101,255,.25)}}
+.sla-totbad{animation:slaBox 1s infinite}
 /* 라우트 수행율 리스트 - 티어별 회전 테두리 */
 .rprow{position:relative;border-radius:10px;margin:6px}
 .rprow::before{content:"";position:absolute;inset:0;border-radius:10px;padding:2px;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;background-size:250% 250%;animation:rpFlow 2.6s linear infinite;pointer-events:none;z-index:3}
@@ -14364,8 +14365,8 @@ function slaTable(rows,avgTot){
   // 평균점수 이하 라우트를 상단 고정 (그 안에서는 기존 정렬 유지)
   var sorted=rows.slice().sort(function(a,b){var ba=bad(a)?0:1,bb=bad(b)?0:1;return ba-bb;});
   var th='<div style="overflow-x:auto;border:1px solid #e6e9ee;border-radius:10px;background:#fff;"><table style="border-collapse:collapse;font-size:11.5px;white-space:nowrap;"><thead><tr><th style="position:sticky;left:0;z-index:2;background:#eef0f7;border:1px solid #e4e8ee;padding:6px 9px;color:#5a6b7a;">라우트</th><th style="background:#3a2d8f;color:#fff;border:1px solid #e4e8ee;padding:6px 10px;">Total</th>'+cols.map(function(c){return '<th style="background:#eef0f7;color:#5a6b7a;border:1px solid #e4e8ee;padding:6px 10px;">'+c+'</th>';}).join('')+'</tr></thead><tbody>';
-  sorted.forEach(function(r){var c=slaTot(r[1]||0);var isb=bad(r);var badge=isb?'<span style="margin-left:5px;font-size:8.5px;font-weight:900;color:#fff;background:#c62828;border-radius:5px;padding:1px 5px;animation:rpBlink 1s infinite">미달</span>':'';
-    th+='<tr'+(isb?' class="sla-bad"':'')+'><td style="position:sticky;left:0;z-index:1;background:#fff;border:1px solid #eef0f4;padding:5px 9px;font-weight:700;color:#37404c;">'+wfEsc(r[0])+badge+'</td><td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+c[0]+';color:'+c[1]+';font-weight:800;">'+(r[1]||0).toFixed(1)+'</td>'+[r[2],r[3],r[4],r[5]].map(function(v,i){var mc=slaMc(v,[15,15,50,20][i]);return '<td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+mc[0]+';color:'+mc[1]+';font-weight:700;">'+(v||0).toFixed(1)+'</td>';}).join('')+'</tr>';});
+  sorted.forEach(function(r){var c=slaTot(r[1]||0);var isb=bad(r);var badge=isb?'<span class="sla-dn" title="평균 이하">&#x2193;</span>':'';
+    th+='<tr><td style="position:sticky;left:0;z-index:1;background:#fff;border:1px solid #eef0f4;padding:5px 9px;font-weight:'+(isb?'900':'700')+';color:'+(isb?'#1565ff':'#37404c')+';">'+wfEsc(r[0])+badge+'</td><td class="'+(isb?'sla-totbad':'')+'" style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+c[0]+';color:'+c[1]+';font-weight:800;">'+(r[1]||0).toFixed(1)+'</td>'+[r[2],r[3],r[4],r[5]].map(function(v,i){var mc=slaMc(v,[15,15,50,20][i]);return '<td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+mc[0]+';color:'+mc[1]+';font-weight:700;">'+(v||0).toFixed(1)+'</td>';}).join('')+'</tr>';});
   return th+'</tbody></table></div><div style="font-size:10.5px;color:#a7b0ba;margin:6px 2px;">← 좌우로 밀어서 나머지 지표 · 평균점수 이하는 상단 고정·빨간 표시</div>';
 }
 function slaMonthView(){
