@@ -5883,11 +5883,13 @@ function pgHome(){
       '</div>'+
     '</div>';
     setTimeout(loadWeather,200);
+    _rpHomeEnsure(); var _rpAdmList=_rpHomeRiskList();
     return '<div class="hero">'+
       '<div class="hn" style="margin-bottom:12px">'+
         '<span style="font-size:17px;font-weight:800">&#x1F451; 관리자 님 &#x1F44F;&#x1F44F;</span>'+
       '</div>'+
       '</div>'+
+      (_rpAdmList.length?_rpHomeBannerHTML(_rpAdmList):'')+
       adminWeatherCard+inspHomeCard()+_ftBtnHTML()+adminSummary;
   }
 
@@ -6100,7 +6102,8 @@ function _rpHomeRiskList(){
   var mineSet=null;
   if(CU&&CU.role==='driver'){ try{ mineSet={}; (wfMyRoutes()||[]).forEach(function(r){mineSet[String(r).replace(/\s/g,'')]=1;}); }catch(e){ mineSet=null; } }
   var out=[];
-  d.routes.forEach(function(r){ var t=_rpTier(r.cells||{},last4); if(!t.k)return;
+  d.routes.forEach(function(r){ var t=_rpTier(r.cells||{},last4);
+    if(!t.k || t.c3<1)return;   // 홈 공유 기준: 3등급 1회 이상(경고·위험)만. 2등급만(주의)은 목록 페이지에서만.
     if(mineSet){ var rk=String(r.route).replace(/\s/g,''); if(!mineSet[rk]&&!mineSet[rk.replace(/_/g,'')])return; }
     out.push({route:r.route,wave:r.wave,k:t.k,c2:t.c2,c3:t.c3}); });
   out.sort(function(a,b){return _RP_TIER[a.k].o-_RP_TIER[b.k].o||b.c3-a.c3||b.c2-a.c2||rpRouteNum(a.route)-rpRouteNum(b.route);});
