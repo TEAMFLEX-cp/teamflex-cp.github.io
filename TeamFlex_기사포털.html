@@ -7355,14 +7355,21 @@ async function _sxDoChanged(){
       // 이 라우트를 거쳐간 모든 기사(이전자+신규자) 수집 → 중간에 잠깐 올라간 기사도 휴무 처리 대상에 포함
       if(_isSimpleNm(c.oldDriver))net[key].drv[norm_name_js(c.oldDriver)]=c.oldDriver;
       if(_isSimpleNm(c.newDriver))net[key].drv[norm_name_js(c.newDriver)]=c.newDriver;});
-    // 그날 최종 스케줄에서 근무 중인 기사 집합 (다른 라우트라도 근무 있으면 휴무 처리 제외)
-    var workingByDate={},currentByRoute={};
+    // 캠프+주야 키 (803/805=8캠프주간, 808=8캠프야간, 그외=3캠프주간)
+    function _sxCW(raw){var b=String(raw||'').replace(/\s*\(.*?\)/g,'').trim();var camp=(b.charAt(0)==='8')?'8':'3';var ni=_sxIsNight(b)?'N':'D';return camp+'|'+ni;}
+    // 그날 최종 스케줄에서 '어느 캠프+주야'에 근무 중인지 (캠프/주야가 다르면 덮어쓰기가 아니라 새 배정 → 옛 캠프 휴무 필요)
+    var workingByDate={},workingCW={},currentByRoute={};
     try{var wq=await sbClient.from('weekly_schedules').select('work_date,route,route_raw,driver_name,share').eq('week_start',ws0);
-      (wq.data||[]).forEach(function(e){var d=e.work_date;if(!workingByDate[d])workingByDate[d]={};if(e.driver_name)workingByDate[d][norm_name_js(e.driver_name)]=1;
-        var rr=e.route_raw||e.route||'';if(rr&&e.driver_name)currentByRoute[d+'|'+rr]=e.driver_name;
-        if(e.share){try{var sh=typeof e.share==='string'?JSON.parse(e.share):e.share;(sh||[]).forEach(function(s){if(s.driver)workingByDate[d][norm_name_js(s.driver)]=1;});}catch(ex){}}});
+      (wq.data||[]).forEach(function(e){var d=e.work_date;if(!workingByDate[d])workingByDate[d]={};if(!workingCW[d])workingCW[d]={};
+        var rr=e.route_raw||e.route||'';var cw=_sxCW(rr);
+        function _addCW(nm){var k=norm_name_js(nm||'');if(!k)return;workingByDate[d][k]=1;(workingCW[d][k]=workingCW[d][k]||{})[cw]=1;}
+        if(e.driver_name){_addCW(e.driver_name);}
+        if(rr&&e.driver_name)currentByRoute[d+'|'+rr]=e.driver_name;
+        if(e.share){try{var sh=typeof e.share==='string'?JSON.parse(e.share):e.share;(sh||[]).forEach(function(s){if(s.driver)_addCW(s.driver);});}catch(ex){}}});
     }catch(e){}
     function _sxWorking(date,nm){return !!(workingByDate[date]&&workingByDate[date][norm_name_js(nm||'')]);}
+    // 같은 캠프+주야에서 근무 중인지 (같으면 덮어쓰기 → 휴무 불필요 / 다르면 옛 캠프 휴무 필요)
+    function _sxWorkingCW(date,nm,cw){var m=workingCW[date]&&workingCW[date][norm_name_js(nm||'')];return !!(m&&m[cw]);}
     var didmap=await _sxDidMap();
     var aoa=[['업무일','사업자등록번호','캠프명','웨이브','아이디','업무상태','회전','업무라우트']];var n=0,skipHumu=0;
     var skipPast=0,skipUnreg=0;
@@ -7374,13 +7381,15 @@ async function _sxDoChanged(){
       //   → 라우트를 건너뛰지 않고, 항상 '현재 배정 기사'를 출근으로 다시 보내 메타를 앱 현재상태와 강제 일치시킨다.
       var routes=_sxSplitRt(c.route||'');var first=routes[0]||'';var night=_sxIsNight(first);var baseRt=first.replace(/\s*\(.*?\)/g,'').trim();
       var camp=baseRt.charAt(0)==='8'?'일산8':'일산3';var wave=night?_SX_CFG.night_wave:_SX_CFG.day_wave;var rot=night?_SX_CFG.night_rot:_SX_CFG.day_rot;var routeStr=routes.join(',');
-      // 이 라우트를 거쳐간 모든 기사 중 '현재 배정자가 아니고' + '그날 다른 곳 근무도 없는' 기사는 휴무 처리
-      // (정원준→문병국→정원준: 정원준=현재라 제외, 문병국=휴무 → 중간에 올라갔던 문병국이 확실히 빠짐)
+      var myCW=_sxCW(first||c.route);   // 이 라우트의 캠프+주야
+      // 이 라우트를 거쳐간 기사 중 '현재 배정자가 아닌' 기사 처리:
+      //  - 같은 캠프+주야에서 여전히 근무 → 덮어쓰기이므로 휴무 불필요(스킵)
+      //  - 다른 캠프/주야로 이동했거나 근무 없음 → 이 캠프엔 '새 배정' 잔재가 남으므로 반드시 휴무 처리(이중배정 방지)
       Object.keys(c.drv||{}).forEach(function(nk){var dnm=c.drv[nk];
         if(norm_name_js(dnm)===norm_name_js(curNew||''))return;
         // ★ 기사 미등록 이름(서민지1 등)은 엑셀에 이력으로 남기지 않고 그냥 제외
         if(!_sxReg(didmap,dnm)){skipUnreg++;return;}
-        if(_sxWorking(c.workDate,dnm)){skipHumu++;return;}
+        if(_sxWorkingCW(c.workDate,dnm,myCW)){skipHumu++;return;}   // 같은 캠프+주야 근무 = 덮어쓰기 → 휴무 스킵
         aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,dnm,''),'휴무','','']);n++;});
       // ★ 현재 배정 기사도 미등록이면 출근행 생략(엑셀에 남기지 않음)
       if(curNew && _sxReg(didmap,curNew)){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,curNew,''),_SX_CFG.status,rot,routeStr]);n++;}
