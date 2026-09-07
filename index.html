@@ -14023,11 +14023,11 @@ function _rpAdminBox(){
   return '<div style="background:#fff;border:1px solid #cfe3df;border-radius:12px;padding:10px 11px;margin-bottom:11px">'
     +'<div style="font-size:12px;font-weight:800;color:#00695c;margin-bottom:7px">⚙️ 관리자 · 라우트 수행율</div>'
     +'<input type="file" id="rp-file" accept=".xlsx,.xls" style="display:none" onchange="rpImport(this.files[0]);this.value=&#39;&#39;">'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-      +'<button onclick="document.getElementById(&#39;rp-file&#39;).click()" style="flex:1 1 46%;padding:9px;background:#00695c;color:#fff;border:none;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">📎 엑셀 선택</button>'
-      +'<button onclick="rpUndo()" style="flex:1 1 46%;padding:9px;background:#fff;color:#c62828;border:1px solid #ef9a9a;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">↩️ 되돌리기</button>'
-      +'<button onclick="saveFeatureCtrl(&#39;routeperf&#39;,&#39;active&#39;,!getFeatureCtrl(&#39;routeperf&#39;,&#39;active&#39;));setTimeout(rpRender,350)" style="flex:1 1 46%;padding:9px;border:none;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer;background:'+(on?'#2e7d32':'#bdbdbd')+';color:#fff">'+(on?'✅ 활성화됨':'⛔ 비활성화')+'</button>'
-      +'<button onclick="openNotifCfg(&#39;routeperf&#39;)" style="flex:1 1 46%;padding:9px;background:#eef2ff;color:#3949ab;border:1px solid #c5cae9;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">🔔 알림 설정</button>'
+    +'<div style="display:flex;gap:5px">'
+      +'<button onclick="document.getElementById(&#39;rp-file&#39;).click()" style="flex:1;padding:9px 2px;background:#00695c;color:#fff;border:none;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">📎 엑셀</button>'
+      +'<button onclick="rpUndo()" style="flex:1;padding:9px 2px;background:#fff;color:#c62828;border:1px solid #ef9a9a;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">↩️ 되돌리기</button>'
+      +'<button onclick="saveFeatureCtrl(&#39;routeperf&#39;,&#39;active&#39;,!getFeatureCtrl(&#39;routeperf&#39;,&#39;active&#39;));setTimeout(rpRender,350)" style="flex:1;padding:9px 2px;border:none;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;background:'+(on?'#2e7d32':'#bdbdbd')+';color:#fff">'+(on?'✅ 활성':'⛔ 비활성')+'</button>'
+      +'<button onclick="openNotifCfg(&#39;routeperf&#39;)" style="flex:1;padding:9px 2px;background:#eef2ff;color:#3949ab;border:1px solid #c5cae9;border-radius:9px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">🔔 알림</button>'
     +'</div><div id="rp-upl-status" style="font-size:11.5px;color:#666;margin-top:7px;line-height:1.5"></div></div>';
 }
 function pgRpPage(){
@@ -14094,49 +14094,58 @@ function rpRender(){
     h+='<div style="font-size:13px;font-weight:900;color:#c62828;margin:6px 2px 8px">🚨 위험 라우트 <span style="font-size:10.5px;color:#8a969f;font-weight:700">· 최근 4주 기준 자동 상단</span></div>';
     risky.forEach(function(x){
       var r=x.r, ti=_RP_TIER[x.t.k], o=r.cells||{};
-      var trend=last4.slice().reverse().map(function(wk){var c=o[wk]||{};var col=rpGColor(c.pg);return '<div style="flex:1;text-align:center"><div style="font-size:9.5px;color:#8a969f;font-weight:700;margin-bottom:3px">'+rpWkNum(wk)+'주</div><div style="border-radius:6px;padding:4px 0;font-size:13px;font-weight:900;background:'+col[0]+';color:'+col[1]+'">'+(c.pg||'-')+'</div></div>';}).join('');
-      var rates=last4.slice().reverse().map(function(wk){var v=(o[wk]||{}).pr;return v==null?'-':v+'%';}).join(' → ');
-      var tag=(x.t.c3?('3등급 '+x.t.c3+'회'):'')+((x.t.c3&&x.t.c2)?' · ':'')+(x.t.c2?('2등급 '+x.t.c2+'회'):'');
+      var tagTxt=(x.t.c3?('3등급 '+x.t.c3+'회'):('2등급 '+x.t.c2+'회'))+' '+ti.t;
+      var trend=last4.slice().reverse().map(function(wk){var c=o[wk]||{};var col=rpGColor(c.pg);var rate=(c.pr==null?'':c.pr+'%');
+        return '<div style="flex:1;text-align:center"><div style="font-size:9.5px;color:#8a969f;font-weight:700;margin-bottom:3px">'+rpWkNum(wk)+'주</div>'
+          +'<div style="border-radius:8px;padding:5px 0;background:'+col[0]+';color:'+col[1]+'"><div style="font-size:16px;font-weight:900;line-height:1">'+(c.pg||'-')+'</div><div style="font-size:9.5px;font-weight:800;margin-top:2px;opacity:.92">'+rate+'</div></div></div>';}).join('');
+      var wvc=(rpWave(r.wave)==='야간')?'#e8eaf6;color:#3949ab':'#fff3e0;color:#e65100';
       var card='<div style="background:#fff;border-radius:12px;padding:12px 13px">'
-        +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:22px'+(x.t.k==='danger'?';animation:rpPulse 1s infinite':'')+'">'+ti.ic+'</span>'
-        +'<span style="font-size:16px;font-weight:900;color:'+ti.cl+'">'+rpEsc(r.route)+'</span>'
-        +'<span style="font-size:9.5px;font-weight:800;border-radius:5px;padding:1px 6px;margin-left:2px;background:'+((rpWave(r.wave)==='야간')?'#e8eaf6;color:#3949ab':'#fff3e0;color:#e65100')+'">'+rpWave(r.wave)+'</span>'
-        +'<span style="margin-left:auto;background:'+ti.bg+';color:'+ti.cl+';border:1px solid '+ti.bd+';border-radius:9px;padding:3px 9px;font-size:11px;font-weight:900">'+ti.t+'</span></div>'
-        +'<div style="font-size:11.5px;color:#5a3030;margin:8px 0 8px;font-weight:700">'+rpEsc(tag)+' · 수행률 '+rates+'</div>'
-        +'<div style="display:flex;gap:5px">'+trend+'</div></div>';
+        +'<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">'
+          +'<span style="font-size:22px'+(x.t.k==='danger'?';animation:rpPulse 1s infinite':'')+'">'+ti.ic+'</span>'
+          +'<span style="font-size:17px;font-weight:900;color:'+ti.cl+'">'+rpEsc(r.route)+'</span>'
+          +'<span style="font-size:10px;font-weight:800;border-radius:5px;padding:1px 6px;background:'+wvc+'">'+rpWave(r.wave)+'</span>'
+          +'<span style="background:'+ti.cl+';color:#fff;border-radius:9px;padding:4px 11px;font-size:12.5px;font-weight:900;box-shadow:0 1px 4px '+ti.bd+'">'+tagTxt+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:6px;margin-top:11px">'+trend+'</div></div>';
       if(x.t.k==='danger') h+='<div style="border-radius:14px;padding:2px;margin-bottom:9px;background:linear-gradient(135deg,#ff1744,#ff8a00,#ff1744);background-size:200% 200%;animation:rpFlow 2.4s linear infinite">'+card+'</div>';
       else h+='<div style="border:2px solid '+ti.bd+';border-radius:14px;margin-bottom:9px">'+card+'</div>';
     });
   }
-  // ── 상단 고정 블록: 주차 네비 + 표 헤더 ──
-  var pillRow=desc.map(function(w){var o=(w===sel);return '<div onclick="rpPick(&#39;'+w+'&#39;)" style="flex:0 0 auto;border:1.5px solid #00695c;border-radius:11px;padding:4px 11px;cursor:pointer;text-align:center;line-height:1.15;background:'+(o?'#00695c':'#fff')+';color:'+(o?'#fff':'#00695c')+'"><div style="font-size:12.5px;font-weight:900">'+rpWkNum(w)+'주차</div><div style="font-size:9px;opacity:.85;margin-top:1px">'+rpWkRange(rpWkNum(w))+'</div></div>';}).join('');
+  // ── 상단 고정 블록: 주차 네비 + 표 헤더 (칸 너비를 행과 100% 동일하게) ──
+  var CW={gu:44,pg:48,pr:52,rg:48,rr:52};   // 구분·수행등급·수행률·반품등급·회수률 공통 너비
+  function _cell(w,html,extra){return '<div style="width:'+w+'px;flex:0 0 '+w+'px;text-align:center;padding:6px 1px;'+(extra||'')+'">'+html+'</div>';}
+  var pillRow=desc.map(function(w){var o=(w===sel);return '<div onclick="rpPick(&#39;'+w+'&#39;)" style="flex:0 0 auto;border:1.5px solid #00695c;border-radius:11px;padding:4px 10px;cursor:pointer;text-align:center;line-height:1.15;background:'+(o?'#00695c':'#fff')+';color:'+(o?'#fff':'#00695c')+'"><div style="font-size:12.5px;font-weight:900">'+rpWkNum(w)+'주차</div><div style="font-size:9px;opacity:.85;margin-top:1px">'+rpWkRange(rpWkNum(w))+'</div></div>';}).join('');
+  // ‹ = 최신(왼쪽)으로, › = 과거(오른쪽)으로 — 화살표 방향과 일치
+  var atNewest=(si<=0), atOldest=(si>=desc.length-1);
   var nav='<div style="display:flex;align-items:stretch;gap:6px">'
-    +'<button onclick="rpStep(1)"'+(si>=desc.length-1?' disabled':'')+' style="flex:0 0 auto;width:34px;border:1.5px solid #00695c;background:#fff;color:#00695c;border-radius:11px;font-size:17px;font-weight:900;cursor:pointer'+(si>=desc.length-1?';opacity:.3':'')+'">‹</button>'
+    +'<button onclick="rpStep(-1)"'+(atNewest?' disabled':'')+' style="flex:0 0 auto;width:32px;border:1.5px solid #00695c;background:#fff;color:#00695c;border-radius:11px;font-size:17px;font-weight:900;cursor:pointer'+(atNewest?';opacity:.3':'')+'">‹</button>'
     +'<div style="flex:1;display:flex;gap:6px;overflow-x:auto;padding:1px">'+pillRow+'</div>'
-    +'<button onclick="rpStep(-1)"'+(si<=0?' disabled':'')+' style="flex:0 0 auto;width:34px;border:1.5px solid #00695c;background:#fff;color:#00695c;border-radius:11px;font-size:17px;font-weight:900;cursor:pointer'+(si<=0?';opacity:.3':'')+'">›</button></div>';
-  var hdrRow='<div style="display:flex;background:#e8f2f0;color:#0b3d38;font-size:10px;font-weight:800;border:1px solid #dfeae8;border-bottom:none;border-radius:9px 9px 0 0;margin-top:8px">'
-    +'<div style="flex:1;padding:7px 8px">라우트</div>'
-    +'<div style="width:44px;text-align:center;padding:7px 2px">구분</div>'
-    +'<div style="width:50px;text-align:center;padding:7px 2px">수행<br>등급</div>'
-    +'<div style="width:52px;text-align:center;padding:7px 2px">수행률</div>'
-    +'<div style="width:50px;text-align:center;padding:7px 2px">반품<br>등급</div>'
-    +'<div style="width:52px;text-align:center;padding:7px 2px">회수률</div></div>';
-  h+='<div style="position:sticky;top:0;z-index:30;background:#f4f6f8;margin:6px -12px 0;padding:6px 12px 0">'+nav+hdrRow+'</div>';
-  // ── 전체 라우트 리스트 (위험 상단 → 나머지 오름차순) ──
+    +'<button onclick="rpStep(1)"'+(atOldest?' disabled':'')+' style="flex:0 0 auto;width:32px;border:1.5px solid #00695c;background:#fff;color:#00695c;border-radius:11px;font-size:17px;font-weight:900;cursor:pointer'+(atOldest?';opacity:.3':'')+'">›</button></div>';
+  var hdrRow='<div style="display:flex;align-items:stretch;background:#dcebe8;color:#0b3d38;font-size:10px;font-weight:800;border:1px solid #cfe0dc;border-bottom:none;border-radius:9px 9px 0 0">'
+    +'<div style="flex:1;min-width:0;padding:7px 8px;display:flex;align-items:center">라우트</div>'
+    +_cell(CW.gu,'구분','padding:7px 1px;display:flex;align-items:center;justify-content:center')
+    +_cell(CW.pg,'수행<br>등급','padding:6px 1px')
+    +_cell(CW.pr,'수행률','padding:7px 1px;display:flex;align-items:center;justify-content:center')
+    +_cell(CW.rg,'반품<br>등급','padding:6px 1px')
+    +_cell(CW.rr,'회수률','padding:7px 1px;display:flex;align-items:center;justify-content:center')
+    +'</div>';
+  h+='<div style="position:sticky;top:0;z-index:30;background:#f4f6f8;padding:6px 0 0;margin-top:6px">'+nav+hdrRow+'</div>';
+  // ── 전체 라우트 리스트 (위험 상단 → 나머지 오름차순) — 헤더와 동일 칸 너비 ──
   var listOrder=risky.map(function(x){return x.r;}).concat(normal);
-  var rowsH='<div style="border:1px solid #dfeae8;border-top:none;border-radius:0 0 10px 10px;background:#fff;overflow:hidden">';
+  var rowsH='<div style="border:1px solid #cfe0dc;border-top:none;border-radius:0 0 10px 10px;background:#fff;overflow:hidden">';
   listOrder.forEach(function(r){
     var c=cellOf(r,sel); var t=_rpTier(r.cells||{},last4);
     var pg=c.pg,pr=c.pr,rg=c.rg,rr=c.rr; var cur3=parseInt(pg,10)>=3;
     var wv=rpWave(r.wave); var wvc=(wv==='야간')?['#e8eaf6','#3949ab']:['#fff3e0','#e65100'];
-    var lead=t.k?('<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+_RP_TIER[t.k].cl+';margin-right:5px'+(t.k==='danger'?';animation:rpPulse 1s infinite':'')+'"></span>'):'';
+    var lead=t.k?('<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+_RP_TIER[t.k].cl+';margin-right:5px;flex:0 0 auto'+(t.k==='danger'?';animation:rpPulse 1s infinite':'')+'"></span>'):'';
     rowsH+='<div style="display:flex;align-items:center;font-size:12px;border-top:1px solid #f1f1f1;'+(cur3?'background:linear-gradient(90deg,#fff5f5,#fff)':'')+'">'
-      +'<div style="flex:1;padding:8px;font-weight:800;color:#0b3d38">'+lead+rpEsc(r.route)+'</div>'
-      +'<div style="width:44px;text-align:center;padding:6px 2px"><span style="background:'+wvc[0]+';color:'+wvc[1]+';border-radius:5px;padding:1px 5px;font-size:10px;font-weight:800">'+wv+'</span></div>'
-      +'<div style="width:50px;text-align:center;padding:6px 2px">'+(pg==null?'<span style="color:#ccc">-</span>':rpChip(pg,rpGColor(pg)))+'</div>'
-      +'<div style="width:52px;text-align:center;padding:6px 2px;font-weight:800;color:'+(pr!=null&&pr<90?'#c62828':'#37473c')+'">'+(pr==null?'-':pr+'%')+'</div>'
-      +'<div style="width:50px;text-align:center;padding:6px 2px">'+(rg==null?'<span style="color:#ccc">-</span>':rpChip(rg,rpGColor(rg)))+'</div>'
-      +'<div style="width:52px;text-align:center;padding:6px 2px;font-weight:800;color:#37473c">'+(rr==null?'-':rr+'%')+'</div></div>';
+      +'<div style="flex:1;min-width:0;padding:9px 8px;font-weight:800;color:#0b3d38;display:flex;align-items:center">'+lead+rpEsc(r.route)+'</div>'
+      +_cell(CW.gu,'<span style="background:'+wvc[0]+';color:'+wvc[1]+';border-radius:5px;padding:1px 5px;font-size:10px;font-weight:800">'+wv+'</span>')
+      +_cell(CW.pg,(pg==null?'<span style="color:#ccc">-</span>':rpChip(pg,rpGColor(pg))))
+      +_cell(CW.pr,(pr==null?'-':pr+'%'),'font-weight:800;color:'+(pr!=null&&pr<90?'#c62828':'#37473c'))
+      +_cell(CW.rg,(rg==null?'<span style="color:#ccc">-</span>':rpChip(rg,rpGColor(rg))))
+      +_cell(CW.rr,(rr==null?'-':rr+'%'),'font-weight:800;color:#37473c')
+      +'</div>';
   });
   rowsH+='</div>';
   h+=rowsH;
