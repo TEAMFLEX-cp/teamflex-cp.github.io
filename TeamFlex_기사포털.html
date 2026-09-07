@@ -1716,7 +1716,7 @@ async function loadFeatureControls(){
   if(!sbClient) return;
   try{
     var {data} = await sbClient.from('app_settings').select('value').eq('key','feature_controls').maybeSingle();
-    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false},sla:{active:false,notify:false}};
+    var defaults = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false},sla:{active:false,notify:false},routeperf:{active:false,notify:false}};
     if(data && data.value){
       var parsed = typeof data.value==='string' ? JSON.parse(data.value) : data.value;
       _featureControls = Object.assign({}, defaults, parsed);
@@ -1724,7 +1724,7 @@ async function loadFeatureControls(){
       _featureControls = defaults;
     }
   } catch(e){
-    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false},sla:{active:false,notify:false}};
+    _featureControls = {sched:{active:true,notify:true}, fresh:{active:true,notify:true}, misdelivery:{active:true,notify:true}, ann:{active:true,notify:true}, schedule:{active:true,notify:true}, settle:{active:true,notify:true}, emergency:{active:true,notify:true}, requests:{active:true,notify:true}, pback:{active:false,notify:false},roulette:{active:false,notify:false},weightfactor:{active:false,notify:false},earlymonth:{active:false,notify:false},sla:{active:false,notify:false},routeperf:{active:false,notify:false}};
   }
   try{ await Promise.all([
     (_contractStatus===null&&typeof loadContractStatus==='function')?loadContractStatus().catch(function(){}):null,
@@ -2670,7 +2670,7 @@ function pushGateAllows(feat, name){
   }catch(e){return true;}
 }
 window.pushGateAllows=pushGateAllows;
-var NOTIF_LABEL={ann:'공지사항',misdelivery:'오배송',fresh:'신선',tq:'팀수량',requests:'각종요청',settle:'정산',pback:'프레시백 소명자료',loss:'분실차감',weightfactor:'가중요인',earlymonth:'월초예상물량',sla:'SLA',healthcheck:'건강체크',schedule:'스케줄',sched:'스케줄',emergency:'비상연락망',contract:'계약서 관리'};
+var NOTIF_LABEL={ann:'공지사항',misdelivery:'오배송',fresh:'신선',tq:'팀수량',requests:'각종요청',settle:'정산',pback:'프레시백 소명자료',loss:'분실차감',weightfactor:'가중요인',earlymonth:'월초예상물량',sla:'SLA',routeperf:'라우트 수행율',healthcheck:'건강체크',schedule:'스케줄',sched:'스케줄',emergency:'비상연락망',contract:'계약서 관리'};
 var NOTIF_NOTE={
   ann:'전체 대상. 아래에서 체크한 역할에게 발송됩니다.',
   misdelivery:'해당 인원에게 자동 발송. 승인요청 건은 아래 체크한 역할(예: 총괄·팀장)까지 발송.',
@@ -2682,6 +2682,7 @@ var NOTIF_NOTE={
   weightfactor:'아래에서 체크한 역할에게 발송됩니다.',
   earlymonth:'아래에서 체크한 역할에게 발송됩니다.',
   sla:'아래에서 체크한 역할에게 발송됩니다.',
+  routeperf:'아래에서 체크한 역할에게 발송됩니다.',
   settle:'해당 인원에게 자동 발송 + 아래 체크한 역할에게도 발송.',
   healthcheck:'아래에서 체크한 역할에게 발송됩니다.',
   contract:'해당 인원에게만 발송됩니다.'
@@ -4908,7 +4909,7 @@ function launchApp(){
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       (CU.role==='leader'?'<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>':'')+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
-      ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F4CB;</span><span style="color:#caa200;font-weight:800">리스트확인</span></div>':'')+
+      ((getFeatureCtrl('pback','active')||getFeatureCtrl('weightfactor','active')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active')||getFeatureCtrl('routeperf','active'))?'<div class="ni" id="ni-pb" onclick="go(\'pb\')"><span class="nicon">&#x1F4CB;</span><span style="color:#caa200;font-weight:800">리스트확인</span></div>':'')+
       '<div class="ni" id="ni-bp" onclick="bpNavTap()" style="'+(bpIsActive()?'':'opacity:.4;filter:grayscale(1)')+'"><span class="nicon">&#x1F91D;</span>백업공유</div>'+
       (getFeatureCtrl('roulette','active')?'<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>':'')+
       '<div class="ni" id="ni-usr-cfg" onclick="openUserSubMenu()"><span class="nicon">&#x2699;&#xFE0F;</span>설정</div>';
@@ -13762,6 +13763,7 @@ function pgPback(){
   if(PB_SUB==='wf'){ setTimeout(wfInit,50); return pgWfPage(); }
   if(PB_SUB==='emv'){ setTimeout(emvInit,50); return pgEmvPage(); }
   if(PB_SUB==='sla'){ setTimeout(slaInit,50); return pgSlaPage(); }
+  if(PB_SUB==='rp'){ setTimeout(rpInit,50); return pgRpPage(); }
   return pgPbackMenu();
 }
 function pbGoSub(x){ PB_SUB=x; var mc=document.getElementById('mc'); if(mc) mc.innerHTML=pgPback(); }
@@ -13776,6 +13778,7 @@ function pgPbackMenu(){
     +(((CU&&CU.role==='admin')||getFeatureCtrl('weightfactor','active'))?'<div onclick="pbGoSub(\'wf\')" style="cursor:pointer;background:#fff;border:1px solid #b39ddb;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(94,53,177,.1)"><span style="font-size:30px">📊</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#4527a0">가중요인 확인</div><div style="font-size:11px;color:#9575cd;margin-top:2px">주차별 가중요인 · 내 라우트 상세</div></div><span style="font-size:18px;color:#d1c4e9">›</span></div>':'')
     +(((CU&&CU.role==='admin')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active'))?'<div onclick="pbGoSub(\'emv\')" style="cursor:pointer;background:#fff;border:1px solid #80cbc4;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(27,94,90,.1)"><span style="font-size:30px">📦</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#12463f">월초 예상 물량</div><div style="font-size:11px;color:#5a9d95;margin-top:2px">라우트·일자별 예상 수량 · 내 라우트 합산</div></div><span style="font-size:18px;color:#b2dfdb">›</span></div>':'')
     +(((CU&&CU.role==='admin')||getFeatureCtrl('sla','active'))?'<div onclick="pbGoSub(\'sla\')" style="cursor:pointer;background:#fff;border:1px solid #b0a8e0;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(58,45,143,.1)"><span style="font-size:30px">📈</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#2a1d6f">SLA 점수 확인</div><div style="font-size:11px;color:#8579c0;margin-top:2px">월별 SLA 점수 · 전체 평균</div></div><span style="font-size:18px;color:#d1c9ef">›</span></div>':'')
+    +(((CU&&CU.role==='admin')||getFeatureCtrl('routeperf','active'))?'<div onclick="pbGoSub(\'rp\')" style="cursor:pointer;background:#fff;border:1px solid #80cbc4;border-radius:14px;padding:16px 14px;margin-top:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(0,105,92,.1)"><span style="font-size:30px">📊</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#00695c">라우트 수행율 확인</div><div style="font-size:11px;color:#4c9d94;margin-top:2px">주차별 수행 등급·수행률 · 반품 회수률</div></div><span style="font-size:18px;color:#b2dfdb">›</span></div>':'')
     +'</div>';
 }
 /* ════════ 가중요인 확인 (앱) ════════ */
@@ -13942,6 +13945,118 @@ async function _wfDo(file){var st=document.getElementById('wf-upl-status');
     try{pushNotify('weightfactor',{roleBroadcast:true,defaultRoles:['총괄','팀장','조장','기사'],dedupeKey:'wf:'+(payload.updated||Date.now()),title:'⚖️ 가중요인 업데이트',body:'새 가중요인 자료가 공유됐습니다. 리스트확인 탭에서 확인하세요.',data:{url:'/?tab=pb'}});}catch(e){}
   }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
 function wfUndo(){_uplUndo('weight_factor_data','weight_factor_data_backup',wfInit);}
+/* ════════ 라우트 수행율 (앱) — 본사 WK 수행률 안내 엑셀 ════════ */
+var RP_D=null, RP_WK=0;
+function rpEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function rpWave(w){w=String(w||'').toUpperCase();if(w.indexOf('W1')>=0||w.indexOf('야')>=0)return '야간';if(w.indexOf('W2')>=0||w.indexOf('주')>=0)return '주간';return w||'-';}
+function rpWkNum(lbl){var m=String(lbl||'').match(/(\d+)/);return m?parseInt(m[1],10):null;}
+function rpWkRange(wkNum){ if(wkNum==null)return ''; var aWk=36, aStart=new Date(2026,7,30); /* WK36 = 8/30~9/5 */
+  var start=new Date(aStart.getTime()+(wkNum-aWk)*7*86400000); var end=new Date(start.getTime()+6*86400000);
+  var f=function(d){return (d.getMonth()+1)+'/'+d.getDate();}; return f(start)+'~'+f(end); }
+function rpWkLabel(lbl){ var n=rpWkNum(lbl); if(n==null)return String(lbl||''); var rg=rpWkRange(n); return n+'주차'+(rg?' ('+rg+')':''); }
+function rpGColor(g){var n=parseInt(g,10);if(isNaN(n))return['#f6f6f6','#aaa'];if(n<=1)return['#e8f3ec','#2d6040'];if(n===2)return['#FFF2CC','#806000'];return['#FFC7CE','#9C0006'];}
+function rpRColor(v){if(v==null)return['#f6f6f6','#aaa'];if(v>=99)return['#e8f3ec','#2d6040'];if(v>=96)return['#FFF2CC','#806000'];if(v>=90)return['#FBDDC9','#b4530f'];return['#FFC7CE','#9C0006'];}
+function rpChip(txt,col){return '<span style="display:inline-block;background:'+col[0]+';color:'+col[1]+';border-radius:6px;padding:2px 7px;font-size:11.5px;font-weight:800;min-width:34px">'+txt+'</span>';}
+function rpRouteNum(rt){var m=String(rt||'').match(/(\d+)/);return m?parseInt(m[1],10):999999;}
+function _parseRP(rows){
+  var cell=_uplCell(rows),mr=rows.length,mc=_uplMaxCol(rows);
+  var hdr=0,found=false;
+  for(var r=1;r<=Math.min(mr,25)&&!found;r++){for(var c=1;c<=Math.min(mc,10);c++){if(String(cell(r,c)).trim().toLowerCase()==='wave'){hdr=r;found=true;break;}}}
+  if(!found)return null;
+  var wc=2;for(var c=1;c<=mc;c++){if(String(cell(hdr,c)).trim().toLowerCase()==='wave'){wc=c;break;}}
+  var routeCol=wc+2;
+  var labels=[];for(var c=routeCol+1;c<=mc;c++){var v=String(cell(hdr,c)).trim();if(!v)break;labels.push(v);}
+  var weeks=[],seen={};for(var i=0;i<labels.length;i++){if(seen[labels[i]]!=null)break;seen[labels[i]]=i;weeks.push(labels[i]);}
+  var nw=weeks.length||4;
+  var base=routeCol+1, bPG=base, bPR=base+nw, bRG=base+2*nw, bRR=base+3*nw;
+  var wkNum=null;
+  for(var r=1;r<hdr&&wkNum==null;r++){for(var c=1;c<=mc;c++){var m=String(cell(r,c)).match(/WK\s*(\d+)/i);if(m){wkNum=parseInt(m[1],10);break;}}}
+  if(wkNum==null)wkNum=rpWkNum(weeks[0]);
+  function _s(r,c){var raw=cell(r,c);var s=(raw==null)?'':String(raw).trim();return s===''?null:s;}
+  function _n(r,c){var s=_s(r,c);if(s==null)return null;var f=parseFloat(String(s).replace('%','').trim());return isNaN(f)?null:f;}
+  var out=[];
+  for(var r=hdr+1;r<=mr;r++){
+    var rt=_s(r,routeCol);if(rt==null)continue;
+    if(/^(total|route|wave)$/i.test(rt))continue;
+    var pg=[],pr=[],rg=[],rr=[];
+    for(var k=0;k<nw;k++){pg.push(_s(r,bPG+k));pr.push(_n(r,bPR+k));rg.push(_s(r,bRG+k));rr.push(_n(r,bRR+k));}
+    out.push({wave:_s(r,wc),camp:_s(r,wc+1),route:rt,pg:pg,pr:pr,rg:rg,rr:rr});
+  }
+  return {wkNum:wkNum,weeks:weeks,routes:out};
+}
+function rpImport(file){if(!file)return;var st=document.getElementById('rp-upl-status');if(st)st.textContent='엑셀 모듈 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='❌ 엑셀 모듈 로드 실패';return;}_rpDo(file);});}
+async function _rpDo(file){var st=document.getElementById('rp-upl-status');
+  try{if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var d=_parseRP(rows);
+    if(!d||!d.routes.length){if(st)st.textContent='❌ 데이터를 못 찾았어요. (Wave/Route 헤더 확인)';return;}
+    var payload={updated:_uplStamp(),wkNum:d.wkNum,weeks:d.weeks,routes:d.routes};
+    await _uplSaveBackup('route_perf_data','route_perf_data_backup',payload);
+    if(st)st.textContent='✅ 완료 · '+(d.wkNum!=null?('WK'+d.wkNum+' · '):'')+d.routes.length+'개 라우트';
+    RP_D=payload;RP_WK=0;rpRender();try{showToast('✅ 라우트 수행율 업로드 완료',true);}catch(e){}
+    try{pushNotify('routeperf',{roleBroadcast:true,defaultRoles:['총괄','팀장','조장','기사'],dedupeKey:'rp:'+(payload.updated||Date.now()),title:'📊 라우트 수행율 업데이트',body:'새 라우트 수행율 자료가 공유됐습니다. 리스트확인 탭에서 확인하세요.',data:{url:'/?tab=pb'}});}catch(e){}
+  }catch(e){if(st)st.textContent='❌ 오류: '+((e&&e.message)||e);}}
+function rpUndo(){_uplUndo('route_perf_data','route_perf_data_backup',rpInit);}
+function pgRpPage(){
+  pbInjectStyle();
+  var isAdm=CU&&CU.role==='admin';
+  var bk='<div onclick="pbGoMenu()" style="cursor:pointer;font-size:13px;color:#00695c;font-weight:700;padding:12px 14px 4px">‹ 리스트확인</div>';
+  if(!isAdm && !getFeatureCtrl('routeperf','active')) return '<div class="pb-wrap">'+bk+'<div class="pb-empty">📊 라우트 수행율 확인 기능이 아직 활성화되지 않았습니다.</div></div>';
+  return '<div class="pb-wrap">'+bk+'<div style="padding:2px 12px 16px">'+_featureBar('routeperf')+'<div id="rp-root"><div class="pb-empty">불러오는 중…</div></div></div></div>';
+}
+async function rpInit(){
+  var root=document.getElementById('rp-root'); if(!root)return; RP_D=null;
+  try{ var q=await sbClient.from('app_settings').select('value').eq('key','route_perf_data').maybeSingle();
+       if(q&&q.data&&q.data.value){ RP_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+  RP_WK=0; rpRender();
+}
+function rpSetWk(i){RP_WK=i;rpRender();}
+function rpRender(){
+  var root=document.getElementById('rp-root'); if(!root)return;
+  var _uc=(CU&&CU.role==='admin')?_uplCard('rp','라우트 수행율','#00695c'):'';
+  if(!RP_D||!RP_D.routes||!RP_D.routes.length){ root.innerHTML=_uc+'<div class="pb-empty">아직 공유된 라우트 수행율 자료가 없습니다.<br><span style="font-size:11px;color:#999">관리자가 본사 WK 수행률 엑셀을 업로드하면 표시됩니다.</span></div>'; return; }
+  var weeks=RP_D.weeks||['WK'+RP_D.wkNum]; if(RP_WK>=weeks.length)RP_WK=0;
+  var wi=RP_WK;
+  var rs=(RP_D.routes||[]).slice().sort(function(a,z){var na=rpRouteNum(a.route),nz=rpRouteNum(z.route);if(na!==nz)return na-nz;return String(a.route)<String(z.route)?-1:1;});
+  // 주차 선택 pills
+  var pills='<div style="display:flex;flex-wrap:wrap;gap:6px;margin:2px 2px 10px">'+weeks.map(function(w,i){var on=(i===wi);return '<span onclick="rpSetWk('+i+')" style="background:'+(on?'#00695c':'#fff')+';color:'+(on?'#fff':'#00695c')+';border:1.5px solid #00695c;border-radius:14px;padding:4px 12px;font-size:11.5px;font-weight:800;cursor:pointer">'+rpWkNum(w)+'주차</span>';}).join('')+'</div>';
+  // 요약 평균 (선택 주차)
+  var sPr=0,nPr=0,sRr=0,nRr=0;
+  rs.forEach(function(r){ var pv=r.pr&&r.pr[wi]; if(pv!=null){sPr+=pv;nPr++;} var rv=r.rr&&r.rr[wi]; if(rv!=null){sRr+=rv;nRr++;} });
+  var aPr=nPr?(sPr/nPr).toFixed(1)+'%':'-', aRr=nRr?(sRr/nRr).toFixed(1)+'%':'-';
+  var h='<div style="padding:2px 2px 10px">';
+  h+='<div style="font-size:14px;font-weight:800;color:#0b3d38;margin:2px 2px 3px">📊 라우트 수행율</div>';
+  h+='<div style="font-size:12px;color:#4c7a73;font-weight:700;margin:0 2px 10px">'+rpEsc(rpWkLabel(weeks[wi]))+(RP_D.updated?' · <span style="color:#98a3af;font-weight:600">업데이트 '+rpEsc(RP_D.updated)+'</span>':'')+'</div>';
+  h+=pills;
+  h+='<div style="display:flex;gap:8px;margin-bottom:10px">'+
+     '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;text-align:center"><div style="font-size:11px;color:#8a968d">평일+주말 수행률 평균</div><div style="font-size:22px;font-weight:800;color:#0b3d38">'+aPr+'</div></div>'+
+     '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:10px;text-align:center"><div style="font-size:11px;color:#8a968d">반품 회수률 평균</div><div style="font-size:22px;font-weight:800;color:#0b3d38">'+aRr+'</div></div></div>';
+  // 표 (오름차순)
+  h+='<div style="overflow-x:auto;border:1px solid #e6e6e6;border-radius:10px;background:#fff">'+
+     '<table style="border-collapse:collapse;font-size:12px;white-space:nowrap;width:100%">'+
+     '<thead><tr style="background:#e8f2f0;color:#0b3d38">'+
+       '<th style="position:sticky;left:0;background:#e8f2f0;border:1px solid #dfeae8;padding:7px 9px;text-align:left">라우트</th>'+
+       '<th style="border:1px solid #dfeae8;padding:7px 6px">구분</th>'+
+       '<th style="border:1px solid #dfeae8;padding:7px 6px">평일+주말<br>수행 등급</th>'+
+       '<th style="border:1px solid #dfeae8;padding:7px 6px">평일+주말<br>수행률</th>'+
+       '<th style="border:1px solid #dfeae8;padding:7px 6px">반품 회수<br>등급</th>'+
+       '<th style="border:1px solid #dfeae8;padding:7px 6px">반품<br>회수률</th>'+
+     '</tr></thead><tbody>';
+  rs.forEach(function(r){
+    var pg=r.pg&&r.pg[wi], pr=r.pr&&r.pr[wi], rg=r.rg&&r.rg[wi], rr=r.rr&&r.rr[wi];
+    var wv=rpWave(r.wave); var wvc=(wv==='야간')?['#e8eaf6','#3949ab']:['#fff3e0','#e65100'];
+    h+='<tr>'+
+      '<td style="position:sticky;left:0;background:#fff;border:1px solid #eee;padding:6px 9px;font-weight:800;color:#0b3d38">'+rpEsc(r.route)+'</td>'+
+      '<td style="border:1px solid #eee;text-align:center;padding:6px"><span style="background:'+wvc[0]+';color:'+wvc[1]+';border-radius:6px;padding:2px 6px;font-size:10.5px;font-weight:800">'+wv+'</span></td>'+
+      '<td style="border:1px solid #eee;text-align:center;padding:6px">'+(pg==null?'<span style="color:#ccc">-</span>':rpChip(pg,rpGColor(pg)))+'</td>'+
+      '<td style="border:1px solid #eee;text-align:center;padding:6px">'+(pr==null?'<span style="color:#ccc">-</span>':rpChip(pr+'%',rpRColor(pr)))+'</td>'+
+      '<td style="border:1px solid #eee;text-align:center;padding:6px">'+(rg==null?'<span style="color:#ccc">-</span>':rpChip(rg,rpGColor(rg)))+'</td>'+
+      '<td style="border:1px solid #eee;text-align:center;padding:6px">'+(rr==null?'<span style="color:#ccc">-</span>':rpChip(rr+'%',rpRColor(rr)))+'</td>'+
+    '</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div style="font-size:10.5px;color:#a7b0a9;margin:7px 2px">← 좌우로 밀어서 볼 수 있어요 · 등급 1=정상 · 오름차순(라우트 번호순) 정렬</div>';
+  h+='</div>';
+  root.innerHTML=_uc+h;
+}
 function pgSlaPage(){
   pbInjectStyle();
   var isAdm=CU&&CU.role==='admin';
