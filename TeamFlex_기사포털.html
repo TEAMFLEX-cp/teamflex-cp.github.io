@@ -234,6 +234,12 @@ table.ft{width:auto;border-collapse:collapse;font-size:12px;min-width:520px;tabl
 .rp-half-insp{align-self:stretch}
 .rp-half-insp>#insp-card-wrap{width:100%;display:flex}
 .rp-half-insp>#insp-card-wrap>div{flex:1;margin-bottom:0!important;display:flex;flex-direction:column;justify-content:center}
+/* 라우트 수행율 리스트 - 티어별 회전 테두리 */
+.rprow{position:relative;border-radius:10px;margin:6px}
+.rprow::before{content:"";position:absolute;inset:0;border-radius:10px;padding:2px;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;background-size:250% 250%;animation:rpFlow 2.6s linear infinite;pointer-events:none;z-index:3}
+.rprow-danger::before{background:linear-gradient(135deg,#ff1744,#ff8a00,#ff1744)}
+.rprow-warn::before{background:linear-gradient(135deg,#ff9100,#ffd54f,#ff9100)}
+.rprow-manage::before{background:linear-gradient(135deg,#2e7d32,#81c784,#2e7d32)}
 .share-cell{background:#FFF9C4 !important;cursor:pointer;position:relative}
 .share-cell:active{background:#FFF176 !important}
 .share-badge{display:inline-block;background:#F57F17;color:#fff;border-radius:8px;font-size:9px;padding:1px 4px;margin-left:2px;vertical-align:middle;font-weight:700}
@@ -5794,12 +5800,13 @@ function hbgHide(){var bg=document.getElementById('hbg');if(bg)bg.style.display=
 /* ── 홈 점검 카드 (미작성=강조 / 완료=차분 반투명) ── */
 function inspCardBody(state,cnt){
   if(state==='done'||state==='off'){
-    var msg=state==='off'?'🛌 오늘 휴무':'✅ 오늘 점검 완료';
-    return '<div onclick="inspOpen()" style="cursor:pointer;border-radius:15px;padding:13px 15px;margin-bottom:12px;background:rgba(255,255,255,.11);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.3);color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.35);display:flex;align-items:center;gap:11px"><span style="font-size:26px">&#x1F69B;</span><div style="flex:1"><div style="font-size:14px;font-weight:800">차량 일상점검</div><div style="font-size:11px;color:#c8f7dd;font-weight:700;margin-top:2px">'+msg+' &middot; 이번달 '+cnt+'일</div></div><span style="font-size:20px">&#x2714;&#xFE0F;</span></div>';
+    var msg=state==='off'?'🛌 오늘 휴무':'✅ 점검 완료';
+    return '<div onclick="inspOpen()" style="cursor:pointer;height:100%;box-sizing:border-box;border-radius:15px;padding:13px 14px;margin-bottom:12px;background:linear-gradient(135deg,#8fb8e8,#b3d1f2);color:#fff;display:flex;align-items:center;gap:10px"><span style="font-size:26px;flex:0 0 auto">&#x1F69B;</span><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:900;white-space:nowrap">차량 일상점검</div><div style="font-size:11px;font-weight:800;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+msg+' · 이번달 '+cnt+'일</div></div></div>';
   }
-  return '<div onclick="inspOpen()" style="cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:14px 15px;margin-bottom:12px;background:linear-gradient(135deg,#ff5f6d,#ffc371);color:#fff;animation:hglow 1.8s infinite">'+
-    '<span class="hspk" style="top:8px;left:44%">✨</span><span class="hspk" style="top:22px;right:16px;animation-delay:.5s">⭐</span>'+
-    '<div style="display:flex;align-items:center;gap:11px"><div style="font-size:30px;animation:hsp 1.4s infinite">&#x1F69B;</div><div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:900">차량 일상점검</div><div style="margin-top:5px"><span style="font-size:12px;font-weight:900;background:#fff;color:#e5354a;padding:3px 10px;border-radius:9px">🚨 오늘 점검 전!</span></div></div><div style="background:rgba(255,255,255,.25);border-radius:11px;padding:9px 12px;font-size:12.5px;font-weight:900;white-space:nowrap;animation:hbnc 1s infinite">작성 &#x25B6;</div></div></div>';
+  return '<div onclick="inspOpen()" style="cursor:pointer;position:relative;overflow:hidden;height:100%;box-sizing:border-box;border-radius:15px;padding:13px 14px;margin-bottom:12px;background:linear-gradient(135deg,#5b8def,#7cb2f0);color:#fff;display:flex;align-items:center;gap:10px">'+
+    '<div style="font-size:27px;flex:0 0 auto;animation:hsp 1.4s infinite">&#x1F69B;</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:900;white-space:nowrap">차량 일상점검</div>'+
+    '<div style="margin-top:4px"><span style="font-size:11px;font-weight:900;background:rgba(255,255,255,.9);color:#2f5fb0;padding:2px 9px;border-radius:8px;white-space:nowrap;display:inline-block">🚨 오늘 점검 전</span></div></div></div>';
 }
 function inspHomeCard(){return '<div id="insp-card-wrap">'+inspCardBody('todo',0)+'</div>';}
 function inspHomeLoad(){
@@ -6035,19 +6042,16 @@ function pgHome(){
   setTimeout(loadWeather,200);
   // ── 라우트 수행율 '위험 라우트' 홈 표시 준비 ──
   _rpHomeEnsure(); var _rpList=_rpHomeRiskList();
-  var _statusSpan=(tr?('<span style="font-size:13px;font-weight:800">&#x1F525; 오늘 <span style="color:#FFD54F;font-size:15px">'+consecutiveWork+'일째</span> 연속 근무</span>'):'<span style="font-size:13px;font-weight:800">&#x1F389; 오늘은 휴무예요</span>');
-  var _myBtn='<button onclick="go(\'my\')" style="background:rgba(255,255,255,.24);border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:10px;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap">&#x1F4C5; 내 스케줄</button>';
-  var heroFull='<div class="hero">'+
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">'+_statusSpan+_myBtn+'</div>'+
-    ((tr&&!tmr)?'<div style="font-size:12px;color:#B2EBF2;font-weight:700;margin:-3px 0 9px">&#x1F389; 드디어 내일 휴무입니다!</div>':'')+
-    '<div style="display:flex;gap:10px;align-items:stretch">'+
-      '<div style="flex:1.7;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:15px 14px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">'+
-        '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.8);letter-spacing:1.5px;margin-bottom:9px">&#x1F4E6; 오늘 라우트</div>'+
-        '<div style="display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:3px;min-height:44px;width:100%;overflow:hidden">'+todayRoutes+'</div>'+
+  var heroFull='<div class="hero" style="padding:12px 13px">'+
+    ((tr&&!tmr)?'<div style="font-size:11.5px;color:#B2EBF2;font-weight:700;margin:0 0 8px;text-align:center">&#x1F389; 드디어 내일 휴무입니다!</div>':'')+
+    '<div style="display:flex;gap:9px;align-items:stretch">'+
+      '<div style="flex:1.7;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.28);border-radius:13px;padding:10px 12px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">'+
+        '<div style="font-size:9.5px;font-weight:800;color:rgba(255,255,255,.8);letter-spacing:1.2px;margin-bottom:6px">&#x1F4E6; 오늘 라우트</div>'+
+        '<div style="display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:3px;min-height:32px;width:100%;overflow:hidden">'+todayRoutes+'</div>'+
       '</div>'+
-      '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:14px;padding:14px 10px;border:1px solid rgba(255,255,255,.24);min-width:0;display:flex;flex-direction:column;justify-content:center">'+
-        '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,.75);letter-spacing:1px;margin-bottom:8px">내일</div>'+
-        '<div style="display:flex;flex-wrap:nowrap;gap:3px;align-items:center;overflow:hidden">'+tomLabel+'</div>'+
+      '<div style="flex:1;background:rgba(255,255,255,.1);border-radius:13px;padding:10px;border:1px solid rgba(255,255,255,.24);min-width:0;display:flex;flex-direction:column;justify-content:center">'+
+        '<div style="font-size:9.5px;font-weight:800;color:rgba(255,255,255,.75);letter-spacing:1px;margin-bottom:6px;text-align:center">내일</div>'+
+        '<div style="display:flex;flex-wrap:nowrap;gap:3px;align-items:center;justify-content:center;overflow:hidden">'+tomLabel+'</div>'+
       '</div>'+
     '</div>'+
   '</div>';
@@ -6085,7 +6089,7 @@ function _rpHomeRiskList(){
   var desc=(d.weeks||[]).slice().sort(_rpWkAsc).reverse(); var last4=desc.slice(0,4);
   var out=[];
   d.routes.forEach(function(r){ var t=_rpTier(r.cells||{},last4);
-    if(!t.k || t.c3<1)return;   // 홈 공유 기준: 3등급 1회 이상(경고·위험)만 전체 공유. 2등급만(주의)은 목록 페이지에서만.
+    if(!t.k)return;   // 홈 공유: 관리(2등급2회+)·경고(3등급1회)·위험(3등급2회+) 전부 포함
     out.push({route:r.route,wave:r.wave,k:t.k,c2:t.c2,c3:t.c3}); });
   out.sort(function(a,b){return _RP_TIER[a.k].o-_RP_TIER[b.k].o||b.c3-a.c3||b.c2-a.c2||rpRouteNum(a.route)-rpRouteNum(b.route);});
   return out;
@@ -6099,11 +6103,11 @@ function _rpHomeBannerHTML(list,half){
              :'margin-bottom:12px;padding:13px 15px;align-items:center;gap:11px';
   return '<div onclick="go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;rp&#39;);},60)" style="cursor:pointer;'+bg+'color:#fff;border-radius:14px;display:flex;box-shadow:0 3px 10px rgba(198,40,40,.3);'+box+'">'+
     (half
-      ? ('<div style="display:flex;align-items:center;gap:6px;width:100%"><span style="font-size:20px'+(danger?';animation:rpPulse 1s infinite':'')+'">🚨</span><span style="font-size:13.5px;font-weight:900;flex:1">위험 라우트 '+list.length+'건</span><span style="font-size:16px;font-weight:900">&#x203A;</span></div>'+
+      ? ('<div style="display:flex;align-items:center;gap:6px;width:100%"><span style="font-size:20px'+(danger?';animation:rpPulse 1s infinite':'')+'">🚨</span><span style="font-size:12.5px;font-weight:900;flex:1;white-space:nowrap">관리·경고·위험 '+list.length+'건</span><span style="font-size:16px;font-weight:900">&#x203A;</span></div>'+
          '<div style="font-size:11px;opacity:.94;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%">'+names+'</div>'+
          '<div style="font-size:10px;opacity:.85">최근 4주 기준 · 눌러서 확인</div>')
       : ('<span style="font-size:24px'+(danger?';animation:rpPulse 1s infinite':'')+'">🚨</span>'+
-         '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:900">위험 라우트 '+list.length+'건 — 확인 필요</div>'+
+         '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:900">관리·경고·위험 라우트 '+list.length+'건 — 확인 필요</div>'+
          '<div style="font-size:11.5px;opacity:.93;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+names+' · 최근 4주 기준</div></div>'+
          '<span style="font-size:20px;font-weight:900">&#x203A;</span>'))+
     '</div>';
@@ -14125,7 +14129,11 @@ function _rpTier(cells,last4){
   var k=(c3>=2)?'danger':(c3>=1?'warn':(c2>=2?'caution':''));
   return {k:k,c2:c2,c3:c3};
 }
-var _RP_TIER={danger:{o:0,ic:'🚨',t:'위험',bg:'#ffebee',bd:'#ffcdd2',cl:'#c62828'},warn:{o:1,ic:'⚠️',t:'경고',bg:'#fff3e0',bd:'#ffcc80',cl:'#e65100'},caution:{o:2,ic:'🟡',t:'주의',bg:'#fffde7',bd:'#ffe082',cl:'#a17e00'}};
+var _RP_TIER={
+  danger:{o:0,ic:'🚨',t:'위험',bg:'#ffebee',bd:'#ffcdd2',cl:'#c62828',grad:'linear-gradient(135deg,#ff1744,#ff8a00,#ff1744)',bcls:'rprow-danger'},
+  warn:{o:1,ic:'⚠️',t:'경고',bg:'#fff3e0',bd:'#ffcc80',cl:'#e65100',grad:'linear-gradient(135deg,#ff9100,#ffd54f,#ff9100)',bcls:'rprow-warn'},
+  caution:{o:2,ic:'🟢',t:'관리',bg:'#e8f5e9',bd:'#a5d6a7',cl:'#2e7d32',grad:'linear-gradient(135deg,#2e7d32,#81c784,#2e7d32)',bcls:'rprow-manage'}
+};
 function rpStep(d){
   if(!RP_D)return; var desc=(RP_D.weeks||[]).slice().sort(_rpWkAsc).reverse();
   var i=desc.indexOf(RP_SEL); if(i<0)i=0; i=Math.min(desc.length-1,Math.max(0,i+d)); RP_SEL=desc[i]; rpRender();
@@ -14160,7 +14168,7 @@ function rpRender(){
      '<div style="flex:1;background:#fff;border:1px solid #eee;border-radius:10px;padding:9px;text-align:center"><div style="font-size:11px;color:#8a968d">반품 회수률 평균</div><div style="font-size:21px;font-weight:800;color:#0b3d38">'+aRr+'</div></div></div>';
   // ── 위험 라우트 섹션 (최근 4주) ──
   if(risky.length){
-    h+='<div style="font-size:13px;font-weight:900;color:#c62828;margin:6px 2px 8px">🚨 위험 라우트 <span style="font-size:10.5px;color:#8a969f;font-weight:700">· 최근 4주 기준 자동 상단</span></div>';
+    h+='<div style="font-size:13px;font-weight:900;color:#c62828;margin:6px 2px 8px">🚨 관리·경고·위험 라우트 <span style="font-size:10.5px;color:#8a969f;font-weight:700">· 최근 4주 기준 자동 상단</span></div>';
     risky.forEach(function(x){
       var r=x.r, ti=_RP_TIER[x.t.k], o=r.cells||{};
       var tagTxt=(x.t.c3?('3등급 '+x.t.c3+'회'):('2등급 '+x.t.c2+'회'))+' '+ti.t;
@@ -14176,8 +14184,7 @@ function rpRender(){
           +'<span style="background:'+ti.cl+';color:#fff;border-radius:9px;padding:4px 11px;font-size:12.5px;font-weight:900;box-shadow:0 1px 4px '+ti.bd+'">'+tagTxt+'</span>'
         +'</div>'
         +'<div style="display:flex;gap:6px;margin-top:11px">'+trend+'</div></div>';
-      if(x.t.k==='danger') h+='<div style="border-radius:14px;padding:2px;margin-bottom:9px;background:linear-gradient(135deg,#ff1744,#ff8a00,#ff1744);background-size:200% 200%;animation:rpFlow 2.4s linear infinite">'+card+'</div>';
-      else h+='<div style="border:2px solid '+ti.bd+';border-radius:14px;margin-bottom:9px">'+card+'</div>';
+      h+='<div style="border-radius:14px;padding:2px;margin-bottom:9px;background:'+ti.grad+';background-size:200% 200%;animation:rpFlow 2.4s linear infinite">'+card+'</div>';
     });
   }
   // ── 상단 고정 블록: 주차 네비 + 표 헤더 (칸 너비를 행과 100% 동일하게) ──
@@ -14204,21 +14211,25 @@ function rpRender(){
   var rowsH='<div style="border:1px solid #cfe0dc;border-top:none;border-radius:0 0 10px 10px;background:#fff;overflow:hidden">';
   listOrder.forEach(function(r){
     var c=cellOf(r,sel); var t=_rpTier(r.cells||{},last4);
-    var pg=c.pg,pr=c.pr,rg=c.rg,rr=c.rr; var cur3=parseInt(pg,10)>=3;
+    var pg=c.pg,pr=c.pr,rg=c.rg,rr=c.rr;
     var wv=rpWave(r.wave); var wvc=(wv==='야간')?['#e8eaf6','#3949ab']:['#fff3e0','#e65100'];
-    var lead=t.k?('<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+_RP_TIER[t.k].cl+';margin-right:5px;flex:0 0 auto'+(t.k==='danger'?';animation:rpPulse 1s infinite':'')+'"></span>'):'';
-    rowsH+='<div style="display:flex;align-items:center;font-size:12px;border-top:1px solid #f1f1f1;'+(cur3?'background:linear-gradient(90deg,#fff5f5,#fff)':'')+'">'
-      +'<div style="flex:1;min-width:0;padding:9px 8px;font-weight:800;color:#0b3d38;display:flex;align-items:center">'+lead+rpEsc(r.route)+'</div>'
+    var ti=t.k?_RP_TIER[t.k]:null;
+    var badge=ti?('<span style="flex:0 0 auto;margin-right:5px;font-size:9px;font-weight:900;color:#fff;background:'+ti.cl+';border-radius:6px;padding:1px 5px">'+ti.t+'</span>'):'';
+    var cells='<div style="flex:1;min-width:0;padding:9px 8px;font-weight:800;color:#0b3d38;display:flex;align-items:center">'+badge+rpEsc(r.route)+'</div>'
       +_cell(CW.gu,'<span style="background:'+wvc[0]+';color:'+wvc[1]+';border-radius:5px;padding:1px 5px;font-size:10px;font-weight:800">'+wv+'</span>')
       +_cell(CW.pg,(pg==null?'<span style="color:#ccc">-</span>':rpChip(pg,rpGColor(pg))))
       +_cell(CW.pr,(pr==null?'-':pr+'%'),'font-weight:800;color:'+(pr!=null&&pr<90?'#c62828':'#37473c'))
       +_cell(CW.rg,(rg==null?'<span style="color:#ccc">-</span>':rpChip(rg,rpGColor(rg))))
-      +_cell(CW.rr,(rr==null?'-':rr+'%'),'font-weight:800;color:#37473c')
-      +'</div>';
+      +_cell(CW.rr,(rr==null?'-':rr+'%'),'font-weight:800;color:#37473c');
+    if(ti){
+      rowsH+='<div class="rprow '+ti.bcls+'"><div style="display:flex;align-items:center;font-size:12px;background:#fff;border-radius:9px;overflow:hidden">'+cells+'</div></div>';
+    } else {
+      rowsH+='<div style="display:flex;align-items:center;font-size:12px;border-top:1px solid #f1f1f1">'+cells+'</div>';
+    }
   });
   rowsH+='</div>';
   h+=rowsH;
-  h+='<div style="font-size:10.5px;color:#a7b0a9;margin:8px 2px 4px">등급 1=정상·2=주의·3=경고 · 위험 라우트는 상단 고정 · 나머지는 라우트 번호 오름차순</div>';
+  h+='<div style="font-size:10.5px;color:#a7b0a9;margin:8px 2px 4px;line-height:1.7">최근 4주 기준 · 테두리 <b style="color:#2e7d32">관리</b>(2등급 2회↑) · <b style="color:#e65100">경고</b>(3등급 1회) · <b style="color:#c62828">위험</b>(3등급 2회↑) · 위험도순 상단 고정, 나머지 번호순</div>';
   root.innerHTML=h;
 }
 function pgSlaPage(){
