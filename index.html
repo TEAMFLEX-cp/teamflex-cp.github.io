@@ -241,6 +241,10 @@ table.ft{width:auto;border-collapse:collapse;font-size:12px;min-width:520px;tabl
 .rp-half-insp{align-self:stretch}
 .rp-half-insp>#insp-card-wrap{width:100%;display:flex}
 .rp-half-insp>#insp-card-wrap>div{flex:1;margin-bottom:0!important;display:flex;flex-direction:column;justify-content:center}
+.rp-half-hc>div{flex:1;margin-bottom:0!important}
+@keyframes slaBadEdge{0%,100%{box-shadow:inset 0 0 0 2px #ff1744}50%{box-shadow:inset 0 0 0 2px rgba(255,23,68,.3)}}
+.sla-bad td{background:#fff4f4!important;animation:slaBadEdge 1.1s infinite}
+.sla-bad td:first-child{color:#c62828!important;font-weight:900!important}
 /* 라우트 수행율 리스트 - 티어별 회전 테두리 */
 .rprow{position:relative;border-radius:10px;margin:6px}
 .rprow::before{content:"";position:absolute;inset:0;border-radius:10px;padding:2px;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;background-size:250% 250%;animation:rpFlow 2.6s linear infinite;pointer-events:none;z-index:3}
@@ -6131,7 +6135,8 @@ function _rpHomeBannerHTML(list,half){
          '<span style="font-size:20px;font-weight:900">&#x203A;</span>'))+
     '</div>';
 }
-// ── 홈 3열: 수행율 / 가중요인 / 차량점검 미니 카드 ──
+// ── 홈 알림줄: 수행률 / 가중요인 / SLA  +  아래줄: 차량점검 / 건강자가체크 ──
+function _homeNames(arr){ if(!arr||!arr.length)return ''; var s=arr.slice(0,2).join(', '); if(arr.length>2)s+=' 외'+(arr.length-2); return s; }
 var _wfHomeData;
 function _wfHomeEnsure(){
   if(_wfHomeData!==undefined)return; _wfHomeData=null; if(!sbClient)return;
@@ -6144,32 +6149,60 @@ function _wfHomeMiss(){
   var d=_wfHomeData; if(!d||!d.blocks||!d.blocks.length)return [];
   var out=[]; (d.blocks[0].routes||[]).forEach(function(r){ if(r.f1s==='미해당'||r.f2s==='미해당')out.push(r.route); }); return out;
 }
+var _slaHomeData;
+function _slaHomeEnsure(){
+  if(_slaHomeData!==undefined)return; _slaHomeData=null; if(!sbClient)return;
+  sbClient.from('app_settings').select('value').eq('key','sla_data').maybeSingle().then(function(q){
+    try{ if(q&&q.data&&q.data.value){ _slaHomeData=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+    try{ if(CUR_TAB==='hm'&&!window._ctScreenOpen){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();} }catch(e){}
+  }).catch(function(){});
+}
+function _slaHomeBelow(){
+  var d=_slaHomeData; if(!d||!d.months)return [];
+  var ms=Object.keys(d.months).map(Number).filter(function(n){return !isNaN(n);}).sort(function(a,b){return a-b;});
+  if(!ms.length)return [];
+  var M=d.months[String(ms[ms.length-1])]; if(!M||!M.routes||!M.routes.length)return [];
+  var avgTot=(M.avg&&M.avg.length)?M.avg[0]:null;
+  if(avgTot==null){var s=0,n=0;M.routes.forEach(function(r){s+=(r[1]||0);n++;});avgTot=n?s/n:0;}
+  var out=[]; M.routes.forEach(function(r){ if((r[1]||0)<avgTot)out.push(r[0]); }); return out;
+}
+function _homeMiniCard(onclick,bg,shadow,title,sub){
+  return '<div onclick="'+onclick+'" style="flex:1;min-width:0;cursor:pointer;border-radius:14px;padding:11px 6px;'+bg+';color:#fff;box-shadow:0 4px 11px '+shadow+';display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px">'+
+    '<div style="font-size:12.5px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.13)">'+title+'</div>'+
+    '<div style="font-size:9px;font-weight:800;opacity:.96;line-height:1.35;word-break:keep-all">'+sub+'</div></div>';
+}
 function _rpHomeBannerMini(list){
   var danger=list.some(function(x){return x.k==='danger';}); var tier=_RP_TIER[list[0].k];
   var bg=danger?'background:linear-gradient(135deg,#ff1744,#ff8a00,#ff1744);background-size:200% 200%;animation:rpFlow 2.4s linear infinite':('background:linear-gradient(135deg,'+tier.cl+',#ff8a00)');
-  return '<div onclick="go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;rp&#39;);},60)" style="flex:1;min-width:0;cursor:pointer;border-radius:14px;padding:10px 6px;'+bg+';color:#fff;box-shadow:0 4px 11px rgba(198,40,40,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:3px">'+
-    '<div style="font-size:19px;line-height:1;animation:rpBlink 1s infinite">🚨</div>'+
-    '<div style="font-size:12px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.12)">수행률 '+list.length+'건</div>'+
-    '<div style="font-size:9px;font-weight:800;opacity:.95;line-height:1.3">관리·경고·위험<br>라우트</div></div>';
+  var names=rpEsc(_homeNames(list.map(function(x){return x.route;})));
+  return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;rp&#39;);},60)',bg,'rgba(198,40,40,.3)','수행률 '+list.length+'건',names);
 }
 function _wfHomeCardMini(miss){
-  return '<div onclick="go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;wf&#39;);},60)" style="flex:1;min-width:0;cursor:pointer;border-radius:14px;padding:10px 6px;background:linear-gradient(135deg,#4bb98a,#78d3a5);color:#fff;box-shadow:0 4px 11px rgba(67,160,71,.3);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:3px">'+
-    '<div style="font-size:19px;line-height:1;animation:rpBlink 1s infinite">📊</div>'+
-    '<div style="font-size:12px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.12)">가중요인</div>'+
-    '<div style="font-size:9px;font-weight:800;opacity:.96;line-height:1.3">미해당<br>'+miss.length+'건</div></div>';
+  return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;wf&#39;);},60)','background:linear-gradient(135deg,#4bb98a,#78d3a5)','rgba(67,160,71,.3)','가중요인','미해당 '+miss.length+'건<br>'+rpEsc(_homeNames(miss)));
+}
+function _slaHomeCardMini(list){
+  return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;sla&#39;);},60)','background:linear-gradient(135deg,#5a4fc0,#8579e0)','rgba(58,45,143,.3)','SLA '+list.length+'건','평균점수 이하');
 }
 function _homeAlertRow(){
-  _rpHomeEnsure(); _wfHomeEnsure();
-  var rp=_rpHomeRiskList(); var wf=_wfHomeMiss();
-  var minis=[];
-  if(rp.length)minis.push(_rpHomeBannerMini(rp));
-  if(wf.length)minis.push(_wfHomeCardMini(wf));
-  window._inspMini=(minis.length>0);
-  var truck=window._inspMini
-    ? '<div class="rp-half-insp" style="flex:1;min-width:0;display:flex">'+inspHomeCard()+'</div>'
-    : inspHomeCard();
-  if(minis.length)return '<div style="display:flex;gap:8px;align-items:stretch;margin-bottom:12px">'+minis.join('')+truck+'</div>';
-  return truck;
+  _rpHomeEnsure(); _wfHomeEnsure(); _slaHomeEnsure();
+  var rp=_rpHomeRiskList(), wf=_wfHomeMiss(), sla=_slaHomeBelow();
+  // 알림줄: 있는 것만 표시(1~3개), 칸 자동 분배
+  var alerts=[];
+  if(rp.length)alerts.push(_rpHomeBannerMini(rp));
+  if(wf.length)alerts.push(_wfHomeCardMini(wf));
+  if(sla.length)alerts.push(_slaHomeCardMini(sla));
+  var rowA=alerts.length?('<div style="display:flex;gap:8px;align-items:stretch;margin-bottom:12px">'+alerts.join('')+'</div>'):'';
+  // 아래줄: 차량점검 + 건강자가체크(미작성일 때만). 건강 작성 완료면 차량이 한 줄 전체.
+  window._hcMini=true; var hc=hcHomeBanner();
+  if(hc){
+    window._inspMini=true;
+    var rowB='<div style="display:flex;gap:8px;align-items:stretch;margin-bottom:12px">'+
+      '<div class="rp-half-insp" style="flex:1;min-width:0;display:flex">'+inspHomeCard()+'</div>'+
+      '<div class="rp-half-hc" style="flex:1;min-width:0;display:flex">'+hc+'</div></div>';
+    return rowA+rowB;
+  }
+  window._inspMini=false;
+  return rowA+inspHomeCard();
 }
 // ── WEATHER ──────────────────────────────────────────────────────────
 var _weatherCache=null;var _weatherCacheDate='';var _hourlyOpen=[false,false];
@@ -14322,23 +14355,27 @@ function slaCards(a,title){
   var subs=[['미수행률',a[1],15],['반품 미회수율',a[2],15],['고객만족',a[3],50],['고객불만 발생율',a[4],20]];
   return '<div style="margin:0 0 8px;background:#fff;border:1px solid #e6e9ee;border-radius:12px;padding:12px 14px;text-align:center;"><div style="font-size:11px;color:#8a95a2;">'+wfEsc(title)+'</div><div style="font-size:34px;font-weight:800;color:#3a2d8f;line-height:1.1;">'+a[0].toFixed(1)+'<span style="font-size:14px;color:#aab;">/100</span></div><div style="display:flex;gap:5px;margin-top:8px;">'+subs.map(function(x){return '<div style="flex:1;background:#f4f5fb;border-radius:8px;padding:6px 2px;"><div style="font-size:9px;color:#8a8fb0;line-height:1.2;">'+x[0]+'</div><div style="font-size:13px;font-weight:800;color:#4a3fa0;margin-top:2px;">'+x[1].toFixed(1)+'<span style="font-size:8.5px;color:#aab;">/'+x[2]+'</span></div></div>';}).join('')+'</div></div>';
 }
-function slaTable(rows){
+function slaTable(rows,avgTot){
   var cols=['미수행','반품','고객만족','고객불만'];
+  function bad(r){return avgTot!=null && (r[1]||0)<avgTot;}
+  // 평균점수 이하 라우트를 상단 고정 (그 안에서는 기존 정렬 유지)
+  var sorted=rows.slice().sort(function(a,b){var ba=bad(a)?0:1,bb=bad(b)?0:1;return ba-bb;});
   var th='<div style="overflow-x:auto;border:1px solid #e6e9ee;border-radius:10px;background:#fff;"><table style="border-collapse:collapse;font-size:11.5px;white-space:nowrap;"><thead><tr><th style="position:sticky;left:0;z-index:2;background:#eef0f7;border:1px solid #e4e8ee;padding:6px 9px;color:#5a6b7a;">라우트</th><th style="background:#3a2d8f;color:#fff;border:1px solid #e4e8ee;padding:6px 10px;">Total</th>'+cols.map(function(c){return '<th style="background:#eef0f7;color:#5a6b7a;border:1px solid #e4e8ee;padding:6px 10px;">'+c+'</th>';}).join('')+'</tr></thead><tbody>';
-  rows.forEach(function(r){var c=slaTot(r[1]||0);th+='<tr><td style="position:sticky;left:0;z-index:1;background:#fff;border:1px solid #eef0f4;padding:5px 9px;font-weight:700;color:#37404c;">'+wfEsc(r[0])+'</td><td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+c[0]+';color:'+c[1]+';font-weight:800;">'+(r[1]||0).toFixed(1)+'</td>'+[r[2],r[3],r[4],r[5]].map(function(v,i){var mc=slaMc(v,[15,15,50,20][i]);return '<td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+mc[0]+';color:'+mc[1]+';font-weight:700;">'+(v||0).toFixed(1)+'</td>';}).join('')+'</tr>';});
-  return th+'</tbody></table></div><div style="font-size:10.5px;color:#a7b0ba;margin:6px 2px;">← 좌우로 밀어서 나머지 지표를 볼 수 있어요</div>';
+  sorted.forEach(function(r){var c=slaTot(r[1]||0);var isb=bad(r);var badge=isb?'<span style="margin-left:5px;font-size:8.5px;font-weight:900;color:#fff;background:#c62828;border-radius:5px;padding:1px 5px;animation:rpBlink 1s infinite">미달</span>':'';
+    th+='<tr'+(isb?' class="sla-bad"':'')+'><td style="position:sticky;left:0;z-index:1;background:#fff;border:1px solid #eef0f4;padding:5px 9px;font-weight:700;color:#37404c;">'+wfEsc(r[0])+badge+'</td><td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+c[0]+';color:'+c[1]+';font-weight:800;">'+(r[1]||0).toFixed(1)+'</td>'+[r[2],r[3],r[4],r[5]].map(function(v,i){var mc=slaMc(v,[15,15,50,20][i]);return '<td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+mc[0]+';color:'+mc[1]+';font-weight:700;">'+(v||0).toFixed(1)+'</td>';}).join('')+'</tr>';});
+  return th+'</tbody></table></div><div style="font-size:10.5px;color:#a7b0ba;margin:6px 2px;">← 좌우로 밀어서 나머지 지표 · 평균점수 이하는 상단 고정·빨간 표시</div>';
 }
 function slaMonthView(){
   var M=SLA_D.months[String(SLA_SEL)]; if(!M)return '';
   var rows=slaRsort(M.routes||[]); var a=(M.avg&&M.avg.length)?M.avg:slaAvg(rows);
-  return '<div style="font-size:12.5px;font-weight:800;color:#3a2d8f;margin:2px 2px 8px;">'+wfEsc(M.label||(SLA_SEL+'월'))+' SLA <span style="font-size:11px;color:#9aa5b0;font-weight:600;">'+wfEsc(M.range||'')+'</span></div>'+slaCards(a,(M.label||(SLA_SEL+'월'))+' 팀 평균 Total')+slaTable(rows);
+  return '<div style="font-size:12.5px;font-weight:800;color:#3a2d8f;margin:2px 2px 8px;">'+wfEsc(M.label||(SLA_SEL+'월'))+' SLA <span style="font-size:11px;color:#9aa5b0;font-weight:600;">'+wfEsc(M.range||'')+'</span></div>'+slaCards(a,(M.label||(SLA_SEL+'월'))+' 팀 평균 Total')+slaTable(rows,(a&&a.length)?a[0]:null);
 }
 function slaAvgView(){
   var av=slaAvail(); var map={};
   av.forEach(function(m){(SLA_D.months[String(m)].routes||[]).forEach(function(r){if(!map[r[0]])map[r[0]]=[0,0,0,0,0,0];for(var i=0;i<5;i++)map[r[0]][i]+=(r[1+i]||0);map[r[0]][5]++;});});
   var rows=Object.keys(map).map(function(k){var a=map[k];return [k,Math.round(a[0]/a[5]*10)/10,Math.round(a[1]/a[5]*10)/10,Math.round(a[2]/a[5]*10)/10,Math.round(a[3]/a[5]*10)/10,Math.round(a[4]/a[5]*10)/10];});
   rows=slaRsort(rows); var A=slaAvg(rows);
-  return '<div style="font-size:12.5px;font-weight:800;color:#3a2d8f;margin:2px 2px 8px;">전체 평균 · '+av.length+'개월 누적</div>'+slaCards(A,'전체 평균 Total')+slaTable(rows);
+  return '<div style="font-size:12.5px;font-weight:800;color:#3a2d8f;margin:2px 2px 8px;">전체 평균 · '+av.length+'개월 누적</div>'+slaCards(A,'전체 평균 Total')+slaTable(rows,(A&&A.length)?A[0]:null);
 }
 
 function pgEmvPage(){
@@ -17628,6 +17665,11 @@ function hcHomeBanner(){
   if(!hcActive())return '';
   if(!_hcMineLoaded){setTimeout(hcLoadMine,60);return '';}
   if(_hcMine){setTimeout(hcNameBadge,120);return '';}
+  if(window._hcMini){
+    return '<div onclick="hcOpenInput()" style="height:100%;box-sizing:border-box;cursor:pointer;position:relative;overflow:hidden;border-radius:14px;padding:10px 8px;margin-bottom:12px;background:linear-gradient(135deg,#e8443b,#f6714a);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px;animation:hglow 1.8s infinite">'+
+      '<div style="font-size:13px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.15)">건강 자가체크</div>'+
+      '<div style="font-size:9.5px;font-weight:800;opacity:.96;line-height:1.3">이달 미작성<br>작성 필요</div></div>';
+  }
   return '<div onclick="hcOpenInput()" style="cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:15px;margin-bottom:12px;background:linear-gradient(135deg,#e8443b,#f6714a);color:#fff;animation:hglow 1.8s infinite">'+
     '<div style="display:flex;align-items:center;gap:11px"><div style="font-size:29px">&#x1FA7A;</div>'+
     '<div style="flex:1;min-width:0"><div style="font-size:15px;font-weight:900">이달의 건강 자가체크</div>'+
