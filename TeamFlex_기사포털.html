@@ -5920,13 +5920,14 @@ function pgHome(){
     '</div>';
     setTimeout(loadWeather,200);
     _rpHomeEnsure(); var _rpAdmList=_rpHomeRiskList();
-    return '<div class="hero">'+
-      '<div class="hn" style="margin-bottom:12px">'+
-        '<span style="font-size:17px;font-weight:800">&#x1F451; 관리자 님 &#x1F44F;&#x1F44F;</span>'+
-      '</div>'+
-      '</div>'+
-      (_rpAdmList.length?_rpHomeBannerHTML(_rpAdmList):'')+
-      adminWeatherCard+inspHomeCard()+_ftBtnHTML()+adminSummary;
+    // 날씨 맨 위 → [관리·경고·위험 배너 | 차량 일상점검] 반반 → 운세 → 운영 요약 (인사 박스 삭제)
+    var _admRow=_rpAdmList.length
+      ? ('<div style="display:flex;gap:10px;align-items:stretch;margin-bottom:12px">'+
+          '<div style="flex:1;min-width:0;display:flex">'+_rpHomeBannerHTML(_rpAdmList,true)+'</div>'+
+          '<div style="flex:1;min-width:0;display:flex" class="rp-half-insp">'+inspHomeCard()+'</div>'+
+        '</div>')
+      : inspHomeCard();
+    return adminWeatherCard+_admRow+_ftBtnHTML()+adminSummary;
   }
 
   var today=todStr();var tom=tomStr();
