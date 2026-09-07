@@ -6089,10 +6089,9 @@ function pgHome(){
   '</div>';
   // 상단은 항상 원상태(스케줄 hero + 날씨 full). 위험 라우트는 날씨 아래에 '차량 일상점검'과 반반 한 줄로.
   var _top=heroFull+_notifNudge()+ctHomeBanner()+(typeof tqHomeBanner==='function'?tqHomeBanner():'')+weatherCard;
-  var _hc=hcHomeBanner();     // 이달의 건강 자가체크
   var _ft=_ftBtnHTML();       // 운세
-  // 수행율 / 가중요인 / 차량점검 3열 알림 라인 (해당 항목만 표시, 차량은 항상)
-  return _top+_homeAlertRow()+_hc+_ft;
+  // 알림줄(수행률·가중요인·SLA) + 아래줄(차량·건강) → 운세  (건강은 _homeAlertRow 안에서 처리)
+  return _top+_homeAlertRow()+_ft;
 }
 // ── 라우트 수행율 홈 위험 표시 ──
 var _rpHomeData;   // undefined=미로드, null/obj
@@ -6166,22 +6165,26 @@ function _slaHomeBelow(){
   if(avgTot==null){var s=0,n=0;M.routes.forEach(function(r){s+=(r[1]||0);n++;});avgTot=n?s/n:0;}
   var out=[]; M.routes.forEach(function(r){ if((r[1]||0)<avgTot)out.push(r[0]); }); return out;
 }
-function _homeMiniCard(onclick,bg,shadow,title,sub){
-  return '<div onclick="'+onclick+'" style="flex:1;min-width:0;cursor:pointer;border-radius:15px;padding:16px 8px;min-height:78px;'+bg+';color:#fff;box-shadow:0 4px 11px '+shadow+';display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px">'+
-    '<div style="font-size:16px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.15)">'+title+'</div>'+
-    '<div style="font-size:11.5px;font-weight:800;opacity:.97;line-height:1.4;word-break:keep-all">'+sub+'</div></div>';
+function _homeMiniCard(onclick,bg,shadow,title,sub,deco){
+  var gloss='<span style="position:absolute;top:-42%;left:-18%;width:58%;height:184%;background:linear-gradient(120deg,rgba(255,255,255,.30),transparent);transform:skewX(-18deg);pointer-events:none"></span>';
+  return '<div onclick="'+onclick+'" style="flex:1;min-width:0;cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:16px 8px;min-height:84px;'+bg+';color:#fff;box-shadow:0 6px 16px '+shadow+';display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px">'+gloss+(deco||'')+
+    '<div style="position:relative;z-index:1;font-size:16px;font-weight:900;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.2)">'+title+'</div>'+
+    '<div style="position:relative;z-index:1;font-size:11.5px;font-weight:800;opacity:.98;line-height:1.4;word-break:keep-all">'+sub+'</div></div>';
 }
 function _rpHomeBannerMini(list){
   var danger=list.some(function(x){return x.k==='danger';}); var tier=_RP_TIER[list[0].k];
-  var bg=danger?'background:linear-gradient(135deg,#ff1744,#ff8a00,#ff1744);background-size:200% 200%;animation:rpFlow 2.4s linear infinite':('background:linear-gradient(135deg,'+tier.cl+',#ff8a00)');
+  var bg=danger?'background:linear-gradient(135deg,#ff1744,#ff7a00,#ff1744);background-size:200% 200%;animation:rpFlow 2.4s linear infinite':('background:linear-gradient(135deg,'+tier.cl+',#ff8a00)');
   var names=rpEsc(_homeNames(list.map(function(x){return x.route;})));
-  return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;rp&#39;);},60)',bg,'rgba(198,40,40,.3)','수행률 '+list.length+'건',names);
+  var deco='<svg viewBox="0 0 40 40" width="54" height="54" style="position:absolute;right:-8px;bottom:-9px;opacity:.16;pointer-events:none"><path d="M6 30 L16 20 L23 26 L34 12" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M27 12 h7 v7" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;rp&#39;);},60)',bg,'rgba(198,40,40,.34)','수행률 '+list.length+'건',names,deco);
 }
 function _wfHomeCardMini(miss){
-  return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;wf&#39;);},60)','background:linear-gradient(135deg,#4bb98a,#78d3a5)','rgba(67,160,71,.3)','가중요인','미해당 '+miss.length+'건<br>'+rpEsc(_homeNames(miss)));
+  var deco='<svg viewBox="0 0 40 40" width="54" height="54" style="position:absolute;right:-7px;bottom:-9px;opacity:.18;pointer-events:none"><rect x="4" y="21" width="8" height="16" rx="2.5" fill="#fff"/><rect x="16" y="13" width="8" height="24" rx="2.5" fill="#fff"/><rect x="28" y="6" width="8" height="31" rx="2.5" fill="#fff"/></svg>';
+  return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;wf&#39;);},60)','background:linear-gradient(135deg,#1f9d6e,#3fc08d 52%,#74e0b0)','rgba(31,157,110,.4)','가중요인','미해당 '+miss.length+'건<br>'+rpEsc(_homeNames(miss)),deco);
 }
 function _slaHomeCardMini(list){
-  return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;sla&#39;);},60)','background:linear-gradient(135deg,#5a4fc0,#8579e0)','rgba(58,45,143,.3)','SLA '+list.length+'건','평균점수 이하');
+  var deco='<svg viewBox="0 0 40 40" width="50" height="50" style="position:absolute;right:-6px;bottom:-8px;opacity:.2;pointer-events:none"><path d="M20 4l4.7 9.5 10.5 1.5-7.6 7.4 1.8 10.4L20 28.4l-9.4 4.9 1.8-10.4-7.6-7.4 10.5-1.5z" fill="#fff"/></svg>';
+  return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;sla&#39;);},60)','background:linear-gradient(135deg,#5344c6,#7a6ae8 52%,#9f92f4)','rgba(58,45,143,.4)','SLA '+list.length+'건','평균점수 이하',deco);
 }
 function _homeAlertRow(){
   _rpHomeEnsure(); _wfHomeEnsure(); _slaHomeEnsure();
