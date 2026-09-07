@@ -5815,11 +5815,11 @@ function inspCardBody(state,cnt){
   var _gloss='<span style="position:absolute;top:-40%;left:-15%;width:55%;height:180%;background:linear-gradient(120deg,rgba(255,255,255,.28),transparent);transform:skewX(-18deg);pointer-events:none"></span>';
   // ── 미니(세로) 모드: 홈 3열 카드용 ──
   if(window._inspMini){
-    var _mtruck='<div style="position:relative;width:46px;height:30px;margin:0 auto">'+_dashes+_truck+'</div>';
+    var _mtruck='<div style="position:relative;width:52px;height:34px;flex:0 0 auto;z-index:1">'+_dashes+_truck+'</div>';
     if(state==='done'||state==='off'){var _m=state==='off'?'🛌 휴무':'✅ 완료';
-      return '<div onclick="inspOpen()" style="height:100%;box-sizing:border-box;cursor:pointer;position:relative;overflow:hidden;border-radius:14px;padding:10px 6px;background:linear-gradient(135deg,#7fa8dd,#a9cbf0);box-shadow:0 3px 9px rgba(90,130,190,.26);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px">'+_gloss+_mtruck+'<div style="font-size:12px;font-weight:900;white-space:nowrap">차량점검</div><div style="font-size:9.5px;font-weight:800;white-space:nowrap">'+_m+'</div></div>';
+      return '<div onclick="inspOpen()" style="height:100%;box-sizing:border-box;cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:13px 12px;background:linear-gradient(135deg,#7fa8dd,#9dc2ee 55%,#b9d7f5);background-size:230% 230%;animation:rpFlow 3.4s linear infinite;box-shadow:0 6px 16px rgba(90,130,190,.34);color:#fff;display:flex;flex-direction:row;align-items:center;gap:10px">'+_gloss+_mtruck+'<div style="flex:1;min-width:0;position:relative;z-index:1;text-align:left"><div style="font-size:15px;font-weight:900;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.2)">차량점검</div><div style="font-size:11px;font-weight:800;margin-top:3px;white-space:nowrap">'+_m+'</div></div></div>';
     }
-    return '<div onclick="inspOpen()" style="height:100%;box-sizing:border-box;cursor:pointer;position:relative;overflow:hidden;border-radius:14px;padding:10px 6px;background:linear-gradient(135deg,#4a86e8,#7cb2f0);box-shadow:0 4px 11px rgba(74,134,232,.34);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px">'+_gloss+_mtruck+'<div style="font-size:12px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.15)">차량점검</div><div style="font-size:9px;font-weight:900;background:rgba(255,255,255,.95);color:#2f5fb0;border-radius:6px;padding:1px 7px;white-space:nowrap">오늘 점검 전</div></div>';
+    return '<div onclick="inspOpen()" style="height:100%;box-sizing:border-box;cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:13px 12px;background:linear-gradient(135deg,#3f7fe6,#5f9ef0 55%,#8ec5ff);background-size:230% 230%;animation:rpFlow 3.4s linear infinite;box-shadow:0 6px 16px rgba(74,134,232,.42);color:#fff;display:flex;flex-direction:row;align-items:center;gap:10px">'+_gloss+_mtruck+'<div style="flex:1;min-width:0;position:relative;z-index:1;text-align:left"><div style="font-size:15px;font-weight:900;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.22)">차량점검</div><div style="margin-top:4px"><span style="font-size:11px;font-weight:900;background:rgba(255,255,255,.96);color:#2f5fb0;border-radius:7px;padding:2px 9px;white-space:nowrap;display:inline-block">오늘 점검 전</span></div></div></div>';
   }
   if(state==='done'||state==='off'){
     var msg=state==='off'?'🛌 오늘 휴무':'✅ 점검 완료';
@@ -6166,24 +6166,24 @@ function _slaHomeBelow(){
   var out=[]; M.routes.forEach(function(r){ if((r[1]||0)<avgTot)out.push(r[0]); }); return out;
 }
 function _homeMiniCard(onclick,bg,shadow,title,sub,deco){
-  var gloss='<span style="position:absolute;top:-42%;left:-18%;width:58%;height:184%;background:linear-gradient(120deg,rgba(255,255,255,.30),transparent);transform:skewX(-18deg);pointer-events:none"></span>';
-  return '<div onclick="'+onclick+'" style="flex:1;min-width:0;cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:16px 8px;min-height:84px;'+bg+';color:#fff;box-shadow:0 6px 16px '+shadow+';display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px">'+gloss+(deco||'')+
-    '<div style="position:relative;z-index:1;font-size:16px;font-weight:900;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.2)">'+title+'</div>'+
-    '<div style="position:relative;z-index:1;font-size:11.5px;font-weight:800;opacity:.98;line-height:1.4;word-break:keep-all">'+sub+'</div></div>';
+  var gloss='<span style="position:absolute;top:-42%;left:-18%;width:58%;height:184%;background:linear-gradient(120deg,rgba(255,255,255,.30),transparent);transform:skewX(-18deg);pointer-events:none;z-index:2"></span>';
+  return '<div onclick="'+onclick+'" style="flex:1;min-width:0;cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:16px 8px;min-height:84px;'+bg+';background-size:230% 230%;animation:rpFlow 3.4s linear infinite;color:#fff;box-shadow:0 6px 16px '+shadow+';display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px">'+gloss+(deco||'')+
+    '<div style="position:relative;z-index:3;font-size:16px;font-weight:900;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.22)">'+title+'</div>'+
+    '<div style="position:relative;z-index:3;font-size:11.5px;font-weight:800;opacity:.98;line-height:1.4;word-break:keep-all">'+sub+'</div></div>';
 }
 function _rpHomeBannerMini(list){
   var danger=list.some(function(x){return x.k==='danger';}); var tier=_RP_TIER[list[0].k];
-  var bg=danger?'background:linear-gradient(135deg,#ff1744,#ff7a00,#ff1744);background-size:200% 200%;animation:rpFlow 2.4s linear infinite':('background:linear-gradient(135deg,'+tier.cl+',#ff8a00)');
+  var bg=danger?'background:linear-gradient(135deg,#ff1744,#ff7a00,#ff1744)':('background:linear-gradient(135deg,'+tier.cl+',#ff8a00)');
   var names=rpEsc(_homeNames(list.map(function(x){return x.route;})));
-  var deco='<svg viewBox="0 0 40 40" width="54" height="54" style="position:absolute;right:-8px;bottom:-9px;opacity:.16;pointer-events:none"><path d="M6 30 L16 20 L23 26 L34 12" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M27 12 h7 v7" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var deco='<svg viewBox="0 0 40 40" width="58" height="58" style="position:absolute;right:-8px;bottom:-9px;opacity:.32;pointer-events:none;z-index:1"><path d="M6 30 L16 20 L23 26 L34 12" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M27 12 h7 v7" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;rp&#39;);},60)',bg,'rgba(198,40,40,.34)','수행률 '+list.length+'건',names,deco);
 }
 function _wfHomeCardMini(miss){
-  var deco='<svg viewBox="0 0 40 40" width="54" height="54" style="position:absolute;right:-7px;bottom:-9px;opacity:.18;pointer-events:none"><rect x="4" y="21" width="8" height="16" rx="2.5" fill="#fff"/><rect x="16" y="13" width="8" height="24" rx="2.5" fill="#fff"/><rect x="28" y="6" width="8" height="31" rx="2.5" fill="#fff"/></svg>';
+  var deco='<svg viewBox="0 0 40 40" width="58" height="58" style="position:absolute;right:-7px;bottom:-9px;opacity:.34;pointer-events:none;z-index:1"><rect x="4" y="21" width="8" height="16" rx="2.5" fill="#fff"/><rect x="16" y="13" width="8" height="24" rx="2.5" fill="#fff"/><rect x="28" y="6" width="8" height="31" rx="2.5" fill="#fff"/></svg>';
   return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;wf&#39;);},60)','background:linear-gradient(135deg,#1f9d6e,#3fc08d 52%,#74e0b0)','rgba(31,157,110,.4)','가중요인','미해당 '+miss.length+'건<br>'+rpEsc(_homeNames(miss)),deco);
 }
 function _slaHomeCardMini(list){
-  var deco='<svg viewBox="0 0 40 40" width="50" height="50" style="position:absolute;right:-6px;bottom:-8px;opacity:.2;pointer-events:none"><path d="M20 4l4.7 9.5 10.5 1.5-7.6 7.4 1.8 10.4L20 28.4l-9.4 4.9 1.8-10.4-7.6-7.4 10.5-1.5z" fill="#fff"/></svg>';
+  var deco='<svg viewBox="0 0 40 40" width="54" height="54" style="position:absolute;right:-6px;bottom:-8px;opacity:.36;pointer-events:none;z-index:1"><path d="M20 4l4.7 9.5 10.5 1.5-7.6 7.4 1.8 10.4L20 28.4l-9.4 4.9 1.8-10.4-7.6-7.4 10.5-1.5z" fill="#fff"/></svg>';
   return _homeMiniCard('go(&#39;pb&#39;);setTimeout(function(){pbGoSub(&#39;sla&#39;);},60)','background:linear-gradient(135deg,#5344c6,#7a6ae8 52%,#9f92f4)','rgba(58,45,143,.4)','SLA '+list.length+'건','평균점수 이하',deco);
 }
 function _homeAlertRow(){
@@ -17669,9 +17669,11 @@ function hcHomeBanner(){
   if(!_hcMineLoaded){setTimeout(hcLoadMine,60);return '';}
   if(_hcMine){setTimeout(hcNameBadge,120);return '';}
   if(window._hcMini){
-    return '<div onclick="hcOpenInput()" style="height:100%;box-sizing:border-box;cursor:pointer;position:relative;overflow:hidden;border-radius:14px;padding:10px 8px;margin-bottom:12px;background:linear-gradient(135deg,#e8443b,#f6714a);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px;animation:hglow 1.8s infinite">'+
-      '<div style="font-size:13px;font-weight:900;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.15)">건강 자가체크</div>'+
-      '<div style="font-size:9.5px;font-weight:800;opacity:.96;line-height:1.3">이달 미작성<br>작성 필요</div></div>';
+    var _hcGloss='<span style="position:absolute;top:-42%;left:-18%;width:58%;height:184%;background:linear-gradient(120deg,rgba(255,255,255,.3),transparent);transform:skewX(-18deg);pointer-events:none;z-index:2"></span>';
+    var _hcDeco='<svg viewBox="0 0 40 40" width="58" height="58" style="position:absolute;right:-8px;bottom:-10px;opacity:.32;pointer-events:none;z-index:1"><path d="M16 4 h8 v12 h12 v8 h-12 v12 h-8 v-12 h-12 v-8 h12 z" fill="#fff"/></svg>';
+    return '<div onclick="hcOpenInput()" style="height:100%;box-sizing:border-box;cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:16px 8px;min-height:84px;margin-bottom:12px;background:linear-gradient(135deg,#e8443b,#f4614a 55%,#ff8a5c);background-size:230% 230%;animation:rpFlow 3.4s linear infinite;box-shadow:0 6px 16px rgba(232,68,59,.42);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px">'+_hcGloss+_hcDeco+
+      '<div style="position:relative;z-index:3;font-size:16px;font-weight:900;white-space:nowrap;text-shadow:0 1px 3px rgba(0,0,0,.22)">건강 자가체크</div>'+
+      '<div style="position:relative;z-index:3;font-size:11.5px;font-weight:800;opacity:.98;line-height:1.4">이달 미작성<br>작성 필요</div></div>';
   }
   return '<div onclick="hcOpenInput()" style="cursor:pointer;position:relative;overflow:hidden;border-radius:15px;padding:15px;margin-bottom:12px;background:linear-gradient(135deg,#e8443b,#f6714a);color:#fff;animation:hglow 1.8s infinite">'+
     '<div style="display:flex;align-items:center;gap:11px"><div style="font-size:29px">&#x1FA7A;</div>'+
