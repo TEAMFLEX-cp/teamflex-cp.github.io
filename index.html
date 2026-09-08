@@ -4029,63 +4029,80 @@ function _qsMapZoom(stage,img){var scale=1,tx=0,ty=0,min=1,max=6;
   apply();}
 
 /* ═══════════ 🔁 백업용 (요일별 라우트 → 예상 수량·수익) ═══════════ */
-var QSBK={mode:'cur',ym:null,sel:{일:[],월:[],화:[],수:[],목:[],금:[],토:[]},INC:{배송:true,반품:true,프백:false},sub:false};
-function _qsBkMonths(){return (QSFULL&&QSFULL.months)?Object.keys(QSFULL.months).sort():[];}
+var QSBK={mode:'cur',ym:null,sel:{일:[],월:[],화:[],수:[],목:[],금:[],토:[]},INC:{배송:true,반품:true,프백:true},sub:false,bkAdd:true,bkUnit:20};
+function _qsBkYear(){return String(QSK&&QSK._cur||'2026').slice(0,4);}
+function _qsBkMonths(){var y=_qsBkYear();return ((QSFULL&&QSFULL.months)?Object.keys(QSFULL.months):[]).filter(function(m){return String(m).slice(0,4)===y;}).sort();}
 function _qsBkMonthLabel(ym){var m=String(ym).match(/(\d{4})-(\d{2})/);return m?(+m[2])+'월':ym;}
 function qsBkMode(m,ym){QSBK.mode=m;if(ym)QSBK.ym=ym;_qsRenderBackup();}
-function qsBkInc(k){QSBK.INC[k]=!QSBK.INC[k];_qsBkCalc();}
-function qsBkSub(v){QSBK.sub=v;_qsBkCalc();}
-function _qsBkOne(sel,w,D){ // 한 요일 계산(월 D)
-  if(!sel.length||!D)return {deliv:0,ret:0,fb:0,unit:0,days:0};
+function qsBkInc(k){QSBK.INC[k]=!QSBK.INC[k];_qsRenderBackup();}
+function qsBkSub(v){QSBK.sub=v;_qsRenderBackup();}
+function qsBkAddTog(){QSBK.bkAdd=!QSBK.bkAdd;_qsRenderBackup();}
+function qsBkGear(){var v=prompt('백업 추가 단가(원) — 백업 근무 시 라우트 단가에 더해집니다.',QSBK.bkUnit);if(v===null)return;v=parseInt(String(v).replace(/[^0-9]/g,''),10);if(isNaN(v)||v<0)return;QSBK.bkUnit=v;QSBK.bkAdd=true;_qsRenderBackup();}
+// 한 요일·한 달 계산
+function _qsBkOne(sel,w,D){
+  if(!sel.length||!D)return null;
   var a=_qsAgg(sel,D),wi=QS.WDATA.indexOf(w),deliv=a.wb[wi]||0;
   var ret=a.btot?Math.round(a.ret*(deliv/a.btot)):0;
-  var RN=(D.order||[]).length||1,N=(D.dates||[]).length||1,wd=(D.wdcount&&D.wdcount[w])||0;
-  var fb=Math.round(((D.comp&&D.comp.fb||0)/RN/N)*sel.length*wd);
-  return {deliv:deliv,ret:ret,fb:fb,unit:a.unit,days:wd};
+  return {deliv:deliv,ret:ret,unit:a.unit,days:(D.wdcount&&D.wdcount[w])||0};
 }
+function _qsBkEff(unit){var SUB=QSD.subsidy||10;return (QSBK.sub?unit:(unit-SUB))+(QSBK.bkAdd?(QSBK.bkUnit||0):0);}
 function _qsRenderBackup(){
   var el=document.getElementById('qs-p4');if(!el)return;
   if(!QSK){el.innerHTML='<div class="qs-empty" style="padding:30px 0">수량 데이터를 먼저 불러오세요</div>';return;}
-  var mons=_qsBkMonths();if(!QSBK.ym||mons.indexOf(QSBK.ym)<0)QSBK.ym=QSK._cur||mons[mons.length-1]||null;
-  var pills='<div class="qs-scopebar"><span class="lab">📅 기준</span><div style="display:flex;gap:5px;flex-wrap:wrap">'+
+  var mons=_qsBkMonths();if(QSBK.mode==='cur'&&(mons.indexOf(QSBK.ym)<0))QSBK.ym=(mons.indexOf(QSK._cur)>=0?QSK._cur:mons[mons.length-1])||null;
+  var pills='<div class="qs-scopebar" style="background:linear-gradient(90deg,#eef4ff,#f7fbff)"><span class="lab">📅 기준월</span><div style="display:flex;gap:5px;flex-wrap:wrap">'+
     mons.map(function(ym){var on=(QSBK.mode==='cur'&&QSBK.ym===ym);return '<button class="qs-pbtn '+(on?'on':'')+'" onclick="qsBkMode(\'cur\',\''+ym+'\')">'+_qsBkMonthLabel(ym)+'</button>';}).join('')+
-    '<button class="qs-pbtn '+(QSBK.mode==='avg'?'on':'')+'" onclick="qsBkMode(\'avg\')" style="background:'+(QSBK.mode==='avg'?'#2f6fed':'#fff')+';color:'+(QSBK.mode==='avg'?'#fff':'#2f6fed')+';border:1px solid #2f6fed">📊 평균(올해)</button>'+
+    '<button class="qs-pbtn '+(QSBK.mode==='avg'?'on':'')+'" onclick="qsBkMode(\'avg\')">📊 평균</button>'+
     '</div></div>';
   var wdRows='<div class="qs-panel"><h4>🗓️ 요일별 라우트 <span class="qs-mini">비우면 휴무</span></h4>'+
     QS.WDISP.map(function(w,idx){var c=(w==='일')?'#e5484d':(w==='토')?'#2f6fed':'#0f2747';
-      return '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="width:22px;text-align:center;font-weight:900;color:'+c+'">'+w+'</span><div class="qs-ms" id="qsBkMS_'+idx+'" style="flex:1;min-width:0"></div></div>';}).join('')+
+      return '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><span style="width:24px;height:24px;flex:0 0 auto;border-radius:50%;background:'+c+';color:#fff;text-align:center;line-height:24px;font-weight:900;font-size:12px">'+w+'</span><div class="qs-ms" id="qsBkMS_'+idx+'" style="flex:1;min-width:0"></div></div>';}).join('')+
     '</div>';
-  var inc='<div class="qs-panel"><h4>💰 포함 항목 / 대상</h4><div id="qsBkInc" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+
-    Object.keys(QSBK.INC).map(function(k){return '<label class="qs-inc '+(QSBK.INC[k]?'on':'')+'" onclick="qsBkInc(\''+k+'\')" style="cursor:pointer;border:1px solid '+(QSBK.INC[k]?'#2f6fed':'#cdd7e5')+';background:'+(QSBK.INC[k]?'#eef4ff':'#fff')+';color:'+(QSBK.INC[k]?'#2f6fed':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">'+(k==='배송'?'📦 배송':k==='반품'?'↩ 반품':'🧊 프레시백(1/N)')+'</label>';}).join('')+
-    '</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="qs-pbtn '+(!QSBK.sub?'on':'')+'" onclick="qsBkSub(false)">🆕 신규(지원금 제외)</button><button class="qs-pbtn '+(QSBK.sub?'on':'')+'" onclick="qsBkSub(true)">👤 현직(지원금 포함)</button></div></div>';
+  var incBtns=Object.keys(QSBK.INC).map(function(k){var on=QSBK.INC[k];return '<button onclick="qsBkInc(\''+k+'\')" style="cursor:pointer;border:1.5px solid '+(on?'#2f6fed':'#cdd7e5')+';background:'+(on?'#2f6fed':'#fff')+';color:'+(on?'#fff':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">'+(k==='배송'?'📦 배송':k==='반품'?'↩ 반품':'🧊 프레시백')+'</button>';}).join('');
+  var subBtns='<button onclick="qsBkSub(false)" style="cursor:pointer;border:1.5px solid '+(!QSBK.sub?'#e5484d':'#cdd7e5')+';background:'+(!QSBK.sub?'#e5484d':'#fff')+';color:'+(!QSBK.sub?'#fff':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">🆕 신규(지원금 제외)</button>'+
+    '<button onclick="qsBkSub(true)" style="cursor:pointer;border:1.5px solid '+(QSBK.sub?'#0f2747':'#cdd7e5')+';background:'+(QSBK.sub?'#0f2747':'#fff')+';color:'+(QSBK.sub?'#fff':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">👤 현직(지원금 포함)</button>';
+  var bkBtns='<button onclick="qsBkAddTog()" style="cursor:pointer;border:1.5px solid '+(QSBK.bkAdd?'#0b8a5f':'#cdd7e5')+';background:'+(QSBK.bkAdd?'#0b8a5f':'#fff')+';color:'+(QSBK.bkAdd?'#fff':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">➕ 백업 추가단가 '+(QSBK.bkAdd?'적용':'미적용')+' (+'+_qsFmt(QSBK.bkUnit)+'원)</button>'+
+    '<button onclick="qsBkGear()" title="백업 추가단가 설정" style="cursor:pointer;border:1.5px solid #cdd7e5;background:#fff;color:#6b7787;border-radius:10px;padding:7px 10px;font-size:13px;font-weight:800">⚙️</button>';
+  var inc='<div class="qs-panel"><h4>💰 포함 항목 / 대상 / 백업단가</h4>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+incBtns+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+subBtns+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+bkBtns+'</div></div>';
   el.innerHTML='<div style="padding:2px 2px 12px">'+pills+wdRows+inc+'<div class="qs-panel"><h4>📊 예상 결과 <span class="qs-mini">'+(QSBK.mode==='avg'?'올해 평균 기준':(_qsBkMonthLabel(QSBK.ym)+' 실제 기준'))+'</span></h4><div id="qsBkOut"></div></div></div>';
   QS.WDISP.forEach(function(w,idx){try{_qsMakeMS('qsBkMS_'+idx,(QSBK.sel[w]||[]).filter(function(r){return QSK.routes&&QSK.routes[r];}),function(sel){QSBK.sel[w]=sel;_qsBkCalc();}).render();}catch(e){}});
   _qsBkCalc();
 }
 function _qsBkCalc(){
   var out=document.getElementById('qsBkOut');if(!out)return;
-  var SUB=QSD.subsidy||10;
   var mons=(QSBK.mode==='avg')?_qsBkMonths():[QSBK.ym];
-  var tD=0,tR=0,tF=0,tRev=0,tDays=0,any=false,rowsH='';
+  var tD=0,tR=0,tRev=0,tDays=0,tFb=0,any=false,rowsH='',perFbSum=0,perFbCnt=0;
   QS.WDISP.forEach(function(w){var sel=(QSBK.sel[w]||[]).filter(function(r){return QSK.routes&&QSK.routes[r];});var c=(w==='일')?'#e5484d':(w==='토')?'#2f6fed':'#0f2747';
-    if(!sel.length){rowsH+='<div style="display:flex;align-items:center;gap:8px;padding:6px 2px;border-top:1px solid #eef0f4;font-size:12px"><span style="width:22px;text-align:center;font-weight:900;color:'+c+'">'+w+'</span><span style="color:#a7b0ba;font-weight:700">휴무</span></div>';return;}
-    any=true;var acc={deliv:0,ret:0,fb:0,unit:0,days:0},cnt=0;
-    mons.forEach(function(ym){var D=QSFULL.months[ym];if(!D)return;var o=_qsBkOne(sel,w,D);acc.deliv+=o.deliv;acc.ret+=o.ret;acc.fb+=o.fb;acc.unit+=o.unit;acc.days+=o.days;cnt++;});
+    if(!sel.length){rowsH+='<div style="display:flex;align-items:center;gap:8px;padding:7px 3px;border-top:1px solid #eef0f4;font-size:12px"><span style="width:22px;text-align:center;font-weight:900;color:'+c+'">'+w+'</span><span style="color:#a7b0ba;font-weight:700">휴무</span></div>';return;}
+    any=true;var acc={deliv:0,ret:0,unit:0,days:0},cnt=0;
+    mons.forEach(function(ym){var D=QSFULL.months[ym];if(!D)return;var o=_qsBkOne(sel,w,D);if(!o)return;acc.deliv+=o.deliv;acc.ret+=o.ret;acc.unit+=o.unit;acc.days+=o.days;cnt++;});
     if(!cnt)return;
-    var deliv=Math.round(acc.deliv/cnt),ret=Math.round(acc.ret/cnt),fb=Math.round(acc.fb/cnt),unit=acc.unit/cnt,days=Math.round(acc.days/cnt);
-    var effUnit=QSBK.sub?unit:(unit-SUB);var rev=0;if(QSBK.INC.배송)rev+=deliv*effUnit;if(QSBK.INC.반품)rev+=ret*effUnit;if(QSBK.INC.프백)rev+=fb;
-    tD+=deliv;tR+=ret;tF+=fb;tRev+=rev;tDays+=days;
-    rowsH+='<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-top:1px solid #eef0f4;font-size:12px"><span style="width:22px;text-align:center;font-weight:900;color:'+c+'">'+w+'</span>'+
-      '<div style="flex:1;min-width:0"><div style="font-weight:800;color:#37473c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sel.join(', ')+'</div>'+
-      '<div class="qs-mini">'+(QSBK.INC.배송?'배송 '+_qsFmt(deliv):'')+(QSBK.INC.반품?' · 반품 '+_qsFmt(ret):'')+' · '+days+'일</div></div>'+
-      '<div style="text-align:right;font-weight:900;color:#0f2747;white-space:nowrap">'+_qsFmt(rev)+'<small style="color:#8a95a2">원</small></div></div>';
+    var deliv=Math.round(acc.deliv/cnt),ret=Math.round(acc.ret/cnt),unit=acc.unit/cnt,days=Math.round(acc.days/cnt);
+    var effUnit=_qsBkEff(unit);var rev=(QSBK.INC.배송?deliv*effUnit:0)+(QSBK.INC.반품?ret*effUnit:0);
+    var avgD=days?Math.round(deliv/days):0, avgR=days?Math.round(ret/days):0;
+    tD+=deliv;tR+=ret;tRev+=rev;tDays+=days;
+    rowsH+='<div style="display:flex;align-items:center;gap:9px;padding:9px 3px;border-top:1px solid #eef0f4;font-size:12px"><span style="width:24px;height:24px;flex:0 0 auto;border-radius:50%;background:'+c+';color:#fff;text-align:center;line-height:24px;font-weight:900;font-size:11px">'+w+'</span>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-weight:800;color:#0f2747;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sel.join(', ')+' <span style="font-weight:700;color:#8a95a2;font-size:10.5px">· 단가 '+_qsFmt(Math.round(unit))+(QSBK.bkAdd?'<span style="color:#0b8a5f">+'+_qsFmt(QSBK.bkUnit)+'</span>':'')+'→'+_qsFmt(Math.round(effUnit))+'원</span></div>'+
+        '<div style="display:flex;gap:8px;margin-top:3px">'+(QSBK.INC.배송?'<span style="background:#eef4ff;color:#2f6fed;border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:800">평균배송 '+_qsFmt(avgD)+'/일</span>':'')+(QSBK.INC.반품?'<span style="background:#fff0ea;color:#e5573f;border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:800">평균반품 '+_qsFmt(avgR)+'/일</span>':'')+'<span style="color:#8a95a2;font-size:10.5px;font-weight:700;align-self:center">'+days+'일</span></div>'+
+      '</div>'+
+      '<div style="text-align:right;font-weight:900;color:#0f2747;white-space:nowrap">'+_qsFmt(Math.round(rev))+'<small style="color:#8a95a2">원</small></div></div>';
   });
+  // 프레시백: 1인 월평균(전체÷라우트수) × (근무일/월일수)  (요청: 1인 평균 회수금액)
+  if(QSBK.INC.프백 && tDays){
+    mons.forEach(function(ym){var D=QSFULL.months[ym];if(!D)return;var rn=(D.order||[]).length||1,N=(D.dates||[]).length||1,per=(D.comp&&D.comp.fb||0)/rn;perFbSum+=per;perFbCnt++;tFb+=Math.round(per*(tDays/N));});
+    if(perFbCnt){tFb=Math.round(tFb/perFbCnt);perFbSum=Math.round(perFbSum/perFbCnt);}
+    tRev+=tFb;
+  }
   if(!any){out.innerHTML='<div class="qs-empty" style="padding:24px 0">🗓️ 요일별 라우트를 선택하면 예상 수량·수익이 계산됩니다</div>';return;}
   var qty=(QSBK.INC.배송?tD:0)+(QSBK.INC.반품?tR:0);
   out.innerHTML='<div class="qs-res"><div class="r"><div class="k">월 근무일수</div><div class="v">'+tDays+'<small>일</small></div></div><div class="r"><div class="k">예상 수량'+(QSBK.INC.반품?'(배송+반품)':'')+'</div><div class="v">'+_qsFmt(qty)+'</div></div><div class="r money"><div class="k">예상 수익</div><div class="v">'+_qsFmt(Math.round(tRev))+'<small>원</small></div></div></div>'+
     '<div style="background:#fff;border:1px solid #e7edf5;border-radius:12px;overflow:hidden;margin-top:10px">'+rowsH+'</div>'+
-    (QSBK.INC.프백?'<div class="qs-mini" style="margin-top:7px">🧊 프레시백은 전체 회수금액의 1/N(라우트·일수 비례) 예상치로 합산됩니다 · 합계 '+_qsFmt(tF)+'원</div>':'')+
-    '<div class="qs-mini" style="margin-top:5px;color:#c26a00">⚠️ '+(QSBK.mode==='avg'?'올해 1월~데이터 있는 월까지 요일별 평균':(_qsBkMonthLabel(QSBK.ym)+' 실제 데이터'))+' 기준 · 배송/반품 동일 단가 · 대상: '+(QSBK.sub?'현직(지원금 포함)':'신규(지원금 제외)')+'</div>';
+    (QSBK.INC.프백?'<div style="background:#f0fbf5;border:1px solid #cdeeda;border-radius:10px;padding:9px 11px;margin-top:8px;font-size:11.5px;color:#0b6b45;font-weight:700">🧊 프레시백 = 1인 월평균 회수금액 <b>'+_qsFmt(perFbSum)+'원</b>(전체÷라우트수) × 근무비율 = <b>'+_qsFmt(tFb)+'원</b></div>':'')+
+    '<div class="qs-mini" style="margin-top:6px;color:#c26a00">⚠️ '+(QSBK.mode==='avg'?'올해 요일별 평균':(_qsBkMonthLabel(QSBK.ym)+' 실제 데이터'))+' 기준 · 배송/반품 동일 단가'+(QSBK.bkAdd?' · 백업 추가단가 +'+_qsFmt(QSBK.bkUnit)+'원 포함':'')+' · '+(QSBK.sub?'현직(지원금 포함)':'신규(지원금 제외)')+'</div>';
 }
 
 // ── 안드로이드 뒤로가기 (popstate) 핸들러 ────────────────────────────
