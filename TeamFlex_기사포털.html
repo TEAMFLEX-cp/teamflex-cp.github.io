@@ -3855,7 +3855,7 @@ function _qsBuildRtPanes(){
   var hasR=QSK.hasRoutes!==false;
   var noRtNote='<div class="qs-panel" style="text-align:center;padding:38px 18px"><div style="font-size:34px;margin-bottom:8px">📦</div><div style="font-size:15px;font-weight:800;color:#0f2747">'+(QSK._cur||'')+' — 라우트별·단가 데이터가 없습니다</div><div class="qs-mini" style="margin-top:8px;line-height:1.6">이 달은 <b>월 합계 수량</b>만 제공됩니다.<br>라우트별 상세·단가·예상수익은 <b>2026-06(현재 계약)</b>부터 제공됩니다.<br>상단 기준월 ◀▶ 로 최근 달을 선택하세요.</div></div>';
   var p1=document.getElementById('qs-p1'),p2=document.getElementById('qs-p2');if(!p1||!p2)return;
-  p1.innerHTML=hasR?('<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px"><div class="qs-ms" id="qsMSrt"></div><span class="qs-mini" id="qsRtSel">라우트 선택 → [적용] (예상수익 자동 연동)</span></div><div class="qs-panel"><h4>🚚 라우트별 상세 <span class="qs-mini">'+(QSK._cur||'')+' · 월배송·일평균·근무일·반품</span></h4><div id="qsRtMinBar" style="display:flex;align-items:center;flex-wrap:wrap;margin-bottom:9px"></div><div style="max-height:300px;overflow-y:auto"><table class="qs-tbl qs-tbl-c"><thead><tr><th>라우트</th><th>캠프</th><th>월배송</th><th>일평균</th><th>근무일</th><th>반품</th><th>일평균반품</th></tr></thead><tbody id="qsRtTable"></tbody></table></div></div><div id="qsRtOut"></div>'):noRtNote;
+  p1.innerHTML=hasR?('<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px"><div class="qs-ms" id="qsMSrt"></div><span class="qs-mini" id="qsRtSel">라우트 선택 → [적용] (예상수익 자동 연동)</span></div><div class="qs-panel"><h4>🚚 라우트별 상세 <span class="qs-mini">'+(QSK._cur||'')+' · 배송+반품 · 일평균 · 일평균반품 · 합산</span></h4><div id="qsRtMinBar" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:9px"></div><div style="max-height:300px;overflow-y:auto"><table class="qs-tbl qs-tbl-c"><thead><tr><th>라우트</th><th>캠프</th><th>배송+반품</th><th>일평균</th><th>일평균반품</th><th class="qs-cur">일평균 합산</th></tr></thead><tbody id="qsRtTable"></tbody></table></div></div><div id="qsRtOut"></div>'):noRtNote;
   p2.innerHTML=hasR?('<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px"><div class="qs-ms" id="qsMSc"></div><span class="qs-mini" id="qsCSel">라우트 선택</span></div>'+
       '<div class="qs-panel"><h4>🗓️ 근무 패턴 선택</h4><div class="qs-preset" id="qsPreset"></div><div class="qs-mini" style="margin:10px 0 2px;font-weight:700;color:#1c3f6e">근무 요일 (선택=파랑 · 일=빨강/토=파랑)</div><div class="qs-wd" id="qsCWd"></div></div>'+
       '<div class="qs-panel"><h4>➕ 수익 포함 항목</h4><div class="qs-inc" id="qsInc"></div>'+
@@ -3938,20 +3938,34 @@ function qsRenderCompany(sel){
   var wdV=QS.WDISP.map(function(w){return (MB.comp.wdB&&MB.comp.wdB[w])||0;});_qsBars(document.getElementById('qsCWdBars'),QS.WDISP,wdV);_qsAvgTag(document.getElementById('qsCWdAvg'),wdV,QS.WDISP);
   var mwk=_qsCalWeeks(MB.dates),wkV=mwk.map(function(w){return w.idxs.reduce(function(s,ix){return s+((MB.comp.daily[ix]&&MB.comp.daily[ix][2])||0);},0);});_qsWeekBars(document.getElementById('qsCWkBars'),document.getElementById('qsCWkAvg'),mwk,wkV);
 }
-var QSRT_MIN=0;
-function qsRtSetMin(){var v=prompt('설정 수량 — 일평균(배송) + 일평균반품 이 값 이상인 라우트만 표시',QSRT_MIN||'');if(v===null)return;v=parseInt(String(v).replace(/[^0-9]/g,''),10);QSRT_MIN=isNaN(v)?0:v;qsRenderRtTable(window._qsRtLastSel||[]);}
+var QSRT_MIN=0, QSRT_AVG=false;
+function qsRtSetMin(){var v=prompt('설정 수량 — 일평균(배송) + 일평균반품 = 합산이 이 값 이상인 라우트만 표시',QSRT_MIN||'');if(v===null)return;v=parseInt(String(v).replace(/[^0-9]/g,''),10);QSRT_MIN=isNaN(v)?0:v;qsRenderRtTable(window._qsRtLastSel||[]);}
 function qsRtClearMin(){QSRT_MIN=0;qsRenderRtTable(window._qsRtLastSel||[]);}
-function _qsRtDaily(r){var R=QSK.routes[r];if(!R)return 0;var N=QSK.dates.length||1;var b=R.b.reduce(function(a,c){return a+c;},0);return (b/N)+(R.ret/N);}
+function qsRtToggleAvg(){QSRT_AVG=!QSRT_AVG;qsRenderRtTable(window._qsRtLastSel||[]);}
+function _qsRtYearMonths(){var y=String((QSK&&QSK._cur)||'2026').slice(0,4);return ((QSFULL&&QSFULL.months)?Object.keys(QSFULL.months):[]).filter(function(m){return String(m).slice(0,4)===y;}).sort();}
+// 필요한 값만: {camp, monB(월배송), monR(월반품), dAvg(일평균배송), dRet(일평균반품)}
+function _qsRtVals(r){
+  if(!QSRT_AVG){var R=QSK.routes[r];if(!R)return null;var N=QSK.dates.length||1;var b=R.b.reduce(function(a,c){return a+c;},0);return {camp:R.camp,monB:b,monR:R.ret,dAvg:b/N,dRet:R.ret/N};}
+  var mons=_qsRtYearMonths(),acc={monB:0,monR:0,dAvg:0,dRet:0},cnt=0,camp='';
+  mons.forEach(function(ym){var D=QSFULL.months[ym];var R=D&&D.routes&&D.routes[r];if(!R)return;var N=D.dates.length||1;var b=R.b.reduce(function(a,c){return a+c;},0);acc.monB+=b;acc.monR+=R.ret;acc.dAvg+=b/N;acc.dRet+=R.ret/N;camp=R.camp;cnt++;});
+  if(!cnt)return null;
+  return {camp:camp,monB:acc.monB/cnt,monR:acc.monR/cnt,dAvg:acc.dAvg/cnt,dRet:acc.dRet/cnt};
+}
 function qsRtRenderMinBar(shown,total){var bar=document.getElementById('qsRtMinBar');if(!bar)return;
-  bar.innerHTML='<button onclick="qsRtSetMin()" style="cursor:pointer;border:1.5px solid '+(QSRT_MIN>0?'#0b8a5f':'#cdd7e5')+';background:'+(QSRT_MIN>0?'#0b8a5f':'#fff')+';color:'+(QSRT_MIN>0?'#fff':'#2f6fed')+';border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800">🎯 설정 수량'+(QSRT_MIN>0?' ≥ '+_qsFmt(QSRT_MIN):'')+'</button>'+
-    (QSRT_MIN>0?'<button onclick="qsRtClearMin()" style="cursor:pointer;border:1px solid #ef9a9a;background:#fff;color:#c62828;border-radius:10px;padding:6px 10px;font-size:12px;font-weight:800;margin-left:6px">✕ 해제</button><span class="qs-mini" style="margin-left:8px">일평균+반품일평균 '+_qsFmt(QSRT_MIN)+' 이상 · '+shown+'/'+total+'개</span>':'<span class="qs-mini" style="margin-left:8px">일평균(배송)+일평균반품 기준 필터</span>');}
-function qsRenderRtTable(sel){window._qsRtLastSel=sel;var N=QSK.dates.length,list=sel.length?QSK.order.filter(function(r){return sel.indexOf(r)>=0;}):QSK.order;
-  var total=list.length;
-  if(QSRT_MIN>0)list=list.filter(function(r){return _qsRtDaily(r)>=QSRT_MIN;});
-  qsRtRenderMinBar(list.length,total);
-  var h=list.map(function(r){var R=QSK.routes[r],b=R.b.reduce(function(a,c){return a+c;},0),wd=R.b.filter(function(x){return x>0;}).length;return '<tr class="'+(sel.indexOf(r)>=0?'on':'')+'"><td>'+r+'</td><td>'+R.camp+'</td><td>'+_qsFmt(b)+'</td><td>'+_qsFmt(b/N)+'</td><td>'+wd+'</td><td>'+_qsFmt(R.ret)+'</td><td>'+_qsFmt(R.ret/N)+'</td></tr>';}).join('');
-  if(!list.length)h='<tr><td colspan="7" style="text-align:center;color:#a7b0ba;padding:20px 0;font-weight:700">설정 수량('+_qsFmt(QSRT_MIN)+') 이상인 라우트가 없습니다</td></tr>';
-  if(sel.length>1){var a=_qsAgg(sel,QSK);h+='<tr class="sum"><td>합계 '+sel.length+'개</td><td>-</td><td>'+_qsFmt(a.btot)+'</td><td>'+_qsFmt(a.btot/N)+'</td><td>-</td><td>'+_qsFmt(a.ret)+'</td><td>'+_qsFmt(a.ret/N)+'</td></tr>';}
+  var avgBtn='<button onclick="qsRtToggleAvg()" style="cursor:pointer;border:1.5px solid #2f6fed;background:'+(QSRT_AVG?'#2f6fed':'#fff')+';color:'+(QSRT_AVG?'#fff':'#2f6fed')+';border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800">📊 '+(QSRT_AVG?'평균(올해)':('월별 '+_qsBkMonthLabel(QSK._cur||'')))+'</button>';
+  var setBtn='<button onclick="qsRtSetMin()" style="cursor:pointer;border:1.5px solid '+(QSRT_MIN>0?'#0b8a5f':'#cdd7e5')+';background:'+(QSRT_MIN>0?'#0b8a5f':'#fff')+';color:'+(QSRT_MIN>0?'#fff':'#0b8a5f')+';border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800">🎯 설정 수량'+(QSRT_MIN>0?' ≥ '+_qsFmt(QSRT_MIN):'')+'</button>';
+  var clr=QSRT_MIN>0?'<button onclick="qsRtClearMin()" style="cursor:pointer;border:1px solid #ef9a9a;background:#fff;color:#c62828;border-radius:10px;padding:6px 10px;font-size:12px;font-weight:800">✕ 해제</button>':'';
+  var note='<span class="qs-mini">'+(QSRT_MIN>0?('합산 '+_qsFmt(QSRT_MIN)+' 이상 · '+shown+'/'+total+'개'):'일평균+일평균반품(합산) 기준')+'</span>';
+  bar.innerHTML=avgBtn+setBtn+clr+note;}
+function qsRenderRtTable(sel){window._qsRtLastSel=sel;sel=sel||[];
+  var base=sel.length?QSK.order.filter(function(r){return sel.indexOf(r)>=0;}):QSK.order.slice();
+  var rows=base.map(function(r){var v=_qsRtVals(r);return v?{r:r,v:v,sum:v.dAvg+v.dRet}:null;}).filter(Boolean);
+  var total=rows.length;
+  if(QSRT_MIN>0)rows=rows.filter(function(x){return x.sum>=QSRT_MIN;});
+  qsRtRenderMinBar(rows.length,total);
+  var h=rows.map(function(x){var v=x.v;return '<tr class="'+(sel.indexOf(x.r)>=0?'on':'')+'"><td>'+x.r+'</td><td>'+v.camp+'</td><td>'+_qsFmt(Math.round(v.monB+v.monR))+'</td><td>'+_qsFmt(Math.round(v.dAvg))+'</td><td>'+_qsFmt(Math.round(v.dRet))+'</td><td class="qs-cur">'+_qsFmt(Math.round(x.sum))+'</td></tr>';}).join('');
+  if(!rows.length)h='<tr><td colspan="6" style="text-align:center;color:#a7b0ba;padding:20px 0;font-weight:700">'+(QSRT_MIN>0?('설정 수량('+_qsFmt(QSRT_MIN)+') 이상인 라우트가 없습니다'):'데이터가 없습니다')+'</td></tr>';
+  else if(rows.length>1&&(sel.length>1||QSRT_MIN>0)){var sB=0,sR=0,sA=0,sAR=0;rows.forEach(function(x){sB+=x.v.monB;sR+=x.v.monR;sA+=x.v.dAvg;sAR+=x.v.dRet;});h+='<tr class="sum"><td>합계 '+rows.length+'개</td><td>-</td><td>'+_qsFmt(Math.round(sB+sR))+'</td><td>'+_qsFmt(Math.round(sA))+'</td><td>'+_qsFmt(Math.round(sAR))+'</td><td class="qs-cur">'+_qsFmt(Math.round(sA+sAR))+'</td></tr>';}
   document.getElementById('qsRtTable').innerHTML=h;}
 function qsApplyRoute(sel){var N=QSK.dates.length,RN=QSK.order.length,COMP8=QSK.comp.btot;
   document.getElementById('qsRtSel').textContent=sel.length?(sel.length+'개 선택 · 예상수익 자동 연동 · 표는 선택만'):'라우트 선택 → [적용] (예상수익 자동 연동)';
