@@ -4061,12 +4061,11 @@ function _qsRenderBackup(){
   var incBtns=Object.keys(QSBK.INC).map(function(k){var on=QSBK.INC[k];return '<button onclick="qsBkInc(\''+k+'\')" style="cursor:pointer;border:1.5px solid '+(on?'#2f6fed':'#cdd7e5')+';background:'+(on?'#2f6fed':'#fff')+';color:'+(on?'#fff':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">'+(k==='배송'?'📦 배송':k==='반품'?'↩ 반품':'🧊 프레시백')+'</button>';}).join('');
   var subBtns='<button onclick="qsBkSub(false)" style="cursor:pointer;border:1.5px solid '+(!QSBK.sub?'#e5484d':'#cdd7e5')+';background:'+(!QSBK.sub?'#e5484d':'#fff')+';color:'+(!QSBK.sub?'#fff':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">🆕 신규(지원금 제외)</button>'+
     '<button onclick="qsBkSub(true)" style="cursor:pointer;border:1.5px solid '+(QSBK.sub?'#0f2747':'#cdd7e5')+';background:'+(QSBK.sub?'#0f2747':'#fff')+';color:'+(QSBK.sub?'#fff':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">👤 현직(지원금 포함)</button>';
-  var bkBtns='<button onclick="qsBkAddTog()" style="cursor:pointer;border:1.5px solid '+(QSBK.bkAdd?'#0b8a5f':'#cdd7e5')+';background:'+(QSBK.bkAdd?'#0b8a5f':'#fff')+';color:'+(QSBK.bkAdd?'#fff':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">➕ 백업 추가단가 '+(QSBK.bkAdd?'적용':'미적용')+' (+'+_qsFmt(QSBK.bkUnit)+'원)</button>'+
-    '<button onclick="qsBkGear()" title="백업 추가단가 설정" style="cursor:pointer;border:1.5px solid #cdd7e5;background:#fff;color:#6b7787;border-radius:10px;padding:7px 10px;font-size:13px;font-weight:800">⚙️</button>';
-  var inc='<div class="qs-panel"><h4>💰 포함 항목 / 대상 / 백업단가</h4>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+incBtns+'</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'+subBtns+'</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+bkBtns+'</div></div>';
+  var bkBtns='<button onclick="qsBkAddTog()" style="cursor:pointer;border:1.5px solid '+(QSBK.bkAdd?'#0b8a5f':'#cdd7e5')+';background:'+(QSBK.bkAdd?'#0b8a5f':'#fff')+';color:'+(QSBK.bkAdd?'#fff':'#6b7787')+';border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:800">✚ 추가'+(QSBK.bkAdd?' (+'+_qsFmt(QSBK.bkUnit)+'원)':'')+'</button>'+
+    '<button onclick="qsBkGear()" title="백업 추가단가 설정" style="cursor:pointer;border:1.5px solid #cdd7e5;background:#fff;color:#6b7787;border-radius:10px;padding:7px 9px;font-size:13px;font-weight:800">⚙️</button>';
+  var inc='<div class="qs-panel"><h4>💰 포함 항목 / 대상</h4>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">'+incBtns+bkBtns+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+subBtns+'</div></div>';
   el.innerHTML='<div style="padding:2px 2px 12px">'+pills+wdRows+inc+'<div class="qs-panel"><h4>📊 예상 결과 <span class="qs-mini">'+(QSBK.mode==='avg'?'올해 평균 기준':(_qsBkMonthLabel(QSBK.ym)+' 실제 기준'))+'</span></h4><div id="qsBkOut"></div></div></div>';
   QS.WDISP.forEach(function(w,idx){try{_qsMakeMS('qsBkMS_'+idx,(QSBK.sel[w]||[]).filter(function(r){return QSK.routes&&QSK.routes[r];}),function(sel){QSBK.sel[w]=sel;_qsBkCalc();}).render();}catch(e){}});
   _qsBkCalc();
