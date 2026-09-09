@@ -4096,14 +4096,23 @@ function _qsBkOne(sel,w,D){
 }
 function _qsBkEff(unit){var SUB=QSD.subsidy||10;return (QSBK.sub?unit:(unit-SUB))+(QSBK.bkAdd?(QSBK.bkUnit||0):0);}
 /* ── 백업 기사 스케줄 관리 (관리자 전용 · 일반 스케줄과 완전 분리) ───────────── */
-var QBK={loaded:false,cats:['지번','아파트','양평','야간'],groups:[],view:'full',edit:false,earnOpen:false,earnDrv:null};
+var QBK={loaded:false,cats:['지번','아파트','양평','야간'],groups:[],view:'full',edit:false,earnOpen:false,earnDrv:null,role:{}};
 var QBK_DAYS=['일','월','화','수','목','금','토'];
 function qbkStrip(n){try{return (typeof splitDriverSuffix==='function')?splitDriverSuffix(n).base:String(n||'').split(' ')[0];}catch(e){return String(n||'').split(' ')[0];}}
 function qbkCatCol(c){return {'지번':['#e6f1fb','#0c447c'],'아파트':['#fcebeb','#a32d2d'],'양평':['#eaf3de','#3b6d11'],'야간':['#faeeda','#854f0b']}[c]||['#eef2f6','#37474f'];}
-function qbkDraft(){QBK.groups=[];try{var wkKey=(typeof findCurWeek==='function')?findCurWeek():SCHED_WK;var wk=AW[wkKey];if(!wk||!wk.g)return;wk.g.forEach(function(g){var grp={cat:'지번',lead:(g.l||[]).join(' / '),rt:[]};(g.rt||[]).forEach(function(ro){var d={};for(var di=0;di<wk.dt.length;di++){var w=wk.dl[di];var nm=qbkStrip((ro.d&&ro.d[wk.dt[di]])||'');if(w&&nm)d[w]=nm;}grp.rt.push({r:ro.r,d:d});});QBK.groups.push(grp);});}catch(e){}}
-function qbkLoad(){return new Promise(function(res){try{if(sbClient){sbClient.from('app_settings').select('value').eq('key','backup_sched').maybeSingle().then(function(r){var v=r&&r.data&&r.data.value;try{if(typeof v==='string')v=JSON.parse(v);}catch(_e){v=null;}if(v&&v.groups){QBK.cats=v.cats||QBK.cats;QBK.groups=v.groups;}else{qbkDraft();}QBK.loaded=true;res();}).catch(function(){qbkDraft();QBK.loaded=true;res();});return;}}catch(e){}qbkDraft();QBK.loaded=true;res();});}
+function qbkBuildRole(){QBK.role=QBK.role||{};try{var wkKey=(typeof findCurWeek==='function')?findCurWeek():SCHED_WK;var wk=AW[wkKey];if(wk&&wk.g)wk.g.forEach(function(g){(g.l||[]).forEach(function(ln){var m=String(ln).match(/^(.+?)\s*(팀장|조장)$/);if(m)QBK.role[m[1].trim()]=m[2];});});}catch(e){}try{if(typeof GCM!=='undefined')Object.keys(GCM).forEach(function(k){k.split('|').forEach(function(ln){var m=String(ln).match(/^(.+?)\s*(팀장|조장)$/);if(m)QBK.role[m[1].trim()]=m[2];});});}catch(e){}}
+function qbkRoleTag(nm){nm=String(nm||'');var role=QBK.role[nm];var lc=(nm&&typeof LCM!=='undefined'&&LCM[nm])?LCM[nm]:null;var isL=!!role||!!lc;return {isL:isL,star:(role==='팀장'),lc:lc};}
+function qbkDraft(){QBK.groups=[];try{var wkKey=(typeof findCurWeek==='function')?findCurWeek():SCHED_WK;var wk=AW[wkKey];if(!wk||!wk.g)return;var ovr=(typeof getSchedOvr==='function')?getSchedOvr():{};
+ wk.g.forEach(function(g){var lk=(g.l||[]).join('|');var grp={cat:'지번',l:(g.l||[]).slice(),rt:[]};
+  (g.rt||[]).forEach(function(ro){var perDay={},freq={};
+   for(var di=0;di<wk.dt.length;di++){var w=wk.dl[di];var dt=wk.dt[di];var raw=ovr[wkKey+'|||'+lk+'|||'+ro.r+'|||'+dt]||(ro.d&&ro.d[dt])||'';var nm=qbkStrip(raw);if(w&&nm){perDay[w]=nm;freq[nm]=(freq[nm]||0)+1;}}
+   var bonju='',mx=0;Object.keys(freq).forEach(function(k){if(freq[k]>mx){mx=freq[k];bonju=k;}});
+   grp.rt.push({r:ro.r,d:perDay,b:bonju});});
+  QBK.groups.push(grp);});}catch(e){}}
+function qbkNorm(){QBK.groups.forEach(function(g){if(!g.l)g.l=((g.lead||'').split(' / ').filter(Boolean));if(g.lead!==undefined)delete g.lead;if(!g.cat)g.cat='지번';});}
+function qbkLoad(){return new Promise(function(res){try{if(sbClient){sbClient.from('app_settings').select('value').eq('key','backup_sched').maybeSingle().then(function(r){var v=r&&r.data&&r.data.value;try{if(typeof v==='string')v=JSON.parse(v);}catch(_e){v=null;}if(v&&v.groups&&v.groups.length){QBK.cats=v.cats||QBK.cats;QBK.groups=v.groups;}else{qbkDraft();}QBK.loaded=true;res();}).catch(function(){qbkDraft();QBK.loaded=true;res();});return;}}catch(e){}qbkDraft();QBK.loaded=true;res();});}
 function qbkSave(){try{if(sbClient)sbClient.from('app_settings').upsert({key:'backup_sched',value:JSON.stringify({cats:QBK.cats,groups:QBK.groups})},{onConflict:'key'}).then(function(){}).catch(function(){});}catch(e){}}
-function qbkOpen(){var el=document.getElementById('qs-p4');if(!el)return;if(!QBK.loaded){el.innerHTML='<div style="padding:30px;text-align:center;color:#8a95a2">불러오는 중…</div>';qbkLoad().then(qbkRender);}else qbkRender();}
+function qbkOpen(){var el=document.getElementById('qs-p4');if(!el)return;qbkBuildRole();if(!QBK.loaded){el.innerHTML='<div style="padding:30px;text-align:center;color:#8a95a2">불러오는 중…</div>';qbkLoad().then(function(){qbkNorm();qbkRender();});}else{qbkNorm();qbkRender();}}
 function qbkBack(){QBK.edit=false;QBK.earnOpen=false;QBK.earnDrv=null;_qsRenderBackup();}
 function qbkBtnS(on){return 'cursor:pointer;border:1.5px solid '+(on?'#2f6fed':'#cdd7e5')+';background:'+(on?'#2f6fed':'#fff')+';color:'+(on?'#fff':'#6b7787')+';border-radius:10px;padding:6px 12px;font-size:12.5px;font-weight:800';}
 function qbkTab(v,l){var on=QBK.view===v;return '<button onclick="qbkView(\''+v+'\')" style="'+qbkBtnS(on)+'">'+l+'</button>';}
@@ -4118,19 +4127,22 @@ function qbkRender(){var el=document.getElementById('qs-p4');if(!el)return;
   +'<button onclick="qbkToggleEdit()" style="margin-left:auto;'+qbkBtnS(QBK.edit)+'">'+(QBK.edit?'✔ 완료':'✏ 수정')+'</button></div>';
  var earn=QBK.earnOpen?qbkEarnHtml():'';
  var main=(QBK.view==='bk')?qbkBkHtml():qbkFullHtml();
- el.innerHTML='<div style="padding:2px 2px 16px">'+tb+earn+main+'<div style="font-size:11px;color:#8a95a2;margin-top:12px;line-height:1.6">🔒 관리자 전용 · 일반 스케줄과 완전 분리됨. <b>수정</b> 모드에서 라우트 ▲▼로 조·카테고리 이동, ⚙로 조장 변경, 셀 클릭으로 기사 지정.</div></div>';}
+ el.innerHTML='<div style="padding:2px 2px 16px">'+tb+earn+main+'<div style="font-size:11px;color:#8a95a2;margin-top:12px;line-height:1.6">🔒 관리자 전용 · 일반 스케줄과 완전 분리됨. <b>수정</b> 모드에서만 라우트 ▲▼(조·카테고리 이동)·⚙(조장)·셀 편집이 나타납니다.</div></div>';}
+function qbkLeadDisp(L){return (L||[]).map(function(n){return (String(n).indexOf('팀장')>=0?'★ ':'')+n;}).join(' / ')||'(조장 미설정)';}
 function qbkFullHtml(){var h='';var move=QBK.edit;
  QBK.cats.forEach(function(c){var col=qbkCatCol(c);
   h+='<div style="display:inline-block;font-size:13px;font-weight:900;padding:5px 12px;border-radius:8px;margin:12px 0 7px;background:'+col[0]+';color:'+col[1]+'">'+c+'</div>';
-  QBK.groups.forEach(function(g,gi){if(g.cat!==c)return;
+  QBK.groups.forEach(function(g,gi){if(g.cat!==c)return;var L=g.l||[];var lk=L.join('|');
+   var gc=(typeof GCM!=='undefined'&&GCM[lk])?GCM[lk]:null;if(!gc){var b0=(L[0]||'').replace(/\s*(팀장|조장)$/,'').trim();if(b0&&typeof LCM!=='undefined'&&LCM[b0])gc=LCM[b0];}
+   var hbg=gc?gc.bg:col[0],htx=gc?gc.tx:col[1];
    h+='<div style="border:1px solid #e6ebf1;border-radius:12px;overflow:hidden;margin-bottom:10px">';
-   h+='<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;font-size:12.5px;font-weight:800;background:'+col[0]+';color:'+col[1]+'"><span>★ '+(g.lead||'(조장 미설정)')+'</span><span style="flex:1"></span>';
-   if(move)h+='<button onclick="qbkSetLead('+gi+')" style="font-size:11px;padding:3px 7px;border:none;border-radius:6px;background:rgba(0,0,0,.08);color:inherit;cursor:pointer">⚙ 조장</button><button onclick="qbkAddRoute('+gi+')" style="font-size:11px;padding:3px 7px;border:none;border-radius:6px;background:rgba(0,0,0,.08);color:inherit;cursor:pointer">＋라우트</button>';
-   h+='</div><div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11px;min-width:540px;width:100%"><thead><tr><th style="padding:5px 4px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:#f5f7fa;color:#6b7787;font-weight:800">라우트</th>'
-    +QBK_DAYS.map(function(w){var wc=(w==='일')?'#fdecec':(w==='토')?'#e6f1fb':'#eef4ea';var tc=(w==='일')?'#a32d2d':(w==='토')?'#0c447c':'#3b6d11';return '<th style="padding:5px 4px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:'+wc+';color:'+tc+';font-weight:800">'+w+'</th>';}).join('')+'</tr></thead><tbody>';
-   g.rt.forEach(function(ro,ri){var mv=move?('<span style="display:inline-flex;flex-direction:column;gap:1px;margin-right:4px;vertical-align:middle"><button onclick="qbkMoveRoute('+gi+','+ri+',-1)" style="font-size:9px;line-height:1;padding:1px 3px;border:1px solid #cdd7e5;background:#fff;border-radius:3px;cursor:pointer">▲</button><button onclick="qbkMoveRoute('+gi+','+ri+',1)" style="font-size:9px;line-height:1;padding:1px 3px;border:1px solid #cdd7e5;background:#fff;border-radius:3px;cursor:pointer">▼</button></span>'):'';
-    h+='<tr><td style="padding:5px 4px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:#f5f7fa;color:#1a1a1a;font-weight:800;text-align:center;white-space:nowrap">'+mv+ro.r+'</td>'
-     +QBK_DAYS.map(function(w){var nm=ro.d[w]||'';var isL=nm&&g.lead&&g.lead.indexOf(nm)>=0;var bg=isL?'#e6f1fb':(nm?'#fff':'#f5f7fa');var tc=isL?'#0c447c':(nm?'#1a1a1a':'#b4b2a9');return '<td style="padding:0;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:'+bg+';color:'+tc+';text-align:center;white-space:nowrap"><div style="min-height:26px;display:flex;align-items:center;justify-content:center;padding:5px 4px;cursor:'+(move?'pointer':'default')+'" '+(move?('onclick="qbkEditCell('+gi+','+ri+',\''+w+'\')"'):'')+'>'+(isL?'★':'')+(nm||'-')+'</div></td>';}).join('')+'</tr>';});
+   h+='<div style="display:flex;align-items:center;gap:6px;padding:8px 10px;font-size:12.5px;font-weight:800;background:'+hbg+';color:'+htx+'"><span>'+qbkLeadDisp(L)+'</span><span style="flex:1"></span>';
+   if(move)h+='<button onclick="qbkSetLead('+gi+')" style="font-size:11px;padding:3px 7px;border:none;border-radius:6px;background:rgba(255,255,255,.28);color:inherit;cursor:pointer">⚙ 조장</button><button onclick="qbkAddRoute('+gi+')" style="font-size:11px;padding:3px 7px;border:none;border-radius:6px;background:rgba(255,255,255,.28);color:inherit;cursor:pointer">＋라우트</button>';
+   h+='</div><div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11px;width:100%"><thead><tr><th style="padding:5px 6px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:#f5f7fa;color:#6b7787;font-weight:800;white-space:nowrap">라우트</th>'
+    +QBK_DAYS.map(function(w){var wc=(w==='일')?'#fdecec':(w==='토')?'#e6f1fb':'#eef4ea';var tc=(w==='일')?'#a32d2d':(w==='토')?'#0c447c':'#3b6d11';return '<th style="padding:5px 2px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:'+wc+';color:'+tc+';font-weight:800;min-width:44px">'+w+'</th>';}).join('')+'</tr></thead><tbody>';
+   g.rt.forEach(function(ro,ri){var mv=move?('<span style="display:inline-flex;flex-direction:column;gap:1px;margin-right:4px;vertical-align:middle"><button onclick="qbkMoveRoute('+gi+','+ri+',-1)" style="font-size:8px;line-height:1;padding:0 3px;border:1px solid #cdd7e5;background:#fff;border-radius:3px;cursor:pointer">▲</button><button onclick="qbkMoveRoute('+gi+','+ri+',1)" style="font-size:8px;line-height:1;padding:0 3px;border:1px solid #cdd7e5;background:#fff;border-radius:3px;cursor:pointer">▼</button></span>'):'';
+    h+='<tr><td style="padding:4px 6px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:#f5f7fa;color:#1a1a1a;font-weight:800;text-align:center;white-space:nowrap;width:1%">'+mv+ro.r+'</td>'
+     +QBK_DAYS.map(function(w){var nm=ro.d[w]||'';var t=qbkRoleTag(nm);var bg=t.lc?t.lc.bg:(nm?'#fff':'#f7f9fb');var tc=t.lc?t.lc.tx:(nm?'#1a1a1a':'#c9ced6');return '<td style="padding:0;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:'+bg+';color:'+tc+';text-align:center;white-space:nowrap"><div style="min-height:24px;display:flex;align-items:center;justify-content:center;padding:4px 5px;cursor:'+(move?'pointer':'default')+'" '+(move?('onclick="qbkEditCell('+gi+','+ri+',\''+w+'\')"'):'')+'>'+(t.star?'★':'')+(nm||'-')+'</div></td>';}).join('')+'</tr>';});
    h+='</tbody></table></div></div>';
   });
   if(move)h+='<button onclick="qbkAddGroup(\''+c+'\')" style="'+qbkBtnS(false)+';margin-bottom:6px">＋ '+c+' 조 추가</button>';
@@ -4139,10 +4151,10 @@ function qbkFullHtml(){var h='';var move=QBK.edit;
 function qbkRoster(){var m={};QBK.groups.forEach(function(g){g.rt.forEach(function(ro){QBK_DAYS.forEach(function(w){var nm=ro.d[w];if(nm){m[nm]=m[nm]||{};m[nm][w]=m[nm][w]||[];m[nm][w].push(ro.r);}});});});return m;}
 function qbkBkHtml(){var ros=qbkRoster();var names=Object.keys(ros).sort(function(a,b){return a.localeCompare(b,'ko');});if(QBK.earnDrv)names=names.filter(function(n){return n===QBK.earnDrv;});
  var h=(QBK.earnDrv?'<div style="font-size:12px;color:#2f6fed;font-weight:800;margin:0 0 6px">👤 '+QBK.earnDrv+' 라우트만 보기</div>':'');
- h+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11.5px;min-width:600px;width:100%"><thead><tr><th style="padding:7px 10px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:#f5f7fa;color:#6b7787;font-weight:800;text-align:left">기사</th>'
-  +QBK_DAYS.map(function(w){var wc=(w==='일')?'#fdecec':(w==='토')?'#e6f1fb':'#eef4ea';var tc=(w==='일')?'#a32d2d':(w==='토')?'#0c447c':'#3b6d11';return '<th style="padding:7px 4px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:'+wc+';color:'+tc+';font-weight:800">'+w+'</th>';}).join('')+'</tr></thead><tbody>';
+ h+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11.5px;width:100%"><thead><tr><th style="padding:7px 10px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:#f5f7fa;color:#6b7787;font-weight:800;text-align:left;white-space:nowrap">기사</th>'
+  +QBK_DAYS.map(function(w){var wc=(w==='일')?'#fdecec':(w==='토')?'#e6f1fb':'#eef4ea';var tc=(w==='일')?'#a32d2d':(w==='토')?'#0c447c':'#3b6d11';return '<th style="padding:7px 2px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:'+wc+';color:'+tc+';font-weight:800;min-width:52px">'+w+'</th>';}).join('')+'</tr></thead><tbody>';
  if(!names.length)h+='<tr><td colspan="8" style="padding:16px;text-align:center;color:#8a95a2">백업 기사 없음</td></tr>';
- names.forEach(function(n){h+='<tr><td style="padding:7px 10px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;font-weight:800;white-space:nowrap">'+n+'</td>'+QBK_DAYS.map(function(w){var rs=(ros[n][w]||[]);var v=rs.join(', ');return '<td style="padding:7px 4px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;text-align:center;white-space:nowrap;'+(v?'':'background:#f5f7fa;color:#b4b2a9')+'">'+(v||'휴무')+'</td>';}).join('')+'</tr>';});
+ names.forEach(function(n){var t=qbkRoleTag(n);h+='<tr><td style="padding:7px 10px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;font-weight:800;white-space:nowrap;'+(t.lc?'background:'+t.lc.bg+';color:'+t.lc.tx:'')+'">'+(t.star?'★':'')+n+'</td>'+QBK_DAYS.map(function(w){var rs=(ros[n][w]||[]);var v=rs.join(', ');return '<td style="padding:7px 4px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;text-align:center;white-space:nowrap;'+(v?'':'background:#f5f7fa;color:#c9ced6')+'">'+(v||'휴무')+'</td>';}).join('')+'</tr>';});
  return h+'</tbody></table></div>';}
 function qbkWeekDays(dr){var n=0;QBK_DAYS.forEach(function(w){if((dr[w]||[]).length)n++;});return n;}
 function qbkCalc(dr,mode){var mons=(mode==='avg')?_qsBkMonths():[QSBK.ym];var tD=0,tR=0,tRev=0,tDays=0;
@@ -4158,19 +4170,20 @@ function qbkEarnHtml(){if(!QSBK.ym){var ms=_qsBkMonths();QSBK.ym=(ms.indexOf(QSK
  var lbl=(QSBK.ym?_qsBkMonthLabel(QSBK.ym):'')+' 기준';
  return '<div style="border:1.5px solid #bcd3f5;border-radius:12px;padding:12px;margin-bottom:12px;background:#f0f6ff">'
   +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span style="font-size:12.5px;font-weight:900;color:#1565c0">💰 백업 기사 예상 수익 <span style="font-size:10.5px;font-weight:700;color:#7089a8">· '+lbl+'</span></span><select onchange="qbkEarnSel(this.value)" style="margin-left:auto;font-size:12px;padding:5px 8px;border:1px solid #cdd7e5;border-radius:8px">'+opts+'</select></div>'
-  +'<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11.5px;min-width:480px;width:100%;background:#fff;border-radius:8px"><thead><tr>'
-  +['기사','주일수','예상수량','예상금액','평균금액','월일수'].map(function(t,i){return '<th style="padding:6px;background:#2f6fed;color:#fff;font-weight:800;text-align:'+(i===0?'left':'right')+'">'+t+'</th>';}).join('')
+  +'<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11.5px;width:100%;background:#fff;border-radius:8px"><thead><tr>'
+  +['기사','주일수','예상수량','예상금액','평균금액','월일수'].map(function(t,i){return '<th style="padding:6px;background:#2f6fed;color:#fff;font-weight:800;text-align:'+(i===0?'left':'right')+';white-space:nowrap">'+t+'</th>';}).join('')
   +'</tr></thead><tbody>'+(rows||'<tr><td colspan="6" style="padding:14px;text-align:center;color:#8a95a2">데이터 없음</td></tr>')+'</tbody></table></div></div>';}
 function qbkEarnSel(v){QBK.earnDrv=(v==='__all')?null:v;if(QBK.earnDrv)QBK.view='bk';qbkRender();}
 function qbkEditCell(gi,ri,w){var cur=QBK.groups[gi].rt[ri].d[w]||'';var v=prompt('기사 이름 ('+QBK.groups[gi].rt[ri].r+' · '+w+'요일) — 비우면 휴무',cur);if(v===null)return;v=v.trim();if(v)QBK.groups[gi].rt[ri].d[w]=v;else delete QBK.groups[gi].rt[ri].d[w];qbkSave();qbkRender();}
-function qbkSetLead(gi){var v=prompt('조장/팀장 (예: 김동선 팀장 · 김연이 조장)',QBK.groups[gi].lead||'');if(v===null)return;QBK.groups[gi].lead=v.trim();qbkSave();qbkRender();}
+function qbkFmtLeads(v){return String(v||'').split(/[,/·]/).map(function(x){return x.trim();}).filter(Boolean).map(function(b){var role=QBK.role[b]||'조장';return b+' '+role;});}
+function qbkSetLead(gi){var L=QBK.groups[gi].l||[];var cur=L.map(function(n){return n.replace(/\s*(팀장|조장)$/,'').trim();}).join(', ');var v=prompt('조장/팀장 이름 (쉼표로 여러 명) — 직급은 기사정보로 자동 적용',cur);if(v===null)return;QBK.groups[gi].l=qbkFmtLeads(v);qbkSave();qbkRender();}
 function qbkVisOrder(){var o=[];QBK.cats.forEach(function(c){QBK.groups.forEach(function(g,i){if(g.cat===c)o.push(i);});});return o;}
 function qbkMoveRoute(gi,ri,dir){var g=QBK.groups[gi];
  if(dir<0){if(ri>0){var t=g.rt[ri];g.rt[ri]=g.rt[ri-1];g.rt[ri-1]=t;}else{var vo=qbkVisOrder();var p=vo.indexOf(gi);if(p>0)QBK.groups[vo[p-1]].rt.push(g.rt.splice(ri,1)[0]);}}
  else{if(ri<g.rt.length-1){var u=g.rt[ri];g.rt[ri]=g.rt[ri+1];g.rt[ri+1]=u;}else{var vo2=qbkVisOrder();var p2=vo2.indexOf(gi);if(p2<vo2.length-1)QBK.groups[vo2[p2+1]].rt.unshift(g.rt.splice(ri,1)[0]);}}
  qbkSave();qbkRender();}
 function qbkAddRoute(gi){var r=prompt('추가할 라우트명 (예: 210AB)');if(!r||!r.trim())return;QBK.groups[gi].rt.push({r:r.trim(),d:{}});qbkSave();qbkRender();}
-function qbkAddGroup(c){var nm=prompt(c+' 새 조의 조장/팀장 (예: 홍길동 조장)');if(nm===null)return;var last=-1;QBK.groups.forEach(function(g,i){if(g.cat===c)last=i;});QBK.groups.splice(last+1,0,{cat:c,lead:(nm||'').trim(),rt:[]});qbkSave();qbkRender();}
+function qbkAddGroup(c){var nm=prompt(c+' 새 조 조장/팀장 이름 (쉼표 구분)');if(nm===null)return;var last=-1;QBK.groups.forEach(function(g,i){if(g.cat===c)last=i;});QBK.groups.splice(last+1,0,{cat:c,l:qbkFmtLeads(nm),rt:[]});qbkSave();qbkRender();}
 
 function _qsRenderBackup(){
   var el=document.getElementById('qs-p4');if(!el)return;
