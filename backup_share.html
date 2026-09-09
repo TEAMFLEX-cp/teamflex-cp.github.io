@@ -180,10 +180,10 @@ function calHtml(){
   }
   h+='</div></div>';
   h+='<div style="margin:14px 0"><button class="btn b1" onclick="startRegister()">＋ 백업 요청 등록</button></div>';
-  if(MYCOMP==='teamflex'){var tf=reqs.filter(function(r){return r.mode==='현장'&&r.date===TODAY&&r.status==='open';});
+  var tf=reqs.filter(function(r){return r.mode==='현장'&&r.date===TODAY&&r.status==='open';});
   h+='<div style="font-size:13px;font-weight:900;color:#0d3b66;margin:6px 2px 9px">🔥 오늘 현장 백업 요청 <span class="badge b-orange">'+tf.length+'</span></div>';
   if(!tf.length)h+='<div class="note">없음</div>';
-  tf.forEach(function(r){h+=reqCard(r);});}
+  tf.forEach(function(r){h+=reqCard(r);});
   return h;
 }
 function bpMonthNav(delta){
@@ -302,7 +302,7 @@ function listHtml(which){var arr=which==='mine'?reqs.filter(function(r){return r
   return h;
 }
 // ── 요청 등록 ──
-function startRegister(){draft={mode:(MYCOMP==='teamflex'?'현장':'특정일'),aptType:'아파트',routes:[],_rtOpen:false,routeInfo:'',mapImg:'',estQty:'',extra:0,date:TODAY,settle:'정산일',acctShare:false,collab:false,collabExtra:1};sub='register';pushHist();render();}
+function startRegister(){draft={mode:'현장',aptType:'아파트',routes:[],_rtOpen:false,routeInfo:'',mapImg:'',estQty:'',extra:0,date:TODAY,settle:'정산일',acctShare:false,collab:false,collabExtra:1};sub='register';pushHist();render();}
 function dSet(k,v){draft[k]=v;render();}
 function dExtraStep(d){draft.extra=Math.max(0,(draft.extra||0)+d);render();}
 function dCollabStep(d){draft.collabExtra=Math.max(1,(draft.collabExtra||1)+d);render();}
@@ -322,7 +322,7 @@ function calcInner(){var u=0,h='';
 }
 function registerHtml(){
   var h='<div class="row"><span onclick="sub=null;go(\'cal\')" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">백업 요청 등록</b></div>';
-  h+='<label class="f">유형</label><div class="seg">'+(MYCOMP==='teamflex'?('<div class="'+(draft.mode==='현장'?'on':'')+'" onclick="dSet(\'mode\',\'현장\')">현장</div>'):'')+'<div class="'+(draft.mode==='특정일'?'on':'')+'" onclick="dSet(\'mode\',\'특정일\')">특정일</div><div class="'+(draft.mode==='개인'?'on':'')+'" onclick="dSet(\'mode\',\'개인\')">개인<span class="hl">원단가</span></div></div>';
+  h+='<label class="f">유형</label><div class="seg"><div class="'+(draft.mode==='현장'?'on':'')+'" onclick="dSet(\'mode\',\'현장\')">현장</div><div class="'+(draft.mode==='특정일'?'on':'')+'" onclick="dSet(\'mode\',\'특정일\')">특정일</div><div class="'+(draft.mode==='개인'?'on':'')+'" onclick="dSet(\'mode\',\'개인\')">개인<span class="hl">원단가</span></div></div>';
   if(draft.mode==='특정일'){var rm=RATE['특정일'];var avg=Math.round((rm['아파트']+rm['지번'])/2);
     h+='<label class="f">아파트 / 지번 유형</label><div class="tseg"><div class="t-apt '+(draft.aptType==='아파트'?'on':'')+'" onclick="dSet(\'aptType\',\'아파트\')">아파트 '+rm['아파트']+'</div><div class="t-jib '+(draft.aptType==='지번'?'on':'')+'" onclick="dSet(\'aptType\',\'지번\')">지번 '+rm['지번']+'</div><div class="t-both '+(draft.aptType==='아파트+지번'?'on':'')+'" onclick="dSet(\'aptType\',\'아파트+지번\')">아파트+지번 '+avg+'</div></div>';
     h+='<div class="note" style="margin-top:7px;margin-bottom:0">ℹ️ <b>아파트+지번</b>은 <b>평균단가('+avg+'원)</b>로 측정됩니다.</div>';
@@ -518,7 +518,6 @@ async function loadData(){
     sb.from('bp_slots').select('*').in('company_id',APPROVED_IDS).order('date',{ascending:true})
   ]);
   reqs=((_d[0]&&_d[0].data)||[]).map(dbToReq);
-  reqs=reqs.filter(function(r){return r.mode!=='현장'||(MYCOMP==='teamflex'&&(!r.company_id||r.company_id==='teamflex'));});
   slots=((_d[1]&&_d[1].data)||[]).map(dbToSlot);
 }
 function pendingHtml(c){return '<div style="padding:34px 16px;text-align:center"><div style="font-size:46px">⏳</div><div style="font-size:17px;font-weight:900;color:#123a6b;margin-top:12px">백업 공유 · 승인 대기</div><div class="note" style="margin-top:16px">'+(c?('<b>'+(c.name||MYCOMPNAME)+'</b> 업체는 아직 <b>승인</b>되지 않았습니다.'):('<b>'+MYCOMPNAME+'</b> 업체가 허브에 <b>참여 요청</b>되었습니다.'))+'<br>팀플렉스(오너) 관리자의 승인 후 이용할 수 있습니다.</div></div>';}
