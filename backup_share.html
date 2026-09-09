@@ -103,7 +103,8 @@ var DRIVERS=[];
 var HYEONADD=200; var RATE={'특정일':{'아파트':950,'지번':1100}};
 function aptUnit(mode,t){var m=RATE[mode]||RATE['특정일'];if(t==='아파트+지번')return Math.round((m['아파트']+m['지번'])/2);return m[t]||m['아파트'];}
 var APTP={'아파트':950,'지번':1100,'아파트+지번':1025}, VAT=0.1, FIELD=200;
-var SB_URL='https://czpinyfirgvkhdfnvkls.supabase.co', SB_KEY='sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
+var SB_URL='https://yfqjznfuvudliazfumvp.supabase.co', SB_KEY='sb_publishable_sbSUS59jAuWUMTQJ-S8blA_tWMi6B5u';
+var PUSH_URL='https://czpinyfirgvkhdfnvkls.supabase.co', PUSH_KEY='sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 var sb=supabase.createClient(SB_URL,SB_KEY);
 var _q=new URLSearchParams(location.search);
 var ME=decodeURIComponent(_q.get('name')||'정원준');
@@ -491,9 +492,9 @@ function reqToDb(r){return {company_id:r.company_id||MYCOMP,requester:r.requeste
 function reload(){loadData().then(function(){render();});}
 var PUSHHOURS=null; var BPNOTIF={on:true,gongwal:true,teamjang:true,jojang:true,gisa:true};
 function bpQuiet(){try{var qs,qe;if(PUSHHOURS&&PUSHHOURS.start&&PUSHHOURS.end){qs=parseInt(String(PUSHHOURS.end).slice(0,2),10);qe=parseInt(String(PUSHHOURS.start).slice(0,2),10);}else{qs=22;qe=7;}if(qs===qe)return false;var d=new Date(Date.now()+9*3600000);var h=d.getUTCHours();return (qs>qe)?(h>=qs||h<qe):(h>=qs&&h<qe);}catch(_e){return false;}}
-function bpPush(name,title,body){if(!name)return;if(!bpNotifOn())return;if(bpQuiet()&&name!=='문지영')return;try{fetch(SB_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({title:title,body:body,target_name:name,data:{tag:'backup'}})}).catch(function(){});}catch(_e){}}
+function bpPush(name,title,body){if(!name)return;if(!bpNotifOn())return;if(bpQuiet()&&name!=='문지영')return;try{fetch(PUSH_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':PUSH_KEY},body:JSON.stringify({title:title,body:body,target_name:name,data:{tag:'backup'}})}).catch(function(){});}catch(_e){}}
 function bpPushMany(names,title,body){(names||[]).forEach(function(n){bpPush(n,title,body);});}
-function bpBroadcast(title,body){if(!bpNotifOn())return;if(bpQuiet())return;try{fetch(SB_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({title:title,body:body,target_roles:bpRoles(),data:{tag:'backup'}})}).catch(function(){});}catch(_e){}}
+function bpBroadcast(title,body){if(!bpNotifOn())return;if(bpQuiet())return;try{fetch(PUSH_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':PUSH_KEY},body:JSON.stringify({title:title,body:body,target_roles:bpRoles(),data:{tag:'backup'}})}).catch(function(){});}catch(_e){}}
 function cancelSlot(id){if(!confirm('지원 가능 등록을 취소할까요?'))return;sb.from('bp_slots').delete().eq('id',id).then(function(){reload();});toast('🗑 지원 취소됨');}
 function cancelReq(id){if(!confirm('백업 요청을 취소할까요?'))return;sb.from('bp_requests').delete().eq('id',id).then(function(){reload();});sub=null;go('mine');toast('🗑 요청 취소됨');}
 function startEditReq(id){var r=reqs.find(function(x){return x.id===id;});if(!r)return;draft={_editId:id,mode:r.mode,aptType:r.aptType||'아파트',routes:(r.routes||[]).slice(),_rtOpen:false,routeInfo:r.routeInfo||'',mapImg:r.mapImg||'',estQty:r.estQty||'',extra:r.extra||0,date:r.date,settle:r.settle||'정산일',acctShare:!!r.acctShare,collab:!!r.collab,collabExtra:Math.max(1,(r.needCount||1)-1)};sub='register';render();}
