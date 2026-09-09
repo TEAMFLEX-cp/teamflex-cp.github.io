@@ -180,10 +180,10 @@ function calHtml(){
   }
   h+='</div></div>';
   h+='<div style="margin:14px 0"><button class="btn b1" onclick="startRegister()">＋ 백업 요청 등록</button></div>';
-  var tf=reqs.filter(function(r){return r.mode==='현장'&&r.date===TODAY&&r.status==='open';});
+  if(MYCOMP==='teamflex'){var tf=reqs.filter(function(r){return r.mode==='현장'&&r.date===TODAY&&r.status==='open';});
   h+='<div style="font-size:13px;font-weight:900;color:#0d3b66;margin:6px 2px 9px">🔥 오늘 현장 백업 요청 <span class="badge b-orange">'+tf.length+'</span></div>';
   if(!tf.length)h+='<div class="note">없음</div>';
-  tf.forEach(function(r){h+=reqCard(r);});
+  tf.forEach(function(r){h+=reqCard(r);});}
   return h;
 }
 function bpMonthNav(delta){
@@ -267,14 +267,14 @@ function bpSettleData(scope){var inc={},exp={},tin=0,tout=0,ninc=0,nexp=0,thisYM
     var u=r.negUnit||reqUnit(r),q=r.finalQty||0,total=u*q;
     var sups=(r.supporters||[]).filter(function(s){return s.state==='picked';});if(!sups.length)sups=r.supporters||[];
     var share=sups.length?Math.round(total/sups.length):total;
-    sups.forEach(function(s){var nm=(s.name||'').split('(')[0].trim();inc[nm]=(inc[nm]||0)+share;tin+=share;ninc++;});
-    if(r.requester){exp[r.requester]=(exp[r.requester]||0)+total;tout+=total;nexp++;}
+    sups.forEach(function(s){if(s.company&&s.company!==MYCOMP)return;var nm=(s.name||'').split('(')[0].trim();inc[nm]=(inc[nm]||0)+share;tin+=share;ninc++;});
+    if(r.requester&&(!r.company_id||r.company_id===MYCOMP)){exp[r.requester]=(exp[r.requester]||0)+total;tout+=total;nexp++;}
   });
   return {inc:inc,exp:exp,tin:tin,tout:tout,ninc:ninc,nexp:nexp};
 }
 function settleHtml(){var D=bpSettleData(settleScope);
   var lbl={this:'이번 달',prev:'지난 달',all:'전체'}[settleScope];
-  var h='<div class="note">📊 <b>관리자 전용</b> · 전체 인원의 백업 <b>수익(지원)·지출(요청)</b> 합계입니다. <b>완료·정산일 정산</b> 건만 집계(개인 현금정산 제외). 여기 <b>이번 달</b> 건이 정산 프로그램 "어플에서 가져오기"로 연결됩니다.</div>';
+  var h='<div class="note">📊 <b>관리자 전용</b> · <b>우리 회사</b> 인원의 백업 <b>수익(지원)·지출(요청)</b> 합계입니다. (교차 매칭은 우리 회사 쪽만 표시) <b>완료·정산일 정산</b> 건만 집계(개인 현금정산 제외). 여기 <b>이번 달</b> 건이 정산 프로그램 "어플에서 가져오기"로 연결됩니다.</div>';
   h+='<div class="seg">'+['this','prev','all'].map(function(k){var l={this:'이번 달',prev:'지난 달',all:'전체'}[k];return '<span class="fchip '+(settleScope===k?'on':'')+'" onclick="settleScope=\''+k+'\';render()">'+l+'</span>';}).join('')+'</div>';
   h+='<div class="row" style="gap:10px;margin-bottom:12px;flex-wrap:nowrap">'
     +'<div class="card" style="flex:1;margin:0;background:linear-gradient(135deg,#12a374,#0b6b4a);color:#fff"><div style="font-size:11px;opacity:.92;font-weight:800">전체 총 수익 💰</div><div style="font-size:21px;font-weight:900">'+money(D.tin)+'</div><div style="font-size:10.5px;opacity:.9">백업지원 · '+D.ninc+'건</div></div>'
@@ -302,7 +302,7 @@ function listHtml(which){var arr=which==='mine'?reqs.filter(function(r){return r
   return h;
 }
 // ── 요청 등록 ──
-function startRegister(){draft={mode:'현장',aptType:'아파트',routes:[],_rtOpen:false,routeInfo:'',mapImg:'',estQty:'',extra:0,date:TODAY,settle:'정산일',acctShare:false,collab:false,collabExtra:1};sub='register';pushHist();render();}
+function startRegister(){draft={mode:(MYCOMP==='teamflex'?'현장':'특정일'),aptType:'아파트',routes:[],_rtOpen:false,routeInfo:'',mapImg:'',estQty:'',extra:0,date:TODAY,settle:'정산일',acctShare:false,collab:false,collabExtra:1};sub='register';pushHist();render();}
 function dSet(k,v){draft[k]=v;render();}
 function dExtraStep(d){draft.extra=Math.max(0,(draft.extra||0)+d);render();}
 function dCollabStep(d){draft.collabExtra=Math.max(1,(draft.collabExtra||1)+d);render();}
@@ -322,7 +322,7 @@ function calcInner(){var u=0,h='';
 }
 function registerHtml(){
   var h='<div class="row"><span onclick="sub=null;go(\'cal\')" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">백업 요청 등록</b></div>';
-  h+='<label class="f">유형</label><div class="seg"><div class="'+(draft.mode==='현장'?'on':'')+'" onclick="dSet(\'mode\',\'현장\')">현장</div><div class="'+(draft.mode==='특정일'?'on':'')+'" onclick="dSet(\'mode\',\'특정일\')">특정일</div><div class="'+(draft.mode==='개인'?'on':'')+'" onclick="dSet(\'mode\',\'개인\')">개인<span class="hl">원단가</span></div></div>';
+  h+='<label class="f">유형</label><div class="seg">'+(MYCOMP==='teamflex'?('<div class="'+(draft.mode==='현장'?'on':'')+'" onclick="dSet(\'mode\',\'현장\')">현장</div>'):'')+'<div class="'+(draft.mode==='특정일'?'on':'')+'" onclick="dSet(\'mode\',\'특정일\')">특정일</div><div class="'+(draft.mode==='개인'?'on':'')+'" onclick="dSet(\'mode\',\'개인\')">개인<span class="hl">원단가</span></div></div>';
   if(draft.mode==='특정일'){var rm=RATE['특정일'];var avg=Math.round((rm['아파트']+rm['지번'])/2);
     h+='<label class="f">아파트 / 지번 유형</label><div class="tseg"><div class="t-apt '+(draft.aptType==='아파트'?'on':'')+'" onclick="dSet(\'aptType\',\'아파트\')">아파트 '+rm['아파트']+'</div><div class="t-jib '+(draft.aptType==='지번'?'on':'')+'" onclick="dSet(\'aptType\',\'지번\')">지번 '+rm['지번']+'</div><div class="t-both '+(draft.aptType==='아파트+지번'?'on':'')+'" onclick="dSet(\'aptType\',\'아파트+지번\')">아파트+지번 '+avg+'</div></div>';
     h+='<div class="note" style="margin-top:7px;margin-bottom:0">ℹ️ <b>아파트+지번</b>은 <b>평균단가('+avg+'원)</b>로 측정됩니다.</div>';
@@ -368,6 +368,7 @@ function submitSupReg(){if(!draft.who){toast('요청 기사를 선택하세요')
 // ── 상세 ──
 function reloadCompanies(){sb.from('bp_companies').select('*').order('requested_at',{ascending:true}).then(function(r){COMPANIES=(r.data||[]);render();});}
 function toggleApprove(id,cur){sb.from('bp_companies').update({approved:!cur,approved_at:new Date().toISOString(),approved_by:ME}).eq('id',id).then(function(res){if(res&&res.error){toast('저장오류');return;}toast(!cur?'✅ 승인 완료':'✖ 승인 해제');reloadCompanies();});}
+function toggleActive(id,cur){sb.from('bp_companies').update({active:!cur}).eq('id',id).then(function(res){if(res&&res.error){toast('저장오류');return;}toast(!cur?'🟢 활성화 · 앱 네비 표시':'⚪ 비활성화 · 앱 네비 숨김');reloadCompanies();});}
 function compAdminHtml(){
   var h='<div class="row"><span onclick="sub=\'admin\';render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">🏢 업체 승인 관리</b></div>';
   h+='<div class="note">허브에 참여 요청한 업체를 승인/해제합니다. <b>승인된 업체만</b> 백업 공유가 열립니다. (팀플렉스 = 오너)</div>';
@@ -375,9 +376,9 @@ function compAdminHtml(){
   if(wait.length)h+='<div class="note" style="background:#fff6e0;color:#8a5a00">⏳ 승인 대기 '+wait.length+'개 업체가 있습니다.</div>';
   if(!COMPANIES.length)h+='<div class="note">참여 업체 없음</div>';
   COMPANIES.forEach(function(c){
-    var badge=c.is_owner?'<span class="badge b-blue">오너</span>':(c.approved?'<span class="badge b-green">✅ 승인됨</span>':'<span class="badge b-amber">⏳ 대기</span>');
+    var badge=c.is_owner?'<span class="badge b-blue">오너</span>':(c.approved?('<span class="badge b-green">✅ 승인됨</span>'+(c.active?'<span class="badge b-blue">🟢 활성</span>':'<span class="badge b-gray">⚪ 비활성</span>')):'<span class="badge b-amber">⏳ 대기</span>');
     h+='<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="rname" style="font-size:16px">'+c.name+'</div><div class="meta">id: '+c.id+(c.contact?(' · 담당 '+c.contact):'')+'</div></div>'+badge+'</div>';
-    if(!c.is_owner)h+='<div style="margin-top:9px"><button class="btn '+(c.approved?'b3':'b2')+'" onclick="toggleApprove(\''+c.id+'\','+(c.approved?'true':'false')+')">'+(c.approved?'✖ 승인 해제':'✅ 승인하기')+'</button></div>';
+    if(!c.is_owner){h+='<div style="margin-top:9px;display:flex;gap:8px;flex-wrap:wrap">';h+='<button class="btn '+(c.approved?'b3':'b2')+'" onclick="toggleApprove(\''+c.id+'\','+(c.approved?'true':'false')+')">'+(c.approved?'✖ 승인 해제(대기로)':'✅ 승인하기')+'</button>';if(c.approved)h+='<button class="btn '+(c.active?'b3':'b2')+'" onclick="toggleActive(\''+c.id+'\','+(c.active?'true':'false')+')">'+(c.active?'⚪ 비활성화(네비 숨김)':'🟢 활성화(네비 표시)')+'</button>';h+='</div>';}
     h+='</div>';
   });
   return h;
@@ -390,7 +391,8 @@ function bpExportSettle(){
     var p=(r.date||'').split('-');var mmdd=p.length>=3?(p[1]+'/'+p[2]):(r.date||'');
     var sups=(r.supporters||[]).filter(function(s){return s.state==='picked';});if(!sups.length)sups=r.supporters||[];
     var q=sups.length?Math.round((r.finalQty||0)/sups.length):(r.finalQty||0);
-    sups.forEach(function(s){rows.push([mmdd, r.requester, (s.name||'').split('(')[0].trim(), q, r.negUnit||reqUnit(r)]);cnt++;});
+    var reqMine=(!r.company_id||r.company_id===MYCOMP);
+    sups.forEach(function(s){var supMine=(!s.company||s.company===MYCOMP);if(!reqMine&&!supMine)return;rows.push([mmdd, r.requester, (s.name||'').split('(')[0].trim(), q, r.negUnit||reqUnit(r)]);cnt++;});
   });
   if(!cnt){toast('내보낼 정산일 완료건이 없습니다 (이번 달)');return;}
   var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:8},{wch:12},{wch:12},{wch:8},{wch:10}];
@@ -516,6 +518,7 @@ async function loadData(){
     sb.from('bp_slots').select('*').in('company_id',APPROVED_IDS).order('date',{ascending:true})
   ]);
   reqs=((_d[0]&&_d[0].data)||[]).map(dbToReq);
+  reqs=reqs.filter(function(r){return r.mode!=='현장'||(MYCOMP==='teamflex'&&(!r.company_id||r.company_id==='teamflex'));});
   slots=((_d[1]&&_d[1].data)||[]).map(dbToSlot);
 }
 function pendingHtml(c){return '<div style="padding:34px 16px;text-align:center"><div style="font-size:46px">⏳</div><div style="font-size:17px;font-weight:900;color:#123a6b;margin-top:12px">백업 공유 · 승인 대기</div><div class="note" style="margin-top:16px">'+(c?('<b>'+(c.name||MYCOMPNAME)+'</b> 업체는 아직 <b>승인</b>되지 않았습니다.'):('<b>'+MYCOMPNAME+'</b> 업체가 허브에 <b>참여 요청</b>되었습니다.'))+'<br>팀플렉스(오너) 관리자의 승인 후 이용할 수 있습니다.</div></div>';}
