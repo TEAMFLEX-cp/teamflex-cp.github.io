@@ -4098,6 +4098,9 @@ function _qsBkEff(unit){var SUB=QSD.subsidy||10;return (QSBK.sub?unit:(unit-SUB)
 /* ── 백업 기사 스케줄 관리 (관리자 전용 · 일반 스케줄과 완전 분리) ───────────── */
 var QBK={loaded:false,cats:['지번','아파트','양평','야간'],groups:[],view:'full',edit:false,earnOpen:false,earnDrv:null,role:{}};
 var QBK_DAYS=['일','월','화','수','목','금','토'];
+var QBK_FIXED={'104CD':'정원준','211AB':'오창훈','301AD':'류준선','112CD':'황형희','304AB':'김태동','113D/115D':'이성국','302AB':'이철희','302CD':'김재현','304CD':'이경용','301BC':'김민기','316B':'김병진','115BC':'정승원','206BC':'조명근','209AB':'윤동호','316AD':'서민지','316C':'황윤근','111CD':'김근형','113ABC':'홍순자','803B/805B':'한선준','311CD':'박성진','312CD':'송우석','112AB':'이진희','114D/115A':'김현정','311AB':'강승오','808CD':'이승석'};
+function qbkFixedFor(r){r=String(r||'').replace(/\s*\(.*\)\s*$/,'').trim();return QBK_FIXED[r]||'';}
+function qbkFillFixed(){if(!confirm('모든 라우트를 고정기사로 일~토 채웁니다.\n(기존 배정 덮어씀) 진행할까요?'))return;QBK.groups.forEach(function(g){g.rt.forEach(function(ro){var fx=qbkFixedFor(ro.r);if(fx){var d={};QBK_DAYS.forEach(function(w){d[w]=fx;});ro.d=d;ro.b=fx;}});});qbkSave();qbkRender();}
 function qbkStrip(n){try{return (typeof splitDriverSuffix==='function')?splitDriverSuffix(n).base:String(n||'').split(' ')[0];}catch(e){return String(n||'').split(' ')[0];}}
 function qbkCatCol(c){return {'지번':['#e6f1fb','#0c447c'],'아파트':['#fcebeb','#a32d2d'],'양평':['#eaf3de','#3b6d11'],'야간':['#faeeda','#854f0b']}[c]||['#eef2f6','#37474f'];}
 function qbkBuildRole(){QBK.role=QBK.role||{};try{var wkKey=(typeof findCurWeek==='function')?findCurWeek():SCHED_WK;var wk=AW[wkKey];if(wk&&wk.g)wk.g.forEach(function(g){(g.l||[]).forEach(function(ln){var m=String(ln).match(/^(.+?)\s*(팀장|조장)$/);if(m)QBK.role[m[1].trim()]=m[2];});});}catch(e){}try{if(typeof GCM!=='undefined')Object.keys(GCM).forEach(function(k){k.split('|').forEach(function(ln){var m=String(ln).match(/^(.+?)\s*(팀장|조장)$/);if(m)QBK.role[m[1].trim()]=m[2];});});}catch(e){}}
@@ -4107,6 +4110,7 @@ function qbkDraft(){QBK.groups=[];try{var wkKey=(typeof findCurWeek==='function'
   (g.rt||[]).forEach(function(ro){var perDay={},freq={};
    for(var di=0;di<wk.dt.length;di++){var w=wk.dl[di];var dt=wk.dt[di];var raw=ovr[wkKey+'|||'+lk+'|||'+ro.r+'|||'+dt]||(ro.d&&ro.d[dt])||'';var nm=qbkStrip(raw);if(w&&nm){perDay[w]=nm;freq[nm]=(freq[nm]||0)+1;}}
    var bonju='',mx=0;Object.keys(freq).forEach(function(k){if(freq[k]>mx){mx=freq[k];bonju=k;}});
+   var fx=qbkFixedFor(ro.r);if(fx){perDay={};QBK_DAYS.forEach(function(w){perDay[w]=fx;});bonju=fx;}
    grp.rt.push({r:ro.r,d:perDay,b:bonju});});
   QBK.groups.push(grp);});}catch(e){}}
 function qbkNorm(){QBK.groups.forEach(function(g){if(!g.l)g.l=((g.lead||'').split(' / ').filter(Boolean));if(g.lead!==undefined)delete g.lead;if(!g.cat)g.cat='지번';});}
@@ -4124,6 +4128,7 @@ function qbkRender(){var el=document.getElementById('qs-p4');if(!el)return;
   +'<span onclick="qbkBack()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:13px">‹ 백업용</span>'
   +qbkTab('full','전체 스케줄')+qbkTab('bk','백업만')
   +'<button onclick="qbkToggleEarn()" style="'+qbkBtnS(QBK.earnOpen)+'">💰 예상수익</button>'
+  +(QBK.edit?'<button onclick="qbkFillFixed()" style="'+qbkBtnS(false)+'">🔧 고정기사 채우기</button>':'')
   +'<button onclick="qbkToggleEdit()" style="margin-left:auto;'+qbkBtnS(QBK.edit)+'">'+(QBK.edit?'✔ 완료':'✏ 수정')+'</button></div>';
  var earn=QBK.earnOpen?qbkEarnHtml():'';
  var main=(QBK.view==='bk')?qbkBkHtml():qbkFullHtml();
@@ -4141,7 +4146,7 @@ function qbkFullHtml(){var h='';var move=QBK.edit;
    h+='</div><div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11px;width:100%"><thead><tr><th style="padding:5px 6px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:#f5f7fa;color:#6b7787;font-weight:800;white-space:nowrap">라우트</th>'
     +QBK_DAYS.map(function(w){var wc=(w==='일')?'#fdecec':(w==='토')?'#e6f1fb':'#eef4ea';var tc=(w==='일')?'#a32d2d':(w==='토')?'#0c447c':'#3b6d11';return '<th style="padding:5px 2px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:'+wc+';color:'+tc+';font-weight:800;min-width:44px">'+w+'</th>';}).join('')+'</tr></thead><tbody>';
    g.rt.forEach(function(ro,ri){var mv=move?('<span style="display:inline-flex;flex-direction:column;gap:1px;margin-right:4px;vertical-align:middle"><button onclick="qbkMoveRoute('+gi+','+ri+',-1)" style="font-size:8px;line-height:1;padding:0 3px;border:1px solid #cdd7e5;background:#fff;border-radius:3px;cursor:pointer">▲</button><button onclick="qbkMoveRoute('+gi+','+ri+',1)" style="font-size:8px;line-height:1;padding:0 3px;border:1px solid #cdd7e5;background:#fff;border-radius:3px;cursor:pointer">▼</button></span>'):'';
-    h+='<tr><td style="padding:4px 6px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:#f5f7fa;color:#1a1a1a;font-weight:800;text-align:center;white-space:nowrap;width:1%;line-height:1.45">'+mv+ro.r.replace(/\//g,'<br>')+'</td>'
+    h+='<tr><td style="padding:4px 6px;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:#f5f7fa;color:#1a1a1a;font-weight:800;text-align:center;white-space:nowrap;width:1%;line-height:1.45">'+mv+ro.r.replace(/\//g,'<br>').replace(/\s+\(/g,'<br>(')+'</td>'
      +QBK_DAYS.map(function(w){var nm=ro.d[w]||'';var t=qbkRoleTag(nm);var bg=t.lc?t.lc.bg:(nm?'#fff':'#f7f9fb');var tc=t.lc?t.lc.tx:(nm?'#1a1a1a':'#c9ced6');return '<td style="padding:0;border-bottom:1px solid #e6ebf1;border-right:1px solid #e6ebf1;background:'+bg+';color:'+tc+';text-align:center;white-space:nowrap"><div style="min-height:40px;display:flex;align-items:center;justify-content:center;padding:4px 5px;line-height:1.45;cursor:'+(move?'pointer':'default')+'" '+(move?('onclick="qbkEditCell('+gi+','+ri+',\''+w+'\')"'):'')+'>'+(t.star?'★':'')+(nm||'-')+'</div></td>';}).join('')+'</tr>';});
    h+='</tbody></table></div></div>';
   });
