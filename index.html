@@ -15477,7 +15477,7 @@ function pbReassign(id){
   if(!nm||nm===cur)return;
   var db=(typeof getDB==='function')?getDB():{};
   if(!db[nm]){ if(!confirm('"'+nm+'" 은(는) 기사 명단에 없습니다.\n그래도 이 이름으로 넘길까요?'))return; }
-  var _el=document.getElementById('pb-rsn');var _prev=((_el?_el.value:(it.reason||''))||'').trim();var _d=new Date();var _note='( '+cur+' → '+nm+' 이관 - '+(_d.getMonth()+1)+'월'+_d.getDate()+'일 '+('0'+_d.getHours()).slice(-2)+':'+('0'+_d.getMinutes()).slice(-2)+' )';var _rsn=(_prev?_prev+String.fromCharCode(10):'')+_note;pbUpd(id,{driver_name:nm,status:'answered',reason:_rsn,reject_reason:'',approved_by:''});
+  var _el=document.getElementById('pb-rsn');var _prev=((_el?_el.value:(it.reason||''))||'').trim();var _d=new Date();var _note='( '+cur+' → '+nm+' 이관 - '+(_d.getMonth()+1)+'월'+_d.getDate()+'일 '+('0'+_d.getHours()).slice(-2)+':'+('0'+_d.getMinutes()).slice(-2)+' )';var _rsn=(_prev?_prev+String.fromCharCode(10):'')+_note;pbUpd(id,{driver_name:nm,status:'pending',reason:_rsn,reject_reason:'',approved_by:''});
   try{if(typeof showToast==='function')showToast('🔀 '+cur+' → '+nm+' 재배정 · 소명 초기화(미작성)',true);}catch(e){}
 }
 function pbRevert(id){pbUpd(id,{status:'pending'});}
