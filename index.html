@@ -14218,22 +14218,47 @@ function pgPback(){
   if(PB_SUB==='emv'){ setTimeout(emvInit,50); return pgEmvPage(); }
   if(PB_SUB==='sla'){ setTimeout(slaInit,50); return pgSlaPage(); }
   if(PB_SUB==='rp'){ setTimeout(rpInit,50); return pgRpPage(); }
-  return pgPbackMenu();
+  setTimeout(function(){try{pbMenuScan();}catch(e){}},40);return pgPbackMenu();
 }
-function pbGoSub(x){ PB_SUB=x; var mc=document.getElementById('mc'); if(mc) mc.innerHTML=pgPback(); }
+function pbGoSub(x){ try{ if(window._PB_SIG&&_PB_SIG[x]!=null)_pbSetSeen(x,_PB_SIG[x]); }catch(e){} PB_SUB=x; var mc=document.getElementById('mc'); if(mc) mc.innerHTML=pgPback(); }
 function pbGoMenu(){ pbGoSub('menu'); }
 function pgPbackMenu(){
   pbInjectStyle();
   return '<div class="pb-wrap" style="padding:14px 12px">'
     +'<div style="font-size:15px;font-weight:800;color:#3949ab;margin-bottom:3px">📋 리스트확인</div>'
     +'<div style="font-size:11px;color:#7986cb;margin-bottom:16px">원하는 항목을 선택하세요</div>'
-    +(((CU&&CU.role==='admin')||getFeatureCtrl('routeperf','active'))?'<div onclick="pbGoSub(\'rp\')" style="cursor:pointer;background:#fff;border:1px solid #80cbc4;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(0,105,92,.1)"><span style="font-size:30px">📊</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#00695c">라우트 수행율 확인</div><div style="font-size:11px;color:#4c9d94;margin-top:2px">주차별 수행 등급·수행률 · 반품 회수률</div></div><span style="font-size:18px;color:#b2dfdb">›</span></div>':'')
-    +'<div onclick="pbGoSub(\'pback\')" style="cursor:pointer;background:#fff;border:1px solid #d7dbf0;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(120,130,160,.1)"><span style="font-size:30px">📋</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#3949ab">프레시백 소명 자료</div><div style="font-size:11px;color:#8e99cc;margin-top:2px">프레시백 미회수 소명 제출·확인</div></div><span style="font-size:18px;color:#c5cae9">›</span></div>'
-    +'<div onclick="pbGoSub(\'loss\')" style="cursor:pointer;background:#fff;border:1px solid #ce93d8;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(106,27,154,.1)"><span style="font-size:30px">🔍</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#6a1b9a">분실 차감 내역 확인</div><div style="font-size:11px;color:#ab7bc0;margin-top:2px">분실·파손 차감 내역 (본인 + 전체 요약)</div></div><span style="font-size:18px;color:#e1bee7">›</span></div>'
-    +(((CU&&CU.role==='admin')||getFeatureCtrl('weightfactor','active'))?'<div onclick="pbGoSub(\'wf\')" style="cursor:pointer;background:#fff;border:1px solid #b39ddb;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(94,53,177,.1)"><span style="font-size:30px">📊</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#4527a0">가중요인 확인</div><div style="font-size:11px;color:#9575cd;margin-top:2px">주차별 가중요인 · 내 라우트 상세</div></div><span style="font-size:18px;color:#d1c4e9">›</span></div>':'')
-    +(((CU&&CU.role==='admin')||getFeatureCtrl('sla','active'))?'<div onclick="pbGoSub(\'sla\')" style="cursor:pointer;background:#fff;border:1px solid #b0a8e0;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(58,45,143,.1)"><span style="font-size:30px">📈</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#2a1d6f">SLA 점수 확인</div><div style="font-size:11px;color:#8579c0;margin-top:2px">월별 SLA 점수 · 전체 평균</div></div><span style="font-size:18px;color:#d1c9ef">›</span></div>':'')
-    +(((CU&&CU.role==='admin')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active'))?'<div onclick="pbGoSub(\'emv\')" style="cursor:pointer;background:#fff;border:1px solid #80cbc4;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(27,94,90,.1)"><span style="font-size:30px">📦</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#12463f">월초 예상 물량</div><div style="font-size:11px;color:#5a9d95;margin-top:2px">라우트·일자별 예상 수량 · 내 라우트 합산</div></div><span style="font-size:18px;color:#b2dfdb">›</span></div>':'')
+    +(((CU&&CU.role==='admin')||getFeatureCtrl('routeperf','active'))?'<div onclick="pbGoSub(\'rp\')" style="cursor:pointer;background:#fff;border:1px solid #80cbc4;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(0,105,92,.1)"><span style="font-size:30px">📊</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#00695c">라우트 수행율 확인<span id="pbnew-rp" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:9px;font-weight:900;border-radius:8px;padding:1px 6px;vertical-align:middle;letter-spacing:.4px">NEW</span></div><div style="font-size:11px;color:#4c9d94;margin-top:2px">주차별 수행 등급·수행률 · 반품 회수률</div></div><span style="font-size:18px;color:#b2dfdb">›</span></div>':'')
+    +'<div onclick="pbGoSub(\'pback\')" style="cursor:pointer;background:#fff;border:1px solid #d7dbf0;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(120,130,160,.1)"><span style="font-size:30px">📋</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#3949ab">프레시백 소명 자료<span id="pbnew-pback" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:9px;font-weight:900;border-radius:8px;padding:1px 6px;vertical-align:middle;letter-spacing:.4px">NEW</span></div><div style="font-size:11px;color:#8e99cc;margin-top:2px">프레시백 미회수 소명 제출·확인</div></div><span style="font-size:18px;color:#c5cae9">›</span></div>'
+    +'<div onclick="pbGoSub(\'loss\')" style="cursor:pointer;background:#fff;border:1px solid #ce93d8;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(106,27,154,.1)"><span style="font-size:30px">🔍</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#6a1b9a">분실 차감 내역 확인<span id="pbnew-loss" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:9px;font-weight:900;border-radius:8px;padding:1px 6px;vertical-align:middle;letter-spacing:.4px">NEW</span></div><div style="font-size:11px;color:#ab7bc0;margin-top:2px">분실·파손 차감 내역 (본인 + 전체 요약)</div></div><span style="font-size:18px;color:#e1bee7">›</span></div>'
+    +(((CU&&CU.role==='admin')||getFeatureCtrl('weightfactor','active'))?'<div onclick="pbGoSub(\'wf\')" style="cursor:pointer;background:#fff;border:1px solid #b39ddb;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(94,53,177,.1)"><span style="font-size:30px">📊</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#4527a0">가중요인 확인<span id="pbnew-wf" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:9px;font-weight:900;border-radius:8px;padding:1px 6px;vertical-align:middle;letter-spacing:.4px">NEW</span></div><div style="font-size:11px;color:#9575cd;margin-top:2px">주차별 가중요인 · 내 라우트 상세</div></div><span style="font-size:18px;color:#d1c4e9">›</span></div>':'')
+    +(((CU&&CU.role==='admin')||getFeatureCtrl('sla','active'))?'<div onclick="pbGoSub(\'sla\')" style="cursor:pointer;background:#fff;border:1px solid #b0a8e0;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(58,45,143,.1)"><span style="font-size:30px">📈</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#2a1d6f">SLA 점수 확인<span id="pbnew-sla" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:9px;font-weight:900;border-radius:8px;padding:1px 6px;vertical-align:middle;letter-spacing:.4px">NEW</span></div><div style="font-size:11px;color:#8579c0;margin-top:2px">월별 SLA 점수 · 전체 평균</div></div><span style="font-size:18px;color:#d1c9ef">›</span></div>':'')
+    +(((CU&&CU.role==='admin')||getFeatureCtrl('earlymonth','active')||getFeatureCtrl('sla','active'))?'<div onclick="pbGoSub(\'emv\')" style="cursor:pointer;background:#fff;border:1px solid #80cbc4;border-radius:14px;padding:16px 14px;margin-bottom:11px;display:flex;align-items:center;gap:13px;box-shadow:0 2px 8px rgba(27,94,90,.1)"><span style="font-size:30px">📦</span><div style="flex:1"><div style="font-size:14px;font-weight:800;color:#12463f">월초 예상 물량<span id="pbnew-emv" style="display:none;margin-left:6px;background:#e53935;color:#fff;font-size:9px;font-weight:900;border-radius:8px;padding:1px 6px;vertical-align:middle;letter-spacing:.4px">NEW</span></div><div style="font-size:11px;color:#5a9d95;margin-top:2px">라우트·일자별 예상 수량 · 내 라우트 합산</div></div><span style="font-size:18px;color:#b2dfdb">›</span></div>':'')
     +'</div>';
+}
+var _PB_SIG={};
+function _pbSeenKey(){var u=(typeof CU!=='undefined'&&CU)?(CU.id||CU.name||'x'):'x';return 'pbseen_v1_'+u;}
+function _pbGetSeen(){try{var s=localStorage.getItem(_pbSeenKey());return s?JSON.parse(s):{};}catch(e){return {};}}
+function _pbSetSeen(sub,sig){try{var m=_pbGetSeen();m[sub]=sig;localStorage.setItem(_pbSeenKey(),JSON.stringify(m));var el=document.getElementById('pbnew-'+sub);if(el)el.style.display='none';}catch(e){}}
+function _pbBadge(sub,sig){if(sig==null||sig==='')return;_PB_SIG[sub]=sig;var seen=_pbGetSeen();var el=document.getElementById('pbnew-'+sub);if(!el)return;if(String(seen[sub]||'')!==String(sig)){el.style.display='inline-block';if(PB_SUB===sub){_pbSetSeen(sub,sig);}}else{el.style.display='none';}}
+async function pbMenuScan(){
+ if(!sbClient)return;
+ var isDrv=(typeof CU!=='undefined'&&CU&&CU.role==='driver');
+ try{
+  var r=await sbClient.from('app_settings').select('key,value').in('key',['route_perf_data','weight_factor_data','sla_data','early_month_volume','loss_deduction_log']);
+  var map={};((r&&r.data)||[]).forEach(function(row){var v=row.value;try{if(typeof v==='string')v=JSON.parse(v);}catch(e){}map[row.key]=v;});
+  _pbBadge('rp',(map.route_perf_data&&map.route_perf_data.updated)||'');
+  _pbBadge('wf',(map.weight_factor_data&&map.weight_factor_data.updated)||'');
+  _pbBadge('sla',(map.sla_data&&map.sla_data.updated)||'');
+  _pbBadge('emv',(map.early_month_volume&&map.early_month_volume.updated)||'');
+  _pbBadge('loss',(map.loss_deduction_log&&map.loss_deduction_log.updated_at)||'');
+ }catch(e){}
+ try{
+  var q=sbClient.from('pback_somyeong').select('id').eq('period',(typeof pbPeriod==='function'?pbPeriod():'')).order('id',{ascending:false}).limit(1);
+  if(isDrv){q=q.eq('driver_name',(CU&&CU.name)||'');}
+  var pr=await q;
+  var mid=(pr&&pr.data&&pr.data[0])?pr.data[0].id:'';
+  _pbBadge('pback',mid?('id'+mid):'');
+ }catch(e){}
 }
 /* ════════ 가중요인 확인 (앱) ════════ */
 function wfEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
