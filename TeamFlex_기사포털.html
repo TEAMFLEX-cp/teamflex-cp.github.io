@@ -6712,6 +6712,7 @@ function getAnnsVisible(){
 
 
 // ── ANNOUNCEMENTS ─────────────────────────────────────────────────────
+function annScopeBadge(a){var t=a&&a.targets;var nm='전체',bg='#e3f2fd',cl='#1565c0';if(t&&t.length){nm='지정';bg='#fff3e0';cl='#e65100';if(typeof ANN_CAMPS==='object'&&ANN_CAMPS){var key=t.slice().sort().join('|');for(var k in ANN_CAMPS){var ms=(ANN_CAMPS[k]||[]).slice().sort().join('|');if(ms&&ms===key){nm=k;bg='#ede7f6';cl='#5e35b1';break;}}}}return '<span style="display:inline-block;font-size:10px;font-weight:800;background:'+bg+';color:'+cl+';border-radius:5px;padding:1px 6px;margin-right:5px;vertical-align:middle">'+nm+'</span>';}
 function pgAnn(isAdmin){
   var isAdm=CU&&CU.role==='admin';
   if(!getFeatureCtrl('ann','active')&&!isAdm){
@@ -6719,6 +6720,7 @@ function pgAnn(isAdmin){
       '<div style="margin:60px 16px;padding:40px 24px;background:#fff;border-radius:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #e0e0e0"><div style="font-size:52px;margin-bottom:16px">&#x1F512;</div><div style="font-size:17px;font-weight:800;color:#555;margin-bottom:10px">기능이 잠겼습니다</div><div style="font-size:13px;color:#999;line-height:1.7">관리자에 의해서 비활성화되었습니다.<br>업데이트 예정입니다.</div></div>';
   }
   var anns=getAnns();
+  if(typeof ANN_CAMPS!=='undefined'&&ANN_CAMPS===null&&typeof annCampLoad==='function'){annCampLoad().then(function(){var _mc=document.getElementById('mc');if(_mc&&(CUR_TAB==='nc'||CUR_TAB==='ab'))_mc.innerHTML=pgAnn(isAdmin);});}
   var writeBtn=canAnn()?'<button class="btn-ok" style="margin-bottom:14px" onclick="openAnnWrite()">&#x270F; 공지 작성</button>':'';
   var reversedAnns=anns.slice().reverse();
   // 활성 공지 (만료·비활성 제외) — 모든 사용자 대상
@@ -6748,7 +6750,7 @@ function pgAnn(isAdmin){
     var _fx=(a.effect&&ANN_FX[a.effect])?ANN_FX[a.effect]:null; var _cs='',_bt='',_tcol=''; if(!isUnread){_cs='background:#fafbfc;border:1px solid #e6eaee;border-left:4px solid #cfd8dc';var _rat=annReadAt(a);_bt='<span class="anfx-badge" style="background:#9ccc65;color:#2e5e0e">✓ 확인'+(_rat?' · '+_rat:'')+'</span>';_tcol='#9aa3ab';} else if(_fx){_cs='background:'+_fx.bg+';border:2px solid '+_fx.bd+';border-left:'+(a.effect==='bar'?'6px solid #00897b':('2px solid '+_fx.bd));_bt=annFxBadge(_fx);_tcol=_fx.tc;}
     return '<div class="ann-card'+(a.important?' imp':'')+'" style="'+_cs+'" onclick="openAnnView('+a.id+')">'+_bt+
       '<div class="ann-hdr">'+((!_bt&&a.important)?'<span class="imp-badge">&#x2757; 중요</span>':'')+
-      '<div class="ann-title" style="'+(_tcol?'color:'+_tcol+';font-weight:800':'')+'">'+'['+kstDateStr(a.at)+'] '+a.title+'</div>'+
+      '<div class="ann-title" style="'+(_tcol?'color:'+_tcol+';font-weight:800':'')+'">'+annScopeBadge(a)+'['+kstDateStr(a.at)+'] '+a.title+'</div>'+
       statBtn+cardBtns+'</div>'+
       '<div class="ann-meta">'+a.author+' &middot; '+kstDateStr(a.at)+
         (isUnread?'<span style="margin-left:10px;font-size:11px;color:#e53935">● 미확인</span>':'')+expStr+
