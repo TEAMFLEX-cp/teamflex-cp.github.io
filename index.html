@@ -10969,6 +10969,7 @@ function pgMisdelivery(){
 
 // ── 오배송 검색 (관리자·팀장 전용) ──────────────────────────────────
 var _mdSearchTimer=null;
+function _mdReqSearch(q){try{var qlow=(q||'').toLowerCase();var _rq=(typeof _rqCases!=='undefined'&&_rqCases)?_rqCases:[];var reqM=_rq.filter(function(rr){var hay=(rr.requester_name||'')+' '+JSON.stringify(rr.payload||{});return hay.toLowerCase().indexOf(qlow)>=0;});if(!reqM.length)return '';var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var hi=function(s,q){if(!s||!q)return esc(s);var i=String(s).toLowerCase().indexOf(String(q).toLowerCase());if(i<0)return esc(s);return esc(String(s).slice(0,i))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(i,i+q.length))+'</mark>'+esc(String(s).slice(i+q.length));};var tm={damage:'파손',route:'라우트변경',return:'반품이관',dup:'이중출고',scan:'스캔삭제',lost:'분실',pretake:'전취반납',lostret:'분실반납',work:'업무신청',loss:'차감분실'};var rh='<div style="font-size:12px;color:#888;margin:16px 0 8px;padding:0 2px">📝 각종요청 <b style="color:#3949ab">'+reqM.length+'건</b></div>';reqM.forEach(function(rr){var p=rr.payload||{};var wb=p.waybill||p.waybill_no||p.wb||p.invoice||'';var dt2=(typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'';rh+='<div onclick="rqShowPopup('+rr.id+')" style="border:1px solid #e0e3f0;border-left:4px solid #3949ab;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fbfcff"><div style="display:flex;justify-content:space-between;margin-bottom:5px">'+(wb?'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#283593">'+hi(String(wb),q)+'</span>':'<span></span>')+'<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:#e8eaf6;color:#3949ab">'+esc(tm[rr.type]||rr.type||'요청')+'</span></div><div style="display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap"><span>👤 '+hi(rr.requester_name,q)+'</span>'+(dt2?'<span>📅 '+esc(dt2)+'</span>':'')+'</div>'+(p.text?'<div style="font-size:12px;color:#666;margin-top:4px">'+esc(String(p.text).slice(0,50))+'</div>':'')+'</div>';});return rh;}catch(e){return '';}}
 function mdSearchCases(val){
   clearTimeout(_mdSearchTimer);
   var q=(val||'').trim();
@@ -11007,7 +11008,7 @@ function mdSearchCases(val){
         .limit(50);
       if(e)throw e;
       if(!rows||!rows.length){
-        resEl.innerHTML='<div style="text-align:center;padding:32px;color:#aaa;font-size:13px"><div style="font-size:28px;margin-bottom:8px">🔍</div>검색 결과 없음<div style="font-size:11px;margin-top:6px;color:#ccc">송장번호, 뒤 4자리, 또는 기사 이름으로 검색하세요</div></div>';
+        var _re=_mdReqSearch(q);if(_re){resEl.innerHTML=_re;return;}resEl.innerHTML='<div style="text-align:center;padding:32px;color:#aaa;font-size:13px"><div style="font-size:28px;margin-bottom:8px">🔍</div>검색 결과 없음<div style="font-size:11px;margin-top:6px;color:#ccc">송장번호, 뒤 4자리, 또는 기사 이름으로 검색하세요</div></div>';
         return;
       }
       var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
@@ -11048,7 +11049,7 @@ function mdSearchCases(val){
             '</div>'+
           '</div>';
       });
-      resEl.innerHTML=html;
+      resEl.innerHTML=html;var _re2=_mdReqSearch(q);if(_re2)resEl.innerHTML+=_re2;
     }catch(err){
       if(resEl)resEl.innerHTML='<div style="text-align:center;padding:20px;color:#e53935;font-size:13px">검색 오류: '+(err.message||err)+'</div>';
     }
