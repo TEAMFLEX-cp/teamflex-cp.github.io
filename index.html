@@ -2641,7 +2641,7 @@ function openSchedPermPopup(){
   function ctPdf(){
     if(!LASTD){toast('먼저 계약서를 여세요');return;}
     var body=docHTML(LASTD,'done');
-    var html='<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+(LASTNAME||'계약서')+'</title><style>'+PRINTCSS+'</style></head><body>'+body+'<'+'script>window.onload=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},400);};<'+'/script></body></html>';
+    var html='<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+(LASTNAME||'계약서')+'</title><style>'+PRINTCSS+'</style><style id="navbadgecolor">#ni-pb .nv-num{background:#3949ab!important}#ni-rq .nv-num{background:#e53935!important}</style></head><body>'+body+'<'+'script>window.onload=function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},400);};<'+'/script></body></html>';
     var w=window.open('','_blank');
     if(!w){alert('팝업이 차단되어 PDF 창을 열 수 없습니다.\\n브라우저 설정에서 팝업을 허용한 뒤 다시 눌러주세요.');return;}
     w.document.open();w.document.write(html);w.document.close();
