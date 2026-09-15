@@ -1493,8 +1493,8 @@ async function schedRefresh(){
           if(!DW[normDn])DW[normDn]={};
           if(!DW[normDn][ws])DW[normDn][ws]={};
           var cur=DW[normDn][ws][e.work_date];
-          if(!cur)DW[normDn][ws][e.work_date]=((s.routes&&s.routes.length)?s.routes.join(','):rr);
-          else{var _mr=((s.routes&&s.routes.length)?s.routes.join(','):rr);if(cur.indexOf(_mr)<0)DW[normDn][ws][e.work_date]+=','+_mr;}
+          if(!cur)DW[normDn][ws][e.work_date]=rr;
+          else if(cur.indexOf(rr)<0)DW[normDn][ws][e.work_date]+=','+rr;
         }
       }
     });
