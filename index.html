@@ -7720,11 +7720,11 @@ async function _sxDoChanged(){
     if(!scoped.length){if(!window._sxSilent){var _sd=Array.from(new Set(log.map(function(c){return c.workDate;}).filter(Boolean))).sort().slice(-10).join(', ');alert('이 주차('+_sxWeekLabel(ws0)+')의 변경 건이 없습니다.\n\n전체 변경이력: '+log.length+'건\n변경된 날짜: '+(_sd||'없음')+'\n\n※ 변경분은 지금 보고 있는 주차의 변경만 담습니다. 변경한 날짜가 포함된 주차로 이동 후 눌러주세요.');}if(st)st.textContent='';return;}
     // net 처리: (날짜|라우트)별 최초 oldDriver, 최종 newDriver
     var net={};
-    function _isSimpleNm(n){return n&&!/[:/,]/.test(n);}
+    function _isSimpleNm(n){return n&&!/[:/,]/.test(n);}function _sxNames(v){v=String(v||'');if(!v)return [];return v.split('/').map(function(p){p=p.trim();var ci=p.indexOf(':');if(ci>=0)p=p.slice(ci+1);p=p.replace(/\(.*?\)/g,'').trim();return p;}).filter(Boolean);}
     scoped.forEach(function(c){var key=c.workDate+'|'+c.route;var at=c.at||'';if(!net[key]){net[key]={workDate:c.workDate,route:c.route,oldDriver:c.oldDriver||'',newDriver:c.newDriver||'',oldAt:at,newAt:at,drv:{}};}else{if(at>net[key].newAt){net[key].newDriver=c.newDriver||'';net[key].newAt=at;}if(at<net[key].oldAt){net[key].oldDriver=c.oldDriver||'';net[key].oldAt=at;}}
       // 이 라우트를 거쳐간 모든 기사(이전자+신규자) 수집 → 중간에 잠깐 올라간 기사도 휴무 처리 대상에 포함
-      if(_isSimpleNm(c.oldDriver))net[key].drv[norm_name_js(c.oldDriver)]=c.oldDriver;
-      if(_isSimpleNm(c.newDriver))net[key].drv[norm_name_js(c.newDriver)]=c.newDriver;});
+      _sxNames(c.oldDriver).forEach(function(_nm){net[key].drv[norm_name_js(_nm)]=_nm;});
+      _sxNames(c.newDriver).forEach(function(_nm){net[key].drv[norm_name_js(_nm)]=_nm;});});
     // 캠프+주야 키 (803/805=8캠프주간, 808=8캠프야간, 그외=3캠프주간)
     function _sxCW(raw){var b=String(raw||'').replace(/\s*\(.*?\)/g,'').trim();var camp=(b.charAt(0)==='8')?'8':'3';var ni=_sxIsNight(b)?'N':'D';return camp+'|'+ni;}
     // 그날 최종 스케줄에서 '어느 캠프+주야'에 근무 중인지 (캠프/주야가 다르면 덮어쓰기가 아니라 새 배정 → 옛 캠프 휴무 필요)
