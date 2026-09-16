@@ -4328,9 +4328,9 @@ function _qsBkCalc(){
     tRev+=tFb;
   }
   if(!any){out.innerHTML='<div class="qs-empty" style="padding:24px 0">🗓️ 요일별 라우트를 선택하면 예상 수량·수익이 계산됩니다</div>';return;}
-  var qty=(QSBK.INC.배송?tD:0)+(QSBK.INC.반품?tR:0);
+  var qty=(QSBK.INC.배송?tD:0)+(QSBK.INC.반품?tR:0);var _stt={b:0,r:0};mons.forEach(function(ym){var Dz=(typeof QSFULL!=="undefined"&&QSFULL&&QSFULL.months)?QSFULL.months[ym]:null;if(!Dz||!Dz.routes)return;Object.keys(Dz.routes).forEach(function(k){var ro=Dz.routes[k];(ro.b||[]).forEach(function(x){_stt.b+=(+x||0);});(ro.rb||[]).forEach(function(x){_stt.r+=(+x||0);});});});if(mons.length>1){_stt.b=Math.round(_stt.b/mons.length);_stt.r=Math.round(_stt.r/mons.length);}
   out.innerHTML='<div class="qs-res"><div class="r"><div class="k">월 근무일수</div><div class="v">'+tDays+'<small>일</small></div></div><div class="r"><div class="k">예상 수량'+(QSBK.INC.반품?'(배송+반품)':'')+'</div><div class="v">'+_qsFmt(qty)+'</div></div><div class="r money"><div class="k">예상 수익</div><div class="v">'+_qsFmt(Math.round(tRev))+'<small>원</small></div></div></div>'+
-    '<div style="background:#fff;border:1px solid #e7edf5;border-radius:12px;overflow:hidden;margin-top:10px">'+rowsH+'</div>'+
+    '<div style="background:#eef4ff;border:1px solid #cfe0ff;border-radius:10px;padding:9px 11px;margin-top:8px;font-size:12px;color:#1c3f6e"><b>📋 정산서 실측 총합</b> <span style="color:#64748b;font-size:11px">('+mons.join(", ")+')</span><br>배송 <b>'+_qsFmt(_stt.b)+'</b> · 반품 <b>'+_qsFmt(_stt.r)+'</b> · 총건수 <b>'+_qsFmt(_stt.b+_stt.r)+'</b></div>'+'<div style="background:#fff;border:1px solid #e7edf5;border-radius:12px;overflow:hidden;margin-top:10px">'+rowsH+'</div>'+
     (QSBK.INC.프백?'<div style="background:#f0fbf5;border:1px solid #cdeeda;border-radius:10px;padding:9px 11px;margin-top:8px;font-size:11.5px;color:#0b6b45;font-weight:700">🧊 프레시백 = 1인 월평균 회수금액 <b>'+_qsFmt(perFbSum)+'원</b>(전체÷라우트수) × 근무비율 = <b>'+_qsFmt(tFb)+'원</b></div>':'')+
     '<div class="qs-mini" style="margin-top:6px;color:#c26a00">⚠️ '+(QSBK.mode==='avg'?'올해 요일별 평균':(_qsBkMonthLabel(QSBK.ym)+' 실제 데이터'))+' 기준 · 배송/반품 동일 단가'+(QSBK.bkAdd?' · 백업 추가단가 +'+_qsFmt(QSBK.bkUnit)+'원 포함':'')+' · '+(QSBK.sub?'현직(지원금 포함)':'신규(지원금 제외)')+'</div>';
 }
