@@ -6796,7 +6796,7 @@ function pgAnn(isAdmin){
     var _fx=(a.effect&&ANN_FX[a.effect])?ANN_FX[a.effect]:null; var _cs='',_bt='',_tcol=''; if(!isUnread){_cs='background:#fafbfc;border:1px solid #e6eaee;border-left:4px solid #cfd8dc';var _rat=annReadAt(a);_bt='<span class="anfx-badge" style="background:#9ccc65;color:#2e5e0e">✓ 확인'+(_rat?' · '+_rat:'')+'</span>';_tcol='#9aa3ab';} else if(_fx){_cs='background:'+_fx.bg+';border:2px solid '+_fx.bd+';border-left:'+(a.effect==='bar'?'6px solid #00897b':('2px solid '+_fx.bd));_bt=annFxBadge(_fx);_tcol=_fx.tc;}
     return '<div class="ann-card'+(a.important?' imp':'')+'" style="'+_cs+'" onclick="openAnnView('+a.id+')">'+_bt+
       '<div class="ann-hdr">'+((!_bt&&a.important)?'<span class="imp-badge">&#x2757; 중요</span>':'')+
-      '<div class="ann-title" style="'+(_tcol?'color:'+_tcol+';font-weight:800':'')+'">'+annScopeBadge(a)+'['+kstDateStr(a.at)+'] '+a.title+'</div>'+
+      '<div class="ann-title" style="'+(_tcol?'color:'+_tcol+';font-weight:800':'')+'">'+annScopeBadge(a)+a.title+'</div>'+
       statBtn+cardBtns+'</div>'+
       '<div class="ann-meta">'+a.author+' &middot; '+kstDateStr(a.at)+
         (isUnread?'<span style="margin-left:10px;font-size:11px;color:#e53935">● 미확인</span>':'')+expStr+
@@ -6814,8 +6814,8 @@ function pgAnn(isAdmin){
     var bodyHtml=(a.body||a.content||'').replace(/\n/g,'<br>');
     return '<div onclick="openAnnView('+a.id+')" style="background:#fafbfc;border:1px solid #e6eaee;border-radius:9px;padding:9px 11px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:7px">'+
       '<span style="font-size:9px;font-weight:900;color:#2e5e0e;background:#9ccc65;border-radius:6px;padding:2px 6px;white-space:nowrap">\u2713 \uD655\uC778</span>'+
-      '<span style="flex:1;font-size:12px;font-weight:700;color:#8a929a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">['+kstDateStr(a.at)+'] '+a.title+'</span>'+
-      (rat?'<span style="font-size:9px;color:#b6bdc4;white-space:nowrap">'+rat+'</span>':'')+
+      '<span style="flex:1;font-size:12px;font-weight:700;color:#8a929a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+a.title+'</span>'+
+      '<span style="font-size:12.5px;font-weight:800;color:#2f6fed;white-space:nowrap;margin-right:5px">'+kstDateStr(a.at)+'</span>'+
       '<span id="anncrt'+a.id+'" style="font-size:11px;color:#c0c7cd">&#x25B8;</span>'+
     '</div>'+
     '<div id="annexp'+a.id+'" style="display:none;background:#fafbfc;border:1px solid #e6eaee;border-top:none;border-radius:0 0 9px 9px;margin:-7px 0 6px;padding:9px 11px;font-size:11.5px;color:#7a838b;line-height:1.6">'+
@@ -6855,7 +6855,7 @@ function pgAnn(isAdmin){
       return '<div class="ann-card" style="opacity:0.45;filter:grayscale(0.5);border-left-color:#bdbdbd;cursor:default">'+
         '<div class="ann-hdr">'+
           (a.important?'<span class="imp-badge" style="opacity:0.5">⚠ 중요</span>':'')+
-          '<div class="ann-title"><span style="color:#aaa">['+kstDateStr(a.at)+'] '+a.title+'</span></div>'+
+          '<div class="ann-title"><span style="color:#aaa">'+a.title+'</span></div>'+
           cardBtns2+
         '</div>'+
         '<div class="ann-meta" style="color:#bbb">'+a.author+' · '+kstDateStr(a.at)+
