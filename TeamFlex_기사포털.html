@@ -11131,6 +11131,8 @@ function mdEsc(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 // 다중 운송장: 상세는 줄바꿈 전부, 목록은 "첫번호 외 N건"
+function mdCopyWb(btn){var wb=decodeURIComponent(btn.getAttribute('data-wb')||'');wb=wb.split('\n').map(function(x){return x.trim();}).filter(Boolean).join(' ');if(!wb)return;function ok(){if(typeof showToast==='function')showToast('📋 송장번호 복사됨: '+wb,true);else alert('복사됨: '+wb);}try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(wb).then(ok,function(){mdCopyFallback(wb,ok);});}else{mdCopyFallback(wb,ok);}}catch(e){mdCopyFallback(wb,ok);}}
+function mdCopyFallback(wb,ok){try{var ta=document.createElement('textarea');ta.value=wb;ta.style.position='fixed';ta.style.opacity='0';ta.style.left='-9999px';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);ok();}catch(e){alert('복사 실패 — 수동 복사: '+wb);}}
 function mdWbList(wb){var a=String(wb||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);if(!a.length)return '-';return a.map(mdEsc).join('<br>');}
 function mdWbShort(wb){var a=String(wb||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);if(!a.length)return '-';return mdEsc(a[0])+(a.length>1?' <span style="color:#e65100">외 '+(a.length-1)+'건</span>':'');}
 async function mdLoadCases(){
@@ -11743,7 +11745,7 @@ function mdOpenMibaGroup(gi){
       '<div style="display:flex;align-items:center;gap:9px">'+
         (r.done?'<span style="width:18px;flex-shrink:0;display:inline-block"></span>':'<input type="checkbox" class="mg-cb" data-ri="'+ri+'" onclick="mdMibaCbChange('+gi+')" style="width:18px;height:18px;flex-shrink:0;accent-color:#00838f">')+
         '<div onclick="mdMibaToggleRow(\''+detId+'\',\''+arrId+'\')" style="flex:1;min-width:0;display:flex;align-items:center;gap:7px;cursor:pointer">'+
-          '<span style="font-size:13px;font-weight:700;color:#263238;word-break:break-all">'+mdWbList(r.wb)+'</span>'+
+          '<span style="font-size:13px;font-weight:700;color:#263238;word-break:break-all">'+mdWbList(r.wb)+'</span>'+'<button class="mg-copy" data-wb="'+encodeURIComponent(r.wb||'')+'" onclick="event.stopPropagation();mdCopyWb(this)" title="송장번호 복사" style="flex-shrink:0;margin-left:2px;padding:3px 8px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">📋 복사</button>'+
           '<span style="margin-left:auto;flex-shrink:0">'+st+'</span>'+
           '<span id="'+arrId+'" style="color:#90a4ae;flex-shrink:0">▸</span>'+
         '</div>'+
