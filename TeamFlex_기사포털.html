@@ -9655,182 +9655,72 @@ function _parseSettleSheet(rows,sheetName){
 
 function _shPad(n){return ('0'+n).slice(-2);}
 function _shYm(){var s=(typeof SETTLE_ADMIN_MONTH!=='undefined')?SETTLE_ADMIN_MONTH:-1;if(s>=0&&s<=11)return '2026-'+_shPad(s+1);try{var ks=Object.keys((window.QSFULL&&QSFULL.months)||{});if(ks.length){ks.sort();return ks[ks.length-1];}}catch(e){}return '2026-08';}
-function _shDef(){return {routeMoves:[],merges:[],shares:{},rates:{expense:16.4,ind:1.8,emp:1.8,agency:0},prices:[],accounts:[],prepay:[],tax:{},incomes:[],deducts:[]};}
-function _shLoad(cb){
-  try{
-    sbClient.from('app_settings').select('value').eq('key','settle_hub_test').single().then(function(r){
-      var H=_shDef();
-      try{if(r&&r.data&&r.data.value){var v=(typeof r.data.value==='string')?JSON.parse(r.data.value):r.data.value;for(var k in v){H[k]=v[k];}}}catch(e){}
-      window._shHub=H; cb&&cb();
-    },function(){window._shHub=_shDef();cb&&cb();});
-  }catch(e){window._shHub=_shDef();cb&&cb();}
-}
-function _shSave(){
-  try{sbClient.from('app_settings').upsert({key:'settle_hub_test',value:JSON.stringify(window._shHub)},{onConflict:'key'}).then(function(){},function(){});}catch(e){}
-}
+function _shDef(){return {routeMoves:[],merges:[],shares:{},rates:{expense:16.4,ind:1.8,emp:1.8,agency:0},pricesets:[],accounts:{},drvcfg:{},prepay:[],incomes:[],deducts:[]};}
+function _shLoad(cb){try{sbClient.from('app_settings').select('value').eq('key','settle_hub_test').single().then(function(r){var H=_shDef();try{if(r&&r.data&&r.data.value){var v=(typeof r.data.value==='string')?JSON.parse(r.data.value):r.data.value;for(var k in v){H[k]=v[k];}}}catch(e){}window._shHub=H;cb&&cb();},function(){window._shHub=window._shHub||_shDef();cb&&cb();});}catch(e){window._shHub=window._shHub||_shDef();cb&&cb();}}
+function _shSave(){try{sbClient.from('app_settings').upsert({key:'settle_hub_test',value:JSON.stringify(window._shHub)},{onConflict:'key'}).then(function(){},function(){});}catch(e){}}
 function _shNum(x){var n=parseInt(String(x==null?'':x).replace(/[^0-9-]/g,''),10);return isNaN(n)?0:n;}
 function _shFmt(n){return (n||0).toLocaleString();}
-function openSettleHub(){
-  if(document.getElementById('shubOv'))return;
-  var ov=document.createElement('div');ov.id='shubOv';
-  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(20,26,34,.55);display:flex;align-items:center;justify-content:center;overflow:auto;padding:2vh 2vw';
-  ov.innerHTML='<div id="shubCard" style="width:96vw;max-width:1080px;height:94vh;background:#eef1f6;border-radius:16px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.45);display:flex;flex-direction:column"><div style="padding:22px;text-align:center;color:#64748b;font-size:13px">불러오는 중…</div></div>';
-  document.body.appendChild(ov);
-  window._shTab='dash';
-  window._shHub=window._shHub||_shDef();
-  _shRender();
-  _shLoad(function(){_shRender();});
-}
+function _shEsc(s){return String(s==null?'':s).replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function _shRoleLbl(r){r=String(r||'');if(r==='leader')return '★팀장';if(r==='sub')return '◆조장';if(r==='driver')return '일반';return r||'일반';}
+function _shRouteList(){var o={};try{var ks=Object.keys((window.QSFULL&&QSFULL.months)||{});ks.forEach(function(ym){var m=QSFULL.months[ym];if(m&&m.routes)Object.keys(m.routes).forEach(function(r){o[r]=1;});});}catch(e){}var a=Object.keys(o);a.sort();return a;}
+function _shDrvNames(){var a=[];try{a=Object.keys(window.IDRV||{});}catch(e){}var pr={leader:0,sub:1};a.sort(function(x,y){var rx=String((IDRV[x]||{}).role||''),ry=String((IDRV[y]||{}).role||'');var px=(pr[rx]==null?2:pr[rx]),py=(pr[ry]==null?2:pr[ry]);if(px!==py)return px-py;return x<y?-1:1;});return a;}
+function openSettleHub(){if(document.getElementById('shubOv'))return;var ov=document.createElement('div');ov.id='shubOv';ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(20,26,34,.55);display:flex;align-items:center;justify-content:center;padding:1.5vh 1.5vw';ov.innerHTML='<div id="shubCard" style="width:97vw;max-width:1400px;height:97vh;background:#eef1f6;border-radius:16px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.45);display:flex;flex-direction:column"></div>';document.body.appendChild(ov);window._shTab='dash';window._shE=null;window._shHub=window._shHub||_shDef();_shRender();_shLoad(function(){_shRender();});}
 function _shClose(){var o=document.getElementById('shubOv');if(o)o.remove();}
-function _shGo(t){window._shTab=t;_shRender();}
-function _shRender(){
-  var card=document.getElementById('shubCard');if(!card)return;
-  var H=window._shHub||_shDef();var tab=window._shTab||'dash';
-  var tabs=[['dash','📊 대시보드'],['move','🔁 라우트이관'],['drv','👥 기사관리'],['rate','🔧 요율·단가'],['acc','🏦 계좌'],['pre','🪙 선지급'],['tax','🧾 세금계산서'],['inc','💰 수익·차감']];
-  var tb=tabs.map(function(t){var on=(t[0]===tab);return '<span onclick="_shGo(\''+t[0]+'\')" style="flex:0 0 auto;font-size:13.5px;font-weight:800;border-radius:18px;padding:10px 18px;cursor:pointer;white-space:nowrap;'+(on?'background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff':'background:#fff;color:#8a6a44')+'">'+t[1]+'</span>';}).join('');
-  var body='';
-  if(tab==='dash')body=_shDash();
-  else if(tab==='move')body=_shMove();
-  else if(tab==='drv')body=_shDrv();
-  else if(tab==='rate')body=_shRate();
-  else if(tab==='acc')body=_shAcc();
-  else if(tab==='pre')body=_shPre();
-  else if(tab==='tax')body=_shTax();
-  else if(tab==='inc')body=_shInc();
-  card.innerHTML=
-    '<div style="background:linear-gradient(120deg,#e8912f,#f0a640);color:#fff;padding:17px 20px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto"><div style="font-size:18px;font-weight:800">🧾 정산 반영 <span style="font-size:10px;opacity:.9">관리자 전용·테스트</span></div><div onclick="_shClose()" style="cursor:pointer;font-size:16px">✕</div></div>'+
-    '<div style="display:flex;gap:6px;overflow-x:auto;padding:12px 16px;background:#f0d8bd;flex:0 0 auto">'+tb+'</div>'+
-    '<div style="flex:1;padding:18px 22px 28px;overflow:auto">'+body+'</div>';
-}
-function _shBox(t,inner){return '<div style="background:#fff;border-radius:13px;padding:12px 13px;margin-bottom:10px;box-shadow:0 1px 5px rgba(80,50,20,.08)"><div style="font-size:15.5px;font-weight:800;color:#334155;margin-bottom:12px">'+t+'</div>'+inner+'</div>';}
+function _shGo(t){window._shTab=t;window._shE=null;_shRender();}
+function _shRender(){var card=document.getElementById('shubCard');if(!card)return;var H=window._shHub||_shDef();var tab=window._shTab||'dash';var prev=document.getElementById('shBody');var sc=prev?prev.scrollTop:0;var tabs=[['dash','📊 대시보드'],['move','🔁 라우트이관'],['drv','👥 기사관리'],['rate','🔧 요율·단가'],['acc','🏦 계좌'],['pre','🪙 선지급'],['tax','🧾 세금계산서'],['inc','💰 수익·차감']];var tb=tabs.map(function(t){var on=(t[0]===tab);return '<span onclick="_shGo(\''+t[0]+'\')" style="flex:0 0 auto;font-size:14px;font-weight:800;border-radius:18px;padding:10px 18px;cursor:pointer;white-space:nowrap;'+(on?'background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff':'background:#fff;color:#8a6a44')+'">'+t[1]+'</span>';}).join('');var body=(tab==='dash')?_shDash():(tab==='move')?_shMove():(tab==='drv')?_shDrv():(tab==='rate')?_shRate():(tab==='acc')?_shAcc():(tab==='pre')?_shPre():(tab==='tax')?_shTax():(tab==='inc')?_shInc():'';card.innerHTML='<div style="background:linear-gradient(120deg,#e8912f,#f0a640);color:#fff;padding:17px 22px;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto"><div style="font-size:18px;font-weight:800">🧾 정산 반영 <span style="font-size:11px;opacity:.9">관리자 전용·테스트</span></div><div onclick="_shClose()" style="cursor:pointer;font-size:18px">✕</div></div><div style="display:flex;gap:6px;overflow-x:auto;padding:12px 18px;background:#f0d8bd;flex:0 0 auto">'+tb+'</div><div id="shBody" style="flex:1;padding:18px 22px 30px;overflow:auto">'+body+'</div>';var nb=document.getElementById('shBody');if(nb)nb.scrollTop=sc;}
+function _shBox(t,inner){return '<div style="background:#fff;border-radius:13px;padding:15px 17px;margin-bottom:12px;box-shadow:0 1px 5px rgba(80,50,20,.08)"><div style="font-size:15.5px;font-weight:800;color:#334155;margin-bottom:12px">'+t+'</div>'+inner+'</div>';}
 function _shKv(k,v){return '<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:7px 0;border-bottom:1px dashed #f0e7db"><span style="color:#64748b">'+k+'</span><span style="font-weight:800">'+v+'</span></div>';}
-function _shBtn(txt,fn,col){return '<button onclick="'+fn+'" style="border:none;border-radius:8px;padding:7px 11px;font-size:11px;font-weight:800;cursor:pointer;margin:4px 4px 0 0;'+(col||'background:#eef2f7;color:#3a4658')+'">'+txt+'</button>';}
-function _shDash(){
-  var ym=_shYm();var b=0,r=0;
-  try{var M=(window.QSFULL&&QSFULL.months&&QSFULL.months[ym]);if(M&&M.routes){Object.keys(M.routes).forEach(function(k){var ro=M.routes[k];(ro.b||[]).forEach(function(x){b+=(+x||0);});(ro.rb||[]).forEach(function(x){r+=(+x||0);});});}}catch(e){}
-  var lb=0,lr=0;try{var LD={};Object.keys(IDRV||{}).forEach(function(n){var rr=String((IDRV[n]||{}).role||'');if(rr==='leader'||rr==='sub')LD[n]=1;});var mk=String(typeof SETTLE_ADMIN_MONTH!=='undefined'?SETTLE_ADMIN_MONTH:7);Object.keys(window.SM||{}).forEach(function(n){if(!LD[n])return;var md=SM[n]&&SM[n][mk];if(!md)return;(md.revenue_rows||[]).forEach(function(x){if(!x)return;var t=String(x.type||''),q=(+x.qty||0);if(t.indexOf('배송')>=0)lb+=q;else if(t.indexOf('반품')>=0)lr+=q;});});}catch(e){}
-  function _shCC(bg,bd,tc,title){return '<div style="flex:1;background:'+bg+';border:1px solid '+bd+';border-radius:11px;padding:11px"><div style="font-size:11px;font-weight:800;margin-bottom:8px;color:'+tc+'">'+title+'</div>'+_shKv('배송',_shFmt(b))+_shKv('반품(수기포함)',_shFmt(r))+_shKv('총 수량',_shFmt(b+r))+'</div>';}
-  var cmp='<div style="display:flex;gap:9px">'+_shCC('#eef4fb','#d3e2f2','#0f4c81','🏢 실제 정산서')+_shCC('#fff5ea','#f3ddc0','#b5540a','📱 기사 공유본')+'</div><div style="margin-top:9px;border-radius:10px;padding:9px;font-size:12px;font-weight:800;text-align:center;background:#e3f4ea;color:#1a7a45">✓ 일치 (현재 앱이 공유 원본)</div>';
-  return _shBox('📊 정산서 수량 대조 ('+ym+')',cmp)+
-    _shBox('👑 팀장·조장 수량',_shKv('배송',_shFmt(lb))+_shKv('반품',_shFmt(lr))+_shKv('합계',_shFmt(lb+lr))+'<div style="font-size:10.5px;color:#8a97a8;margin-top:5px">역할=Supabase(인원관리) 기준</div>');
-}
-function _shList(arr,cols,delFn){
-  if(!arr||!arr.length)return '<div style="font-size:11px;color:#9aa6b3;padding:6px 0">등록된 항목이 없습니다.</div>';
-  var head='<tr>'+cols.map(function(c){return '<th style="text-align:left;background:#eadfce;color:#6b5330;padding:5px;font-size:9.5px">'+c[0]+'</th>';}).join('')+'<th style="background:#eadfce"></th></tr>';
-  var rows=arr.map(function(o,i){return '<tr>'+cols.map(function(c){return '<td style="padding:5px;border-bottom:1px solid #f2ece2;font-size:10.5px">'+(o[c[1]]==null?'':o[c[1]])+'</td>';}).join('')+'<td style="padding:5px;border-bottom:1px solid #f2ece2"><span onclick="'+delFn+'('+i+')" style="cursor:pointer;color:#c0392b;font-size:12px">🗑</span></td></tr>';}).join('');
-  return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+head+rows+'</table></div>';
-}
-function _shMove(){var H=window._shHub;
-  return _shBox('🔁 라우트 기사 이관 (A→B)',
-    '<div style="font-size:11px;color:#2c4a63;background:#eef6ff;border-left:4px solid #0f4c81;border-radius:0 8px 8px 0;padding:8px 10px;margin-bottom:9px">특정일·라우트를 실제 근무한 B기사로 이관. 배송·반품·수기반품은 전체, 프레시백은 ½/전부 선택.</div>'+
-    _shBtn('＋ 이관 추가','_shAddMove()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+
-    _shList(H.routeMoves,[['날짜','date'],['라우트','route'],['A','a'],['B','b'],['배/반/수기','qty'],['프레시백','fb']],'_shDelMove'));
-}
-function _shAddMove(){var H=window._shHub;var date=prompt('날짜 (예 2026-08-14)');if(!date)return;var route=prompt('라우트 (예 211A)');if(!route)return;var a=prompt('원래 기사 A');if(!a)return;var b=prompt('실제 기사 B');if(!b)return;var qty=prompt('배송/반품/수기 (예 44/18/3)','0/0/0');var fb=prompt('프레시백 이관: half=반만, all=전부','half');H.routeMoves.push({date:date,route:route,a:a,b:b,qty:qty||'',fb:(fb==='all'?'전부':'½')});_shSave();_shRender();}
+function _shBtn(txt,fn,col){return '<button onclick="'+fn+'" style="border:none;border-radius:9px;padding:9px 14px;font-size:12.5px;font-weight:800;cursor:pointer;margin:4px 6px 4px 0;'+(col||'background:#eef2f7;color:#3a4658')+'">'+txt+'</button>';}
+function _shInp(id,v,ph,w){return '<input id="'+id+'" value="'+_shEsc(v==null?'':v)+'" placeholder="'+(ph||'')+'" style="width:'+(w||'90px')+';background:#f4f6f9;border:1px solid #d7dee6;border-radius:7px;padding:7px 9px;font-size:12.5px;font-weight:700;color:#20262e;margin:3px 4px 3px 0"/>';}
+function _shListTbl(cols,rows){var th='<tr>'+cols.map(function(c){return '<th style="text-align:left;background:#eadfce;color:#6b5330;padding:7px 6px;font-size:11px;white-space:nowrap">'+c+'</th>';}).join('')+'</tr>';return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+th+rows+'</table></div>';}
+function _shTd(v,st){return '<td style="padding:7px 6px;border-bottom:1px solid #f2ece2;font-size:12px;white-space:nowrap;'+(st||'')+'">'+(v==null?'':v)+'</td>';}
+
+function _shDash(){var ym=_shYm();var b=0,r=0;try{var M=(window.QSFULL&&QSFULL.months&&QSFULL.months[ym]);if(M&&M.routes){Object.keys(M.routes).forEach(function(k){var ro=M.routes[k];(ro.b||[]).forEach(function(x){b+=(+x||0);});(ro.rb||[]).forEach(function(x){r+=(+x||0);});});}}catch(e){}var lb=0,lr=0;try{var LD={};Object.keys(IDRV||{}).forEach(function(n){var rr=String((IDRV[n]||{}).role||'');if(rr==='leader'||rr==='sub')LD[n]=1;});var mk=String(typeof SETTLE_ADMIN_MONTH!=='undefined'?SETTLE_ADMIN_MONTH:7);Object.keys(window.SM||{}).forEach(function(n){if(!LD[n])return;var md=SM[n]&&SM[n][mk];if(!md)return;(md.revenue_rows||[]).forEach(function(x){if(!x)return;var t=String(x.type||''),q=(+x.qty||0);if(t.indexOf('배송')>=0)lb+=q;else if(t.indexOf('반품')>=0)lr+=q;});});}catch(e){}function cc(bg,bd,tc,ti){return '<div style="flex:1;min-width:220px;background:'+bg+';border:1px solid '+bd+';border-radius:11px;padding:14px"><div style="font-size:13px;font-weight:800;margin-bottom:9px;color:'+tc+'">'+ti+'</div>'+_shKv('배송',_shFmt(b))+_shKv('반품(수기포함)',_shFmt(r))+_shKv('총 수량',_shFmt(b+r))+'</div>';}return _shBox('📊 정산서 수량 대조 ('+ym+')','<div style="display:flex;gap:12px;flex-wrap:wrap">'+cc('#eef4fb','#d3e2f2','#0f4c81','🏢 실제 정산서')+cc('#fff5ea','#f3ddc0','#b5540a','📱 기사 공유본')+'</div><div style="margin-top:11px;border-radius:10px;padding:11px;font-size:13px;font-weight:800;text-align:center;background:#e3f4ea;color:#1a7a45">✓ 일치 (현재 앱이 공유 원본)</div>')+_shBox('👑 팀장·조장 수량',_shKv('배송',_shFmt(lb))+_shKv('반품',_shFmt(lr))+_shKv('합계',_shFmt(lb+lr))+'<div style="font-size:11px;color:#8a97a8;margin-top:6px">역할=Supabase(인원관리) 기준</div>');}
+function _shMove(){var H=window._shHub;var rows=(H.routeMoves||[]).map(function(o,i){return '<tr>'+_shTd(o.date)+_shTd(o.route)+_shTd(o.a)+_shTd(o.b)+_shTd(o.qty)+_shTd(o.fb)+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shDelMove('+i+')" style="cursor:pointer;color:#c0392b;font-size:14px">🗑</span></td></tr>';}).join('')||'<tr><td colspan="7" style="padding:10px;color:#9aa6b3;font-size:12px">등록된 이관이 없습니다.</td></tr>';return _shBox('🔁 라우트 기사 이관 (A→B)','<div style="font-size:12.5px;color:#2c4a63;background:#eef6ff;border-left:4px solid #0f4c81;border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:11px">특정일·라우트를 실제 근무한 B기사로 이관. 배송·반품·수기반품 전체, 프레시백 ½/전부 선택.</div>'+_shBtn('＋ 이관 추가','_shAddMove()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+_shListTbl(['날짜','라우트','A','B','배/반/수기','프레시백',''],rows));}
+function _shAddMove(){var H=window._shHub;var date=prompt('날짜 (예 2026-08-14)');if(!date)return;var route=prompt('라우트 (예 211A)');if(!route)return;var a=prompt('원래 기사 A');if(!a)return;var b=prompt('실제 기사 B');if(!b)return;var qty=prompt('배송/반품/수기 (예 44/18/3)','0/0/0');var fb=prompt('프레시백: half=반만, all=전부','half');H.routeMoves.push({date:date,route:route,a:a,b:b,qty:qty||'',fb:(fb==='all'?'전부':'½')});_shSave();_shRender();}
 function _shDelMove(i){window._shHub.routeMoves.splice(i,1);_shSave();_shRender();}
-function _shMerge(){var H=window._shHub;
-  return _shBox('🔗 아이디 통합 (동일인 병합)',
-    _shBtn('＋ 통합 추가','_shAddMerge()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+
-    _shList(H.merges,[['별정 ID','sub'],['별정 기사','subn'],['→ 대표','rep']],'_shDelMerge'));
-}
-function _shAddMerge(){var H=window._shHub;var sub=prompt('별정 ID');if(!sub)return;var subn=prompt('별정 기사명')||'';var rep=prompt('대표 기사명');if(!rep)return;H.merges.push({sub:sub,subn:subn,rep:rep});_shSave();_shRender();}
+function _shDrvCancel(){window._shE=null;_shRender();}
+function _shDrv(){var H=window._shHub;H.drvcfg=H.drvcfg||{};var names=_shDrvNames();var form='';if(window._shE&&window._shE.indexOf('drv:')===0){var nm=window._shE.slice(4);var c=H.drvcfg[nm]||{};var role=_shRoleLbl(String((IDRV[nm]||{}).role||''));var lb=function(t){return '<span style="font-size:12px;color:#64748b;margin:0 3px 0 8px">'+t+'</span>';};form='<div style="background:#fff8ef;border:1px solid #f3ddc0;border-radius:11px;padding:13px;margin-bottom:12px"><div style="font-size:13.5px;font-weight:800;color:#b5450d;margin-bottom:9px">✎ '+nm+' ('+role+') 수정</div><div style="display:flex;flex-wrap:wrap;align-items:center">'+lb('추가단가')+_shInp('se_add',c.add||0)+lb('팀장수당')+_shInp('se_tj',c.tj||0,'',110)+lb('차량지원')+_shInp('se_car',c.car||0,'',110)+lb('기타')+_shInp('se_etc',c.etc||0)+lb('히든단가')+_shInp('se_hid',c.hidden||0)+lb('보험부담')+_shInp('se_ins',c.ins||'기본','',80)+lb('선지급')+_shInp('se_pre',c.pre||'표시','',80)+lb('명세서')+_shInp('se_spec',c.spec||'일반','',80)+lb('세금계산서')+_shInp('se_tax',c.tax||'발행가능','',100)+'</div><div style="margin-top:8px">'+_shBtn('💾 저장','_shDrvSave(\''+nm+'\')','background:#1f9d55;color:#fff')+_shBtn('취소','_shDrvCancel()','')+'</div></div>';}var rows=names.map(function(n){var role=String((IDRV[n]||{}).role||'');var c=H.drvcfg[n]||{};var rl=_shRoleLbl(role);var rc=(role==='leader')?'#c2410c':(role==='sub'?'#1d4ed8':'#64748b');return '<tr>'+_shTd(rl,'font-weight:800;color:'+rc)+_shTd(n,'font-weight:700')+_shTd(_shFmt(c.add||0))+_shTd(_shFmt(c.tj||0))+_shTd(_shFmt(c.car||0))+_shTd(_shFmt(c.etc||0))+_shTd(_shFmt(c.hidden||0))+_shTd(c.ins||'기본')+_shTd(c.pre||'표시')+_shTd(c.spec||'일반')+_shTd(c.tax||'발행가능')+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shDrvEdit(\''+n+'\')" style="cursor:pointer;font-size:14px">✎</span></td></tr>';}).join('');return _shBox('👥 소속 기사 목록 ('+names.length+'명) · 역할=Supabase',form+_shListTbl(['직급','기사','추가단가','팀장수당','차량지원','기타','히든','보험','선지급','명세서','세금계산서',''],rows))+_shMerge()+_shShare();}
+function _shDrvEdit(n){window._shE='drv:'+n;_shRender();var b=document.getElementById('shBody');if(b)b.scrollTop=0;}
+function _shDrvSave(n){var H=window._shHub;H.drvcfg=H.drvcfg||{};function g(id){var e=document.getElementById(id);return e?e.value:'';}H.drvcfg[n]={add:_shNum(g('se_add')),tj:_shNum(g('se_tj')),car:_shNum(g('se_car')),etc:_shNum(g('se_etc')),hidden:_shNum(g('se_hid')),ins:g('se_ins')||'기본',pre:g('se_pre')||'표시',spec:g('se_spec')||'일반',tax:g('se_tax')||'발행가능'};window._shE=null;_shSave();_shRender();}
+function _shMerge(){var H=window._shHub;var form='';if(window._shE&&window._shE.indexOf('mg:')===0){var i=+window._shE.slice(3);var o=(i>=0&&H.merges[i])?H.merges[i]:{};form='<div style="background:#f4f8ff;border:1px solid #dbe7f6;border-radius:10px;padding:12px;margin:8px 0"><div style="font-size:12.5px;font-weight:800;color:#0f4c81;margin-bottom:7px">'+(i<0?'통합 추가':'통합 수정')+'</div>'+_shInp('mg_sub',o.sub,'별정 ID',150)+_shInp('mg_subn',o.subn,'별정 기사명',130)+_shInp('mg_rep',o.rep,'대표 기사명',130)+_shBtn('💾 저장','_shMgSave('+i+')','background:#1f9d55;color:#fff')+_shBtn('취소','_shDrvCancel()','')+'</div>';}var rows=(H.merges||[]).map(function(o,i){return '<tr>'+_shTd(o.sub)+_shTd(o.subn)+_shTd('→ '+o.rep,'font-weight:800')+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shMgEdit('+i+')" style="cursor:pointer;font-size:14px;margin-right:8px">✎</span><span onclick="_shDelMerge('+i+')" style="cursor:pointer;color:#c0392b;font-size:14px">🗑</span></td></tr>';}).join('')||'<tr><td colspan="4" style="padding:10px;color:#9aa6b3;font-size:12px">없음</td></tr>';return _shBox('🔗 아이디 통합 (동일인 병합)',_shBtn('＋ 통합 추가','_shMgEdit(-1)','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+form+_shListTbl(['별정 ID','별정 기사','→ 대표',''],rows));}
+function _shMgEdit(i){window._shE='mg:'+i;_shRender();}
+function _shMgSave(i){var H=window._shHub;function g(id){var e=document.getElementById(id);return e?e.value:'';}var o={sub:g('mg_sub'),subn:g('mg_subn'),rep:g('mg_rep')};if(!o.sub||!o.rep){alert('별정 ID와 대표 기사명은 필수');return;}if(i<0)H.merges.push(o);else H.merges[i]=o;window._shE=null;_shSave();_shRender();}
 function _shDelMerge(i){window._shHub.merges.splice(i,1);_shSave();_shRender();}
-function _shShare(){var H=window._shHub;var ym=_shYm();var arr=(H.shares[ym]||[]);
-  return _shBox('✂️ 서브 아이디 수익 분배 · '+ym,
-    '<div style="font-size:11px;color:#2c4a63;background:#eef6ff;border-left:4px solid #0f4c81;border-radius:0 8px 8px 0;padding:8px 10px;margin-bottom:9px">해당 월 기준. 월이 바뀌면 목록도 바뀝니다.</div>'+
-    _shBtn('＋ 확정금액 추가','_shAddShare()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+
-    _shList(arr,[['서브 기사','name'],['확정금액','amt']],'_shDelShare'));
-}
-function _shAddShare(){var H=window._shHub;var ym=_shYm();var name=prompt('서브 기사명/ID');if(!name)return;var amt=prompt('확정금액 (숫자)','0');if(!H.shares[ym])H.shares[ym]=[];H.shares[ym].push({name:name,amt:_shFmt(_shNum(amt))});_shSave();_shRender();}
+function _shShare(){var H=window._shHub;var ym=_shYm();var arr=(H.shares[ym]||[]);var form='';if(window._shE&&window._shE.indexOf('sh:')===0){var i=+window._shE.slice(3);var o=(i>=0&&arr[i])?arr[i]:{};form='<div style="background:#f4f8ff;border:1px solid #dbe7f6;border-radius:10px;padding:12px;margin:8px 0"><div style="font-size:12.5px;font-weight:800;color:#0f4c81;margin-bottom:7px">'+(i<0?'분배 추가':'분배 수정')+' · '+ym+'</div>'+_shInp('sh_name',o.name,'서브 기사',150)+_shInp('sh_amt',o.amtn||o.amt,'확정금액',120)+_shBtn('💾 저장','_shShSave('+i+')','background:#1f9d55;color:#fff')+_shBtn('취소','_shDrvCancel()','')+'</div>';}var rows=arr.map(function(o,i){return '<tr>'+_shTd(o.name)+_shTd(o.amt)+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shShEdit('+i+')" style="cursor:pointer;font-size:14px;margin-right:8px">✎</span><span onclick="_shDelShare('+i+')" style="cursor:pointer;color:#c0392b;font-size:14px">🗑</span></td></tr>';}).join('')||'<tr><td colspan="3" style="padding:10px;color:#9aa6b3;font-size:12px">없음</td></tr>';return _shBox('✂️ 서브 아이디 수익 분배 · '+ym+' (월별)',_shBtn('＋ 확정금액 추가','_shShEdit(-1)','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+form+_shListTbl(['서브 기사','확정금액',''],rows));}
+function _shShEdit(i){window._shE='sh:'+i;_shRender();}
+function _shShSave(i){var H=window._shHub;var ym=_shYm();if(!H.shares[ym])H.shares[ym]=[];function g(id){var e=document.getElementById(id);return e?e.value:'';}var amt=_shNum(g('sh_amt'));var o={name:g('sh_name'),amt:_shFmt(amt),amtn:amt};if(!o.name){alert('서브 기사명 필수');return;}if(i<0)H.shares[ym].push(o);else H.shares[ym][i]=o;window._shE=null;_shSave();_shRender();}
 function _shDelShare(i){var ym=_shYm();window._shHub.shares[ym].splice(i,1);_shSave();_shRender();}
-function _shRate(){var H=window._shHub;var R=H.rates;
-  var inp=function(id,v){return '<input id="'+id+'" value="'+v+'" style="width:70px;background:#f4f6f9;border:1px solid #e2e8f0;border-radius:6px;padding:4px 7px;font-size:11px;font-weight:800;text-align:right"/>';};
-  var rate=_shBox('1. 공통 요율 (%)',
-    '<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-size:11.5px">경비율</span>'+inp('shR_e',R.expense)+'</div>'+
-    '<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-size:11.5px">산재보험료율</span>'+inp('shR_i',R.ind)+'</div>'+
-    '<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-size:11.5px">고용보험료율</span>'+inp('shR_m',R.emp)+'</div>'+
-    '<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="font-size:11.5px">대리점 수수료</span>'+inp('shR_a',R.agency)+'</div>'+
-    _shBtn('💾 요율 저장','_shSaveRates()','background:#1f9d55;color:#fff'));
-  var price=_shBox('2. 라우트별 단가',
-    _shBtn('＋ 단가 추가','_shAddPrice()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+
-    _shList(H.prices,[['라우트','route'],['기본','base'],['가중1','w1'],['가중2','w2'],['최종','fin'],['타입','type']],'_shDelPrice'));
-  return rate+price;
-}
-function _shSaveRates(){var H=window._shHub;H.rates={expense:parseFloat(document.getElementById('shR_e').value)||0,ind:parseFloat(document.getElementById('shR_i').value)||0,emp:parseFloat(document.getElementById('shR_m').value)||0,agency:parseFloat(document.getElementById('shR_a').value)||0};_shSave();alert('요율 저장됨');}
-function _shAddPrice(){var H=window._shHub;var route=prompt('라우트');if(!route)return;var base=prompt('기본단가','0');var w1=prompt('가중요인1','0');var w2=prompt('가중요인2','0');var fin=prompt('최종단가',String(_shNum(base)+_shNum(w1)+_shNum(w2)));var type=prompt('타입 (APT≤699/지번+APT/지번≥801)','')||'';H.prices.push({route:route,base:_shNum(base),w1:_shNum(w1),w2:_shNum(w2),fin:_shNum(fin),type:type});_shSave();_shRender();}
-function _shDelPrice(i){window._shHub.prices.splice(i,1);_shSave();_shRender();}
-function _shAcc(){var H=window._shHub;
-  return _shBox('🏦 기사 계좌 (마스킹 저장)',
-    '<div style="font-size:11px;color:#b5450d;background:#fff8ef;border-left:4px solid #e8630f;border-radius:0 8px 8px 0;padding:8px 10px;margin-bottom:9px">보안상 계좌번호는 마스킹 표시됩니다.</div>'+
-    _shBtn('＋ 계좌 추가','_shAddAcc()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+
-    _shList(H.accounts,[['기사','name'],['은행','bank'],['계좌','acc']],'_shDelAcc'));
-}
-function _shAddAcc(){var H=window._shHub;var name=prompt('기사명');if(!name)return;var bank=prompt('은행')||'';var acc=prompt('계좌번호')||'';var mask=acc.length>4?('••••'+acc.slice(-4)):acc;H.accounts.push({name:name,bank:bank,acc:mask});_shSave();_shRender();}
-function _shDelAcc(i){window._shHub.accounts.splice(i,1);_shSave();_shRender();}
-function _shPre(){var H=window._shHub;
-  return _shBox('🪙 선지급 관리',
-    '<div style="font-size:11px;color:#2c4a63;background:#eef6ff;border-left:4px solid #0f4c81;border-radius:0 8px 8px 0;padding:8px 10px;margin-bottom:9px">기사별 선지급/잔여 기록. (상세·연도접기 UI는 다음 단계에서 확장)</div>'+
-    _shBtn('＋ 선지급 추가','_shAddPre()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+
-    _shList(H.prepay,[['기사','name'],['총선지급','total'],['잔여','left']],'_shDelPre'));
-}
-function _shAddPre(){var H=window._shHub;var name=prompt('기사명');if(!name)return;var total=prompt('총 선지급액','0');var left=prompt('잔여','0');H.prepay.push({name:name,total:_shFmt(_shNum(total)),left:_shFmt(_shNum(left))});_shSave();_shRender();}
+
+function _shSaveRates(){var H=window._shHub;function g(id){var e=document.getElementById(id);return e?parseFloat(e.value)||0:0;}H.rates={expense:g('rt_e'),ind:g('rt_i'),emp:g('rt_m'),agency:g('rt_a')};_shSave();alert('요율 저장됨');}
+function _shRate(){var H=window._shHub;var R=H.rates||{};var lb=function(t){return '<span style="font-size:12.5px;color:#64748b;margin:0 4px 0 10px">'+t+'</span>';};var rate=_shBox('1. 공통 요율 (%)','<div style="display:flex;flex-wrap:wrap;align-items:center">'+lb('경비율')+_shInp('rt_e',R.expense,'',70)+lb('산재보험료율')+_shInp('rt_i',R.ind,'',70)+lb('고용보험료율')+_shInp('rt_m',R.emp,'',70)+lb('대리점 수수료')+_shInp('rt_a',R.agency,'',70)+'</div><div style="margin-top:8px">'+_shBtn('💾 요율 저장','_shSaveRates()','background:#1f9d55;color:#fff')+'</div>');var ps=H.pricesets||[];var idx=(window._shPS==null?0:window._shPS);if(idx>=ps.length)idx=ps.length-1;var chips=ps.map(function(p,i){var on=(i===idx);return '<span onclick="_shPSsel('+i+')" style="cursor:pointer;font-size:12px;font-weight:800;border-radius:16px;padding:6px 12px;margin:0 6px 6px 0;display:inline-block;'+(on?'background:#0f4c81;color:#fff':'background:#eef2f7;color:#3a4658')+'">'+(p.from||'?')+' ~ '+(p.to||'?')+'</span>';}).join('');var inner='<div style="font-size:12px;color:#2c4a63;background:#eef6ff;border-left:4px solid #0f4c81;border-radius:0 8px 8px 0;padding:9px 11px;margin-bottom:10px">단가는 <b>적용기간</b>으로 관리돼요. 예: 2026-06-01 ~ 2027-05-31. 변경 전까지 그 단가 유지, 변경 시 새 기간 추가.</div><div style="margin-bottom:9px">'+chips+_shBtn('＋ 기간 추가','_shAddPS()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+'</div>';if(ps.length&&idx>=0){var P=ps[idx];P.rows=P.rows||{};inner+='<div style="display:flex;align-items:center;flex-wrap:wrap;margin-bottom:10px">'+lb('적용기간')+_shInp('ps_from',P.from,'2026-06-01',120)+'<span style="margin:0 4px">~</span>'+_shInp('ps_to',P.to,'2027-05-31',120)+_shBtn('기간 저장','_shPSsave('+idx+')','background:#1f9d55;color:#fff')+_shBtn('기간 삭제','_shDelPS('+idx+')','background:#e74c3c;color:#fff')+'</div>';var routes=_shRouteList();var rows=routes.map(function(rt){var d=P.rows[rt]||{};var fin=(d.fin!=null&&d.fin!=='')?d.fin:(_shNum(d.base)+_shNum(d.w1)+_shNum(d.w2));if(window._shE==='pr:'+rt){return '<tr><td colspan="7" style="padding:8px;border-bottom:1px solid #f2ece2;background:#fff8ef"><b>'+rt+'</b> '+_shInp('pr_base',d.base||0,'기본',80)+_shInp('pr_w1',d.w1||0,'가중1',80)+_shInp('pr_w2',d.w2||0,'가중2',80)+_shInp('pr_type',d.type||'','타입',120)+_shBtn('저장','_shPrSave(\''+rt+'\')','background:#1f9d55;color:#fff')+_shBtn('취소','_shDrvCancel()','')+'</td></tr>';}return '<tr>'+_shTd(rt,'font-weight:700')+_shTd(_shFmt(d.base||0))+_shTd(_shFmt(d.w1||0))+_shTd(_shFmt(d.w2||0))+_shTd(_shFmt(fin),'font-weight:800;color:#0f4c81')+_shTd(d.type||'')+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shPrEdit(\''+rt+'\')" style="cursor:pointer;font-size:14px">✎</span></td></tr>';}).join('');inner+=_shListTbl(['라우트','기본','가중1','가중2','최종','타입',''],rows);}else{inner+='<div style="color:#9aa6b3;font-size:12px">기간을 추가하면 회사 라우트('+_shRouteList().length+'개) 단가를 입력할 수 있어요.</div>';}return rate+_shBox('2. 라우트별 단가 (적용기간)',inner);}
+function _shPSsel(i){window._shPS=i;window._shE=null;_shRender();}
+function _shAddPS(){var H=window._shHub;H.pricesets=H.pricesets||[];H.pricesets.push({from:'',to:'',rows:{}});window._shPS=H.pricesets.length-1;_shSave();_shRender();}
+function _shPSsave(i){var H=window._shHub;var f=document.getElementById('ps_from'),t=document.getElementById('ps_to');if(H.pricesets[i]){H.pricesets[i].from=f?f.value:'';H.pricesets[i].to=t?t.value:'';}_shSave();_shRender();}
+function _shDelPS(i){if(!confirm('이 적용기간을 삭제할까요?'))return;window._shHub.pricesets.splice(i,1);window._shPS=0;_shSave();_shRender();}
+function _shPrEdit(rt){window._shE='pr:'+rt;_shRender();}
+function _shPrSave(rt){var H=window._shHub;var idx=(window._shPS==null?0:window._shPS);var P=H.pricesets[idx];if(!P)return;P.rows=P.rows||{};function g(id){var e=document.getElementById(id);return e?e.value:'';}var base=_shNum(g('pr_base')),w1=_shNum(g('pr_w1')),w2=_shNum(g('pr_w2'));P.rows[rt]={base:base,w1:w1,w2:w2,fin:base+w1+w2,type:g('pr_type')};window._shE=null;_shSave();_shRender();}
+function _shAcc(){var H=window._shHub;H.accounts=H.accounts||{};var names=_shDrvNames();var form='';if(window._shE&&window._shE.indexOf('ac:')===0){var nm=window._shE.slice(3);var a=H.accounts[nm]||{};form='<div style="background:#fff8ef;border:1px solid #f3ddc0;border-radius:11px;padding:13px;margin-bottom:12px"><div style="font-size:13.5px;font-weight:800;color:#b5450d;margin-bottom:9px">✎ '+nm+' 계좌</div>'+_shInp('ac_bank',a.bank,'은행명',120)+_shInp('ac_acc',a.acc,'계좌번호',200)+_shBtn('💾 저장','_shAccSave(\''+nm+'\')','background:#1f9d55;color:#fff')+_shBtn('취소','_shDrvCancel()','')+'</div>';}var rows=names.map(function(n){var a=H.accounts[n]||{};var reg=(a.bank||a.acc);return '<tr>'+_shTd(n,'font-weight:700')+_shTd(a.bank||'<span style=color:#c0b>미등록</span>')+_shTd(a.acc||'-')+_shTd(reg?'<span style=color:#1a7a45>등록</span>':'<span style=color:#c0392b>수기입력</span>')+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shAccEdit(\''+n+'\')" style="cursor:pointer;font-size:14px">✎</span></td></tr>';}).join('');return _shBox('🏦 기사 계좌 ('+names.length+'명) · 상세값 자동 · 없으면 수기','<div style="font-size:12px;color:#2c4a63;background:#eef6ff;border-left:4px solid #0f4c81;border-radius:0 8px 8px 0;padding:9px 11px;margin-bottom:10px">기사 상세에 계좌가 있으면 자동 표시, 없으면 ✎로 은행명/계좌 직접 입력.</div>'+form+_shListTbl(['기사','은행명','계좌','상태',''],rows));}
+function _shAccEdit(n){window._shE='ac:'+n;_shRender();var b=document.getElementById('shBody');if(b)b.scrollTop=0;}
+function _shAccSave(n){var H=window._shHub;H.accounts=H.accounts||{};function g(id){var e=document.getElementById(id);return e?e.value:'';}H.accounts[n]={bank:g('ac_bank'),acc:g('ac_acc')};window._shE=null;_shSave();_shRender();}
+
+function _shPre(){var H=window._shHub;H.prepay=H.prepay||[];var form='';if(window._shE&&window._shE.indexOf('pp:')===0){var i=+window._shE.slice(3);var o=(i>=0&&H.prepay[i])?H.prepay[i]:{};form='<div style="background:#fff8ef;border:1px solid #f3ddc0;border-radius:11px;padding:13px;margin-bottom:12px"><div style="font-size:13.5px;font-weight:800;color:#b5450d;margin-bottom:9px">'+(i<0?'선지급 추가':'선지급 수정')+'</div>'+_shInp('pp_name',o.name,'기사명',120)+_shInp('pp_total',o.totaln||o.total,'총 선지급',120)+_shInp('pp_paid',o.paidn||o.paid,'납부완료',120)+_shBtn('💾 저장','_shPreSave('+i+')','background:#1f9d55;color:#fff')+_shBtn('취소','_shDrvCancel()','')+'</div>';}var tot=0,paidt=0;var rows=H.prepay.map(function(o,i){var t=o.totaln||_shNum(o.total),p=o.paidn||_shNum(o.paid),left=t-p;tot+=t;paidt+=p;return '<tr>'+_shTd(o.name,'font-weight:700')+_shTd(_shFmt(t))+_shTd(_shFmt(p))+_shTd(_shFmt(left),'font-weight:800;color:#c0392b')+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shPreEdit('+i+')" style="cursor:pointer;font-size:14px;margin-right:8px">✎</span><span onclick="_shDelPre('+i+')" style="cursor:pointer;color:#c0392b;font-size:14px">🗑</span></td></tr>';}).join('')||'<tr><td colspan="5" style="padding:10px;color:#9aa6b3;font-size:12px">없음</td></tr>';return _shBox('🪙 선지급 관리','<div style="font-size:12px;color:#2c4a63;background:#eef6ff;border-left:4px solid #0f4c81;border-radius:0 8px 8px 0;padding:9px 11px;margin-bottom:10px">정산프로그램 선지급 데이터 <b>연동은 다음 단계</b> · 지금은 수기 등록. 정산 시 잔여가 차감(선지급금)으로 자동 반영.</div>'+_shKv('총 선지급 / 납부완료 / 잔여',_shFmt(tot)+' / '+_shFmt(paidt)+' / '+_shFmt(tot-paidt))+'<div style="margin-top:8px">'+_shBtn('＋ 선지급 추가','_shPreEdit(-1)','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+'</div>'+form+_shListTbl(['기사','총 선지급','납부완료','잔여',''],rows));}
+function _shPreEdit(i){window._shE='pp:'+i;_shRender();}
+function _shPreSave(i){var H=window._shHub;function g(id){var e=document.getElementById(id);return e?e.value:'';}var t=_shNum(g('pp_total')),p=_shNum(g('pp_paid'));var o={name:g('pp_name'),total:_shFmt(t),totaln:t,paid:_shFmt(p),paidn:p};if(!o.name){alert('기사명 필수');return;}if(i<0)H.prepay.push(o);else H.prepay[i]=o;window._shE=null;_shSave();_shRender();}
 function _shDelPre(i){window._shHub.prepay.splice(i,1);_shSave();_shRender();}
-function _shTax(){var H=window._shHub;window._shQ=window._shQ||1;
-  var seg=[1,2,3,4].map(function(q){var on=(window._shQ===q);return '<span onclick="_shTaxQ('+q+')" style="cursor:pointer;font-size:10.5px;font-weight:800;padding:5px 10px;border-radius:7px;'+(on?'background:#fff;color:#0f4c81;box-shadow:0 1px 3px rgba(0,0,0,.12)':'color:#64748b')+'">'+q+'분기</span>';}).join('');
-  var months=['','1·2·3월','4·5·6월','7·8·9월','10·11·12월'][window._shQ];
-  var key='Q'+window._shQ;var checks=(H.tax[key]||[]);
-  return _shBox('🧾 세금계산서 발행 체크',
-    '<div style="display:inline-flex;background:#eef2f7;border-radius:9px;padding:3px;gap:2px;margin-bottom:9px">'+seg+'</div>'+
-    '<div style="font-size:11px;color:#64748b;margin-bottom:6px">'+window._shQ+'분기 ('+months+') · 발행 완료 인원</div>'+
-    _shBtn('＋ 발행 인원 추가','_shAddTax()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+
-    _shList(checks,[['기사','name'],['상태','st']],'_shDelTax'));
-}
+function _shTax(){var H=window._shHub;H.tax=H.tax||{};window._shQ=window._shQ||1;var seg=[1,2,3,4].map(function(q){var on=(window._shQ===q);return '<span onclick="_shTaxQ('+q+')" style="cursor:pointer;font-size:12.5px;font-weight:800;padding:7px 13px;border-radius:8px;margin-right:4px;'+(on?'background:#0f4c81;color:#fff':'background:#eef2f7;color:#64748b')+'">'+q+'분기</span>';}).join('');var months=['','1·2·3월','4·5·6월','7·8·9월','10·11·12월'][window._shQ];var key='Q'+window._shQ;var checks=(H.tax[key]||[]);var rows=checks.map(function(o,i){return '<tr>'+_shTd(o.name,'font-weight:700')+_shTd(o.st||'✅ 발행완료','color:#1a7a45')+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shDelTax('+i+')" style="cursor:pointer;color:#c0392b;font-size:14px">🗑</span></td></tr>';}).join('')||'<tr><td colspan="3" style="padding:10px;color:#9aa6b3;font-size:12px">없음</td></tr>';return _shBox('🧾 세금계산서 발행 체크 (분기 선택)','<div style="margin-bottom:10px">'+seg+'</div><div style="font-size:12px;color:#64748b;margin-bottom:8px">'+window._shQ+'분기 ('+months+') · 발행 완료 인원</div>'+_shBtn('＋ 발행 인원 추가','_shAddTax()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+_shListTbl(['기사','상태',''],rows));}
 function _shTaxQ(q){window._shQ=q;_shRender();}
 function _shAddTax(){var H=window._shHub;var key='Q'+(window._shQ||1);var name=prompt('발행 완료 기사명');if(!name)return;if(!H.tax[key])H.tax[key]=[];H.tax[key].push({name:name,st:'✅ 발행완료'});_shSave();_shRender();}
 function _shDelTax(i){var key='Q'+(window._shQ||1);window._shHub.tax[key].splice(i,1);_shSave();_shRender();}
-function _shInc(){var H=window._shHub;
-  return _shBox('💰 수익 항목',
-    _shBtn('＋ 수익 추가','_shAddInc()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+
-    _shList(H.incomes,[['날짜','date'],['이름','name'],['항목','item'],['단가','price'],['수량','qty']],'_shDelInc'))+
-    _shBox('➖ 차감 항목',
-    _shBtn('＋ 차감 추가','_shAddDed()','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+
-    _shList(H.deducts,[['날짜','date'],['사유','reason'],['단가','price'],['수량','qty']],'_shDelDed'));
-}
-function _shAddInc(){var H=window._shHub;var date=prompt('날짜')||'';var name=prompt('이름')||'';var item=prompt('항목')||'';var price=prompt('단가')||'';var qty=prompt('수량','1')||'';H.incomes.push({date:date,name:name,item:item,price:price,qty:qty});_shSave();_shRender();}
+function _shInc(){var H=window._shHub;H.incomes=H.incomes||[];H.deducts=H.deducts||[];var incForm='';if(window._shE&&window._shE.indexOf('in:')===0){var i=+window._shE.slice(3);var o=(i>=0&&H.incomes[i])?H.incomes[i]:{};incForm='<div style="background:#fff8ef;border:1px solid #f3ddc0;border-radius:11px;padding:13px;margin:8px 0"><div style="font-size:13px;font-weight:800;color:#b5450d;margin-bottom:8px">'+(i<0?'수익 수기 추가':'수익 수정')+'</div>'+_shInp('in_date',o.date,'날짜',110)+_shInp('in_name',o.name,'이름',110)+_shInp('in_item',o.item,'항목',110)+_shInp('in_price',o.price,'단가',90)+_shInp('in_qty',o.qty,'수량',70)+_shBtn('💾 저장','_shIncSave('+i+')','background:#1f9d55;color:#fff')+_shBtn('취소','_shDrvCancel()','')+'</div>';}var incRows=H.incomes.map(function(o,i){return '<tr>'+_shTd(o.date)+_shTd(o.name)+_shTd(o.item)+_shTd(o.price)+_shTd(o.qty)+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shIncEdit('+i+')" style="cursor:pointer;font-size:14px;margin-right:8px">✎</span><span onclick="_shDelInc('+i+')" style="cursor:pointer;color:#c0392b;font-size:14px">🗑</span></td></tr>';}).join('')||'<tr><td colspan="6" style="padding:10px;color:#9aa6b3;font-size:12px">없음</td></tr>';var incBox=_shBox('💰 수익 항목','<div style="margin-bottom:6px">'+_shBtn('📄 엑셀 업로드','_shIncExcel()','background:#0f4c81;color:#fff')+_shBtn('📥 백업공유에서 가져오기','_shIncBackup()','background:#5a4a9e;color:#fff')+_shBtn('✎ 수기 추가','_shIncEdit(-1)','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+'</div>'+incForm+_shListTbl(['날짜','이름','항목','단가','수량',''],incRows));var dedForm='';if(window._shE&&window._shE.indexOf('dd:')===0){var di=+window._shE.slice(3);var d=(di>=0&&H.deducts[di])?H.deducts[di]:{};dedForm='<div style="background:#fff8ef;border:1px solid #f3ddc0;border-radius:11px;padding:13px;margin:8px 0"><div style="font-size:13px;font-weight:800;color:#b5450d;margin-bottom:8px">기타 차감 '+(di<0?'추가':'수정')+'</div>'+_shInp('dd_date',d.date,'날짜',110)+_shInp('dd_label',d.label,'항목명',140)+_shInp('dd_price',d.price,'단가(-)',90)+_shInp('dd_qty',d.qty||1,'수량',70)+_shBtn('💾 저장','_shDedSave('+di+')','background:#1f9d55;color:#fff')+_shBtn('취소','_shDrvCancel()','')+'</div>';}var dedRows=H.deducts.map(function(o,i){return '<tr>'+_shTd('기타','color:#a9700a;font-weight:700')+_shTd(o.date)+_shTd(o.label)+_shTd(o.price)+_shTd(o.qty)+'<td style="padding:7px 6px;border-bottom:1px solid #f2ece2"><span onclick="_shDedEdit('+i+')" style="cursor:pointer;font-size:14px;margin-right:8px">✎</span><span onclick="_shDelDed('+i+')" style="cursor:pointer;color:#c0392b;font-size:14px">🗑</span></td></tr>';}).join('');var dedBox=_shBox('➖ 차감 항목','<div style="font-size:12px;color:#2c4a63;background:#eef6ff;border-left:4px solid #0f4c81;border-radius:0 8px 8px 0;padding:9px 11px;margin-bottom:10px"><b>분실차감</b>=정산서에서 자동 · <b>선지급금</b>=선지급 탭에서 자동 · <b>기타</b>=아래에서 항목명 넣어 직접 차감</div>'+_shBtn('＋ 기타 차감 추가','_shDedEdit(-1)','background:linear-gradient(100deg,#e8630f,#f4902a);color:#fff')+dedForm+_shListTbl(['구분','날짜','항목명','단가','수량',''],dedRows||'<tr><td colspan="6" style="padding:10px;color:#9aa6b3;font-size:12px">기타 차감 없음</td></tr>'));return incBox+dedBox;}
+function _shIncEdit(i){window._shE='in:'+i;_shRender();}
+function _shIncSave(i){var H=window._shHub;function g(id){var e=document.getElementById(id);return e?e.value:'';}var o={date:g('in_date'),name:g('in_name'),item:g('in_item'),price:g('in_price'),qty:g('in_qty')};if(i<0)H.incomes.push(o);else H.incomes[i]=o;window._shE=null;_shSave();_shRender();}
 function _shDelInc(i){window._shHub.incomes.splice(i,1);_shSave();_shRender();}
-function _shAddDed(){var H=window._shHub;var date=prompt('날짜')||'';var reason=prompt('사유')||'';var price=prompt('단가 (차감은 - 붙이기)')||'';var qty=prompt('수량','1')||'';H.deducts.push({date:date,reason:reason,price:price,qty:qty});_shSave();_shRender();}
+function _shIncExcel(){alert('엑셀 업로드 연결은 다음 단계입니다. 지금은 수기 추가를 이용하세요.');}
+function _shIncBackup(){alert('백업공유 가져오기 연결은 다음 단계입니다. 지금은 수기 추가를 이용하세요.');}
+function _shDedEdit(i){window._shE='dd:'+i;_shRender();}
+function _shDedSave(i){var H=window._shHub;function g(id){var e=document.getElementById(id);return e?e.value:'';}var o={gubun:'기타',date:g('dd_date'),label:g('dd_label'),price:g('dd_price'),qty:g('dd_qty')};if(!o.label){alert('항목명 필수');return;}if(i<0)H.deducts.push(o);else H.deducts[i]=o;window._shE=null;_shSave();_shRender();}
 function _shDelDed(i){window._shHub.deducts.splice(i,1);_shSave();_shRender();}
-
-
-function _shRoleLbl(r){r=String(r||'');if(r==='leader')return '★팀장';if(r==='sub')return '◆조장';if(r==='driver')return '일반';return r||'일반';}
-function _shDrv(){var H=window._shHub;H.drvcfg=H.drvcfg||{};
-  var names=[];try{names=Object.keys(window.IDRV||{});}catch(e){}
-  var pr={leader:0,sub:1};
-  names.sort(function(a,b){var ra=String((IDRV[a]||{}).role||''),rb=String((IDRV[b]||{}).role||'');var pa=(pr[ra]==null?2:pr[ra]),pb=(pr[rb]==null?2:pr[rb]);if(pa!==pb)return pa-pb;return a<b?-1:1;});
-  var th='<tr>'+['직급','기사','추가단가','팀장수당','차량지원','기타','명세서','세금계산서'].map(function(h){return '<th style="text-align:left;background:#eadfce;color:#6b5330;padding:6px 5px;font-size:10px;white-space:nowrap">'+h+'</th>';}).join('')+'<th style="background:#eadfce"></th></tr>';
-  var rows=names.map(function(n){var role=String((IDRV[n]||{}).role||'');var c=H.drvcfg[n]||{};
-    var rl=_shRoleLbl(role);var rc=(role==='leader')?'#c2410c':(role==='sub'?'#1d4ed8':'#64748b');
-    return '<tr><td style="padding:6px 5px;border-bottom:1px solid #f2ece2;font-size:11px;font-weight:800;color:'+rc+';white-space:nowrap">'+rl+'</td>'+
-      '<td style="padding:6px 5px;border-bottom:1px solid #f2ece2;font-size:11px;font-weight:700">'+n+'</td>'+
-      '<td style="padding:6px 5px;border-bottom:1px solid #f2ece2;font-size:11px">'+_shFmt(c.add||0)+'</td>'+
-      '<td style="padding:6px 5px;border-bottom:1px solid #f2ece2;font-size:11px">'+_shFmt(c.tj||0)+'</td>'+
-      '<td style="padding:6px 5px;border-bottom:1px solid #f2ece2;font-size:11px">'+_shFmt(c.car||0)+'</td>'+
-      '<td style="padding:6px 5px;border-bottom:1px solid #f2ece2;font-size:11px">'+_shFmt(c.etc||0)+'</td>'+
-      '<td style="padding:6px 5px;border-bottom:1px solid #f2ece2;font-size:10px">'+(c.spec||'일반')+'</td>'+
-      '<td style="padding:6px 5px;border-bottom:1px solid #f2ece2;font-size:10px">'+(c.tax||'발행가능')+'</td>'+
-      '<td style="padding:6px 5px;border-bottom:1px solid #f2ece2"><span onclick="_shDrvEdit(\''+n+'\')" style="cursor:pointer;font-size:13px">✎</span></td></tr>';}).join('');
-  var tbl='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+th+rows+'</table></div><div style="font-size:10.5px;color:#8a97a8;margin-top:6px">직급은 인원관리(Supabase) 기준 자동 · ✎로 정산 항목(추가단가·팀장수당·차량지원·기타·명세서·세금계산서) 편집</div>';
-  return _shBox('👥 소속 기사 목록 ('+names.length+'명)',tbl)+_shMerge()+_shShare();
-}
-function _shDrvEdit(n){var H=window._shHub;H.drvcfg=H.drvcfg||{};var c=H.drvcfg[n]||{};
-  var add=prompt(n+' · 추가단가',c.add||0);if(add===null)return;
-  var tj=prompt('팀장수당',c.tj||0);if(tj===null)return;
-  var car=prompt('차량지원금',c.car||0);if(car===null)return;
-  var etc=prompt('기타',c.etc||0);if(etc===null)return;
-  var spec=prompt('명세서 (일반/간이)',c.spec||'일반')||'일반';
-  var tax=prompt('세금계산서 (발행가능/발행불가)',c.tax||'발행가능')||'발행가능';
-  H.drvcfg[n]={add:_shNum(add),tj:_shNum(tj),car:_shNum(car),etc:_shNum(etc),spec:spec,tax:tax};_shSave();_shRender();
-}
 
 function pgAdminSettle(){
   var monthNames=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
