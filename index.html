@@ -15089,7 +15089,7 @@ function lossRender(){
     });
   } else {
     var mine=recs.filter(function(x){return norm_name_js(x.driver_name||'')===me;});
-    var mineAct=mine.filter(function(x){return x.status!=='nofault';});
+    var mineAct=mine.filter(function(x){return x.status!=='nofault'&&!x.missing_final;});
     var mineSum=mineAct.reduce(function(s,x){return s+(+x.amount||0);},0);
     var seen=_lossGetSeen(); _LOSS_NEW={}; var newCnt=0;
     mine.forEach(function(x){ if(x.status!=='nofault' && x.confirmed!==true && seen.indexOf(String(x.wb))<0){ _LOSS_NEW[String(x.wb)]=true; newCnt++; } });
@@ -15110,19 +15110,20 @@ function lossRender(){
 }
 
 function lossRowMine(x){
+  var _mf=(x.missing_final===true);if(_mf&&x.status!=='nofault')x=Object.assign({},x,{status:'nofault'});
   var nf=(x.status==='nofault');
   var cf=(x.confirmed===true);
   var isNew=(!cf && !nf && _lossIsNew(x.wb));
   var badge=_lossTypeBadge(x.detail);
-  var amtHtml=nf?'미과실 제외':_lossFmt(x.amount)+'원';
+  var amtHtml=nf?(_mf?'최종본 제외':'미과실 제외'):_lossFmt(x.amount)+'원';
   var bg,bd,amtC;
   if(cf){bg='#c8e6c9';bd='#2e7d32';amtC='#1b5e20';}
   else if(nf){bg='#f5f5f5';bd='#dddddd';amtC='#999999';}
   else {bg='#e8f1fd';bd='#90caf9';amtC='#c2185b';}
-  var foot;
+  var foot='';
   if(cf) foot='<div style="margin-top:7px;text-align:center;background:#2e7d32;color:#fff;border-radius:7px;padding:6px;font-size:12px;font-weight:800">✅ 확정 완료</div>';
   else if(nf) foot='';
-  else foot='<button onclick="lossConfirm(\''+lossEsc(x.wb)+'\')" style="width:100%;margin-top:7px;padding:9px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer">✅ 확인 (확정)</button>';
+  else if(!nf) foot='<button onclick="lossConfirm(\''+lossEsc(x.wb)+'\')" style="width:100%;margin-top:7px;padding:9px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:800;cursor:pointer">✅ 확인 (확정)</button>';
   var inner='<div style="background:'+bg+';border:'+(cf?'2px':'1.5px')+' solid '+bd+';border-radius:11px;padding:9px 11px'+(nf?';opacity:.6':'')+'">'
     +'<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:#607d8b;font-weight:700">'+_lossDate(x.date)+'</span><span style="font-size:13px;font-weight:800;color:'+amtC+'">'+amtHtml+'</span></div>'
     +'<div style="margin-top:6px">'+badge+(cf?' <span style="font-size:10px;color:#fff;background:#2e7d32;font-weight:800;border-radius:8px;padding:2px 8px">✅ 확정</span>':'')+'</div>'
