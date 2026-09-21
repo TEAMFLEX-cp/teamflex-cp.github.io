@@ -15146,7 +15146,7 @@ function lossRowAdmin(x){
   var cfTag=cf?'<span style="font-size:10px;color:#fff;background:#2e7d32;font-weight:800;border-radius:8px;padding:2px 8px;margin-left:6px">✅ 확정'+(x.confirmed_by?' '+lossEsc(x.confirmed_by):'')+'</span>':'';
   return '<div style="background:'+bg+';border:'+(cf?'2px':'1px')+' solid '+bd+';border-radius:9px;padding:9px 10px;margin-bottom:6px'+(nf?';opacity:.65':'')+'">'
     +'<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:#607d8b;font-weight:700">'+_lossDate(x.date)+cfTag+'</span><span style="font-size:13px;font-weight:800;color:'+(nf?'#999999':(cf?'#1b5e20':'#c2185b'))+'">'+_lossFmt(x.amount)+'원'+(nf?' <span style="font-size:10px;color:#43a047">(미과실)</span>':'')+'</span></div>'
-    +'<div style="margin-top:6px">'+badge+'</div>'
+    +'<div style="margin-top:6px">'+badge+(x.driver_name?'<span style="font-size:10.5px;color:#fff;background:#5c6bc0;font-weight:800;border-radius:8px;padding:2px 8px;margin-left:6px">👤 '+lossEsc(x.driver_name)+'</span>':'')+'</div>'
     +'<div style="font-size:12.5px;color:#263238;font-weight:700;margin-top:5px;line-height:1.4">'+lossEsc(String(x.product||'').slice(0,70))+'</div>'
     +'<div style="font-size:11.5px;color:#37474f;font-weight:600;margin-top:3px">📦 운송장 <b>'+lossEsc(x.wb)+'</b> · '+lossEsc(x.camp||'')+'</div>'
     +btns+'</div>';
