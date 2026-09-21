@@ -12447,12 +12447,26 @@ async function mdRedetect(caseId){
     if(!c){alert('케이스를 찾을 수 없어요.');return;}
     var tmid=c.teams_message_id||'';
     if(!tmid){alert('이 건은 팀즈 메시지 ID가 없어 재감지할 수 없어요. (수기 등록 건 등)');return;}
-    if(!confirm('팀즈 원글이 수정된 뒤에 눌러야 반영됩니다. 운송장 '+(c.waybill_no||'-')+' 건을 팀즈에서 다시 읽어 이 인입을 덮어쓸까요?'))return;
+    if(!confirm('팀즈 원글을 먼저 수정한 뒤에 누르세요. 운송장 '+(c.waybill_no||'-')+' 건을 팀즈에서 다시 읽어 덮어쓸까요?'))return;
     var by=(typeof CU!=='undefined'&&CU&&CU.name)?CU.name:'';
-    var payload={ts:Date.now(),by:by,case_id:caseId,teams_message_id:tmid,waybill_no:(c.waybill_no||'')};
-    var r=await sbClient.from('app_settings').upsert({key:'misdelivery_redetect_request',value:JSON.stringify(payload)},{onConflict:'key'});
+    var ts=Date.now();
+    var r=await sbClient.from('app_settings').upsert({key:'misdelivery_redetect_request',value:JSON.stringify({ts:ts,by:by,case_id:caseId,teams_message_id:tmid,waybill_no:(c.waybill_no||'')})},{onConflict:'key'});
     if(r&&r.error){alert('재감지 요청 실패: '+r.error.message);return;}
-    try{showToast('🔄 재감지 요청됨 — 감지기가 곧 이 건을 다시 읽어 반영합니다',true);}catch(e){}
+    try{showToast('🔄 재감지 요청됨 — 감지기 처리 대기중…(최대 60초)',true);}catch(e){}
+    var got=null, waited=0;
+    while(waited<60000){
+      await new Promise(function(rs){setTimeout(rs,3000);}); waited+=3000;
+      try{
+        var rr=await sbClient.from('app_settings').select('value').eq('key','misdelivery_redetect_result').maybeSingle();
+        if(rr&&rr.data&&rr.data.value){var rv=(typeof rr.data.value==='string')?JSON.parse(rr.data.value):rr.data.value; if(rv&&String(rv.ts)===String(ts)){got=rv;break;}}
+      }catch(e){}
+    }
+    if(got){
+      if(got.ok){ try{showToast('✅ 재감지 완료 — '+(got.detail||'갱신됨')+'. 새로고침하면 반영돼요',true);}catch(e){alert('✅ 재감지 완료: '+(got.detail||''));} }
+      else { alert('❌ 재감지 실패: '+(got.detail||'')); }
+    } else {
+      alert('⚠️ 감지기 무응답(60초) — 리눅스 서버의 poller가 새 코드로 재시작되어 실행 중인지 확인해주세요. 요청은 저장돼 있어 poller가 켜지면 처리됩니다.');
+    }
   }catch(e){alert('재감지 오류: '+((e&&e.message)||e));}
 }
 function mdOpenDetail(caseId){
