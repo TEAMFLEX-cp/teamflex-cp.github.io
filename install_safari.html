@@ -200,7 +200,7 @@ async function doSetupPush(){
   // 1. 알림 권한
   setProg('pr-perm','loading','알림 권한 확인 중...');
   try{
-    var perm = Notification.permission;
+    if(!('Notification' in window)){showError('먼저 홈 화면에 추가해 주세요','아이폰은 Safari 공유버튼 → [홈 화면에 추가]로 설치한 뒤, 홈 화면의 TeamFlex 아이콘으로 열어야 알림을 켤 수 있어요. 지금은 아래 [알림 없이 계속하기]를 눌러 진행하세요.');return;}var perm = Notification.permission;
     if(perm!=='granted') perm = await Notification.requestPermission();
     if(perm!=='granted'){
       if(perm==='denied') showDeniedOverlay();
