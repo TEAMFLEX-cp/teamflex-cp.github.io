@@ -6985,7 +6985,7 @@ async function showAnnUnread(annId, view){
     return d.status==='approved'&&d.role!=='admin'&&!d.name.includes('/')&&_aIds2.indexOf(d.id)<0;
   }).sort(function(a,b){return a.name.localeCompare(b.name,'ko');});
   function _drvRead(d){ return readerIds.indexOf(String(d.id))>=0 || readByArr.indexOf(d.name)>=0; }
-  if(a&&a.targets&&a.targets.length){var _tgt={};a.targets.forEach(function(n){_tgt[n]=1;});allDrvs=Object.values(db).filter(function(d){return d.status==='approved'&&!d.name.includes('/')&&(_tgt[d.name]||d.role==='leader'||d.role==='admin');}).sort(function(x,y){return x.name.localeCompare(y.name,'ko');});}var unread=allDrvs.filter(function(d){return !_drvRead(d);});
+  if(a&&a.targets&&a.targets.length){var _tgt={};a.targets.forEach(function(n){_tgt[n]=1;});allDrvs=Object.values(db).filter(function(d){return d.status==='approved'&&!d.name.includes('/')&&d.role!=='admin'&&_aIds2.indexOf(d.id)<0&&(_tgt[d.name]||d.role==='leader');}).sort(function(x,y){return x.name.localeCompare(y.name,'ko');});}var unread=allDrvs.filter(function(d){return !_drvRead(d);});
   var read=allDrvs.filter(function(d){return _drvRead(d);});
   var roleMap={'leader':'팀장','sub':'조장','driver':'기사'};
   var uSel=view==='unread';
