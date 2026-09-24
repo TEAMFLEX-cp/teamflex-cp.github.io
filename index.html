@@ -2548,7 +2548,7 @@ function openSchedPermPopup(){
      h+='<div style="height:10px;background:#123a6b;margin-top:10px"></div></div>';
 
      /* ===== 4p. 개인정보 제3자 제공 동의 ===== */
-     h+=PB+'<div><div style="font-weight:900;font-size:20px;color:#e8590c;margin-bottom:2px">coupang <span style="font-size:14px;color:#2b8a3e">logistics</span> <span style="font-size:14px;color:#1971c2">services</span></div>';
+     h+=PB+'<div class="ctfill"><div style="font-weight:900;font-size:20px;color:#e8590c;margin-bottom:2px">coupang <span style="font-size:14px;color:#2b8a3e">logistics</span> <span style="font-size:14px;color:#1971c2">services</span></div>';
      h+='<div style="font-size:22px;font-weight:900;letter-spacing:2px;margin:10px 0 12px">개인정보 제 3 자 제공 동의</div>';
      h+='<p class="ctc-p" style="text-indent:0;font-size:11px">쿠팡로지스틱스서비스는 화물자동차 운수사업법 제 10 조(화물자동차 운전자 채용 기록의 관리)에 의거 택배용 화물자동차 허가신청 및 이력 관리를 위해 한국통합물류협회에 개인정보를 제공합니다.</p>';
      h+='<div style="display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:12.5px;margin:12px 0 4px"><span>[필수] 개인정보 제 3 자 제공 동의</span><span>동의 [ <span class="ctc-inmark" style="opacity:1;font-weight:900">'+(mode==='done'||(d._chks&&d._chks.b_cB==='y')?'✔':'&nbsp;&nbsp;')+'</span> ]</span></div>';
@@ -2564,7 +2564,7 @@ function openSchedPermPopup(){
      h+='<div style="font-weight:800;font-size:13px;margin-top:14px">2026년 8월 1일 　　성명 : 　'+fv(d.name)+' '+sigSpot('b_s4','동의자',mode,d)+' <span style="font-size:10px;font-weight:600">(서명 또는 인)</span></div></div>';
 
      /* ===== 5p. 허가 후 관리 신청서 ===== */
-     h+=PB+'<div><div style="text-align:center;font-size:22px;font-weight:900;margin:6px 0 12px">택배용 화물자동차(\'배\'번호판)의 허가 후 관리 신청서</div>';
+     h+=PB+'<div class="ctfill"><div style="text-align:center;font-size:22px;font-weight:900;margin:6px 0 12px">택배용 화물자동차(\'배\'번호판)의 허가 후 관리 신청서</div>';
      h+='<p class="ctc-p" style="text-indent:0"><b>'+GAP+'</b> 및 한국통합물류협회협회 귀중</p>';
      h+='<p class="ctc-p" style="text-indent:12px">신청자 본인은 \'배\'번호판을 택배 용도로만 사용하고 있음을 증명하기 위하여 아래와 같이 허가 후 관리 신청서를 제출합니다.</p>';
      h+='<div style="text-align:center;letter-spacing:8px;font-weight:700;margin:6px 0">- 아 래 -</div>';
@@ -2624,7 +2624,7 @@ function openSchedPermPopup(){
   var LASTD=null,LASTNAME='';
   var PRINTCSS='@page{size:A4;margin:11mm 15mm}*{box-sizing:border-box}html,body{margin:0;padding:0}'+
     'body{font-family:"Malgun Gothic","맑은 고딕",sans-serif;color:#111;font-size:11pt;line-height:1.72;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
-    '.ctc-paper{font-size:10.5pt;line-height:1.5}.kila *{line-height:1.32!important}.kila td{padding:4px 7px!important}'+
+    '.ctc-paper{font-size:10.5pt;line-height:1.5}.kila *{line-height:1.32!important}.kila td{padding:4px 7px!important}.ctfill{min-height:250mm;display:flex;flex-direction:column;justify-content:space-between}'+
     '.ctc-ttl{text-align:center;font-size:16pt;font-weight:800;letter-spacing:1px;margin:0 0 12px;page-break-after:avoid}'+
     '.ctc-sttl{text-align:center;font-size:14pt;font-weight:800;margin:0 0 16px;padding:0;border:none;page-break-before:always;page-break-after:avoid}'+
     '.ctc-art{font-weight:800;color:#111;margin:7px 0 2px;page-break-after:avoid;page-break-inside:avoid}'+
