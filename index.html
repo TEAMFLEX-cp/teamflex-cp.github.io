@@ -1973,7 +1973,7 @@ function openCtBulkInfo(names,type,mode){
       '<td><input id="cb-route-'+i+'" value="'+esc(route)+'" placeholder="라우트"></td>'+
       '<td><input id="cb-price-'+i+'" value="'+esc(price)+'" inputmode="numeric" placeholder="단가"></td>'+
       '<td><input id="cb-start-'+i+'" type="date" min="2020-01-01" max="2099-12-31" value="'+cstart+'" oninput="ctBulkEnd('+i+')"></td>'+
-      '<td class="cbend" id="cb-end-'+i+'">—</td></tr>';
+      '<td><input id="cb-end-'+i+'" type="date" min="2020-01-01" max="2099-12-31" value="'+(/^\d{4}-\d{2}-\d{2}$/.test(ext.cend||'')?ext.cend:'')+'" data-manual="'+(/^\d{4}-\d{2}-\d{2}$/.test(ext.cend||'')?'1':'')+'" oninput="this.setAttribute(&quot;data-manual&quot;,&quot;1&quot;)" style="width:100%;box-sizing:border-box"></td></tr>';
   }).join('');
   var label={wc:'위·수탁 계약서',badge_new:'배넘버 신규',badge_renew:'배넘버 재허가'}[type]||type;
   var title=(mode==='renew'?'🔄 '+label+' 갱신':'📤 '+label+' 발송')+' — 계약 정보 입력';
@@ -1992,7 +1992,7 @@ function openCtBulkInfo(names,type,mode){
   document.body.appendChild(pop);
   names.forEach(function(_n,i){ctBulkEnd(i);});
 }
-function ctBulkEnd(i){var s=document.getElementById('cb-start-'+i);var e=document.getElementById('cb-end-'+i);if(!s||!e)return;var v=s.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){e.textContent='—';return;}var d=new Date(v);if(isNaN(d.getTime())){e.textContent='—';return;}d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);e.textContent=d.toISOString().slice(0,10);}
+function ctBulkEnd(i){var s=document.getElementById('cb-start-'+i);var e=document.getElementById('cb-end-'+i);if(!s||!e)return;if(e.dataset&&e.dataset.manual==='1')return;var v=s.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){e.value='';return;}var d=new Date(v);if(isNaN(d.getTime())){e.value='';return;}d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);e.value=d.toISOString().slice(0,10);}
 function ctBulkCopyFirst(){var r=document.getElementById('cb-route-0');var p=document.getElementById('cb-price-0');if(!r)return;for(var i=1;i<_ctBulkNames.length;i++){var ri=document.getElementById('cb-route-'+i);var pi=document.getElementById('cb-price-'+i);if(ri)ri.value=r.value;if(pi&&p)pi.value=p.value;}}
 function ctBulkSameStart(){var s=document.getElementById('cb-start-0');if(!s||!s.value)return;for(var i=1;i<_ctBulkNames.length;i++){var si=document.getElementById('cb-start-'+i);if(si){si.value=s.value;ctBulkEnd(i);}}}
 async function ctBulkInfoConfirm(){
@@ -2006,7 +2006,7 @@ async function ctBulkInfoConfirm(){
     if(!_driverExt[nm])_driverExt[nm]={name:nm};
     if(route!==''){_driverExt[nm].route=route;if(db[nm]){db[nm].route=route;dbDirty=true;}}
     if(price!==''){_driverExt[nm].price=price;if(db[nm]){db[nm].price=price;dbDirty=true;}}
-    if(cstart!=='')_driverExt[nm].cstart=cstart;
+    if(cstart!=='')_driverExt[nm].cstart=cstart;var cend=(((document.getElementById('cb-end-'+i)||{}).value)||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(cend))cend='';if(cend!=='')_driverExt[nm].cend=cend;
   });
   if(dbDirty){try{saveDB(db);}catch(e){}}
   if(sbClient){try{
