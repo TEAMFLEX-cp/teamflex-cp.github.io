@@ -1986,7 +1986,7 @@ function openCtBulkInfo(names,type,mode){
     '<div style="font-size:11px;color:#8090a0;text-align:center;margin:3px 14px 8px;line-height:1.5">선택한 <b>'+names.length+'명</b>의 라우트·단가·계약 시작일 입력. 시작일만 넣으면 종료일 +1년 자동. 비우면 기존 값 유지.</div>'+
     '<div style="overflow:auto;padding:0 12px;flex:1"><table class="ctbulk"><thead><tr><th style="text-align:left">이름</th><th>라우트</th><th>단가</th><th>계약 시작일</th><th>종료(자동)</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div style="padding:10px 14px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #eef2f6">'+
-      '<div style="display:flex;gap:8px;margin-bottom:9px"><button onclick="ctBulkCopyFirst()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📋 첫 행 → 전체</button><button onclick="ctBulkSameStart()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📅 시작일 전체 동일</button></div>'+
+      '<div style="display:flex;gap:8px;margin-bottom:9px"><button onclick="ctBulkCopyFirst()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📋 첫 행 → 전체</button><button onclick="ctBulkSameStart()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📅 시작·종료일 전체 동일</button></div>'+
       '<button onclick="ctBulkInfoConfirm()" style="width:100%;padding:14px;background:linear-gradient(135deg,#12a374,#0b6b4a);color:#fff;border:none;border-radius:12px;font-weight:900;font-size:15px">'+(mode==='renew'?('🔄 '+names.length+'명 갱신 요청 보내기'):('📤 '+names.length+'명에게 발송'))+'</button>'+
     '</div></div>';
   document.body.appendChild(pop);
@@ -1994,7 +1994,7 @@ function openCtBulkInfo(names,type,mode){
 }
 function ctBulkEnd(i){var s=document.getElementById('cb-start-'+i);var e=document.getElementById('cb-end-'+i);if(!s||!e)return;if(e.dataset&&e.dataset.manual==='1')return;var v=s.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){e.value='';return;}var d=new Date(v);if(isNaN(d.getTime())){e.value='';return;}d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);e.value=d.toISOString().slice(0,10);}
 function ctBulkCopyFirst(){var r=document.getElementById('cb-route-0');var p=document.getElementById('cb-price-0');if(!r)return;for(var i=1;i<_ctBulkNames.length;i++){var ri=document.getElementById('cb-route-'+i);var pi=document.getElementById('cb-price-'+i);if(ri)ri.value=r.value;if(pi&&p)pi.value=p.value;}}
-function ctBulkSameStart(){var s=document.getElementById('cb-start-0');if(!s||!s.value)return;for(var i=1;i<_ctBulkNames.length;i++){var si=document.getElementById('cb-start-'+i);if(si){si.value=s.value;ctBulkEnd(i);}}}
+function ctBulkSameStart(){var s=document.getElementById('cb-start-0');var e0=document.getElementById('cb-end-0');for(var i=1;i<_ctBulkNames.length;i++){var si=document.getElementById('cb-start-'+i);var ei=document.getElementById('cb-end-'+i);if(si&&s&&s.value)si.value=s.value;if(ei){if(e0&&e0.value){ei.value=e0.value;ei.setAttribute('data-manual','1');}else{ei.removeAttribute('data-manual');ctBulkEnd(i);}}else{ctBulkEnd(i);}}}
 async function ctBulkInfoConfirm(){
   var names=_ctBulkNames.slice();var type=_ctBulkType;var mode=_ctBulkMode;if(!names.length)return;
   if(!_driverExt)_driverExt={};var db=getDB();var dbDirty=false;
