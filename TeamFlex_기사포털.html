@@ -1986,7 +1986,7 @@ function openCtBulkInfo(names,type,mode){
     '<div style="font-size:11px;color:#8090a0;text-align:center;margin:3px 14px 8px;line-height:1.5">선택한 <b>'+names.length+'명</b>의 라우트·단가·계약 시작일 입력. 시작일만 넣으면 종료일 +1년 자동. 비우면 기존 값 유지.</div>'+
     '<div style="overflow:auto;padding:0 12px;flex:1"><table class="ctbulk"><thead><tr><th style="text-align:left">이름</th><th>라우트</th><th>단가</th><th>계약 시작일</th><th>종료(자동)</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div style="padding:10px 14px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #eef2f6">'+
-      '<div style="display:flex;gap:8px;margin-bottom:9px"><button onclick="ctBulkCopyFirst()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📋 첫 행 → 전체</button><button onclick="ctBulkSameStart()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📅 시작·종료일 전체 동일</button></div>'+
+      '<div style="display:flex;gap:8px;margin-bottom:9px"><button onclick="ctBulkCopyFirst()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📋 첫 행 → 전체</button><button onclick="ctBulkSameStart()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📅 시작일 전체 동일</button></div>'+
       '<button onclick="ctBulkInfoConfirm()" style="width:100%;padding:14px;background:linear-gradient(135deg,#12a374,#0b6b4a);color:#fff;border:none;border-radius:12px;font-weight:900;font-size:15px">'+(mode==='renew'?('🔄 '+names.length+'명 갱신 요청 보내기'):('📤 '+names.length+'명에게 발송'))+'</button>'+
     '</div></div>';
   document.body.appendChild(pop);
@@ -1994,7 +1994,7 @@ function openCtBulkInfo(names,type,mode){
 }
 function ctBulkEnd(i){var s=document.getElementById('cb-start-'+i);var e=document.getElementById('cb-end-'+i);if(!s||!e)return;if(e.dataset&&e.dataset.manual==='1')return;var v=s.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){e.value='';return;}var d=new Date(v);if(isNaN(d.getTime())){e.value='';return;}d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);e.value=d.toISOString().slice(0,10);}
 function ctBulkCopyFirst(){var r=document.getElementById('cb-route-0');var p=document.getElementById('cb-price-0');if(!r)return;for(var i=1;i<_ctBulkNames.length;i++){var ri=document.getElementById('cb-route-'+i);var pi=document.getElementById('cb-price-'+i);if(ri)ri.value=r.value;if(pi&&p)pi.value=p.value;}}
-function ctBulkSameStart(){var s=document.getElementById('cb-start-0');var e0=document.getElementById('cb-end-0');for(var i=1;i<_ctBulkNames.length;i++){var si=document.getElementById('cb-start-'+i);var ei=document.getElementById('cb-end-'+i);if(si&&s&&s.value)si.value=s.value;if(ei){if(e0&&e0.value){ei.value=e0.value;ei.setAttribute('data-manual','1');}else{ei.removeAttribute('data-manual');ctBulkEnd(i);}}else{ctBulkEnd(i);}}}
+function ctBulkSameStart(){var s=document.getElementById('cb-start-0');if(!s||!s.value)return;for(var i=1;i<_ctBulkNames.length;i++){var si=document.getElementById('cb-start-'+i);if(si){si.value=s.value;ctBulkEnd(i);}}}
 async function ctBulkInfoConfirm(){
   var names=_ctBulkNames.slice();var type=_ctBulkType;var mode=_ctBulkMode;if(!names.length)return;
   if(!_driverExt)_driverExt={};var db=getDB();var dbDirty=false;
@@ -2226,7 +2226,7 @@ function pgContractAdmin(){
     var approved=drs.filter(function(d){return ctDone(d.name)&&_apW(d.name);}).sort(_byN);
     var unwritten=drs.filter(function(d){return !ctDone(d.name);}).sort(_byN);
     var h=_ctBack('hub')+'📑 표준계약서 (위·수탁)</div>';
-    h+='<div class="card"><div class="ctit">📤 계약서 공유 (홈에 노출)</div><div style="font-size:11px;color:#888;margin-bottom:8px">선택(전체/다중)한 기사 홈에 작성 배너가 뜨고, 완료 시 사라집니다.</div><div style="display:flex;gap:6px"><button class="btn-ok" style="flex:1" onclick="openCtShare(\'wc\')">📤 공유</button><button class="btn-ok" style="flex:1;background:#0b8a5f" onclick="openCtShare(\'wc\',true)">🔄 갱신</button><button class="btn-ok" style="flex:1;background:#455a94" onclick="CT_startWrite(\'wc\',null,null,\'admin\')">✍️ 직접 작성</button></div></div>';
+    h+='<div class="card"><div class="ctit">📤 계약서 공유 (홈에 노출)</div><div style="font-size:11px;color:#888;margin-bottom:8px">선택(전체/다중)한 기사 홈에 작성 배너가 뜨고, 완료 시 사라집니다.</div><div style="display:flex;gap:6px"><button class="btn-ok" style="flex:1" onclick="openCtShare(\'wc\')">📤 공유</button><button class="btn-ok" style="flex:1;background:#0b8a5f" onclick="openCtShare(\'wc\',true)">🔄 갱신</button><button class="btn-ok" style="flex:1;background:#455a94" onclick="CT_startWrite(\'wc\',null,null,\'admin\')">✍️ 직접 작성</button></div><button class="btn-ok" style="width:100%;margin-top:6px;background:#1b7a58" onclick="openCtExcel()">📄 엑셀 양식으로 일괄 설정·공유</button></div>';
     h+='<details class="ctdet" open><summary>&#x1F58A;&#xFE0F; 승인 요청 ('+pending.length+')</summary><div class="card" style="margin-top:8px;border:1.5px solid #ffd08a">';
     if(!pending.length)h+='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">없음</div>';
     pending.forEach(function(d){h+=ctRow(d,true);});
@@ -18465,6 +18465,81 @@ function hcOfficialForm(s){
 function hcPrintCSS(){return '<style>'+'@page{size:A4 portrait;margin:0}*{box-sizing:border-box}'+'body{margin:0;background:#e9edf2;font-family:"Malgun Gothic",sans-serif;color:#000}'+'.page{width:210mm;height:297mm;margin:10px auto;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.15);padding:9mm;overflow:hidden;page-break-after:always}'+'.page:last-of-type{page-break-after:auto}'+'@media print{body{background:#fff}.page{margin:0;box-shadow:none}}'+'.fit{transform-origin:top left;width:192mm}'+'.hcof{width:auto !important;padding:0 !important;font-size:11.5px !important;line-height:1.5 !important}'+'.hcof td,.hcof th{padding:6px 8px !important}'+'.hcof .pt td{padding:8px 5px !important;line-height:1.9 !important;font-size:10.5px !important}'+'.hcof .pt th{font-size:11.5px !important;padding:8px 4px !important}'+'</style>';}
 function hcFitJS(){return '<scr'+'ipt>function fitPages(){document.querySelectorAll(".page").forEach(function(pg){var f=pg.querySelector(".fit");if(!f)return;f.style.transform="scale(1)";f.style.width="";var cs=getComputedStyle(pg);var aw=pg.clientWidth-(parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight));var ah=pg.clientHeight-(parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom));var w=f.scrollWidth,h=f.scrollHeight;var sc=Math.min(aw/w,ah/h);sc=Math.min(sc,1.6);f.style.transform="scale("+sc+")";f.style.width=(aw/sc)+"px";});}window.addEventListener("load",function(){fitPages();setTimeout(fitPages,200);});window.addEventListener("beforeprint",fitPages);</scr'+'ipt>';}
 function hcPrintDoc(subs,ap,title){var w=window.open('','_blank');if(!w){showToast('팝업 차단을 해제해 주세요',false);return;}var pages=(subs||[]).map(function(x){return '<div class="page"><div class="fit">'+hcOfficialForm(x)+'</div></div>';}).join('');w.document.write('<html><head><meta charset="utf-8"><title>'+(title||'근골격계 증상조사표')+'</title>'+hcPrintCSS()+'</head><body>'+pages+hcFitJS()+'</body></html>');w.document.close();if(ap){setTimeout(function(){try{w.focus();w.print();}catch(e){}},700);}}
+function openCtExcel(){
+  if(!CU||CU.role!=='admin')return;
+  var old=document.getElementById('ctxls-pop');if(old)old.remove();
+  var pop=document.createElement('div');pop.id='ctxls-pop';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:10800;display:flex;align-items:flex-end;justify-content:center';
+  pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:520px;padding:18px 16px 26px;max-height:88vh;overflow:auto"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#1b7a58;text-align:center">📄 엑셀 양식으로 일괄 설정·공유</div><div style="font-size:11px;color:#8090a0;text-align:center;margin:6px 0 14px">양식을 내려받아 라우트·단가·계약시작·계약종료를 채운 뒤 업로드하면 기사별로 자동 적용됩니다. (계약종료 비우면 시작+1년)</div><button onclick="ctXlsTemplate()" style="width:100%;padding:12px;background:#eef4ff;color:#2f5fc8;border:1.5px solid #cfe0f5;border-radius:11px;font-weight:800;margin-bottom:8px">📥 양식 다운로드 (기사 명단 포함)</button><label style="display:block;width:100%;padding:12px;background:#1b7a58;color:#fff;border-radius:11px;font-weight:800;text-align:center;cursor:pointer;box-sizing:border-box">📤 채운 파일 업로드<input type="file" accept=".xlsx,.xls" onchange="ctXlsUpload(this)" style="display:none"></label><div id="ctxls-result" style="font-size:12px;color:#334;margin-top:12px"></div><button onclick="var p=document.getElementById(&quot;ctxls-pop&quot;);if(p)p.remove()" style="width:100%;padding:11px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800;margin-top:12px">닫기</button></div>';
+  document.body.appendChild(pop);
+}
+function ctXlsTemplate(){
+  hcLoadXLSX(function(okx){
+    if(!okx||typeof XLSX==='undefined'){alert('엑셀 라이브러리 로드 실패');return;}
+    var db=getDB();var ext=_driverExt||{};
+    var rows=[['기사명','라우트','단가','계약시작(YYYY-MM-DD)','계약종료(비우면+1년)']];
+    Object.values(db).filter(function(d){return d&&d.name&&d.status==='approved'&&(d.role==='driver'||d.role==='leader'||d.role==='sub')&&(typeof splitDriverSuffix!=='function'||splitDriverSuffix(d.name).suf==='')&&(typeof isJunkDriver!=='function'||!isJunkDriver(d));}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');}).forEach(function(d){var e=ext[d.name]||{};rows.push([d.name,e.route||'',e.price||'',e.cstart||'',e.cend||'']);});
+    var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:12},{wch:18},{wch:14},{wch:20},{wch:20}];
+    var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'계약조건');
+    XLSX.writeFile(wb,'계약조건_양식.xlsx');
+  });
+}
+function ctXlsUpload(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var res=document.getElementById('ctxls-result');if(res)res.textContent='읽는 중...';
+  hcLoadXLSX(function(okx){
+    if(!okx||typeof XLSX==='undefined'){if(res)res.textContent='엑셀 라이브러리 로드 실패';return;}
+    var rd=new FileReader();
+    rd.onload=function(){
+      try{
+        var wb=XLSX.read(new Uint8Array(rd.result),{type:'array'});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var arr=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        var db=getDB();var names=Object.keys(db);var parsed=[],miss=[];
+        for(var r=1;r<arr.length;r++){
+          var row=arr[r];if(!row)continue;var nm=String(row[0]==null?'':row[0]).trim();if(!nm)continue;
+          if(names.indexOf(nm)<0){miss.push(nm);continue;}
+          var route=String(row[1]==null?'':row[1]).trim();var price=String(row[2]==null?'':row[2]).trim();
+          var cs=String(row[3]==null?'':row[3]).trim().slice(0,10);var ce=String(row[4]==null?'':row[4]).trim().slice(0,10);
+          if(!/^\d{4}-\d{2}-\d{2}$/.test(cs))cs='';if(!/^\d{4}-\d{2}-\d{2}$/.test(ce))ce='';
+          parsed.push({name:nm,route:route,price:price,cstart:cs,cend:ce});
+        }
+        window._ctXlsParsed=parsed;
+        var esc=function(x){return String(x==null?'':x).replace(/</g,'&lt;');};
+        var html='✅ 인식 '+parsed.length+'명'+(miss.length?(' · ⚠ 미매칭 '+miss.length+'명('+miss.slice(0,5).join(', ')+(miss.length>5?'…':'')+')'):'');
+        html+='<div style="max-height:170px;overflow:auto;margin-top:8px;border:1px solid #e5eaf0;border-radius:8px"><table style="width:100%;font-size:11px;border-collapse:collapse"><tr style="background:#f4f7fb;font-weight:800"><td style="padding:4px 6px">기사</td><td>라우트</td><td>단가</td><td>시작</td><td>종료</td></tr>';
+        parsed.forEach(function(p){html+='<tr><td style="padding:4px 6px">'+esc(p.name)+'</td><td>'+esc(p.route||'-')+'</td><td>'+esc(p.price||'-')+'</td><td>'+esc(p.cstart||'-')+'</td><td>'+esc(p.cend||'자동')+'</td></tr>';});
+        html+='</table></div>';
+        html+='<button onclick="ctXlsApply(false)" style="width:100%;padding:11px;background:#eef4ff;color:#2f5fc8;border:1.5px solid #cfe0f5;border-radius:11px;font-weight:800;margin-top:8px">💾 조건만 저장</button>';
+        html+='<button onclick="ctXlsApply(true)" style="width:100%;padding:12px;background:#1b7a58;color:#fff;border:none;border-radius:11px;font-weight:800;margin-top:6px">📤 '+parsed.length+'명 저장 + 계약서 공유</button>';
+        if(res)res.innerHTML=html;
+      }catch(e){if(res)res.textContent='파싱 오류: '+e.message;}
+    };
+    rd.readAsArrayBuffer(f);
+  });
+}
+async function ctXlsApply(share){
+  var parsed=window._ctXlsParsed||[];if(!parsed.length)return;
+  if(!_driverExt)_driverExt={};var db=getDB();var dbDirty=false;
+  parsed.forEach(function(p){
+    if(!_driverExt[p.name])_driverExt[p.name]={name:p.name};
+    if(p.route!=='')_driverExt[p.name].route=p.route;
+    if(p.price!=='')_driverExt[p.name].price=p.price;
+    if(p.cstart!=='')_driverExt[p.name].cstart=p.cstart;
+    if(p.cend!=='')_driverExt[p.name].cend=p.cend;
+    if(db[p.name]){if(p.route!=='')db[p.name].route=p.route;if(p.price!=='')db[p.name].price=p.price;dbDirty=true;}
+  });
+  if(dbDirty){try{saveDB(db);}catch(e){}}
+  if(sbClient){try{
+    var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();
+    var m={};if(r1&&r1.data&&r1.data.value){try{m=(typeof r1.data.value==='string')?JSON.parse(r1.data.value):r1.data.value;}catch(_e){m={};}}
+    parsed.forEach(function(p){m[p.name]=Object.assign({},m[p.name]||{},_driverExt[p.name]);});
+    await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});
+  }catch(e){}}
+  if(share){try{if(typeof ctaSet==='function')await ctaSet(parsed.map(function(p){return p.name;}),'wc','share');}catch(e){}}
+  try{if(typeof showToast==='function')showToast((share?'📤 ':'💾 ')+parsed.length+'명 '+(share?'저장+공유 완료':'조건 저장 완료'),true);}catch(_){}
+  try{var pp=document.getElementById('ctxls-pop');if(pp)pp.remove();}catch(_){}
+  try{if(typeof openContractAdmin==='function')openContractAdmin(true);}catch(_){}
+}
 function hcLoadXLSX(cb){if(typeof XLSX!=='undefined'){cb(true);return;}var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=function(){cb(typeof XLSX!=='undefined');};sc.onerror=function(){cb(false);};document.head.appendChild(sc);}
 function hcPrintAll(){showToast('전체 서식 준비 중...',true);(async function(){try{var r=await sbClient.from('app_settings').select('value').like('key','hsurvey:'+_hcAdminMonth+':%');var subs=(r.data||[]).map(function(x){try{return JSON.parse(x.value);}catch(e){return null;}}).filter(Boolean);if(!subs.length){showToast('제출자가 없습니다',false);return;}subs.sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''));});hcPrintDoc(subs,true,'근골격계 증상조사표 - '+hcMonthLabel(_hcAdminMonth)+' 전체('+subs.length+'명)');}catch(e){showToast('불러오기 실패',false);}})();}
 function hcCleanWin(sub,ap){var w=window.open('','_blank');if(!w){showToast('팝업 차단을 해제해 주세요',false);return;}var html='<html><head><meta charset="utf-8"><title>근골격계 증상조사표 - '+(sub.name||'')+'</title>'+'<style>body{margin:16px;font-family:"Malgun Gothic",sans-serif}@media print{body{margin:0}}</style></head><body>'+hcOfficialForm(sub)+'</body></html>';w.document.write(html);w.document.close();if(ap){setTimeout(function(){try{w.focus();w.print();}catch(e){}},500);}}
