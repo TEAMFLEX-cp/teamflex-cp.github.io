@@ -2421,7 +2421,7 @@ function openSchedPermPopup(){
     var biz=iss.biz||'팀플렉스 주식회사';
     var ceo=iss.ceo||'문병국';
     var stamp=iss.stamp||'';
-    var inMark=stamp?('<span style="position:relative;display:inline-block;width:66px;height:58px;vertical-align:middle;text-align:center"><span class="ctc-inmark" style="line-height:58px">(인)</span><img src="'+stamp+'" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:58px;width:auto;pointer-events:none"></span>'):'<span class="ctc-inmark">(인)</span>';
+    var inMark=stamp?('<span style="position:relative;display:inline-block;width:66px;height:58px;vertical-align:middle;text-align:center"><span class="ctc-inmark" style="line-height:58px">(인)</span><img src="'+stamp+'" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:58px;width:auto;pointer-events:none;mix-blend-mode:multiply"></span>'):'<span class="ctc-inmark">(인)</span>';
     return '<div class="ctc-tbl">'+trr('위탁자 주소',fv(addr))+trr('상호',fv(biz))+'<div class="ctc-tr"><div class="ctc-th">대표자</div><div class="ctc-td">'+fv(ceo)+' '+inMark+'</div></div></div>';
   }
     function badgeHTML(d,mode){
@@ -2431,7 +2431,7 @@ function openSchedPermPopup(){
      var EUL='팀플렉스 주식회사',EUL_CEO='문병국',EUL_ADDR='경기도 파주시 와석순환로 15 , 807동 203호',EUL_TEL='010 - 7139 - 8602',EUL_BIZ='633 - 87 - 02978';
      function inMark(){return '<span class="ctc-inmark">(인)</span>';}
      function seal(nm){return nm+' <span class="ctc-sigspot done">'+inMark()+'</span>';}
-     function sealE(nm){var st=(window._ctIssuer&&window._ctIssuer.stamp)||'';var mk=st?('<span style="position:relative;display:inline-block;width:60px;height:52px;vertical-align:middle;text-align:center"><span class="ctc-inmark" style="line-height:52px">(인)</span><img src="'+st+'" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:52px;width:auto;pointer-events:none"></span>'):inMark();return nm+' <span class="ctc-sigspot done">'+mk+'</span>';}
+     function sealE(nm){var st=(window._ctIssuer&&window._ctIssuer.stamp)||'';var mk=st?('<span style="position:relative;display:inline-block;width:60px;height:52px;vertical-align:middle;text-align:center"><span class="ctc-inmark" style="line-height:52px">(인)</span><img src="'+st+'" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:52px;width:auto;pointer-events:none;mix-blend-mode:multiply"></span>'):inMark();return nm+' <span class="ctc-sigspot done">'+mk+'</span>';}
      function mirror(){var im=(d._sigs&&d._sigs['b_s2']);if(im)return '<span class="ctc-sigspot done">'+inMark()+'<img class="simg" src="'+im+'"></span>';if(mode==='done')return '<span class="ctc-sigspot done">'+inMark()+'<span class="scur">'+(d.name||'')+'</span></span>';return '<span class="ctc-sigspot">'+inMark()+'<span style="font-size:8px;color:#12a58f;font-weight:800">제1부 자동적용</span></span>';}
      function bchk(field,val,label){var on=(d[field]===val);var box=on?'■':'□';if(mode==='view'||mode==='sign')return '<span data-v="'+val+'" onclick="CT_bchk(&quot;'+field+'&quot;,&quot;'+val+'&quot;)" style="cursor:pointer;user-select:none;-webkit-user-select:none;font-weight:'+(on?'800':'400')+'">'+box+' '+label+'</span>';return '<span style="font-weight:'+(on?'800':'400')+'">'+box+' '+label+'</span>';}
      function grp(id,inner){return '<span id="'+id+'" class="ctc-boxgrp">'+inner+'</span>';}
