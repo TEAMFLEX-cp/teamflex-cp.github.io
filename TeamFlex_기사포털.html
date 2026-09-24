@@ -2513,9 +2513,9 @@ function openSchedPermPopup(){
        s+='<div class="ctc-art">제 9 조【특약사항】</div><p class="ctc-p">① 본 계약서와는 별도로 당사자 간 체결된 계약서의 내용과 본 계약서의 내용이 서로 상충되는 경우 다음의 사항은 본 계약서의 내용을 우선하여 적용한다.<br>　1. 제 3 조 택배 전용 번호판 사용 등에 관한 계약내용<br>　2. 제 4 조 택배 전용 번호판 사용 등에 관한 계약기간<br>　3. 제 5 조 택배 전용 번호판 사용 등에 관련된 번호판반납</p><p class="ctc-p">② "병"의 택배 전용번호 신청이 불허가 결정되면, 본 계약서는 효력이 없는 것으로 한다.</p>';
        s+='</div></div>';
        s+='<div style="text-align:center;font-weight:800;font-size:13px;margin:12px 0">계약일자 :　　'+fv(kd(d.sign))+'</div>';
-       s+='<div style="display:flex;gap:26px;font-size:11px;line-height:1.8"><div style="flex:1"><b>（갑）</b><br>회 사 명 : '+GAP+'<br>대표이사 : '+seal(GAP_CEO)+'<br>주　　소 : '+GAP_ADDR+'</div>';
-       s+='<div style="flex:1"><b>（병）</b><br>성　　명 : '+fv(d.name)+' '+(arguments[0]?sigSpot('b_s2','병(기사)',mode,d):mirror())+'<br>주　　소 : '+fv(d.addr)+'<br>생년월일 : '+fv(d.birth)+'<br>연 락 처 : '+fv(_fmtPhone(d.phone))+'</div></div>';
-       s+='<div style="font-size:11px;line-height:1.8;margin-top:10px"><b>（을）</b><br>대 리 점 명 : '+EUL+'<br>사업자번호 : '+EUL_BIZ+'<br>주　　　소 : '+EUL_ADDR+'<br>대 표 자 : '+sealE(EUL_CEO)+'</div>';
+       s+='<div style="display:flex;gap:26px;font-size:11px;margin-top:2px"><div style="flex:1"><b>（갑）</b>'+ctRow('회사명',GAP)+ctRow('대표이사',seal(GAP_CEO))+ctRow('주소',GAP_ADDR)+'</div>';
+       s+='<div style="flex:1"><b>（병）</b>'+ctRow('성명',fv(d.name)+' '+(arguments[0]?sigSpot('b_s2','병(기사)',mode,d):mirror()))+ctRow('주소',fv(d.addr))+ctRow('생년월일',fv(d.birth))+ctRow('연락처',fv(_fmtPhone(d.phone)))+'</div></div>';
+       s+='<div style="font-size:11px;margin-top:10px"><b>（을）</b>'+ctRow('대리점명',EUL)+ctRow('사업자번호',EUL_BIZ)+ctRow('주소',EUL_ADDR)+ctRow('대표자',sealE(EUL_CEO))+'</div>';
        return s;
      }
      h+=PB+'<div>'+contract(true)+'</div>';
@@ -10286,6 +10286,7 @@ async function uploadPhoneExcel(input){
   }
 }
 // 전화번호 포맷 정규화
+function ctRow(l,v){return '<div style="display:flex;align-items:flex-start;line-height:1.9"><span style="display:inline-block;width:68px;flex:none;text-align:justify;text-align-last:justify">'+l+'</span><span style="flex:none;padding:0 6px 0 2px">:</span><span style="flex:1;min-width:0">'+v+'</span></div>';}
 function _fmtLic(v){if(v==null)return '';var s=String(v).trim();if(!s)return '';if(/[-\s\u3131-\uD79D]/.test(s))return s;var d=s.replace(/\D/g,'');if(d.length===12)return d.slice(0,2)+'-'+d.slice(2,4)+'-'+d.slice(4,10)+'-'+d.slice(10);return s;}
 function _fmtQual(v){if(v==null)return '';var s=String(v).trim();if(!s)return '';if(/[-\s]/.test(s))return s;var d=s.replace(/\D/g,'');if(d.length===9)return d.slice(0,1)+'-'+d.slice(1,3)+'-'+d.slice(3);return s;}
 function _fmtQdate(v){if(v==null)return '';var s=String(v).trim();if(!s)return '';var d=s.replace(/\D/g,'');if(d.length===8)return d.slice(0,4)+'.'+d.slice(4,6)+'.'+d.slice(6);return s;}
