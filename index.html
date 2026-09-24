@@ -2431,6 +2431,7 @@ function openSchedPermPopup(){
      var EUL='팀플렉스 주식회사',EUL_CEO='문병국',EUL_ADDR='경기도 파주시 와석순환로 15 , 807동 203호',EUL_TEL='010 - 7139 - 8602',EUL_BIZ='633 - 87 - 02978';
      function inMark(){return '<span class="ctc-inmark">(인)</span>';}
      function seal(nm){return nm+' <span class="ctc-sigspot done">'+inMark()+'</span>';}
+     function sealE(nm){var st=(window._ctIssuer&&window._ctIssuer.stamp)||'';var mk=st?('<span style="position:relative;display:inline-block;width:60px;height:52px;vertical-align:middle;text-align:center"><span class="ctc-inmark" style="line-height:52px">(인)</span><img src="'+st+'" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);height:52px;width:auto;pointer-events:none"></span>'):inMark();return nm+' <span class="ctc-sigspot done">'+mk+'</span>';}
      function mirror(){var im=(d._sigs&&d._sigs['b_s2']);if(im)return '<span class="ctc-sigspot done">'+inMark()+'<img class="simg" src="'+im+'"></span>';if(mode==='done')return '<span class="ctc-sigspot done">'+inMark()+'<span class="scur">'+(d.name||'')+'</span></span>';return '<span class="ctc-sigspot">'+inMark()+'<span style="font-size:8px;color:#12a58f;font-weight:800">제1부 자동적용</span></span>';}
      function bchk(field,val,label){var on=(d[field]===val);var box=on?'■':'□';if(mode==='view'||mode==='sign')return '<span data-v="'+val+'" onclick="CT_bchk(&quot;'+field+'&quot;,&quot;'+val+'&quot;)" style="cursor:pointer;user-select:none;-webkit-user-select:none;font-weight:'+(on?'800':'400')+'">'+box+' '+label+'</span>';return '<span style="font-weight:'+(on?'800':'400')+'">'+box+' '+label+'</span>';}
      function grp(id,inner){return '<span id="'+id+'" class="ctc-boxgrp">'+inner+'</span>';}
@@ -2514,7 +2515,7 @@ function openSchedPermPopup(){
        s+='<div style="text-align:center;font-weight:800;font-size:13px;margin:12px 0">계약일자 :　　'+fv(kd(d.sign))+'</div>';
        s+='<div style="display:flex;gap:26px;font-size:11px;line-height:1.8"><div style="flex:1"><b>（갑）</b><br>회 사 명 : '+GAP+'<br>대표이사 : '+seal(GAP_CEO)+'<br>주　　소 : '+GAP_ADDR+'</div>';
        s+='<div style="flex:1"><b>（병）</b><br>성　　명 : '+fv(d.name)+' '+(arguments[0]?sigSpot('b_s2','병(기사)',mode,d):mirror())+'<br>주　　소 : '+fv(d.addr)+'<br>생년월일 : '+fv(d.birth)+'<br>연 락 처 : '+fv(d.phone)+'</div></div>';
-       s+='<div style="font-size:11px;line-height:1.8;margin-top:10px"><b>（을）</b><br>대 리 점 명 : '+EUL+'<br>사업자번호 : '+EUL_BIZ+'<br>주　　　소 : '+EUL_ADDR+'<br>대 표 자 : '+seal(EUL_CEO)+'</div>';
+       s+='<div style="font-size:11px;line-height:1.8;margin-top:10px"><b>（을）</b><br>대 리 점 명 : '+EUL+'<br>사업자번호 : '+EUL_BIZ+'<br>주　　　소 : '+EUL_ADDR+'<br>대 표 자 : '+sealE(EUL_CEO)+'</div>';
        return s;
      }
      h+=PB+'<div>'+contract(true)+'</div>';
@@ -2561,7 +2562,7 @@ function openSchedPermPopup(){
      h+='<tr><td style="'+TC+'"></td><td style="'+TC+'">택배용 화물자동차 운송사업 허가 및 차량 이력관리</td><td style="'+TC+'">운전면허번호</td><td style="'+TC+'">허가 취소, 폐업 등 이력관리 필요성 상실 후 3년</td></tr></table>';
      h+=(mode==='sign'?agBlk('b_cC','[필수] 고유식별정보(주민등록번호·운전면허번호) 제 3 자 제공에 동의합니다.',mode,d):'');
      h+='<p class="ctc-p" style="margin-top:10px">더 자세한 내용에 대해서는 <u>임직원 개인정보 처리방침</u>을 참고하시기 바랍니다.</p>';
-     h+='<div style="font-weight:800;font-size:13px;margin-top:14px">2026년 8월 1일 　　성명 : 　'+fv(d.name)+' '+sigSpot('b_s4','동의자',mode,d)+' <span style="font-size:10px;font-weight:600">(서명 또는 인)</span></div></div>';
+     h+='<div style="font-weight:800;font-size:13px;margin-top:14px">'+fv(kd(d.sign))+' 　　성명 : 　'+fv(d.name)+' '+sigSpot('b_s4','동의자',mode,d)+' <span style="font-size:10px;font-weight:600">(서명 또는 인)</span></div></div>';
 
      /* ===== 5p. 허가 후 관리 신청서 ===== */
      h+=PB+'<div class="ctfill"><div style="text-align:center;font-size:22px;font-weight:900;margin:6px 0 12px">택배용 화물자동차(\'배\'번호판)의 허가 후 관리 신청서</div>';
@@ -2569,13 +2570,13 @@ function openSchedPermPopup(){
      h+='<p class="ctc-p" style="text-indent:12px">신청자 본인은 \'배\'번호판을 택배 용도로만 사용하고 있음을 증명하기 위하여 아래와 같이 허가 후 관리 신청서를 제출합니다.</p>';
      h+='<div style="text-align:center;letter-spacing:8px;font-weight:700;margin:6px 0">- 아 래 -</div>';
      h+='<div style="font-weight:800;font-size:14px;margin:12px 0 6px">1. 신청 정보</div>';
-     h+='<div style="display:flex;gap:26px;font-size:12px;line-height:1.9"><div style="flex:1">영업점명 : 　'+EUL+'<br><br>대 표 자 : 　'+seal(EUL_CEO)+'</div><div style="flex:1">신 청 자 : 　'+fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d)+'<br>생년월일 : 　'+fv(d.birth)+'<br>연 락 처 : 　'+fv(d.phone)+'<br>차량번호 : 　'+fv(d.carno)+'</div></div>';
+     h+='<div style="display:flex;gap:26px;font-size:12px;line-height:1.9"><div style="flex:1">영업점명 : 　'+EUL+'<br><br>대 표 자 : 　'+sealE(EUL_CEO)+'</div><div style="flex:1">신 청 자 : 　'+fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d)+'<br>생년월일 : 　'+fv(d.birth)+'<br>연 락 처 : 　'+fv(d.phone)+'<br>차량번호 : 　'+fv(d.carno)+'</div></div>';
      h+='<div style="font-weight:800;font-size:14px;margin:14px 0 6px">2. 허가 후 관리 방법</div>';
      h+='<table style="border-collapse:collapse;width:100%;table-layout:fixed"><tr><td style="'+TH+';width:38px"></td><td style="'+TH+';width:140px">관리방법</td><td style="'+TH+'">상세내용</td></tr>';
      h+='<tr><td style="'+TC+';text-align:center">'+((mode==='done')?'<span class="ctc-inmark" style="opacity:1;font-weight:900">'+(d._chks&&d._chks.b_cD==='auto'?'☑':'□')+'</span>':'<div onclick="CT_choice(&quot;b_cD&quot;,&quot;auto&quot;)" style="cursor:pointer;font-size:17px;font-weight:900;text-align:center;user-select:none;-webkit-user-select:none">'+(d._chks&&d._chks.b_cD==='auto'?'☑':'□')+'</div>')+'</td><td style="'+TC+';text-align:center;font-weight:800">자동 증명<br>(관리비 납부)</td><td style="'+TC+'"><b>"이력관리 시스템"을 통해 전속운송계약이 체결되어 택배업에 종사하고 있음을 증명하고,</b> 신청서를 접수한 달부터 매월 집배송 수수료(월급)에서 <b>1,000원을 공제하여 한국통합물류협회에 관리비로 납부해줄 것을 요청합니다.</b></td></tr>';
      h+='<tr><td style="'+TC+';text-align:center">'+((mode==='done')?'<span class="ctc-inmark" style="opacity:1;font-weight:900">'+(d._chks&&d._chks.b_cD==='direct'?'☑':'□')+'</span>':'<div onclick="CT_choice(&quot;b_cD&quot;,&quot;direct&quot;)" style="cursor:pointer;font-size:17px;font-weight:900;text-align:center;user-select:none;-webkit-user-select:none">'+(d._chks&&d._chks.b_cD==='direct'?'☑':'□')+'</div>')+'</td><td style="'+TC+';text-align:center;font-weight:800">직접 증명<br>(서류 확인비용 납부)</td><td style="'+TC+'"><b>신청서를 접수한 달부터 매익월 5일까지 한국통합물류협회에 관련 증빙</b>(택배회사 도장을 날인받은 월간 일자별 집배송 내역서 1부, 자동차등록증 사본 1부)을 <b>등기우편 또는 직접 방문하여 제출하고, 서류 확인 비용 2,000원을 지정계좌로 입금하겠습니다.</b> (지정계좌 별도 안내)<br>★ 서류 확인비용 납부 시 차량번호로 납부해주셔야 확인이 가능합니다.</td></tr></table>';
      h+='<div style="font-size:10.5px;color:#333;margin:8px 0">※ 두가지 방법 중 1가지를 택하여 허가 후 관리를 신청하여야 하며, <b>신청하지 않거나, 직접 증명 선택 후 증빙 미제출 시에는 택배업 종사 확인이 불가능하므로</b> 허가조건 위반 차량으로 관할관청에 통보될 수 있음</div>';
-     h+='<div style="text-align:center;font-weight:800;font-size:13px;margin:10px 0">2026년 8월 1일</div>';
+     h+='<div style="text-align:center;font-weight:800;font-size:13px;margin:10px 0">'+fv(kd(d.sign))+'</div>';
      h+='<div style="text-align:center;letter-spacing:4px;color:#555;font-weight:700;font-size:11px">- - - - - 안 내 사 항 - - - - -</div>';
      h+='<div style="font-size:10px;color:#444;margin-top:5px">1. 택배용 화물자동차(\'배\'번호판)는 택배용도 외로 사용할 경우 행정처분을 받습니다. (위반 시 화물자동차 운수사업법 시행규칙 제27조 별표2에 따라 사업정지 또는 허가취소 처분을 받게 됩니다.)</div>';
      h+='<div style="font-size:10px;color:#444">2. 수집하는 개인정보(성명, 생년월일, 연락처, 차량번호)에 대한 사용목적, 보유기간 등은 이력관리 등록신청 또는 허가 신규 신청시 제출하신 개인정보활용동의서를 통해 고시하였음을 알려드립니다.</div></div>';
