@@ -2452,12 +2452,12 @@ function openSchedPermPopup(){
        h+='<tr><td rowspan="4" style="'+LB+';width:104px">① 신청인</td><td colspan="2" style="'+TD+'">'+K('성　명 :')+fv(d.name)+'</td></tr>';
        h+='<tr><td colspan="2" style="'+TD+'">'+K('주민등록번호 :')+fv(d.jumin)+'</td></tr>';
        h+='<tr><td colspan="2" style="'+TD+'">'+K('주소(주민등록 상) :')+fv(d.addr)+'</td></tr>';
-       h+='<tr><td style="'+TD+';font-size:9.5px;color:#333;font-weight:600">＊주민등록 상 주소지와 영업점(대리점) 주소지가 비인접할 경우, 접수 반려됨.</td><td style="'+TD+'">'+K('(연락처)')+fv(d.phone)+'</td></tr>';
+       h+='<tr><td style="'+TD+';font-size:9.5px;color:#333;font-weight:600">＊주민등록 상 주소지와 영업점(대리점) 주소지가 비인접할 경우, 접수 반려됨.</td><td style="'+TD+'">'+K('(연락처)')+fv(_fmtPhone(d.phone))+'</td></tr>';
      }else{
        h+='<tr><td rowspan="4" style="'+LB+';width:104px">① 신청인</td><td colspan="2" style="'+TD+'">'+K('성　명 :')+fv(d.name)+'</td></tr>';
        h+='<tr><td colspan="2" style="'+TD+'">'+K('주민등록번호 :')+fv(d.jumin)+'</td></tr>';
        h+='<tr><td colspan="2" style="'+TD+'">'+K('주소(주민등록 상) :')+fv(d.addr)+'</td></tr>';
-       h+='<tr><td colspan="2" style="'+TD+'">'+K('연　락　처 :')+fv(d.phone)+'</td></tr>';
+       h+='<tr><td colspan="2" style="'+TD+'">'+K('연　락　처 :')+fv(_fmtPhone(d.phone))+'</td></tr>';
      }
      /* ② 전속운송계약 */
      var rs2=renew?5:7;
@@ -2477,10 +2477,10 @@ function openSchedPermPopup(){
        h+='<tr><td style="'+TD+'">'+K('계약번호 :')+'</td></tr>';
        h+='<tr><td style="'+TD+'">'+K('최대적재량 :')+'( '+fv(d.load)+' )　kg</td><td style="'+TD+'">'+K('형태 :')+' '+grp('selForm',bchk('selForm','탑형','탑형')+'　'+bchk('selForm','밴형','밴형'))+'</td></tr>';
        /* ④ 운전면허 */
-       h+='<tr><td rowspan="2" style="'+LB+'">④ 운 전 면 허</td><td colspan="2" style="'+TD+'">'+K('면허번호 :')+fv(d.lic)+'</td></tr>';
+       h+='<tr><td rowspan="2" style="'+LB+'">④ 운 전 면 허</td><td colspan="2" style="'+TD+'">'+K('면허번호 :')+fv(_fmtLic(d.lic))+'</td></tr>';
        h+='<tr><td colspan="2" style="'+TD+'">'+K('면허종류 :')+' '+grp('selLic',bchk('selLic','1종대형','1종 대형')+'　'+bchk('selLic','1종보통','1종 보통')+'　'+bchk('selLic','2종보통','2종 보통')+'<br>'+bchk('selLic','특수대형','특수면허 대형견인차')+'　'+bchk('selLic','특수소형','특수면허 소형견인차'))+'</td></tr>';
        /* ⑤ 화물운송종사자격 */
-       h+='<tr><td style="'+LB+'">⑤ 화 물 운 송<br>종 사 자 격</td><td style="'+TD+'">'+K('자격증번호 :')+fv(d.qual)+'</td><td style="'+TD+'">'+K('자격취득일 :')+fv(d.qualdate)+'</td></tr>';
+       h+='<tr><td style="'+LB+'">⑤ 화 물 운 송<br>종 사 자 격</td><td style="'+TD+'">'+K('자격증번호 :')+fv(_fmtQual(d.qual))+'</td><td style="'+TD+'">'+K('자격취득일 :')+fv(_fmtQdate(d.qualdate))+'</td></tr>';
      }else{
        h+='<tr><td rowspan="2" style="'+LB+'">③ 차 량 정 보</td><td style="'+TD+'">'+K('차종 :')+'소형화물</td><td style="'+TD+'">'+K('차명(연식) :')+fv(d.car)+' ('+fv(d.cyear)+')</td></tr>';
        h+='<tr><td style="'+TD+'">'+K('최대적재량 :')+'( '+fv(d.load)+' ) kg</td><td style="'+TD+'">'+K('차 량 번 호 :')+fv(d.carno)+'</td></tr>';
@@ -2514,7 +2514,7 @@ function openSchedPermPopup(){
        s+='</div></div>';
        s+='<div style="text-align:center;font-weight:800;font-size:13px;margin:12px 0">계약일자 :　　'+fv(kd(d.sign))+'</div>';
        s+='<div style="display:flex;gap:26px;font-size:11px;line-height:1.8"><div style="flex:1"><b>（갑）</b><br>회 사 명 : '+GAP+'<br>대표이사 : '+seal(GAP_CEO)+'<br>주　　소 : '+GAP_ADDR+'</div>';
-       s+='<div style="flex:1"><b>（병）</b><br>성　　명 : '+fv(d.name)+' '+(arguments[0]?sigSpot('b_s2','병(기사)',mode,d):mirror())+'<br>주　　소 : '+fv(d.addr)+'<br>생년월일 : '+fv(d.birth)+'<br>연 락 처 : '+fv(d.phone)+'</div></div>';
+       s+='<div style="flex:1"><b>（병）</b><br>성　　명 : '+fv(d.name)+' '+(arguments[0]?sigSpot('b_s2','병(기사)',mode,d):mirror())+'<br>주　　소 : '+fv(d.addr)+'<br>생년월일 : '+fv(d.birth)+'<br>연 락 처 : '+fv(_fmtPhone(d.phone))+'</div></div>';
        s+='<div style="font-size:11px;line-height:1.8;margin-top:10px"><b>（을）</b><br>대 리 점 명 : '+EUL+'<br>사업자번호 : '+EUL_BIZ+'<br>주　　　소 : '+EUL_ADDR+'<br>대 표 자 : '+sealE(EUL_CEO)+'</div>';
        return s;
      }
@@ -2570,10 +2570,10 @@ function openSchedPermPopup(){
      h+='<p class="ctc-p" style="text-indent:12px">신청자 본인은 \'배\'번호판을 택배 용도로만 사용하고 있음을 증명하기 위하여 아래와 같이 허가 후 관리 신청서를 제출합니다.</p>';
      h+='<div style="text-align:center;letter-spacing:8px;font-weight:700;margin:6px 0">- 아 래 -</div>';
      h+='<div style="font-weight:800;font-size:14px;margin:12px 0 6px">1. 신청 정보</div>';
-     h+='<div style="display:flex;gap:26px;font-size:12px;line-height:1.9"><div style="flex:1">영업점명 : 　'+EUL+'<br><br>대 표 자 : 　'+sealE(EUL_CEO)+'</div><div style="flex:1">신 청 자 : 　'+fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d)+'<br>생년월일 : 　'+fv(d.birth)+'<br>연 락 처 : 　'+fv(d.phone)+'<br>차량번호 : 　'+fv(d.carno)+'</div></div>';
+     h+='<div style="display:flex;gap:26px;font-size:12px;line-height:1.9"><div style="flex:1">영업점명 : 　'+EUL+'<br><br>대 표 자 : 　'+sealE(EUL_CEO)+'</div><div style="flex:1">신 청 자 : 　'+fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d)+'<br>생년월일 : 　'+fv(d.birth)+'<br>연 락 처 : 　'+fv(_fmtPhone(d.phone))+'<br>차량번호 : 　'+fv(d.carno)+'</div></div>';
      h+='<div style="font-weight:800;font-size:14px;margin:14px 0 6px">2. 허가 후 관리 방법</div>';
      h+='<table style="border-collapse:collapse;width:100%;table-layout:fixed"><tr><td style="'+TH+';width:38px"></td><td style="'+TH+';width:140px">관리방법</td><td style="'+TH+'">상세내용</td></tr>';
-     h+='<tr><td style="'+TC+';text-align:center">'+((mode==='done')?'<span class="ctc-inmark" style="opacity:1;font-weight:900">'+(d._chks&&d._chks.b_cD==='auto'?'☑':'□')+'</span>':'<div onclick="CT_choice(&quot;b_cD&quot;,&quot;auto&quot;)" style="cursor:pointer;font-size:17px;font-weight:900;text-align:center;user-select:none;-webkit-user-select:none">'+(d._chks&&d._chks.b_cD==='auto'?'☑':'□')+'</div>')+'</td><td style="'+TC+';text-align:center;font-weight:800">자동 증명<br>(관리비 납부)</td><td style="'+TC+'"><b>"이력관리 시스템"을 통해 전속운송계약이 체결되어 택배업에 종사하고 있음을 증명하고,</b> 신청서를 접수한 달부터 매월 집배송 수수료(월급)에서 <b>1,000원을 공제하여 한국통합물류협회에 관리비로 납부해줄 것을 요청합니다.</b></td></tr>';
+     h+='<tr><td style="'+TC+';text-align:center">'+((mode==='done')?'<span class="ctc-inmark" style="opacity:1;font-weight:900">'+((d._chks&&d._chks.b_cD==='direct')?'□':'☑')+'</span>':'<div onclick="CT_choice(&quot;b_cD&quot;,&quot;auto&quot;)" style="cursor:pointer;font-size:17px;font-weight:900;text-align:center;user-select:none;-webkit-user-select:none">'+(d._chks&&d._chks.b_cD==='auto'?'☑':'□')+'</div>')+'</td><td style="'+TC+';text-align:center;font-weight:800">자동 증명<br>(관리비 납부)</td><td style="'+TC+'"><b>"이력관리 시스템"을 통해 전속운송계약이 체결되어 택배업에 종사하고 있음을 증명하고,</b> 신청서를 접수한 달부터 매월 집배송 수수료(월급)에서 <b>1,000원을 공제하여 한국통합물류협회에 관리비로 납부해줄 것을 요청합니다.</b></td></tr>';
      h+='<tr><td style="'+TC+';text-align:center">'+((mode==='done')?'<span class="ctc-inmark" style="opacity:1;font-weight:900">'+(d._chks&&d._chks.b_cD==='direct'?'☑':'□')+'</span>':'<div onclick="CT_choice(&quot;b_cD&quot;,&quot;direct&quot;)" style="cursor:pointer;font-size:17px;font-weight:900;text-align:center;user-select:none;-webkit-user-select:none">'+(d._chks&&d._chks.b_cD==='direct'?'☑':'□')+'</div>')+'</td><td style="'+TC+';text-align:center;font-weight:800">직접 증명<br>(서류 확인비용 납부)</td><td style="'+TC+'"><b>신청서를 접수한 달부터 매익월 5일까지 한국통합물류협회에 관련 증빙</b>(택배회사 도장을 날인받은 월간 일자별 집배송 내역서 1부, 자동차등록증 사본 1부)을 <b>등기우편 또는 직접 방문하여 제출하고, 서류 확인 비용 2,000원을 지정계좌로 입금하겠습니다.</b> (지정계좌 별도 안내)<br>★ 서류 확인비용 납부 시 차량번호로 납부해주셔야 확인이 가능합니다.</td></tr></table>';
      h+='<div style="font-size:10.5px;color:#333;margin:8px 0">※ 두가지 방법 중 1가지를 택하여 허가 후 관리를 신청하여야 하며, <b>신청하지 않거나, 직접 증명 선택 후 증빙 미제출 시에는 택배업 종사 확인이 불가능하므로</b> 허가조건 위반 차량으로 관할관청에 통보될 수 있음</div>';
      h+='<div style="text-align:center;font-weight:800;font-size:13px;margin:10px 0">'+fv(kd(d.sign))+'</div>';
@@ -10286,6 +10286,9 @@ async function uploadPhoneExcel(input){
   }
 }
 // 전화번호 포맷 정규화
+function _fmtLic(v){if(v==null)return '';var s=String(v).trim();if(!s)return '';if(/[-\s\u3131-\uD79D]/.test(s))return s;var d=s.replace(/\D/g,'');if(d.length===12)return d.slice(0,2)+'-'+d.slice(2,4)+'-'+d.slice(4,10)+'-'+d.slice(10);return s;}
+function _fmtQual(v){if(v==null)return '';var s=String(v).trim();if(!s)return '';if(/[-\s]/.test(s))return s;var d=s.replace(/\D/g,'');if(d.length===9)return d.slice(0,1)+'-'+d.slice(1,3)+'-'+d.slice(3);return s;}
+function _fmtQdate(v){if(v==null)return '';var s=String(v).trim();if(!s)return '';var d=s.replace(/\D/g,'');if(d.length===8)return d.slice(0,4)+'.'+d.slice(4,6)+'.'+d.slice(6);return s;}
 function _fmtPhone(ph){
   if(!ph&&ph!==0)return '';
   var s=String(ph).trim();
