@@ -2780,7 +2780,10 @@ async function _pushDedupeCheck(key){ await _loadPushDedupe(); var today=_kstTod
   try{ if(sbClient) sbClient.from('app_settings').upsert({key:'push_dedupe',value:JSON.stringify(_pushDedupe)},{onConflict:'key'}).then(function(){}).catch(function(){}); }catch(e){}
   return true; }
 window._pushDedupeCheck=_pushDedupeCheck;
-var _QUIET_EXEMPT={'문지영':1};
+var _QUIET_EXEMPT={}; /* 금지시간 예외 인원: 관리자 지시가 있을 때만 이름 추가 */
+(function(){ if(window.__tfQuietFetchGuard)return; window.__tfQuietFetchGuard=1; var _of=window.fetch;
+  window.fetch=function(u,o){ try{ var url=(typeof u==='string')?u:((u&&u.url)||''); if(url.indexOf('/functions/v1/send-push')>=0 && typeof isQuietHour==='function' && isQuietHour()){ var nm=''; try{var pb=JSON.parse((o&&o.body)||'{}');nm=pb.target_name||pb.driver_name||'';}catch(_e){} if(!(nm&&_QUIET_EXEMPT[nm])){ console.log('[금지시간] 푸시 차단',nm||'(역할/전체)'); return Promise.resolve(new Response('{"blocked":"quiet"}',{status:200,headers:{'Content-Type':'application/json'}})); } } }catch(_e){} return _of.apply(this,arguments); };
+})();
 async function pushNotify(feat, opts){
   opts=opts||{};
   // 야간(22:01~07:00): 공지 제외 + 테스트 면제자(_QUIET_EXEMPT)는 예외로 발송
