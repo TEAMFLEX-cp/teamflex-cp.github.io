@@ -84,7 +84,7 @@
   .rtitem.on{background:#e8f2ff;color:#1565c0}
   .rtck{width:20px;height:20px;border-radius:5px;border:1.5px solid #cfe0f5;display:grid;place-items:center;font-size:12px;color:#fff;background:#fff}
   .rtitem.on .rtck{background:#1565c0;border-color:#1565c0}
-</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head>
+.supbdg{display:inline-block;margin-top:3px;background:#e53935;color:#fff;border-radius:8px;padding:1px 7px;font-size:11px;font-weight:900;animation:supbdgP 1.1s ease-in-out infinite}@keyframes supbdgP{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(229,57,53,.55)}50%{transform:scale(1.13);box-shadow:0 0 0 7px rgba(229,57,53,0)}}</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script></head>
 <body>
 <div class="phone">
   <div class="hdr"><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="t">🤝 백업 공유</div><div class="s" id="bp-sub">매칭 전 익명 · 정산 연동</div></div><div style="display:flex;gap:8px"><div id="bp-back" onclick="bpBack()" style="cursor:pointer;display:flex;align-items:center;gap:3px;font-size:15px;font-weight:900;color:#0d47a1;background:#fff;padding:0 16px;height:40px;border-radius:20px;box-shadow:0 3px 10px rgba(0,0,0,.22)"><span style="font-size:26px;line-height:1;margin-top:-4px;font-weight:900">‹</span>뒤로</div><div id="bp-bell" onclick="bpBell()" style="cursor:pointer;font-size:16px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">🔔</div><div id="bp-gear" onclick="openAdmin()" style="cursor:pointer;font-size:20px;background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:11px;display:grid;place-items:center">⚙️</div></div></div></div>
@@ -178,7 +178,7 @@ function calHtml(){
   for(var d=1;d<=days;d++){var ds=dstr(CY,CM,d);var td=ds===TODAY;
     var spq=reqs.filter(function(r){return r.mode==='특정일'&&r.date===ds&&r.status!=='rejected';});
     var av=slots.filter(function(x){return x.date===ds;}).length;
-    var chips=spq.slice(0,2).map(function(r){var _sc=(r.supporters||[]).filter(function(s){return s&&s.state!=='declined';}).length;return '<div class="cq">'+r.requester+(_sc?' <b style="color:#c62828">지원자'+_sc+'</b>':'')+'</div>';}).join('');
+    var chips=spq.slice(0,2).map(function(r){var _sc=(r.supporters||[]).filter(function(s){return s&&s.state!=='declined';}).length;return '<div class="cq">'+r.requester+(_sc?'<br><span class="supbdg">🙋지원자'+_sc+'</span>':'')+'</div>';}).join('');
     if(spq.length>2)chips+='<div class="cq" style="background:#eee;color:#666">+'+(spq.length-2)+'</div>';
     h+='<div class="cell'+(td?' td':'')+(av?' hasav':'')+(spq.length?' hasreq':'')+((av||spq.length)?' hascontent':'')+'" onclick="openDay(\''+ds+'\')"><div class="n" style="color:'+(td?'#e65100':'#33475b')+'">'+d+'</div>'+chips+(av?'<div class="cav">지원 '+av+'</div>':'')+'</div>';
   }
@@ -430,23 +430,6 @@ function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r
   h+='<div class="kv"><span>예상 수량</span><b>'+(r.estQty?r.estQty+'개':'-')+(r.qtyNote?(' <span style="color:#e65100;font-weight:800">('+r.qtyNote+')</span>'):'')+'</b></div>';
   h+='<div class="kv"><span>실제 수량</span><b>'+(r.finalQty?r.finalQty+'개':'지원기사 입력 대기')+'</b></div>';
   h+='<div class="kv" style="border:none"><span>정산금</span><b class="price">'+(r.finalQty?moneyR(r,reqTotal(r)):(r.estQty?(moneyR(r,estTotal(r))+' (예상)'):'-'))+'</b></div></div>';
-  h+=routeInfoCard(r);
-  // 매칭협상 상세(들어온 조건)
-  if(r.status==='nego')h+='<div class="card" style="border-left:5px solid #00acc1"><div style="font-size:12px;font-weight:900;color:#00838f;margin-bottom:5px">🤝 협상 조건 ('+r.negBy+' 제안)</div><div class="kv"><span>유형</span><b>'+r.aptType+'</b></div><div class="kv"><span>예상 수량</span><b>'+(r.estQty||0)+'개</b></div><div class="kv"><span>제안 단가</span><b class="price">'+money(r.negUnit)+'</b></div><div class="kv" style="border:none"><span>정산</span><b>'+(r.settle==='개인'?'개인정산':'정산일정산')+'</b></div></div>';
-  // 지원자 카드
-  if(r.supporters&&r.supporters.length&&r.status!=='nego'){
-    h+='<div style="font-size:12px;font-weight:900;color:#0d3b66;margin:4px 2px 6px">🚚 '+(r.status==='open'?'신청한 지원자':(r.status==='collabreq'?'협업 제안 지원자':'매칭된 지원자'))+' '+r.supporters.length+'명'+(r.collab?(' · 모집 '+r.needCount+'명'):'')+'</div>';
-    r.supporters.forEach(function(s,i){var st=s.state||'joined';
-      h+='<div class="supcard"><div class="suphead"><span class="supn '+(st==='picked'||st==='accepted'?'acc':(st==='declined'?'dec':''))+'">'+(i+1)+'</span><span style="flex:1">지원자 '+(i+1)+' · '+s.name+(s.company!==MYCOMPNAME?' <span class="badge b-purple">'+s.company+'</span>':'')+'</span>'+stateBadge(st)+'</div>';
-      h+='<div style="font-size:11.5px;color:#5a6b7c;margin-top:5px">📞 '+s.phone+(r.settle==='개인'?('<br>'+(r.acctShare?('💳 '+(s.acct||'(공유됨)')):'🔒 계좌 공유 미동의 — 개인간 협의')):'')+'</div>';
-      // 등록기사: 모집중 → 업무확정(한명)/포기
-      if(iReq&&r.status==='open')h+='<div class="supbtns"><button class="sbtn sb-ok" onclick="pickOne('+r.id+','+i+')">✅ 업무 확정</button><button class="sbtn sb-no" onclick="dropSup('+r.id+','+i+')">✖ 포기</button></div>';
-      // 지원기사 본인: 모집중 → 지원취소 / 협업제안 → 수락·거절
-      if(s.name===ME&&r.status==='open')h+='<div class="supbtns"><button class="sbtn sb-no" onclick="leaveSup('+r.id+')">🚪 지원 취소</button></div>';
-      if(s.name===ME&&r.status==='collabreq'&&st==='invited')h+='<div class="supbtns"><button class="sbtn sb-ok" onclick="acceptCollab('+r.id+')">🤝 협업 수락</button><button class="sbtn sb-no" onclick="declineCollab('+r.id+')">✖ 거절</button></div>';
-      h+='</div>';
-    });
-  }
   // 액션
   if(r.status==='open'){
     if(iReq){
@@ -476,7 +459,24 @@ function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r
   else if(r.status==='qty'){if(iReq)h+='<div class="card"><div class="kv"><span>제출 실제 수량</span><b>'+r.finalQty+'개</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+moneyR(r,reqTotal(r))+'</b></div></div><button class="btn b2" onclick="confirmDone('+r.id+')">✅ 수량 확인 · 최종 확정</button>';else if(iSup)h+='<div class="note">수량 제출 완료 · 등록기사 최종 확정 대기.</div>';h+=LOCK;}
   else if(r.status==='done'){h+='<div class="card" style="border-left:5px solid #2e7d32"><div class="row"><span class="badge b-green">✅ 완료·정산 확정</span></div><div class="kv" style="margin-top:6px"><span>최종 수량</span><b>'+r.finalQty+'개</b></div><div class="kv"><span>정산 방식</span><b>'+(r.settle==='개인'?'개인 정산':'정산일 정산')+'</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+moneyR(r,reqTotal(r))+'</b></div></div>'+LOCK;}
   if(iReq||ROLE==='admin'){h+='<div class="row" style="gap:8px;margin-top:14px"><button class="btn b3" style="flex:1" onclick="startEditReq('+r.id+')">✏️ 수정</button><button class="btn" style="flex:1;background:#ffe0e0;color:#c62828;font-weight:800" onclick="cancelReq('+r.id+')">🗑 삭제</button></div>'+((ROLE==='admin'&&!iReq)?'<div class="note" style="margin-top:6px">🛡 관리자 권한으로 수정·삭제합니다.</div>':'');}
-  return h;
+    h+=routeInfoCard(r);
+  // 매칭협상 상세(들어온 조건)
+  if(r.status==='nego')h+='<div class="card" style="border-left:5px solid #00acc1"><div style="font-size:12px;font-weight:900;color:#00838f;margin-bottom:5px">🤝 협상 조건 ('+r.negBy+' 제안)</div><div class="kv"><span>유형</span><b>'+r.aptType+'</b></div><div class="kv"><span>예상 수량</span><b>'+(r.estQty||0)+'개</b></div><div class="kv"><span>제안 단가</span><b class="price">'+money(r.negUnit)+'</b></div><div class="kv" style="border:none"><span>정산</span><b>'+(r.settle==='개인'?'개인정산':'정산일정산')+'</b></div></div>';
+  // 지원자 카드
+  if(r.supporters&&r.supporters.length&&r.status!=='nego'){
+    h+='<div style="font-size:12px;font-weight:900;color:#0d3b66;margin:4px 2px 6px">🚚 '+(r.status==='open'?'신청한 지원자':(r.status==='collabreq'?'협업 제안 지원자':'매칭된 지원자'))+' '+r.supporters.length+'명'+(r.collab?(' · 모집 '+r.needCount+'명'):'')+'</div>';
+    r.supporters.forEach(function(s,i){var st=s.state||'joined';
+      h+='<div class="supcard"><div class="suphead"><span class="supn '+(st==='picked'||st==='accepted'?'acc':(st==='declined'?'dec':''))+'">'+(i+1)+'</span><span style="flex:1">지원자 '+(i+1)+' · '+s.name+(s.company!==MYCOMPNAME?' <span class="badge b-purple">'+s.company+'</span>':'')+'</span>'+stateBadge(st)+'</div>';
+      h+='<div style="font-size:11.5px;color:#5a6b7c;margin-top:5px">📞 '+s.phone+(r.settle==='개인'?('<br>'+(r.acctShare?('💳 '+(s.acct||'(공유됨)')):'🔒 계좌 공유 미동의 — 개인간 협의')):'')+'</div>';
+      // 등록기사: 모집중 → 업무확정(한명)/포기
+      if(iReq&&r.status==='open')h+='<div class="supbtns"><button class="sbtn sb-ok" onclick="pickOne('+r.id+','+i+')">✅ 업무 확정</button><button class="sbtn sb-no" onclick="dropSup('+r.id+','+i+')">✖ 포기</button></div>';
+      // 지원기사 본인: 모집중 → 지원취소 / 협업제안 → 수락·거절
+      if(s.name===ME&&r.status==='open')h+='<div class="supbtns"><button class="sbtn sb-no" onclick="leaveSup('+r.id+')">🚪 지원 취소</button></div>';
+      if(s.name===ME&&r.status==='collabreq'&&st==='invited')h+='<div class="supbtns"><button class="sbtn sb-ok" onclick="acceptCollab('+r.id+')">🤝 협업 수락</button><button class="sbtn sb-no" onclick="declineCollab('+r.id+')">✖ 거절</button></div>';
+      h+='</div>';
+    });
+  }
+return h;
 }
 function applyReq(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters||[];r.supporters.push({name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'});bpSaveReq(r);bpPush(r.requester,'🤝 백업 지원 신청',ME+'님이 '+bpLabel(r)+'에 지원 신청했습니다.');toast('✋ 지원 신청 · 등록기사 확정 대기');render();}
 function pickOne(id,i){var r=reqs.find(function(x){return x.id===id;});r.supporters=[Object.assign(r.supporters[i],{state:'picked'})];r.collab=false;r.needCount=1;r.status='matched';bpSaveReq(r);bpPush(r.supporters[0].name,'✅ 업무 확정',bpLabel(r)+' 업무가 확정되었습니다.');toast('✅ '+r.supporters[0].name+' 업무 확정 · 매칭 완료');render();}
