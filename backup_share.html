@@ -111,6 +111,7 @@ var ME=decodeURIComponent(_q.get('name')||'정원준');
 var MYCOMP=_q.get('comp')||'teamflex';
 var MYCOMPNAME=decodeURIComponent(_q.get('cn')||'팀플렉스');
 var ROLE=_q.get('role')||'admin';
+var CANCEL_PW='';
 var MYPHONE=_q.get('phone')||'';
 var MYACCT='';
 var APPROVED_IDS=[MYCOMP]; var IS_OWNER=false; var COMPANIES=[];
@@ -345,6 +346,7 @@ function registerHtml(){
   if(draft.collab)h+='<label class="f">추가 인원 (본인 요청 외)</label><div class="stp"><button onclick="dCollabStep(-1)">−</button><div class="v">+'+draft.collabExtra+' <span style="font-size:11px;color:#7a8794">(총 '+(draft.collabExtra+1)+'명 모집)</span></div><button onclick="dCollabStep(1)">＋</button></div>';
   h+='<label class="f">추가 +@ (50원)</label><div class="stp"><button onclick="dExtraStep(-50)">−</button><div class="v">'+money(draft.extra||0)+'</div><button onclick="dExtraStep(50)">＋</button></div>';
   h+='<label class="f">정산 방식</label><div class="seg"><div class="'+(draft.settle==='정산일'?'on':'')+'" onclick="dSet(\'settle\',\'정산일\')">📅 정산일 정산(VAT포함)</div><div class="'+(draft.settle==='개인'?'on':'')+'" onclick="dSet(\'settle\',\'개인\')">💵 개인 정산(현금)</div></div>';
+  if(draft.settle==='정산일')h+='<div style="margin-top:8px;padding:11px 13px;background:#e8f2ff;border:1.5px solid #1565c0;border-radius:10px;font-size:12.5px;font-weight:800;color:#0d47a1;text-align:center">🧾 세금계산서 발행 (부가세 포함 단가)</div>';
   if(draft.settle==='개인')h+='<div class="cbrow" onclick="draft.acctShare=!draft.acctShare;render()"><input type="checkbox" '+(draft.acctShare?'checked':'')+'><div style="font-size:12px;font-weight:800;color:#33475b">개인 계좌번호 공유 동의<div style="font-size:10.5px;font-weight:400;color:#8090a0;margin-top:2px">체크 시에만 계좌 공유. 미동의 시 <b>개인간 협의로 정산</b>.</div></div></div>';
   h+='<div class="calc" id="calc-box">'+calcInner()+'</div><div style="margin-top:14px"><button class="btn b1" onclick="submitReq()">✅ 요청 등록</button></div>';
   return h;
@@ -405,15 +407,16 @@ function bpExportSettle(){
   XLSX.writeFile(wb,'백업정산_'+ym+'.xlsx');
   toast('📥 '+cnt+'행 내보내기 완료');
 }
-function openAdmin(){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}draft={ha:HYEONADD,ta:RATE['특정일']['아파트'],tj:RATE['특정일']['지번']};sub='admin';pushHist();render();}
+function openAdmin(){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}draft={ha:HYEONADD,ta:RATE['특정일']['아파트'],tj:RATE['특정일']['지번'],cpw:CANCEL_PW};sub='admin';pushHist();render();}
 function aAdm(k,d){draft[k]=Math.max(0,(draft[k]||0)+d);render();}
-function saveAdmin(){HYEONADD=draft.ha;RATE['특정일']['아파트']=draft.ta;RATE['특정일']['지번']=draft.tj;APTP['아파트']=draft.ta;APTP['지번']=draft.tj;APTP['아파트+지번']=Math.round((draft.ta+draft.tj)/2);sb.from('bp_company_config').upsert({company_id:MYCOMP,hyeon_add:draft.ha,teuk_apt:draft.ta,teuk_jib:draft.tj,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(){});toast('💾 단가 저장 · 즉시 반영');go('cal');}
+function saveAdmin(){HYEONADD=draft.ha;RATE['특정일']['아파트']=draft.ta;RATE['특정일']['지번']=draft.tj;APTP['아파트']=draft.ta;APTP['지번']=draft.tj;APTP['아파트+지번']=Math.round((draft.ta+draft.tj)/2);sb.from('bp_company_config').upsert({company_id:MYCOMP,hyeon_add:draft.ha,teuk_apt:draft.ta,teuk_jib:draft.tj,updated_at:new Date().toISOString()},{onConflict:'company_id'}).then(function(){});CANCEL_PW=(draft.cpw||'').trim();sb.from('app_settings').upsert({key:'bp_cancel_pw',value:JSON.stringify(CANCEL_PW)},{onConflict:'key'}).then(function(){});toast('💾 단가·취소비번 저장 · 즉시 반영');go('cal');}
 function admRow(label,key){return '<label class="f">'+label+'</label><div class="stp"><button onclick="aAdm(\''+key+'\',-50)">−</button><input class="v" type="number" step="50" value="'+draft[key]+'" oninput="draft.'+key+'=Math.max(0,parseInt(this.value||0,10)||0)"><button onclick="aAdm(\''+key+'\',50)">＋</button></div>';}
 function adminHtml(){var tAvg=Math.round((draft.ta+draft.tj)/2);
   var h='<div class="row"><span onclick="sub=null;go(\'cal\')" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">⚙️ 관리자 · 단가 설정</b></div>';
   h+='<div class="note"><b>현장 기본추가단가</b>(원단가에 가산)와 <b>특정일 아파트/지번 단가</b>를 설정합니다. 저장 시 즉시 반영.</div>';
   h+='<div class="card" style="border-left:6px solid #e65100"><div style="font-size:13.5px;font-weight:900;color:#e65100;margin-bottom:4px">🚚 현장 <span style="font-size:10px;font-weight:600;color:#a06a30">라우트 원단가 + 아래 금액</span></div>'+admRow('➕ 기본추가단가','ha')+'</div>';
   h+='<div class="card" style="border-left:6px solid #1565c0"><div style="font-size:13.5px;font-weight:900;color:#1565c0;margin-bottom:4px">📅 특정일 단가 <span style="font-size:10px;font-weight:600;color:#5a7bb0">(고정 단가)</span></div>'+admRow('🏢 아파트 단가','ta')+admRow('🏠 지번 단가','tj')+'<div class="calc"><div class="tot"><span>아파트+지번 (평균 자동)</span><span>'+money(tAvg)+'</span></div></div></div>';
+  h+='<div class="card" style="border-left:6px solid #c62828"><div style="font-size:13.5px;font-weight:900;color:#c62828;margin-bottom:4px">🔒 업무 확정 취소 비밀번호</div><div class="note" style="margin:0 0 8px">확정된 업무를 <b>취소</b>할 때 입력하는 비밀번호입니다. <b>관리자 전용</b> · 비워두면 취소 불가.</div><input class="v" type="password" placeholder="취소 비밀번호 입력" value="'+(draft.cpw||'')+'" oninput="draft.cpw=this.value" style="width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #cfd8e3;border-radius:9px;font-size:14px"></div>';
   if(IS_OWNER&&ROLE==='admin')h+='<div style="margin-top:12px"><button class="btn b2" onclick="sub=\'compadmin\';render()">🏢 업체 승인 관리</button></div>';
   h+='<div style="margin-top:12px"><button class="btn b1" onclick="saveAdmin()">💾 저장</button></div>';
   return h;
@@ -439,7 +442,7 @@ function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r
         else if(r.collab)h+='<div class="note" style="margin-top:8px">👥 협업 모집('+r.needCount+'명). 지원자에게 <b>협업 요청</b>을 보내 수락받거나, 한 명만 <b>업무 확정</b>.</div><button class="btn b1" style="background:linear-gradient(135deg,#303f9f,#3949ab)" onclick="proposeCollab('+r.id+')">👥 협업 요청 보내기</button>';
         else h+='<div class="note" style="margin-top:8px">💡 지원자를 <b>업무 확정</b>하면 매칭 완료.</div>';
       } else h+='<div class="note">지원자 대기 중…'+(r.collab?(' (협업 '+r.needCount+'명 모집)'):'')+'</div>';
-    } else h+='<button class="btn b1" onclick="applyReq('+r.id+')">✋ 지원 신청</button>';
+    } else { h+='<button class="btn b1" onclick="applyReq('+r.id+')">✋ 지원 신청</button>'; h+='<button class="btn b1" style="background:linear-gradient(135deg,#c62828,#e53935);margin-top:8px" onclick="applyReqCash('+r.id+')">💵 현금 당일 지급으로 신청</button>'; }
   }
   else if(r.status==='collabreq'){
     if(iReq){var acc=r.supporters.filter(function(s){return s.state==='accepted';}).length;var pend=r.supporters.filter(function(s){return s.state==='invited';}).length;
@@ -458,6 +461,7 @@ function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r
   else if(r.status==='matched'){if(iSup)h+='<div class="note">협업 진행 중. 완료 후 <b>실제 수량</b>을 입력하세요.</div><button class="btn b-warn" onclick="enterQty('+r.id+')">📦 실제 수량 입력·제출</button>';else if(iReq)h+='<div class="note">지원 기사 <b>실제 수량 제출 대기</b> 중입니다.</div>';h+=LOCK;}
   else if(r.status==='qty'){if(iReq)h+='<div class="card"><div class="kv"><span>제출 실제 수량</span><b>'+r.finalQty+'개</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+moneyR(r,reqTotal(r))+'</b></div></div><button class="btn b2" onclick="confirmDone('+r.id+')">✅ 수량 확인 · 최종 확정</button>';else if(iSup)h+='<div class="note">수량 제출 완료 · 등록기사 최종 확정 대기.</div>';h+=LOCK;}
   else if(r.status==='done'){h+='<div class="card" style="border-left:5px solid #2e7d32"><div class="row"><span class="badge b-green">✅ 완료·정산 확정</span></div><div class="kv" style="margin-top:6px"><span>최종 수량</span><b>'+r.finalQty+'개</b></div><div class="kv"><span>정산 방식</span><b>'+(r.settle==='개인'?'개인 정산':'정산일 정산')+'</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+moneyR(r,reqTotal(r))+'</b></div></div>'+LOCK;}
+  if(ROLE==='admin'&&['matched','qty','done'].indexOf(r.status)>=0)h+='<button class="btn" style="margin-top:12px;background:#fff3cd;color:#8a6d00;border:2px solid #e0a800;font-weight:800" onclick="cancelConfirm('+r.id+')">🚫 업무 확정 취소 (관리자)</button>';
   if(iReq||ROLE==='admin'){h+='<div class="row" style="gap:8px;margin-top:14px"><button class="btn b3" style="flex:1" onclick="startEditReq('+r.id+')">✏️ 수정</button><button class="btn" style="flex:1;background:#ffe0e0;color:#c62828;font-weight:800" onclick="cancelReq('+r.id+')">🗑 삭제</button></div>'+((ROLE==='admin'&&!iReq)?'<div class="note" style="margin-top:6px">🛡 관리자 권한으로 수정·삭제합니다.</div>':'');}
     h+=routeInfoCard(r);
   // 매칭협상 상세(들어온 조건)
@@ -479,6 +483,10 @@ function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r
 return h;
 }
 function applyReq(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters||[];r.supporters.push({name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'});bpSaveReq(r);bpPush(r.requester,'🤝 백업 지원 신청',ME+'님이 '+bpLabel(r)+'에 지원 신청했습니다.');toast('✋ 지원 신청 · 등록기사 확정 대기');render();}
+function _cashClose(){var o=document.getElementById('cashov');if(o)o.remove();}
+function applyReqCash(id){var ov=document.createElement('div');ov.id='cashov';ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100300;display:flex;align-items:center;justify-content:center;padding:20px';ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;overflow:hidden;box-shadow:0 12px 44px rgba(0,0,0,.35)"><div style="background:#c62828;color:#fff;padding:15px;text-align:center;font-size:17px;font-weight:900">⚠️ 중요 안내</div><div style="padding:18px 18px 4px;font-size:14px;color:#333;line-height:1.8;text-align:center">현금 지급을 <b>희망</b>하시면 <b style="color:#c62828">단가가 변동</b>됩니다.<br>기존 단가 → <b>부가세 10%를 제외</b>한 금액으로 표시됩니다.</div><div style="padding:12px 18px 18px;display:flex;gap:8px"><button onclick="_cashApplyGo('+id+')" style="flex:1;padding:12px;background:#c62828;color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer">💵 현금 지급으로 신청</button><button onclick="_cashClose()" style="padding:12px 16px;background:#eee;border:none;border-radius:10px;cursor:pointer">취소</button></div></div>';document.body.appendChild(ov);}
+function _cashApplyGo(id){_cashClose();var r=reqs.find(function(x){return x.id===id;});if(!r)return;r.supporters=r.supporters||[];r.supporters.push({name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined',cash:true});r.settle='개인';bpSaveReq(r);bpPush(r.requester,'💵 현금 당일지급 지원 신청',ME+'님이 '+bpLabel(r)+'에 현금 당일지급으로 지원 신청했습니다. (부가세 10% 제외 단가 적용)');toast('💵 현금 당일지급 신청 · 부가세 10% 제외 적용');render();}
+function cancelConfirm(id){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}if(!CANCEL_PW){toast('⚠️ 취소 비밀번호가 설정되지 않았습니다. 관리자·단가 설정에서 등록하세요.');return;}var r=reqs.find(function(x){return x.id===id;});if(!r)return;var pw=prompt('🔒 업무 확정 취소\n\n설정된 취소 비밀번호를 입력하세요.');if(pw===null)return;if(pw!==CANCEL_PW){toast('❌ 비밀번호가 일치하지 않습니다.');return;}(r.supporters||[]).forEach(function(s){s.state='joined';});r.finalQty=0;r.collab=(r.needCount>1);r.status=r.viaSupport?'confirm':'open';bpSaveReq(r);bpPushMany((r.supporters||[]).map(function(s){return s.name;}).concat([r.requester]),'🚫 업무 확정 취소',bpLabel(r)+' 업무 확정이 관리자에 의해 취소되었습니다.');toast('🚫 업무 확정 취소 완료 · 다시 모집 상태로 되돌림');render();}
 function pickOne(id,i){var r=reqs.find(function(x){return x.id===id;});r.supporters=[Object.assign(r.supporters[i],{state:'picked'})];r.collab=false;r.needCount=1;r.status='matched';bpSaveReq(r);bpPush(r.supporters[0].name,'✅ 업무 확정',bpLabel(r)+' 업무가 확정되었습니다.');toast('✅ '+r.supporters[0].name+' 업무 확정 · 매칭 완료');render();}
 function dropSup(id,i){var r=reqs.find(function(x){return x.id===id;});var nm=r.supporters[i].name;r.supporters.splice(i,1);bpSaveReq(r);toast('✖ '+nm+' 포기');render();}
 function leaveSup(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters.filter(function(s){return s.name!==ME;});bpSaveReq(r);toast('🚪 지원 취소');render();}
@@ -544,9 +552,11 @@ async function boot(){
       sb.from('bp_company_drivers').select('name,account_no,bank_name,phone').eq('company_id',MYCOMP),
       sb.from('app_settings').select('value').eq('key','feature_controls').maybeSingle(),
       sb.from('app_settings').select('value').eq('key','bp_notif').maybeSingle(),
-      sb.from('bp_companies').select('*').order('requested_at',{ascending:true})
+      sb.from('bp_companies').select('*').order('requested_at',{ascending:true}),
+      sb.from('app_settings').select('value').eq('key','bp_cancel_pw').maybeSingle()
     ]);
-    var ap=_R[0],cf=_R[1],rt=_R[2],dv=_R[3],fc=_R[4],nf=_R[5],cs=_R[6];
+    var ap=_R[0],cf=_R[1],rt=_R[2],dv=_R[3],fc=_R[4],nf=_R[5],cs=_R[6],cpw=_R[7];
+    try{if(cpw&&cpw.data&&cpw.data.value!=null){var _cv=cpw.data.value;CANCEL_PW=(typeof _cv==='string'?(function(){try{return JSON.parse(_cv);}catch(_e){return _cv;}})():_cv)||'';}}catch(_e){}
     APPROVED_IDS=((ap&&ap.data)||[]).map(function(x){return x.id;}); if(!APPROVED_IDS.length)APPROVED_IDS=[MYCOMP];
     if(cf&&cf.data){HYEONADD=cf.data.hyeon_add;RATE['특정일']['아파트']=cf.data.teuk_apt;RATE['특정일']['지번']=cf.data.teuk_jib;APTP['아파트']=cf.data.teuk_apt;APTP['지번']=cf.data.teuk_jib;APTP['아파트+지번']=Math.round((cf.data.teuk_apt+cf.data.teuk_jib)/2);}
     ROUTES={};((rt&&rt.data)||[]).forEach(function(x){ROUTES[x.route_name]=x.base_price;});
