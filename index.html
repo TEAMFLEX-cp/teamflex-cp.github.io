@@ -2977,11 +2977,16 @@ function _r2LockPopup(cur,remainMs){
 }
 function _r2ProgressWatch(ts){
   _r2Box('<div style="font-size:40px;margin-bottom:8px">🔄</div><div style="font-size:15px;font-weight:800;color:#1565c0;margin-bottom:8px">2회전 재검색 진행중…</div><div style="font-size:13px;color:#555;line-height:1.7">메타어드민에서 최신 2회전 수량을<br>수집하고 있습니다. 잠시만 기다려주세요.</div><div style="margin-top:14px"><div style="height:6px;background:#e3eefc;border-radius:4px;overflow:hidden"><div id="r2bar" style="height:100%;width:8%;background:#1565c0;transition:width .5s"></div></div></div>');
-  var t0=Date.now();if(window._r2iv)clearInterval(window._r2iv);
+  var t0=Date.now();
+  var _td=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
+  var base='';
+  (async function(){try{var br=await sbClient.from('round2_expected').select('shared_at').eq('shared_date',_td).order('shared_at',{ascending:false}).limit(1);if(br&&br.data&&br.data.length)base=br.data[0].shared_at||'';}catch(e){}})();
+  if(window._r2iv)clearInterval(window._r2iv);
   window._r2iv=setInterval(async function(){
     var el=Date.now()-t0;var bar=document.getElementById('r2bar');if(bar)bar.style.width=Math.min(92,8+el/1300)+'%';
     var done=false;
     try{var rr=await sbClient.from('app_settings').select('value').eq('key','round2_refresh_result').maybeSingle();var v=(rr&&rr.data)?rr.data.value:null;if(typeof v==='string'){try{v=JSON.parse(v);}catch(_e){v=null;}}if(v&&String(v.ts)===String(ts)&&v.state==='done')done=true;}catch(e){}
+    if(!done){try{var cr=await sbClient.from('round2_expected').select('shared_at').eq('shared_date',_td).order('shared_at',{ascending:false}).limit(1);if(cr&&cr.data&&cr.data.length){var cs=cr.data[0].shared_at||'';if(cs&&String(cs)>String(ts)&&String(cs)>String(base))done=true;}}catch(e){}}
     if(done){clearInterval(window._r2iv);window._r2iv=null;_r2Box('<div style="font-size:44px;margin-bottom:8px">✅</div><div style="font-size:16px;font-weight:800;color:#2e7d32;margin-bottom:8px">재검색 완료</div><div style="font-size:13px;color:#444;line-height:1.7">최신 2회전 수량이 반영되었습니다.<br>어플을 새로고침해주세요.</div><div style="margin-top:16px"><button onclick="location.reload()" style="padding:11px 24px;background:#2e7d32;color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer">🔄 새로고침</button></div>');return;}
     if(el>120000){clearInterval(window._r2iv);window._r2iv=null;_r2Box('<div style="font-size:40px;margin-bottom:8px">⌛</div><div style="font-size:15px;font-weight:800;color:#e65100;margin-bottom:8px">처리 지연</div><div style="font-size:13px;color:#444;line-height:1.7">아직 처리 중이거나 새 수량이 없을 수 있어요.<br>잠시 후 새로고침해 확인해주세요.</div><div style="margin-top:16px"><button onclick="location.reload()" style="padding:10px 22px;background:#e65100;color:#fff;border:none;border-radius:9px;font-weight:800;cursor:pointer">🔄 새로고침</button> <button onclick="_r2Remove()" style="padding:10px 18px;background:#eee;border:none;border-radius:9px;cursor:pointer">닫기</button></div>');}
   },3000);
