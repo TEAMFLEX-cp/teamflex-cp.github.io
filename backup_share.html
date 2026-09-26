@@ -178,7 +178,7 @@ function calHtml(){
   for(var d=1;d<=days;d++){var ds=dstr(CY,CM,d);var td=ds===TODAY;
     var spq=reqs.filter(function(r){return r.mode==='특정일'&&r.date===ds&&r.status!=='rejected';});
     var av=slots.filter(function(x){return x.date===ds;}).length;
-    var chips=spq.slice(0,2).map(function(r){return '<div class="cq" onclick="event.stopPropagation();openDetail('+r.id+')">'+r.requester+'</div>';}).join('');
+    var chips=spq.slice(0,2).map(function(r){var _sc=(r.supporters||[]).filter(function(s){return s&&s.state!=='declined';}).length;return '<div class="cq">'+r.requester+(_sc?' <b style="color:#c62828">지원자'+_sc+'</b>':'')+'</div>';}).join('');
     if(spq.length>2)chips+='<div class="cq" style="background:#eee;color:#666">+'+(spq.length-2)+'</div>';
     h+='<div class="cell'+(td?' td':'')+(av?' hasav':'')+(spq.length?' hasreq':'')+((av||spq.length)?' hascontent':'')+'" onclick="openDay(\''+ds+'\')"><div class="n" style="color:'+(td?'#e65100':'#33475b')+'">'+d+'</div>'+chips+(av?'<div class="cav">지원 '+av+'</div>':'')+'</div>';
   }
