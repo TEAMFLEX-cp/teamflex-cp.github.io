@@ -1843,14 +1843,21 @@ function ctDone(name){
   try{ var b=splitDriverSuffix(k); var base=(b&&(b.base||b.name))||''; if(base&&base!==k&&_contractStatus[base]&&_contractStatus[base].yc)return true; }catch(e){}
   return false;
 }
+async function _ctStatusMerge(name,val){
+  var cs={};
+  try{var q=await sbClient.from('app_settings').select('value').eq('key','contract_status').maybeSingle();cs=(q&&q.data&&q.data.value)?(typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value):{};}catch(e){cs=(window._contractStatus||{});}
+  var k=String(name).trim();
+  if(val){cs[k]=val;}else{delete cs[k];try{var b=splitDriverSuffix(k);var base=(b&&(b.base||b.name))||'';if(base&&cs[base])delete cs[base];}catch(_e){}}
+  var r=await sbClient.from('app_settings').upsert({key:'contract_status',value:JSON.stringify(cs)},{onConflict:'key'});
+  if(!(r&&r.error)){window._contractStatus=cs;_contractStatus=cs;}
+  return r;
+}
 async function ctMark(name,done,via){
   if(!sbClient||!CU||CU.role!=='admin')return false;
   if(!_contractStatus)_contractStatus={};
   var k=String(name).trim();
   var prev=_contractStatus[k];
-  if(done)_contractStatus[k]={yc:true,at:new Date().toISOString(),via:via||'paper',by:CU.name||''};
-  else delete _contractStatus[k];
-  var r=await sbClient.from('app_settings').upsert({key:'contract_status',value:JSON.stringify(_contractStatus)},{onConflict:'key'});
+  var _ctnv=done?{yc:true,at:new Date().toISOString(),via:via||'paper',by:CU.name||''}:null;var r=await _ctStatusMerge(k,_ctnv);
   if(r&&r.error){ showToast('⚠ 계약 상태 저장 실패: '+r.error.message,false); if(prev)_contractStatus[k]=prev; else delete _contractStatus[k]; return false; }
   return true;
 }
@@ -1898,7 +1905,7 @@ async function ctNotifyOnce(names,type){
 window.ctNotifyOnce=ctNotifyOnce;
 async function ctReject(name,type){
   if(!confirm(name+' 님의 계약을 반려하고 재작성을 요청할까요?'))return;
-  if(type==='wc'){ try{ if(!_contractStatus)_contractStatus={}; delete _contractStatus[String(name).trim()]; await sbClient.from('app_settings').upsert({key:'contract_status',value:JSON.stringify(_contractStatus)},{onConflict:'key'}); }catch(e){} }
+  if(type==='wc'){ try{ if(!_contractStatus)_contractStatus={}; await _ctStatusMerge(String(name).trim(),null); }catch(e){} }
   var ok=await ctaSet(name,type,'reject'); if(ok){showToast('↩ 반려했습니다 — 홈에 재작성 배너가 뜹니다',true);openContractAdmin(true);}
 }
 function openCtShare(type,renew){
@@ -2294,7 +2301,7 @@ async function ctDeleteDoc(name,type){
     var ra=await sbClient.from('app_settings').select('value').eq('key','contract_assign').maybeSingle();
     var ca=(ra&&ra.data&&ra.data.value)?(typeof ra.data.value==='string'?JSON.parse(ra.data.value):ra.data.value):{};
     if(ca[name]&&ca[name][type]){delete ca[name][type];_ctAssign=ca;await sbClient.from('app_settings').upsert({key:'contract_assign',value:JSON.stringify(ca)},{onConflict:'key'});}
-    if(type==='wc'){try{if(window._contractStatus&&_contractStatus[name])delete _contractStatus[name];await sbClient.from('app_settings').upsert({key:'contract_status',value:JSON.stringify(window._contractStatus||{})},{onConflict:'key'});}catch(e){}}
+    if(type==='wc'){try{await _ctStatusMerge(name,null);}catch(e){}}
     if(_ctApproved===null&&typeof loadCtApproved==='function'){try{await loadCtApproved();}catch(e){}}
     if(_ctApproved&&_ctApproved[name]&&_ctApproved[name][type]){delete _ctApproved[name][type];await sbClient.from('app_settings').upsert({key:'contract_approved',value:JSON.stringify(_ctApproved)},{onConflict:'key'});}
     try{showToast('🗑 '+name+' '+lbl+' 삭제 — 미작성으로 되돌림',true);}catch(_){}
@@ -2489,7 +2496,7 @@ function openSchedPermPopup(){
      /* 하단 서명부 */
      h+='<div style="font-size:12px;line-height:1.9;margin-top:12px">택배용 화물자동차 운송사업 '+(renew?'재허가':'허가')+'를 위해 '+(renew?'화물자동차 운수사업법 ':'')+'시행규칙 제6조제2항제1호·제2호에 따라 확인서를 제출합니다.';
      h+='<div style="text-align:center;font-weight:800;font-size:14px;margin:9px 0">'+fv(kd(d.sign))+'</div>';
-     h+='<div style="width:fit-content;margin-left:auto;font-weight:800">'+ctRow('택배서비스사업자명',SVC,150,'right')+ctRow('대표이사',seal(GAP_CEO),150,'right')+(renew?'<div style="text-align:right;font-size:9.5px;color:#333;margin:2px 0">(집배점(영업점)명이 아닌, 택배 본사명을 기재하고, 본사인감을 날인)</div>':'')+ctRow('위 신청인',fv(d.name)+' '+sigSpot('b_s1','신청인',mode,d),150,'right')+'</div>';
+     h+='<div style="width:fit-content;margin-left:auto;font-weight:800">'+ctKV('택배서비스사업자명',SVC,150,'right')+ctKV('대표이사',seal(GAP_CEO),150,'right')+(renew?'<div style="text-align:right;font-size:9.5px;color:#333;margin:2px 0">(집배점(영업점)명이 아닌, 택배 본사명을 기재하고, 본사인감을 날인)</div>':'')+ctKV('위 신청인',fv(d.name)+' '+sigSpot('b_s1','신청인',mode,d),150,'right')+'</div>';
      if(!renew){h+='<div style="font-weight:800;margin-top:6px">특별시장·광역시장·특별자치시장·도지사·특별자치도지사 귀하</div>';h+='<div style="font-size:9.5px;color:#444;margin-top:6px">※ 위에 기입된 내용은 향후 택배용 화물자동차 운송사업 허가요령 제7조제4항에 의거 택배용 화물자동차의 운영 현황관리에 활용될 수 있음</div><div style="font-size:9.5px;color:#444">첨부 : 택배용 화물자동차 전속 운송 계약서</div>';}
      h+='</div>';
 
@@ -2510,9 +2517,9 @@ function openSchedPermPopup(){
        s+='<div class="ctc-art">제 9 조【특약사항】</div><p class="ctc-p">① 본 계약서와는 별도로 당사자 간 체결된 계약서의 내용과 본 계약서의 내용이 서로 상충되는 경우 다음의 사항은 본 계약서의 내용을 우선하여 적용한다.<br>　1. 제 3 조 택배 전용 번호판 사용 등에 관한 계약내용<br>　2. 제 4 조 택배 전용 번호판 사용 등에 관한 계약기간<br>　3. 제 5 조 택배 전용 번호판 사용 등에 관련된 번호판반납</p><p class="ctc-p">② "병"의 택배 전용번호 신청이 불허가 결정되면, 본 계약서는 효력이 없는 것으로 한다.</p>';
        s+='</div></div>';
        s+='<div style="text-align:center;font-weight:800;font-size:13px;margin:12px 0">계약일자 :　　'+fv(kd(d.sign))+'</div>';
-       s+='<div style="display:flex;gap:26px;font-size:11px;margin-top:2px"><div style="flex:1"><b>（갑）</b>'+ctRow('회사명',GAP)+ctRow('대표이사',seal(GAP_CEO))+ctRow('주소',GAP_ADDR)+'</div>';
-       s+='<div style="flex:1"><b>（병）</b>'+ctRow('성명',fv(d.name)+' '+(arguments[0]?sigSpot('b_s2','병(기사)',mode,d):mirror()))+ctRow('주소',fv(d.addr))+ctRow('생년월일',fv(d.birth))+ctRow('연락처',fv(_fmtPhone(d.phone)))+'</div></div>';
-       s+='<div style="font-size:11px;margin-top:10px"><b>（을）</b>'+ctRow('대리점명',EUL)+ctRow('사업자번호',EUL_BIZ)+ctRow('주소',EUL_ADDR)+ctRow('대표자',sealE(EUL_CEO))+'</div>';
+       s+='<div style="display:flex;gap:26px;font-size:11px;margin-top:2px"><div style="flex:1"><b>（갑）</b>'+ctKV('회사명',GAP)+ctKV('대표이사',seal(GAP_CEO))+ctKV('주소',GAP_ADDR)+'</div>';
+       s+='<div style="flex:1"><b>（병）</b>'+ctKV('성명',fv(d.name)+' '+(arguments[0]?sigSpot('b_s2','병(기사)',mode,d):mirror()))+ctKV('주소',fv(d.addr))+ctKV('생년월일',fv(d.birth))+ctKV('연락처',fv(_fmtPhone(d.phone)))+'</div></div>';
+       s+='<div style="font-size:11px;margin-top:10px"><b>（을）</b>'+ctKV('대리점명',EUL)+ctKV('사업자번호',EUL_BIZ)+ctKV('주소',EUL_ADDR)+ctKV('대표자',sealE(EUL_CEO))+'</div>';
        return s;
      }
      h+=PB+'<div>'+contract(true)+'</div>';
@@ -2567,7 +2574,7 @@ function openSchedPermPopup(){
      h+='<p class="ctc-p" style="text-indent:12px">신청자 본인은 \'배\'번호판을 택배 용도로만 사용하고 있음을 증명하기 위하여 아래와 같이 허가 후 관리 신청서를 제출합니다.</p>';
      h+='<div style="text-align:center;letter-spacing:8px;font-weight:700;margin:6px 0">- 아 래 -</div>';
      h+='<div style="font-weight:800;font-size:14px;margin:12px 0 6px">1. 신청 정보</div>';
-     h+='<div style="display:flex;gap:26px;font-size:12px"><div style="flex:1">'+ctRow('영업점명',EUL)+ctRow('대표자',sealE(EUL_CEO))+'</div><div style="flex:1">'+ctRow('신청자',fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d))+ctRow('생년월일',fv(d.birth))+ctRow('연락처',fv(_fmtPhone(d.phone)))+ctRow('차량번호',fv(d.carno))+'</div></div>';
+     h+='<div style="display:flex;gap:26px;font-size:12px"><div style="flex:1">'+ctKV('영업점명',EUL)+ctKV('대표자',sealE(EUL_CEO))+'</div><div style="flex:1">'+ctKV('신청자',fv(d.name)+' '+sigSpot('b_s5','신청자',mode,d))+ctKV('생년월일',fv(d.birth))+ctKV('연락처',fv(_fmtPhone(d.phone)))+ctKV('차량번호',fv(d.carno))+'</div></div>';
      h+='<div style="font-weight:800;font-size:14px;margin:14px 0 6px">2. 허가 후 관리 방법</div>';
      h+='<table style="border-collapse:collapse;width:100%;table-layout:fixed"><tr><td style="'+TH+';width:38px"></td><td style="'+TH+';width:140px">관리방법</td><td style="'+TH+'">상세내용</td></tr>';
      h+='<tr><td style="'+TC+';text-align:center">'+((mode==='done')?'<span class="ctc-inmark" style="opacity:1;font-weight:900">'+((d._chks&&d._chks.b_cD==='direct')?'□':'☑')+'</span>':'<div onclick="CT_choice(&quot;b_cD&quot;,&quot;auto&quot;)" style="cursor:pointer;font-size:17px;font-weight:900;text-align:center;user-select:none;-webkit-user-select:none">'+(d._chks&&d._chks.b_cD==='auto'?'☑':'□')+'</div>')+'</td><td style="'+TC+';text-align:center;font-weight:800">자동 증명<br>(관리비 납부)</td><td style="'+TC+'"><b>"이력관리 시스템"을 통해 전속운송계약이 체결되어 택배업에 종사하고 있음을 증명하고,</b> 신청서를 접수한 달부터 매월 집배송 수수료(월급)에서 <b>1,000원을 공제하여 한국통합물류협회에 관리비로 납부해줄 것을 요청합니다.</b></td></tr>';
@@ -2615,7 +2622,7 @@ function openSchedPermPopup(){
   function mdone(){if(!MP||!MP.drawn()){alert('먼저 서명을 그려주세요.');return;}S.sig[CURSIG]=MP.cv.toDataURL('image/png');if(!S.firstSig)S.firstSig=S.sig[CURSIG];document.getElementById('ctc-modal').classList.remove('on');paintSig(CURSIG);advance();}
   var TT;function toast(m){var t=document.getElementById('ctc-toast');if(!t)return;t.textContent=m;t.classList.add('on');clearTimeout(TT);TT=setTimeout(function(){t.classList.remove('on');},1600);}
   function back(){if(S.mode==='driver'){if(typeof go==='function')go('hm');}else if(typeof openContractAdmin==='function')openContractAdmin(true);}
-  async function save(){var name=S.d.name;if(!name){alert('이름이 없습니다.');return false;}if(!window.sbClient){alert('서버 연결 없음');return false;}var slotk=S.kind==='wc'?'wc':(S.badgeKind==='renew'?'badge_renew':'badge_new');var rec={kind:S.kind,badgeKind:S.badgeKind||'',data:full(),sigs:S.sig,chks:S.chk,at:new Date().toISOString(),by:(window.CU&&CU.name)||''};var key='ct_doc_'+name;try{var r1=await sbClient.from('app_settings').select('value').eq('key',key).maybeSingle();var cur=(r1&&r1.data&&r1.data.value)?(typeof r1.data.value==='string'?JSON.parse(r1.data.value):r1.data.value):{};cur[slotk]=rec;var up=await sbClient.from('app_settings').upsert({key:key,value:JSON.stringify(cur)},{onConflict:'key'});if(up&&up.error)throw up.error;}catch(e){alert('저장 실패: '+((e&&e.message)||e));return false;}if(S.kind==='wc'){try{if(!window._contractStatus)window._contractStatus={};_contractStatus[name]={yc:true,at:new Date().toISOString(),via:'app',by:(window.CU&&CU.name)||''};await sbClient.from('app_settings').upsert({key:'contract_status',value:JSON.stringify(_contractStatus)},{onConflict:'key'});}catch(e){}}try{if(window.ctaComplete)await ctaComplete(name,slotk);}catch(e){}return true;}
+  async function save(){var name=S.d.name;if(!name){alert('이름이 없습니다.');return false;}if(!window.sbClient){alert('서버 연결 없음');return false;}var slotk=S.kind==='wc'?'wc':(S.badgeKind==='renew'?'badge_renew':'badge_new');var rec={kind:S.kind,badgeKind:S.badgeKind||'',data:full(),sigs:S.sig,chks:S.chk,at:new Date().toISOString(),by:(window.CU&&CU.name)||''};var key='ct_doc_'+name;try{var r1=await sbClient.from('app_settings').select('value').eq('key',key).maybeSingle();var cur=(r1&&r1.data&&r1.data.value)?(typeof r1.data.value==='string'?JSON.parse(r1.data.value):r1.data.value):{};cur[slotk]=rec;var up=await sbClient.from('app_settings').upsert({key:key,value:JSON.stringify(cur)},{onConflict:'key'});if(up&&up.error)throw up.error;}catch(e){alert('저장 실패: '+((e&&e.message)||e));return false;}if(S.kind==='wc'){try{if(!window._contractStatus)window._contractStatus={};await _ctStatusMerge(name,{yc:true,at:new Date().toISOString(),via:'app',by:(window.CU&&CU.name)||''});}catch(e){}}try{if(window.ctaComplete)await ctaComplete(name,slotk);}catch(e){}return true;}
   async function finish(){var w=document.getElementById('ctc-fbtn');if(w)w.innerHTML='<button class="ctc-btn" style="background:#9aa" disabled>저장 중…</button>';var ok=await save();if(ok===false){refFoot();return;}var kt=S.kind==='wc'?'위·수탁 계약서':'배넘버 '+(S.badgeKind==='renew'?'재허가':'신규')+' 서류';paint('<div class="stit">✅ 작성 완료</div><div class="card" style="text-align:center;padding:26px 18px"><div style="font-size:44px">✅</div><div style="font-size:16px;font-weight:900;color:#1b8a3f;margin:8px 0 6px">'+kt+' 작성 완료</div><div style="font-size:12.5px;color:#555;line-height:1.6">Supabase에 저장되었습니다.'+(S.kind==='wc'?'<br>계약 상태가 <b>작성완료</b>로 바뀌어 모든 기능이 열립니다.':'')+'</div><button class="ctc-btn" style="margin-top:16px;background:#2f7de0" onclick="CT_back()">확인</button></div>');}
   async function preview(name,slotk,mode){ensureUI();paint('<div class="stit">불러오는 중…</div>');var key='ct_doc_'+name,rec=null;try{var r=await sbClient.from('app_settings').select('value').eq('key',key).maybeSingle();var cur=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{};rec=cur[slotk];}catch(e){}S.mode=mode||'admin';if(!rec){paint('<div class="stit"><span onclick="CT_back()" style="cursor:pointer;color:#2f6bb0;font-weight:900;font-size:20px">‹</span> 미리보기</div><div class="card">저장된 계약서가 없습니다.</div>');return;}S.kind=rec.kind;S.badgeKind=rec.badgeKind||'new';var d=Object.assign({},rec.data,{_sigs:rec.sigs||{},_chks:rec.chks||{}});LASTD=d;LASTNAME=name;var _bs=slotk.replace(/_prev$/,'');var _isP=/_prev$/.test(slotk);var _pv=cur[_bs+'_prev'];var _td=new Date().toISOString().slice(0,10);var _pe=(_pv&&_pv.data&&_pv.data.end)||'';var _verBtn=_isP?('<button class="ctc-btn" style="background:#455a94;margin-top:6px" onclick="CT_preview(&quot;'+name+'&quot;,&quot;'+_bs+'&quot;,&quot;'+(mode||'admin')+'&quot;)">← 현재 계약서로</button>'):((_pv&&(!_pe||_pe>=_td))?('<button class="ctc-btn" style="background:#455a94;margin-top:6px" onclick="CT_preview(&quot;'+name+'&quot;,&quot;'+_bs+'_prev&quot;,&quot;'+(mode||'admin')+'&quot;)">📜 이전 계약서 보기'+(_pe?(' (만료 '+_pe+')'):'')+'</button>'):'');var kt=rec.kind==='wc'?'위·수탁 계약서':'배넘버 '+(rec.badgeKind==='renew'?'재허가':'신규')+' 서류';paint('<div class="stit" style="display:flex;align-items:center;gap:8px"><span onclick="CT_back()" style="cursor:pointer;color:#2f6bb0;font-weight:900;font-size:20px">‹</span>&#x1F4C4; '+name+' · '+kt+'</div><div class="card"><div style="font-size:12px;color:#5a6b7c">서명 완료된 실제 서류입니다. (작성 '+String(rec.at||'').slice(0,10)+')</div><button class="ctc-btn" style="background:#12b5a3;margin-top:8px" onclick="CT_pdf()">📄 PDF 다운로드</button>'+_verBtn+'</div>'+docHTML(d,'done'));}
   // expose
@@ -10318,7 +10325,7 @@ async function uploadPhoneExcel(input){
   }
 }
 // 전화번호 포맷 정규화
-function ctRow(l,v,w,al){var a=al||'justify';return '<div style="display:flex;align-items:flex-start;line-height:1.9"><span style="display:inline-block;width:'+(w||68)+'px;flex:none;text-align:'+a+';text-align-last:'+a+'">'+l+'</span><span style="flex:none;padding:0 6px 0 2px">:</span><span style="flex:1;min-width:0">'+v+'</span></div>';}
+function ctKV(l,v,w,al){var a=al||'justify';return '<div style="display:flex;align-items:flex-start;line-height:1.9"><span style="display:inline-block;width:'+(w||68)+'px;flex:none;text-align:'+a+';text-align-last:'+a+'">'+l+'</span><span style="flex:none;padding:0 6px 0 2px">:</span><span style="flex:1;min-width:0">'+v+'</span></div>';}
 function _fmtLic(v){if(v==null)return '';var s=String(v).trim();if(!s)return '';if(/[-\s\u3131-\uD79D]/.test(s))return s;var d=s.replace(/\D/g,'');if(d.length===12)return d.slice(0,2)+'-'+d.slice(2,4)+'-'+d.slice(4,10)+'-'+d.slice(10);return s;}
 function _fmtQual(v){if(v==null)return '';var s=String(v).trim();if(!s)return '';if(/[-\s]/.test(s))return s;var d=s.replace(/\D/g,'');if(d.length===9)return d.slice(0,1)+'-'+d.slice(1,3)+'-'+d.slice(3);return s;}
 function _fmtQdate(v){if(v==null)return '';var s=String(v).trim();if(!s)return '';var d=s.replace(/\D/g,'');if(d.length===8)return d.slice(0,4)+'.'+d.slice(4,6)+'.'+d.slice(6);return s;}
