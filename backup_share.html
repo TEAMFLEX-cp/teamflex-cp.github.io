@@ -426,6 +426,25 @@ function routeInfoCard(r){if(!r.routeInfo&&!r.mapImg&&!r.returnReq)return '';var
 function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r);var si={open:0,collabreq:1,nego:1,confirm:1,matched:1,qty:2,done:3}[r.status];
   var h='<div class="row"><span onclick="sub=null;render()" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">요청 상세</b>'+dBadge(r.date)+'</div>';
   h+='<div class="row" style="gap:4px;margin:8px 0">'+[0,1,2,3].map(function(i){return '<div style="flex:1;height:5px;border-radius:3px;background:'+(si>=i?'#1565c0':'rgba(255,255,255,.45)')+'"></div>';}).join('')+'</div><div style="font-size:10px;color:#0d3b66;display:flex;justify-content:space-between;margin:-4px 2px 10px"><span>등록</span><span>매칭</span><span>수량</span><span>확정</span></div>';
+  // 지원자 카드 (상단 고정)
+  var supH='';
+  if(r.supporters&&r.supporters.length&&r.status!=='nego'){
+    supH+='<div style="font-size:12px;font-weight:900;color:#0d3b66;margin:4px 2px 6px">🚚 '+(r.status==='open'?'신청한 지원자':(r.status==='collabreq'?'협업 제안 지원자':'매칭된 지원자'))+' '+r.supporters.length+'명'+(r.collab?(' · 모집 '+r.needCount+'명'):'')+'</div>';
+    r.supporters.forEach(function(s,i){var st=s.state||'joined';
+      supH+='<div class="supcard"><div class="suphead"><span class="supn '+(st==='picked'||st==='accepted'?'acc':(st==='declined'?'dec':''))+'">'+(i+1)+'</span><span style="flex:1">지원자 '+(i+1)+' · '+s.name+(s.company!==MYCOMPNAME?' <span class="badge b-purple">'+s.company+'</span>':'')+'</span>'+stateBadge(st)+'</div>';
+      supH+='<div style="font-size:11.5px;color:#5a6b7c;margin-top:5px">📞 '+s.phone+(r.settle==='개인'?('<br>'+(r.acctShare?('💳 '+(s.acct||'(공유됨)')):'🔒 계좌 공유 미동의 — 개인간 협의')):'')+'</div>';
+      // 등록기사: 모집중 → 업무확정(한명)/포기
+      if(iReq&&r.status==='open')supH+='<div class="supbtns"><button class="sbtn sb-ok" onclick="pickOne('+r.id+','+i+')">✅ 업무 확정</button><button class="sbtn sb-no" onclick="dropSup('+r.id+','+i+')">✖ 포기</button></div>';
+      // 지원기사 본인: 모집중 → 지원취소 / 협업제안 → 수락·거절
+      if(s.name===ME&&r.status==='open')supH+='<div class="supbtns"><button class="sbtn sb-no" onclick="leaveSup('+r.id+')">🚪 지원 취소</button></div>';
+      // 관리자: 지원 취소 (등록자 본인이 아닐 때 — 등록자는 위 '포기' 사용)
+      if(ROLE==='admin'&&!iReq&&s.name!==ME&&(r.status==='open'||r.status==='collabreq'))supH+='<div class="supbtns"><button class="sbtn sb-no" onclick="adminDropSup('+r.id+','+i+')">🚫 지원 취소 (관리자)</button></div>';
+      if(s.name===ME&&r.status==='collabreq'&&st==='invited')supH+='<div class="supbtns"><button class="sbtn sb-ok" onclick="acceptCollab('+r.id+')">🤝 협업 수락</button><button class="sbtn sb-no" onclick="declineCollab('+r.id+')">✖ 거절</button></div>';
+      supH+='</div>';
+    });
+  }
+  if(supH)supH='<div class="card" style="border-left:5px solid #1565c0;background:#f3f8ff">'+supH+'</div>';
+  h+=supH;
   h+='<div class="card"><div class="row" style="margin-bottom:6px">'+stBadge(r.status)+kindBadge(r)+comp(r.rcomp)+collabBadge(r)+settleBadge(r)+(r.returnReq?'<span class="badge" style="background:#c62828;color:#fff">↩️ 회수필수</span>':'')+'</div>';
   h+='<div class="rname" style="margin-bottom:4px">'+r.requester+'</div>';
   h+='<div class="kv"><span>라우트</span><b>'+r.routes.join(', ')+'</b></div>';
@@ -466,20 +485,6 @@ function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r
     h+=routeInfoCard(r);
   // 매칭협상 상세(들어온 조건)
   if(r.status==='nego')h+='<div class="card" style="border-left:5px solid #00acc1"><div style="font-size:12px;font-weight:900;color:#00838f;margin-bottom:5px">🤝 협상 조건 ('+r.negBy+' 제안)</div><div class="kv"><span>유형</span><b>'+r.aptType+'</b></div><div class="kv"><span>예상 수량</span><b>'+(r.estQty||0)+'개</b></div><div class="kv"><span>제안 단가</span><b class="price">'+money(r.negUnit)+'</b></div><div class="kv" style="border:none"><span>정산</span><b>'+(r.settle==='개인'?'개인정산':'정산일정산')+'</b></div></div>';
-  // 지원자 카드
-  if(r.supporters&&r.supporters.length&&r.status!=='nego'){
-    h+='<div style="font-size:12px;font-weight:900;color:#0d3b66;margin:4px 2px 6px">🚚 '+(r.status==='open'?'신청한 지원자':(r.status==='collabreq'?'협업 제안 지원자':'매칭된 지원자'))+' '+r.supporters.length+'명'+(r.collab?(' · 모집 '+r.needCount+'명'):'')+'</div>';
-    r.supporters.forEach(function(s,i){var st=s.state||'joined';
-      h+='<div class="supcard"><div class="suphead"><span class="supn '+(st==='picked'||st==='accepted'?'acc':(st==='declined'?'dec':''))+'">'+(i+1)+'</span><span style="flex:1">지원자 '+(i+1)+' · '+s.name+(s.company!==MYCOMPNAME?' <span class="badge b-purple">'+s.company+'</span>':'')+'</span>'+stateBadge(st)+'</div>';
-      h+='<div style="font-size:11.5px;color:#5a6b7c;margin-top:5px">📞 '+s.phone+(r.settle==='개인'?('<br>'+(r.acctShare?('💳 '+(s.acct||'(공유됨)')):'🔒 계좌 공유 미동의 — 개인간 협의')):'')+'</div>';
-      // 등록기사: 모집중 → 업무확정(한명)/포기
-      if(iReq&&r.status==='open')h+='<div class="supbtns"><button class="sbtn sb-ok" onclick="pickOne('+r.id+','+i+')">✅ 업무 확정</button><button class="sbtn sb-no" onclick="dropSup('+r.id+','+i+')">✖ 포기</button></div>';
-      // 지원기사 본인: 모집중 → 지원취소 / 협업제안 → 수락·거절
-      if(s.name===ME&&r.status==='open')h+='<div class="supbtns"><button class="sbtn sb-no" onclick="leaveSup('+r.id+')">🚪 지원 취소</button></div>';
-      if(s.name===ME&&r.status==='collabreq'&&st==='invited')h+='<div class="supbtns"><button class="sbtn sb-ok" onclick="acceptCollab('+r.id+')">🤝 협업 수락</button><button class="sbtn sb-no" onclick="declineCollab('+r.id+')">✖ 거절</button></div>';
-      h+='</div>';
-    });
-  }
 return h;
 }
 function applyReq(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters||[];r.supporters.push({name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'});bpSaveReq(r);bpPush(r.requester,'🤝 백업 지원 신청',ME+'님이 '+bpLabel(r)+'에 지원 신청했습니다.');toast('✋ 지원 신청 · 등록기사 확정 대기');render();}
@@ -489,6 +494,7 @@ function _cashApplyGo(id){_cashClose();var r=reqs.find(function(x){return x.id==
 function cancelConfirm(id){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}if(!CANCEL_PW){toast('⚠️ 취소 비밀번호가 설정되지 않았습니다. 관리자·단가 설정에서 등록하세요.');return;}var r=reqs.find(function(x){return x.id===id;});if(!r)return;var pw=prompt('🔒 업무 확정 취소\n\n설정된 취소 비밀번호를 입력하세요.');if(pw===null)return;if(pw!==CANCEL_PW){toast('❌ 비밀번호가 일치하지 않습니다.');return;}(r.supporters||[]).forEach(function(s){s.state='joined';});r.finalQty=0;r.collab=(r.needCount>1);r.status=r.viaSupport?'confirm':'open';bpSaveReq(r);bpPushMany((r.supporters||[]).map(function(s){return s.name;}).concat([r.requester]),'🚫 업무 확정 취소',bpLabel(r)+' 업무 확정이 관리자에 의해 취소되었습니다.');toast('🚫 업무 확정 취소 완료 · 다시 모집 상태로 되돌림');render();}
 function pickOne(id,i){var r=reqs.find(function(x){return x.id===id;});r.supporters=[Object.assign(r.supporters[i],{state:'picked'})];r.collab=false;r.needCount=1;r.status='matched';bpSaveReq(r);bpPush(r.supporters[0].name,'✅ 업무 확정',bpLabel(r)+' 업무가 확정되었습니다.');toast('✅ '+r.supporters[0].name+' 업무 확정 · 매칭 완료');render();}
 function dropSup(id,i){var r=reqs.find(function(x){return x.id===id;});var nm=r.supporters[i].name;r.supporters.splice(i,1);bpSaveReq(r);toast('✖ '+nm+' 포기');render();}
+function adminDropSup(id,i){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}var r=reqs.find(function(x){return x.id===id;});if(!r||!r.supporters||!r.supporters[i])return;var nm=r.supporters[i].name;if(!confirm('🚫 관리자 지원 취소\n\n'+nm+' 기사의 지원을 취소할까요?'))return;r.supporters.splice(i,1);if(r.status==='collabreq'&&!r.supporters.length)r.status='open';bpSaveReq(r);bpPush(nm,'🚫 지원 취소',bpLabel(r)+' 지원이 관리자에 의해 취소되었습니다.');toast('🚫 '+nm+' 지원 취소 (관리자)');render();}
 function leaveSup(id){var r=reqs.find(function(x){return x.id===id;});r.supporters=r.supporters.filter(function(s){return s.name!==ME;});bpSaveReq(r);toast('🚪 지원 취소');render();}
 function proposeCollab(id){var r=reqs.find(function(x){return x.id===id;});r.supporters.forEach(function(s){s.state='invited';});r.status='collabreq';bpSaveReq(r);bpPushMany(r.supporters.map(function(s){return s.name;}),'👥 협업 제안',ME+'님이 '+bpLabel(r)+' 협업을 제안했습니다. 수락/거절해 주세요.');toast('👥 협업 요청 전송 · 지원자 수락 대기');render();}
 function acceptCollab(id){var r=reqs.find(function(x){return x.id===id;});var s=r.supporters.find(function(x){return x.name===ME;});if(s)s.state='accepted';bpSaveReq(r);bpPush(r.requester,'🤝 협업 수락',ME+'님이 협업을 수락했습니다.');toast('🤝 협업 수락 · 상대 수락 시 협업 확정');render();}
