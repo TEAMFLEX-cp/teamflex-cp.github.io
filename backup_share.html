@@ -443,6 +443,7 @@ function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r
       supH+='</div>';
     });
   }
+  if(supH&&ROLE==='admin'&&['matched','qty','done'].indexOf(r.status)>=0)supH+='<button class="btn" style="margin-top:10px;background:#fff3cd;color:#8a6d00;border:2px solid #e0a800;font-weight:800" onclick="cancelConfirm('+r.id+')">🚫 업무 확정 취소 (관리자)</button>';
   if(supH)supH='<div class="card" style="border-left:5px solid #1565c0;background:#f3f8ff">'+supH+'</div>';
   h+=supH;
   h+='<div class="card"><div class="row" style="margin-bottom:6px">'+stBadge(r.status)+kindBadge(r)+comp(r.rcomp)+collabBadge(r)+settleBadge(r)+(r.returnReq?'<span class="badge" style="background:#c62828;color:#fff">↩️ 회수필수</span>':'')+'</div>';
@@ -480,7 +481,6 @@ function detailHtml(r){if(!r)return '';var iReq=(r.requester===ME),iSup=iAmSup(r
   else if(r.status==='matched'){if(iSup)h+='<div class="note">협업 진행 중. 완료 후 <b>실제 수량</b>을 입력하세요.</div><button class="btn b-warn" onclick="enterQty('+r.id+')">📦 실제 수량 입력·제출</button>';else if(iReq)h+='<div class="note">지원 기사 <b>실제 수량 제출 대기</b> 중입니다.</div>';h+=LOCK;}
   else if(r.status==='qty'){if(iReq)h+='<div class="card"><div class="kv"><span>제출 실제 수량</span><b>'+r.finalQty+'개</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+moneyR(r,reqTotal(r))+'</b></div></div><button class="btn b2" onclick="confirmDone('+r.id+')">✅ 수량 확인 · 최종 확정</button>';else if(iSup)h+='<div class="note">수량 제출 완료 · 등록기사 최종 확정 대기.</div>';h+=LOCK;}
   else if(r.status==='done'){h+='<div class="card" style="border-left:5px solid #2e7d32"><div class="row"><span class="badge b-green">✅ 완료·정산 확정</span></div><div class="kv" style="margin-top:6px"><span>최종 수량</span><b>'+r.finalQty+'개</b></div><div class="kv"><span>정산 방식</span><b>'+(r.settle==='개인'?'개인 정산':'정산일 정산')+'</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+moneyR(r,reqTotal(r))+'</b></div></div>'+LOCK;}
-  if(ROLE==='admin'&&['matched','qty','done'].indexOf(r.status)>=0)h+='<button class="btn" style="margin-top:12px;background:#fff3cd;color:#8a6d00;border:2px solid #e0a800;font-weight:800" onclick="cancelConfirm('+r.id+')">🚫 업무 확정 취소 (관리자)</button>';
   if(iReq||ROLE==='admin'){h+='<div class="row" style="gap:8px;margin-top:14px"><button class="btn b3" style="flex:1" onclick="startEditReq('+r.id+')">✏️ 수정</button><button class="btn" style="flex:1;background:#ffe0e0;color:#c62828;font-weight:800" onclick="cancelReq('+r.id+')">🗑 삭제</button></div>'+((ROLE==='admin'&&!iReq)?'<div class="note" style="margin-top:6px">🛡 관리자 권한으로 수정·삭제합니다.</div>':'');}
     h+=routeInfoCard(r);
   // 매칭협상 상세(들어온 조건)
