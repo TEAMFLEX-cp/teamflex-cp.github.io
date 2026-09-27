@@ -7514,9 +7514,20 @@ function norm_name_js(name){
   var m=name.match(/^(.+?)\s*[A-Z]{1,4}$/);
   return m?m[1].trim():name;
 }
+// ── 스케줄 날짜별 칸 넓이 통일: 모든 조(표)의 같은 날짜 칸을 가장 넓은 칸에 맞춤 (높이는 그대로) ──
+function _schedEqCols(){try{
+  var tbs=Array.from(document.querySelectorAll('.ftw > table.ft'));if(tbs.length<2)return;
+  tbs.forEach(function(t){t.style.tableLayout='';t.style.width='';t.querySelectorAll('colgroup col').forEach(function(c,i){if(i>0)c.style.width='';});});
+  var mx=[];
+  tbs.forEach(function(t){var hr=t.tHead&&t.tHead.rows[0];if(!hr)return;for(var i=1;i<hr.cells.length;i++){var w=Math.ceil(hr.cells[i].getBoundingClientRect().width);if(!mx[i]||w>mx[i])mx[i]=w;}});
+  if(mx.length<2)return;
+  var tot=96;for(var i=1;i<mx.length;i++)tot+=(mx[i]||0);
+  tbs.forEach(function(t){var cols=t.querySelectorAll('colgroup col');if(cols.length!==mx.length)return;cols[0].style.width='96px';for(var i=1;i<cols.length;i++)cols[i].style.width=mx[i]+'px';t.style.tableLayout='fixed';t.style.width=tot+'px';});
+}catch(e){}}
 function initSchedScrollSync(){
   var wrappers=Array.from(document.querySelectorAll('.ftw'));
   if(wrappers.length<1)return;
+  _schedEqCols();
   var _syncing=false;
   wrappers.forEach(function(el){
     el.addEventListener('scroll',function(){
