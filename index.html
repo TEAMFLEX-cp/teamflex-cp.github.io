@@ -9106,6 +9106,9 @@ window.dhContractSetup=dhContractSetup;window.dhSaveContractInfo=dhSaveContractI
 window.dhMyInfo=dhMyInfo;window.dhMyEditStart=dhMyEditStart;
 
 function closeDriverDetail(){var p=document.getElementById('dh-detail');if(p)p.remove();}
+// ── 기사정보의 쿠팡 아이디(cpid) → drivers.login_id 동기화 (login_id가 비었거나 한글일 때만. 기존 영문 아이디는 덮어쓰지 않음)
+//    서버(인입·미반납·신선 이름 매핑)와 메타 엑셀 아이디가 모두 drivers.login_id를 보므로 여기가 비면 아이디가 그대로 노출됨
+async function _syncDrvLoginId(name,cpid){try{var c=String(cpid||'').replace(/@df$/i,'').trim();if(!c||!/^[A-Za-z0-9_.\-]+$/.test(c)||!sbClient||!name)return;var q=await sbClient.from('drivers').select('login_id').eq('name',name);var rows=(q&&q.data)||[];if(!rows.length)return;var need=rows.some(function(r){var l=String(r.login_id||'').trim();return !l||/[가-힣]/.test(l);});if(need)await sbClient.from('drivers').update({login_id:c,synced_at:new Date().toISOString()}).eq('name',name);}catch(e){}}
 async function saveDriverDetail(name){
   var e=Object.assign({},(_driverExt&&_driverExt[name])||{});
   DH_FIELDS.forEach(function(f){var key=f[0];if(key==='_birth'||key==='cyear')return;var el=document.getElementById('dhe_'+key);if(el)e[key]=(el.value||'').trim();});
@@ -9117,7 +9120,7 @@ async function saveDriverDetail(name){
   if(sbClient){try{
     var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();
     var m={};if(r1&&r1.data&&r1.data.value){try{m=(typeof r1.data.value==='string')?JSON.parse(r1.data.value):r1.data.value;}catch(_e){m={};}}
-    m[name]=e;await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});
+    m[name]=e;await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});_syncDrvLoginId(name,e.cpid);
     sbClient.from('drivers').update({phone:e.phone?_deP(e.phone):null,synced_at:new Date().toISOString()}).eq('name',name).then(function(){}).catch(function(){});
   }catch(err){console.warn('driver_ext 저장 실패',err);}}
   closeDriverDetail();var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();
@@ -9234,7 +9237,7 @@ function _dhApplyRows(hdr,rows){
     var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();
     var m={};if(r1&&r1.data&&r1.data.value){try{m=(typeof r1.data.value==='string')?JSON.parse(r1.data.value):r1.data.value;}catch(_e){m={};}}
     Object.keys(_driverExt).forEach(function(k){m[k]=_driverExt[k];});
-    await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});
+    await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});Object.keys(_driverExt).forEach(function(k){if(_driverExt[k]&&_driverExt[k].cpid)_syncDrvLoginId(k,_driverExt[k].cpid);});
   }catch(e){console.warn('driver_ext 저장 실패',e);}}})();
   var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();
   alert('✅ '+n+'명 정보 반영 완료\n(비밀번호는 보안상 제외 · Supabase 동기화)');
