@@ -4573,7 +4573,7 @@ async function suSubmit(){
   try{
     var chk=await sbClient.from('drivers').select('name,status').eq('name',name).maybeSingle();
     if(chk&&chk.data){er.textContent='이미 등록된 이름입니다. 관리자에게 문의하세요.';if(btn){btn.disabled=false;btn.textContent='📩 가입 신청 (관리자 승인 요청)';}return;}
-    var up=await sbClient.from('drivers').insert({name:name,login_id:name,driver_id:name,password:pw,role:'driver',status:'pending',phone:ext.phone,synced_at:new Date().toISOString()});
+    var up=await sbClient.from('drivers').insert({name:name,login_id:(function(){var _c=String(ext.cpid||'').replace(/@df$/i,'').trim();return (_c&&/^[A-Za-z0-9_.\-]+$/.test(_c))?_c:name;})(),driver_id:name,password:pw,role:'driver',status:'pending',phone:ext.phone,synced_at:new Date().toISOString()});
     if(up&&up.error)throw up.error;
     var r1=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();
     var m=(r1&&r1.data&&r1.data.value)?(typeof r1.data.value==='string'?JSON.parse(r1.data.value):r1.data.value):{};
@@ -8913,14 +8913,14 @@ function dhToggleSusp(name){
 function dhApprove(name){
   if(!(CU&&CU.role==='admin')){alert('관리자만 변경할 수 있습니다.');return;}
   var db=getDB();if(!db[name])db[name]={name:name};db[name].status='approved';if(!db[name].role)db[name].role='driver';saveDB(db);
-  if(sbClient)sbClient.from('drivers').update({status:'approved',synced_at:new Date().toISOString()}).eq('name',name).then(function(){}).catch(function(){});
+  if(sbClient)sbClient.from('drivers').update({status:'approved',synced_at:new Date().toISOString()}).eq('name',name).then(function(){_syncDrvLoginIdFromExt(name);}).catch(function(){});
   var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();
   try{showToast('✔ '+name+' 승인 — 기본 권한: 일반 기사',true);}catch(_){}
   if(_driverExt===null){_loadDriverExt().then(function(){dhContractSetup(name,true);});}else{dhContractSetup(name,true);}
 }
 function dhUnkick(name){
   if(!(CU&&CU.role==='admin'))return;var db=getDB();var d=db[name];if(!d)return;d.status='approved';saveDB(db);
-  if(sbClient)sbClient.from('drivers').update({status:'approved',synced_at:new Date().toISOString()}).eq('name',name).then(function(){}).catch(function(){});
+  if(sbClient)sbClient.from('drivers').update({status:'approved',synced_at:new Date().toISOString()}).eq('name',name).then(function(){_syncDrvLoginIdFromExt(name);}).catch(function(){});
   var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();
 }
 function dhResetPw(name){if(typeof resetDriverPw==='function'){resetDriverPw(name);setTimeout(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();},60);}else{alert('PW 초기화 기능 없음');}}
@@ -9108,6 +9108,7 @@ window.dhMyInfo=dhMyInfo;window.dhMyEditStart=dhMyEditStart;
 function closeDriverDetail(){var p=document.getElementById('dh-detail');if(p)p.remove();}
 // ── 기사정보의 쿠팡 아이디(cpid) → drivers.login_id 동기화 (login_id가 비었거나 한글일 때만. 기존 영문 아이디는 덮어쓰지 않음)
 //    서버(인입·미반납·신선 이름 매핑)와 메타 엑셀 아이디가 모두 drivers.login_id를 보므로 여기가 비면 아이디가 그대로 노출됨
+async function _syncDrvLoginIdFromExt(name){try{if(!sbClient||!name)return;var c=(_driverExt&&_driverExt[name]&&_driverExt[name].cpid)||'';if(!c){var r=await sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle();var m=r&&r.data&&r.data.value;if(typeof m==='string')m=JSON.parse(m);c=(m&&m[name]&&m[name].cpid)||'';}if(c)await _syncDrvLoginId(name,c);}catch(e){}}
 async function _syncDrvLoginId(name,cpid){try{var c=String(cpid||'').replace(/@df$/i,'').trim();if(!c||!/^[A-Za-z0-9_.\-]+$/.test(c)||!sbClient||!name)return;var q=await sbClient.from('drivers').select('login_id').eq('name',name);var rows=(q&&q.data)||[];if(!rows.length)return;var need=rows.some(function(r){var l=String(r.login_id||'').trim();return !l||/[가-힣]/.test(l);});if(need)await sbClient.from('drivers').update({login_id:c,synced_at:new Date().toISOString()}).eq('name',name);}catch(e){}}
 async function saveDriverDetail(name){
   var e=Object.assign({},(_driverExt&&_driverExt[name])||{});
@@ -9604,6 +9605,7 @@ async function setRole(name,role){
 // 권한 페이지에서 미승인 기사 승인
 async function approveDriverPerm(name){
   if(!confirm(name+' 기사를 승인하시겠습니까?'))return;
+  try{_syncDrvLoginIdFromExt(name);}catch(_e){}
   var db=getDB();
   var newpw='1234';
   var existingRole=db[name]&&db[name].role?db[name].role:'driver';
