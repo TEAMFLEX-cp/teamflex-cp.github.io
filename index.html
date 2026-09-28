@@ -14,10 +14,10 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
 <link rel="manifest" href="/manifest.json">
 <title>TeamFlex 기사 포털</title>
-<style>/* [팀장/조장 뱃지] v785 */
+<style>/* [팀장/조장 뱃지] v786 */
 @keyframes ldSweep{0%{left:-60%}60%,100%{left:130%}}
 .ldb{display:block;margin-top:2px;line-height:1}
-.ldin{display:block;margin:0;padding:3px 1px 4px;border-radius:7px;color:#1a1a1a;font-size:13.5px;line-height:1.25}
+.ldin{display:flex;flex-direction:column;justify-content:center;box-sizing:border-box;min-height:40px;margin:0;padding:3px 1px 4px;border-radius:7px;color:#1a1a1a;font-size:13.5px;line-height:1.25}
 .ldin .ldb{margin-top:2px}
 .ldin .ldb .ldg{display:block;margin:0 2px;text-align:center;font-size:8.4px;line-height:13px;padding:0 2px}
 @media (max-width:820px){#sched-inner table.ft{min-width:680px!important}}
@@ -28,10 +28,10 @@
 .ldg::after{content:'';position:absolute;top:-2px;bottom:-2px;left:-60%;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,1),transparent);transform:skewX(-20deg);animation:ldSweep 2.2s ease-in-out infinite}
 .ldg.h{font-size:9.5px;line-height:17px;margin-left:5px;padding:0 7px}
 .ldb .ldg{max-width:100%}
-@media (max-width:820px){.ldin{font-size:13px;padding:3px 1px 4px}.ldin .ldb .ldg{font-size:7.6px;line-height:12px;padding:0 1px;letter-spacing:.1px;border-radius:3px;margin:0 1px}.ldg.h{font-size:8px;line-height:14px;padding:0 4px;margin-left:3px;letter-spacing:.2px}}
+@media (max-width:820px){.ldin{font-size:13px;padding:3px 1px 4px;min-height:38px}.ldin .ldb .ldg{font-size:7.6px;line-height:12px;padding:0 1px;letter-spacing:.1px;border-radius:3px;margin:0 1px}.ldg.h{font-size:8px;line-height:14px;padding:0 4px;margin-left:3px;letter-spacing:.2px}}
 </style>
 <script>/* [팀장/조장 뱃지] v776 helpers */
-function _ldBadge(tl,hdr){return (hdr?'':'<span class="ldb">')+'<span class="ldg '+(tl?'ldT':'ldS')+(hdr?' h':'')+'">'+(hdr?(tl?'TEAM LEADER':'SUB LEADER'):(tl?'<span class="lw">TEAM</span> <span class="lw">LEADER</span>':'<span class="lw">SUB</span> <span class="lw">LEADER</span>'))+'</span>'+(hdr?'':'</span>');}
+function _ldBadge(tl,hdr){return (hdr?'':'<span class="ldb">')+'<span class="ldg '+(tl?'ldT':'ldS')+(hdr?' h':'')+'">'+(hdr?(tl?'LEADER':'SUB LEADER'):(tl?'LEADER':'<span class="lw">SUB</span> <span class="lw">LEADER</span>'))+'</span>'+(hdr?'':'</span>');}
 function _ldMix(hex,p){try{hex=String(hex||'').replace('#','');if(hex.length===3)hex=hex.replace(/./g,'$&$&');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);if(isNaN(r+g+b))return '#ffffff';var f=function(c){return Math.round(c*p+255*(1-p));};return 'rgb('+f(r)+','+f(g)+','+f(b)+')';}catch(e){return '#ffffff';}}
 function _ldCellStyle(gc){return 'font-weight:800;padding:2px 2px';}
 function _ldIsSub(n,wk){try{var st=(wk&&wk._ldSub)||null;if(!st){st={};((wk&&wk.g)||[]).forEach(function(g){(g.l||[]).forEach(function(x){if(String(x).indexOf('조장')>=0){st[String(x).replace(/\s*조장\s*$/,'').trim()]=1;}});});if(wk)wk._ldSub=st;}return !!st[n];}catch(e){return false;}}
