@@ -353,24 +353,25 @@ function registerHtml(){
 }
 function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}if(isPastDate(draft.date)){toast('지난 날짜에는 요청 등록을 할 수 없습니다.');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,returnReq:!!draft.returnReq,qtyNote:draft.qtyNote||'',settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;if(draft._editId){var ex=reqs.find(function(x){return x.id===draft._editId;})||{};r.id=draft._editId;r.supporters=ex.supporters||[];r.status=ex.status||'open';bpSaveReq(r);go('mine');toast('✏️ 요청 수정됨');}else{bpNewReq(r);bpBroadcast('📋 새 백업 요청',ME+'님이 '+bpLabel(r)+' 백업을 요청했습니다.');go('mine');toast('📨 요청 등록·전체 알림');}}
 // ── 역지원 등록 ──
-function startSupReg(){draft={who:'',route:'',extra:0,qty:'',settle:'정산일',acctShare:false};sub='supReg';pushHist();render();}
+function startSupReg(){draft={who:'',route:'',extra:0,qty:'',date:TODAY,settle:'정산일',acctShare:false};sub='supReg';pushHist();render();}
 function sExtraStep(d){draft.extra=(draft.extra||0)+d;render();}
 function supRegHtml(){
   var u=(ROUTES[draft.route]||0)+(draft.extra||0);
   var h='<div class="row"><span onclick="sub=null;go(\'sup\')" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">역지원 등록</b></div>';
   h+='<div class="note">요청 등록 없이 내가 <b>먼저 도와준 건</b>을 역으로 등록해요. 상대 기사에게 <b>확정 요청</b>이 가고, 상대가 확정하면 정산 반영됩니다.</div>';
   h+='<label class="f">요청 기사 (등록된 기사 선택)</label><select onchange="draft.who=this.value;render()"><option value="">기사 선택</option>'+DRIVERS.map(function(n){return '<option value="'+n+'"'+(draft.who===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
+  h+='<label class="f">지원한 날짜</label><input type="date" max="'+TODAY+'" value="'+(draft.date||TODAY)+'" onchange="draft.date=this.value||TODAY">';
   h+='<label class="f">라우트 <span style="font-weight:400;color:#8a97a4">(1개만)</span></label><select onchange="draft.route=this.value;render()">'+routeOptions(draft.route)+'</select>';
   h+='<label class="f">추가 단가 +@ (50원, 협의된 경우)</label><div class="stp"><button onclick="sExtraStep(-50)">−</button><div class="v">'+money(draft.extra||0)+'</div><button onclick="sExtraStep(50)">＋</button></div>';
-  h+='<label class="f">완료 수량 (실제)</label><input type="number" placeholder="내가 배송한 수량" oninput="draft.qty=parseInt(this.value||0,10)||0">';
+  h+='<label class="f">완료 수량 (실제)</label><input type="number" placeholder="내가 배송한 수량" value="'+(draft.qty||'')+'" oninput="draft.qty=parseInt(this.value||0,10)||0">';
   h+='<label class="f">정산 방식</label><div class="seg"><div class="'+(draft.settle==='정산일'?'on':'')+'" onclick="draft.settle=\'정산일\';render()">📅 정산일</div><div class="'+(draft.settle==='개인'?'on':'')+'" onclick="draft.settle=\'개인\';render()">💵 개인</div></div>';
   h+='<div class="calc"><div class="li"><span>라우트 기본단가</span><span>'+money(ROUTES[draft.route]||0)+'</span></div><div class="li"><span>추가 +@</span><span>+ '+money(draft.extra||0)+'</span></div><div class="tot"><span>단가 / 개</span><span>'+money(u)+'</span></div></div>';
   h+='<div style="margin-top:14px"><button class="btn b2" onclick="submitSupReg()">📤 확정 요청 보내기</button></div>';
   return h;
 }
-function submitSupReg(){if(!draft.who){toast('요청 기사를 선택하세요');return;}if(!draft.route){toast('라우트를 선택하세요');return;}
-  var r={id:Date.now(),requester:draft.who,rcomp:MYCOMPNAME,rphone:MYPHONE,date:TODAY,mode:'개인',viaSupport:true,routes:[draft.route],extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:false,needCount:1,supporters:[{name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'}],finalQty:draft.qty||0,status:'confirm'};
-  reqs.unshift(r);go('sup');toast('📤 '+draft.who+' 기사에게 확정 요청 전송');
+function submitSupReg(){if(!draft.who){toast('요청 기사를 선택하세요');return;}if(!draft.route){toast('라우트를 선택하세요');return;}if(!(draft.qty>0)){toast('완료 수량을 입력하세요');return;}if(draft.who===ME){toast('본인에게는 요청할 수 없습니다');return;}
+  var r={requester:draft.who,rcomp:MYCOMPNAME,rphone:'',date:draft.date||TODAY,company_id:MYCOMP,mode:'개인',viaSupport:true,routes:[draft.route],extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:false,needCount:1,supporters:[{name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'}],finalQty:draft.qty||0,status:'confirm'};r.unit=computeUnit(r);
+  bpNewReq(r);bpReqNotify(r,[r.requester],'📤 역지원 확정 요청',ME+'님이 '+r.date.slice(5).replace('-','/')+' '+bpLabel(r)+' '+r.finalQty+'개 역지원 확정을 요청했습니다. 확인 후 확정해 주세요.');sub=null;go('sup');toast('📤 '+draft.who+' 기사에게 확정 요청 전송');
 }
 // ── 상세 ──
 function reloadCompanies(){sb.from('bp_companies').select('*').order('requested_at',{ascending:true}).then(function(r){COMPANIES=(r.data||[]);render();});}
