@@ -18881,4 +18881,24 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   };
 })();
 </script>
+<script>
+/* [리스트확인 NEW 개선] v775 — 확인 기록 서버 동기화(app_settings pbseen_이름) + 3일 지난 업데이트는 NEW 표시 안 함 */
+(function(){
+  function nm(){return (window.CU&&CU.name)||'';}
+  var _srvLoaded='';
+  function srvKey(){return 'pbseen_'+nm();}
+  function raw(){try{var s=localStorage.getItem(_pbSeenKey());return s?JSON.parse(s):{};}catch(e){return {};}}
+  function merge(m){try{var loc=raw();Object.keys(m||{}).forEach(function(k){if(m[k]!=null)loc[k]=m[k];});localStorage.setItem(_pbSeenKey(),JSON.stringify(loc));}catch(e){}}
+  function loadSrv(cb){ if(!window.sbClient||!nm()){cb&&cb();return;} if(_srvLoaded===nm()){cb&&cb();return;}
+    try{sbClient.from('app_settings').select('value').eq('key',srvKey()).maybeSingle().then(function(r){var v=r&&r.data&&r.data.value;try{if(typeof v==='string')v=JSON.parse(v);}catch(e){v=null;}if(v&&typeof v==='object')merge(v);_srvLoaded=nm();cb&&cb();}).catch(function(){cb&&cb();});}catch(e){cb&&cb();} }
+  function saveSrv(){ if(!window.sbClient||!nm())return; try{sbClient.from('app_settings').upsert({key:srvKey(),value:JSON.stringify(raw())},{onConflict:'key'}).then(function(){}).catch(function(){});}catch(e){} }
+  function fresh(sig){ var t=Date.parse(String(sig).replace(' ','T')); if(isNaN(t))return true; return (Date.now()-t)<3*86400000; }
+  window._pbSetSeen=function(sub,sig){try{var m=raw();m[sub]=sig;localStorage.setItem(_pbSeenKey(),JSON.stringify(m));var el=document.getElementById('pbnew-'+sub);if(el)el.style.display='none';saveSrv();}catch(e){}};
+  try{_pbSetSeen=window._pbSetSeen;}catch(e){}
+  window._pbBadge=function(sub,sig){if(sig==null||sig==='')return;_PB_SIG[sub]=sig;var el=document.getElementById('pbnew-'+sub);if(!el)return;
+    loadSrv(function(){try{var seen=raw();var show=String(seen[sub]||'')!==String(sig)&&fresh(sig);
+      if(show){el.style.display='inline-block';if(PB_SUB===sub){_pbSetSeen(sub,sig);}}else{el.style.display='none';}}catch(e){}});};
+  try{_pbBadge=window._pbBadge;}catch(e){}
+})();
+</script>
 </body></html>
