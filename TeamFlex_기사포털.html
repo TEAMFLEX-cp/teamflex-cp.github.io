@@ -18711,7 +18711,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
 
 </script>
 <script>
-/* ══════════ [팀즈→공지 자동 공유] v771 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
+/* ══════════ [팀즈→공지 자동 공유] v772 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
 (function(){
   var TN={feed:[],hidden:[],cfg:null,sig:'',timer:null};
   window._TN=TN;
@@ -18806,7 +18806,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       sbClient.from('app_settings').select('key,value').in('key',keys).then(function(r){
         if(!r||r.error||!r.data)return;
         var m={};r.data.forEach(function(x){m[x.key]=x.value;});
-        var f=pj(m.teams_notice_feed,[]);TN.feed=Array.isArray(f)?f:[];
+        var f=pj(m.teams_notice_feed,[]);TN.feed=Array.isArray(f)?f:[];try{TN.feed.sort(function(a,b){return (Number(b.id)||0)-(Number(a.id)||0);});}catch(e){}
         var h=pj(m.teams_notice_hidden,[]);TN.hidden=Array.isArray(h)?h:[];
         if(isAdm()){var c=pj(m.teams_notice_cfg,null);TN.cfg=(c&&typeof c==='object')?c:null;}
         var sig=JSON.stringify([TN.feed.map(function(x){return x.chat+':'+x.id;}),TN.hidden,TN.cfg&&TN.cfg.enabled]);
