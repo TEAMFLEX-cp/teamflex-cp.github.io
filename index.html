@@ -14,19 +14,20 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
 <link rel="manifest" href="/manifest.json">
 <title>TeamFlex 기사 포털</title>
-<style>/* [팀장/조장 뱃지] v788 */
-@keyframes ldSweep{0%{left:-60%}60%,100%{left:130%}}
+<style>/* [팀장/조장 뱃지] v789 */
+@keyframes ldSweep{0%{transform:translateX(-160%) skewX(-20deg)}60%,100%{transform:translateX(360%) skewX(-20deg)}}
 .ldb{display:block;margin-top:2px;line-height:1}
 .ldin{display:flex;flex-direction:column;justify-content:center;box-sizing:border-box;min-height:40px;margin:0;padding:3px 1px 4px;border-radius:7px;color:#1a1a1a;font-size:13.5px;line-height:1.25}
 .ldin .ldb{margin-top:2px}
 .ldin .ldb{text-align:center}
 .ldin .ldb .ldg{display:inline-block;margin:0 auto;text-align:center;font-size:8.6px;line-height:13px;padding:0 6px}
-@media (max-width:820px){#sched-inner table.ft{min-width:680px!important}}
+@media (max-width:820px) and (pointer:coarse){#sched-inner table.ft{min-width:680px!important}}
 .sched-new-badge{z-index:3}
 .ldg{display:inline-block;position:relative;overflow:hidden;white-space:nowrap;font-size:7.4px;line-height:12px;padding:0 5px;border-radius:4px;font-weight:900;letter-spacing:.35px;vertical-align:middle}
 .ldg.ldT{background:linear-gradient(180deg,#fffbe8 0%,#ffe27a 40%,#dca437 54%,#ffeaa8 100%);color:#4a2c00;text-shadow:0 1px 0 rgba(255,255,255,.9);box-shadow:0 0 0 1px #b8860b inset,0 1px 0 #8a5a00,0 1px 4px rgba(255,190,40,.55)}
 .ldg.ldS{background:linear-gradient(180deg,#ffffff 0%,#f1f4f8 40%,#b3bdcb 54%,#f7f9fc 100%);color:#1f2937;text-shadow:0 1px 0 rgba(255,255,255,.95);box-shadow:0 0 0 1px #7b8794 inset,0 1px 0 #4b5563,0 1px 4px rgba(150,170,200,.55)}
-.ldg::after{content:'';position:absolute;top:-2px;bottom:-2px;left:-60%;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,1),transparent);transform:skewX(-20deg);animation:ldSweep 2.2s ease-in-out infinite}
+.ldg{contain:paint}
+.ldg::after{content:'';position:absolute;top:-2px;bottom:-2px;left:0;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,1),transparent);transform:translateX(-160%) skewX(-20deg);will-change:transform;animation:ldSweep 2.2s ease-in-out infinite}
 .ldg.h{font-size:9.5px;line-height:17px;margin-left:5px;padding:0 7px}
 .ldb .ldg{max-width:100%}
 @media (max-width:820px){.ldin{font-size:13px;padding:3px 1px 4px;min-height:38px}.ldin .ldb .ldg{font-size:8px;line-height:12px;padding:0 5px;letter-spacing:.3px;border-radius:3px;margin:0 auto}.ldg.h{font-size:8px;line-height:14px;padding:0 4px;margin-left:3px;letter-spacing:.2px}}
@@ -7552,14 +7553,14 @@ function initSchedScrollSync(){
   var wrappers=Array.from(document.querySelectorAll('.ftw'));
   if(wrappers.length<1)return;
   _schedEqCols();
-  var _syncing=false;
+  // [v789] 스크롤 동기화: 손가락이 닿은 표만 기준으로, 프레임당 1회만 반영 (표끼리 서로 당기며 버벅이던 현상 제거)
+  var _act=null;
   wrappers.forEach(function(el){
+    ['touchstart','pointerdown','mousedown','wheel'].forEach(function(ev){el.addEventListener(ev,function(){_act=el;},{passive:true});});
     el.addEventListener('scroll',function(){
-      if(_syncing)return;
-      _syncing=true;
-      var sl=el.scrollLeft;
-      wrappers.forEach(function(other){if(other!==el)other.scrollLeft=sl;});
-      _syncing=false;
+      if(_act&&_act!==el)return;
+      if(el._sRaf)return;
+      el._sRaf=requestAnimationFrame(function(){el._sRaf=0;var v=el.scrollLeft;wrappers.forEach(function(o){if(o!==el&&Math.abs(o.scrollLeft-v)>0.5)o.scrollLeft=v;});});
     },{passive:true});
   });
   // 오늘 컬럼 자동 스크롤 — 화면 중앙에 오도록 (sticky 라우트 컬럼 96px 고려)
@@ -8111,7 +8112,7 @@ function pgFullSched(){
         var isLead=dBase&&(leaderBaseNames.indexOf(dBase)>=0||LCM[dBase]!==undefined);
         // isTJ: check global ALL_TJ list (팀장은 어느 그룹에 있어도 ★)
         var isTJ=dBase&&ALL_TJ.indexOf(dBase)>=0;
-        var ddisp=dBase?dBase+(dp.suf?'<span style="font-size:9px;background:#E3F2FD;color:#1565C0;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;vertical-align:middle">'+dp.suf+'</span>':''):'';if(dBase&&(isTJ||isLead)){if(isTJ)ddisp+=_ldBadge(1);ddisp='<span class="ldin" style="'+_ldBoxStyle((isLead&&LCM[dBase])?LCM[dBase]:gc)+'">'+ddisp+'</span>';}
+        var ddisp=dBase?dBase+(dp.suf?'<span style="font-size:9px;background:#E3F2FD;color:#1565C0;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;vertical-align:middle">'+dp.suf+'</span>':''):'';if(dBase&&(isTJ||isLead)){if(isTJ)ddisp+=_ldBadge(1);ddisp='<span class="ldin" style="'+_ldBoxStyle((isLead&&LCM[dBase])?LCM[dBase]:gc)+((typeof spanVal!=='undefined'&&spanVal>1)?';min-height:'+(spanVal*44-6)+'px':'')+'">'+ddisp+'</span>';}
         // sat/sun color ONLY on <th> headers — never on data <td> cells
         var tdCC=(cc==='tod-col')?'tod-col':'';
         // ★ 변경된 스케줄(순변경·근무일 안 지남) → New 배지 + 무지개 테두리. spanVal로 병합된 라우트도 함께 검사.
