@@ -18711,7 +18711,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
 
 </script>
 <script>
-/* ══════════ [팀즈→공지 자동 공유] v769 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
+/* ══════════ [팀즈→공지 자동 공유] v770 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
 (function(){
   var TN={feed:[],hidden:[],cfg:null,sig:'',timer:null};
   window._TN=TN;
@@ -18732,7 +18732,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     if(!x||TN.hidden.indexOf(String(x.chat)+':'+String(x.id))>=0)return false;
     if(x.date!==today())return false;
     if(isAdm())return true;
-    if(x.target==='all'||!x.targets||!x.targets.length)return true;
+    if(!x.targets||!x.targets.length)return false;
     return x.targets.indexOf(myName())>=0;
   }
   function hl(text,kw){
@@ -18750,7 +18750,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-bottom:6px">'+badge(x)+
       '<span style="font-size:11px;color:#7a7f99;margin-left:auto">'+esc(x.time||'')+' · '+esc((x.sender||'').replace(/\s*\[ISN_\d+\]/,''))+'</span></div>'+
       '<div style="font-size:13.5px;line-height:1.65;color:#222">'+hl(x.text,x.kw)+'</div>'+
-      (adm?'<div style="margin-top:7px;font-size:11px;color:#8a8fa8">키워드: <b>'+esc(x.kw)+'</b> · 대상: '+(x.target==='all'?'전체':(x.targets||[]).length+'명 ('+esc((x.targets||[]).join(', '))+')')+(x.push?' · 🔔푸시':'')+'</div>':'')+
+      (adm?'<div style="margin-top:7px;font-size:11px;color:#8a8fa8">키워드: <b>'+esc(x.kw)+'</b> · 대상: '+(false?'':(x.targets||[]).length+'명 ('+esc((x.targets||[]).join(', '))+')')+(x.push?' · 🔔푸시':'')+'</div>':'')+
       '</div>';
   }
   function times(text){
@@ -18839,7 +18839,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     h+='<div style="background:#fff;border-radius:12px;padding:11px 12px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">'+
       chk(ED.enabled,'_TNE.enabled=this.checked','<b>기능 사용 (ON)</b>')+
       chk(ED.isn_only!==false,'_TNE.isn_only=this.checked','쿠팡 담당자([ISN_…]) 글만')+
-      '<span style="font-size:11px;color:#8a8fa8;width:100%">스케줄 기사 = 오늘 해당 캠프 라우트 근무자 (8로 시작=8캠프, 808 야간 제외, 나머지=3캠프). 문병국 본인 글·봇 글·신선 2회전 글은 항상 제외.</span></div>';
+      '<span style="font-size:11px;color:#8a8fa8;width:100%">오늘 스케줄 기사 = 오늘 그 캠프 라우트 근무자 / 캠프 입차 기사 전체 = 지난·다음 7일 스케줄에 그 캠프 라우트가 있는 기사 (8로 시작=8캠프, 808 야간 제외, 나머지=3캠프). 전사 발송은 없음. 문병국 본인 글·봇 글·신선 2회전 글은 항상 제외.</span></div>';
     ['8','3'].forEach(function(camp){
       h+='<div style="background:#fff;border-radius:12px;padding:11px 12px;margin-bottom:10px"><div style="font-weight:900;font-size:13px;margin-bottom:8px;color:'+(camp==='8'?'#c62828':'#2e7d32')+'">'+(camp==='8'?'🏛️ 일산8캠프 2W':'🏢 일산3캠프')+' 키워드</div>';
       ED.keywords.forEach(function(k,i){if(String(k.camp)!==camp)return;
@@ -18847,7 +18847,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
           '<div style="display:flex;gap:6px;align-items:center"><input value="'+esc(k.kw)+'" oninput="_TNE.keywords['+i+'].kw=this.value" style="flex:1;border:1px solid #d5d9ea;border-radius:8px;padding:6px 8px;font-size:13px" placeholder="키워드 (예: 미스캔+공유)">'+
           '<button onclick="_TNE.keywords.splice('+i+',1);tnRenderAdmin()" style="border:none;background:#fdecea;color:#c62828;border-radius:8px;padding:6px 9px;font-weight:800">삭제</button></div>'+
           '<div style="display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:7px">'+
-          sel(k.target||'sched',[['sched','스케줄 기사만'],['all','전체']],'_TNE.keywords['+i+'].target=this.value')+
+          sel(k.target||'sched',[['sched','오늘 스케줄 기사만'],['all','캠프 입차 기사 전체']],'_TNE.keywords['+i+'].target=this.value')+
           chk(k.push,'_TNE.keywords['+i+'].push=this.checked','🔔 푸시')+
           chk(k.banner,'_TNE.keywords['+i+'].banner=this.checked','🕑 홈 배너')+
           chk(k.on!==false,'_TNE.keywords['+i+'].on=this.checked','사용')+'</div></div>';
@@ -18863,7 +18863,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       h+='<div style="background:#fff;border-radius:10px;padding:9px 10px;margin-bottom:6px;opacity:'+(hid?'.45':'1')+'"><div style="display:flex;gap:6px;align-items:center;font-size:11.5px"><b>'+esc(x.date)+' '+esc(x.time||'')+'</b>'+badge(x)+'<span style="color:#555">'+esc(x.kw)+'</span>'+
         '<button onclick="tnHide(\''+esc(id)+'\','+(hid?'false':'true')+')" style="margin-left:auto;border:none;background:'+(hid?'#e8f5e9;color:#2e7d32':'#fdecea;color:#c62828')+';border-radius:7px;padding:4px 8px;font-weight:800;font-size:11px">'+(hid?'복구':'숨김')+'</button></div>'+
         '<div style="font-size:12px;color:#444;margin-top:4px;line-height:1.5">'+esc((x.text||'').slice(0,140)).replace(/\n/g,' / ')+'</div>'+
-        '<div style="font-size:11px;color:#8a8fa8;margin-top:3px">'+(x.target==='all'?'전체':'대상 '+(x.targets||[]).length+'명: '+esc((x.targets||[]).join(', ')))+(x.push?' · 🔔':'')+(x.banner?' · 🕑배너':'')+'</div></div>';
+        '<div style="font-size:11px;color:#8a8fa8;margin-top:3px">'+(false?'':'대상 '+(x.targets||[]).length+'명: '+esc((x.targets||[]).join(', ')))+(x.push?' · 🔔':'')+(x.banner?' · 🕑배너':'')+'</div></div>';
     });
     b.innerHTML=h;window._TNE=ED;
   };
