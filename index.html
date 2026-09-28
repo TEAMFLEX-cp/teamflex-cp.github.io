@@ -18710,4 +18710,181 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   }catch(e){showToast('내보내기 실패',false);}}
 
 </script>
+<script>
+/* ══════════ [팀즈→공지 자동 공유] v768 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
+(function(){
+  var TN={feed:[],hidden:[],cfg:null,sig:'',timer:null};
+  window._TN=TN;
+  var DEF_CFG={enabled:false,isn_only:true,exclude_routes:['808'],camp8_prefix:['8'],keywords:[
+    {camp:'8',kw:'금일 소분 예상 종료',target:'sched',push:true,banner:true,on:true},
+    {camp:'8',kw:'미스캔 공유',target:'sched',push:false,banner:false,on:true},
+    {camp:'8',kw:'벤더사',target:'sched',push:false,banner:false,on:true},
+    {camp:'8',kw:'안녕하세요',target:'sched',push:false,banner:false,on:true},
+    {camp:'3',kw:'미스캔 공유',target:'sched',push:false,banner:false,on:true},
+    {camp:'3',kw:'벤더사',target:'sched',push:false,banner:false,on:true},
+    {camp:'3',kw:'안녕하세요',target:'sched',push:false,banner:false,on:true}]};
+  function esc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function pj(v,d){try{if(v==null)return d;if(typeof v==='string')v=v.trim()?JSON.parse(v):d;return v==null?d:v;}catch(e){return d;}}
+  function today(){var d=new Date();var p=function(n){return(n<10?'0':'')+n;};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+  function isAdm(){return !!(window.CU&&CU.role==='admin');}
+  function myName(){return (window.CU&&CU.name)||'';}
+  function visible(x){
+    if(!x||TN.hidden.indexOf(String(x.chat)+':'+String(x.id))>=0)return false;
+    if(x.date!==today())return false;
+    if(isAdm())return true;
+    if(x.target==='all'||!x.targets||!x.targets.length)return true;
+    return x.targets.indexOf(myName())>=0;
+  }
+  function hl(text,kw){
+    var h=esc(text).replace(/\n/g,'<br>');
+    String(kw||'').split('+').map(function(p){return p.trim();}).filter(Boolean).forEach(function(p){
+      var chars=esc(p).replace(/\s+/g,'').split('').map(function(c){return c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');});
+      try{h=h.replace(new RegExp('('+chars.join('\\s*')+')','g'),'<mark style="background:#fff59d;padding:0 2px;border-radius:3px">$1</mark>');}catch(e){}
+    });
+    return h;
+  }
+  function badge(x){return '<span style="display:inline-block;font-size:10.5px;font-weight:800;background:linear-gradient(135deg,#4b2bd1,#2f6fed);color:#fff;border-radius:6px;padding:2px 7px;margin-right:5px">📡 팀즈 자동</span>'+
+    '<span style="display:inline-block;font-size:10.5px;font-weight:800;background:'+(x.camp==='8'?'#fdecea;color:#c62828':'#e8f5e9;color:#2e7d32')+';border-radius:6px;padding:2px 7px;margin-right:5px">'+esc(x.camp)+'캠프</span>';}
+  function card(x,adm){
+    return '<div style="background:#fff;border:1.5px solid #e3e7ff;border-radius:14px;padding:12px 13px;margin-bottom:9px;box-shadow:0 1px 6px rgba(47,111,237,.08)">'+
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-bottom:6px">'+badge(x)+
+      '<span style="font-size:11px;color:#7a7f99;margin-left:auto">'+esc(x.time||'')+' · '+esc((x.sender||'').replace(/\s*\[ISN_\d+\]/,''))+'</span></div>'+
+      '<div style="font-size:13.5px;line-height:1.65;color:#222">'+hl(x.text,x.kw)+'</div>'+
+      (adm?'<div style="margin-top:7px;font-size:11px;color:#8a8fa8">키워드: <b>'+esc(x.kw)+'</b> · 대상: '+(x.target==='all'?'전체':(x.targets||[]).length+'명 ('+esc((x.targets||[]).join(', '))+')')+(x.push?' · 🔔푸시':'')+'</div>':'')+
+      '</div>';
+  }
+  function times(text){
+    var out=[];String(text||'').split('\n').forEach(function(l){var m=l.match(/^(.*?)[\s:：]*([0-2]?\d:[0-5]\d)\s*$/);if(m&&m[1].trim())out.push({k:m[1].replace(/[:：]\s*$/,'').trim(),v:m[2]});});
+    return out;
+  }
+  window.tnHomeHTML=function(){
+    try{
+      var items=TN.feed.filter(function(x){return x.banner&&visible(x);});
+      if(!items.length)return '';
+      var seen={},h='';
+      items.forEach(function(x){if(seen[x.camp])return;seen[x.camp]=1;
+        var t=times(x.text);
+        h+='<div style="background:linear-gradient(135deg,#1e3a8a,#4b2bd1);color:#fff;border-radius:16px;padding:13px 15px;margin:0 0 12px;box-shadow:0 4px 14px rgba(75,43,209,.25)">'+
+          '<div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;opacity:.92"><span>🕑 '+esc(x.kw)+'</span><span style="margin-left:auto;font-weight:600;opacity:.8">'+esc(x.camp)+'캠프 · '+esc(x.time||'')+' 공유</span></div>'+
+          (t.length?'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:9px">'+t.map(function(r){return '<div style="background:rgba(255,255,255,.14);border-radius:10px;padding:7px 10px;min-width:92px"><div style="font-size:11px;opacity:.85">'+esc(r.k)+'</div><div style="font-size:19px;font-weight:900;letter-spacing:.5px">'+esc(r.v)+'</div></div>';}).join('')+'</div>'
+                    :'<div style="font-size:13px;line-height:1.6;margin-top:6px">'+esc(x.text).replace(/\n/g,'<br>')+'</div>')+
+          '</div>';
+      });
+      return h;
+    }catch(e){return '';}
+  };
+  window.tnAnnHTML=function(){
+    try{
+      var adm=isAdm();
+      var items=TN.feed.filter(function(x){return visible(x)&&(adm||!x.banner);});
+      var head='<div style="display:flex;align-items:center;margin:4px 0 8px"><div style="font-size:13px;font-weight:800;color:#3949ab">📡 팀즈 자동 공지 <span style="font-weight:600;color:#9aa0b8;font-size:11px">(오늘)</span></div>'+
+        (adm?'<button onclick="tnOpenAdmin()" style="margin-left:auto;border:none;background:#eef1ff;color:#3949ab;font-weight:800;font-size:12px;border-radius:9px;padding:6px 10px">⚙ 키워드·기록</button>':'')+'</div>';
+      if(!items.length)return adm?('<div id="tn-ann-slot">'+head+'<div style="font-size:12px;color:#9aa0b8;margin-bottom:12px">오늘 자동 공지 없음'+((TN.cfg&&TN.cfg.enabled)?'':' · <b style="color:#e65100">기능 꺼짐</b>')+'</div></div>'):'<div id="tn-ann-slot"></div>';
+      return '<div id="tn-ann-slot">'+head+items.map(function(x){return card(x,adm);}).join('')+'<div style="height:6px"></div></div>';
+    }catch(e){return '';}
+  };
+  function wrap(){
+    try{
+      if(typeof window.pgHome==='function'&&!window.pgHome._tn){
+        var oh=window.pgHome;var nh=function(){var r=oh.apply(this,arguments);try{if(typeof r==='string'){var b=tnHomeHTML();if(b)r='<div id="tn-home-slot">'+b+'</div>'+r;else r='<div id="tn-home-slot"></div>'+r;}}catch(e){}return r;};
+        nh._tn=1;window.pgHome=nh;try{pgHome=nh;}catch(e){}
+      }
+      if(typeof window.pgAnn==='function'&&!window.pgAnn._tn){
+        var oa=window.pgAnn;var na=function(){var r=oa.apply(this,arguments);try{if(typeof r==='string'&&r.indexOf('기능이 잠겼습니다')<0){var s=tnAnnHTML();var i=r.indexOf('</div></div>');if(s){r=(i>=0&&i<1500)?(r.slice(0,i+12)+s+r.slice(i+12)):(s+r);}}}catch(e){}return r;};
+        na._tn=1;window.pgAnn=na;try{pgAnn=na;}catch(e){}
+      }
+    }catch(e){}
+  }
+  function refreshSlots(){
+    try{var hs=document.getElementById('tn-home-slot');if(hs)hs.innerHTML=tnHomeHTML();}catch(e){}
+    try{var as=document.getElementById('tn-ann-slot');if(as){var tmp=document.createElement('div');tmp.innerHTML=tnAnnHTML();as.replaceWith(tmp.firstChild||document.createElement('div'));}}catch(e){}
+  }
+  window.tnLoad=function(){
+    try{
+      if(!window.sbClient||!window.CU)return;
+      var keys=['teams_notice_feed','teams_notice_hidden'];if(isAdm())keys.push('teams_notice_cfg');
+      sbClient.from('app_settings').select('key,value').in('key',keys).then(function(r){
+        if(!r||r.error||!r.data)return;
+        var m={};r.data.forEach(function(x){m[x.key]=x.value;});
+        var f=pj(m.teams_notice_feed,[]);TN.feed=Array.isArray(f)?f:[];
+        var h=pj(m.teams_notice_hidden,[]);TN.hidden=Array.isArray(h)?h:[];
+        if(isAdm()){var c=pj(m.teams_notice_cfg,null);TN.cfg=(c&&typeof c==='object')?c:null;}
+        var sig=JSON.stringify([TN.feed.map(function(x){return x.chat+':'+x.id;}),TN.hidden,TN.cfg&&TN.cfg.enabled]);
+        if(sig!==TN.sig){TN.sig=sig;refreshSlots();}
+      }).catch(function(){});
+    }catch(e){}
+  };
+  function start(){wrap();tnLoad();if(!TN.timer)TN.timer=setInterval(function(){if(document.visibilityState!=='hidden')tnLoad();},60000);}
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')tnLoad();});
+  if(document.readyState==='complete')setTimeout(start,1500);else window.addEventListener('load',function(){setTimeout(start,1500);});
+  setTimeout(function(){wrap();tnLoad();},8000);
+
+  /* ── 관리자: 키워드 설정 + 자동 공지 기록 ── */
+  var ED=null;
+  window.tnOpenAdmin=function(){
+    if(!isAdm())return;
+    ED=JSON.parse(JSON.stringify(TN.cfg||DEF_CFG));if(!Array.isArray(ED.keywords))ED.keywords=[];
+    var ov=document.getElementById('tn-admin');if(ov)ov.remove();
+    ov=document.createElement('div');ov.id='tn-admin';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(15,20,40,.55);z-index:99990;display:flex;align-items:flex-end;justify-content:center';
+    ov.innerHTML='<div style="background:#f6f7fb;width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px 14px 22px"><div id="tn-admin-body"></div></div>';
+    ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+    document.body.appendChild(ov);tnRenderAdmin();
+  };
+  function sel(v,opts,fn){return '<select onchange="'+fn+'" style="border:1px solid #d5d9ea;border-radius:8px;padding:5px 6px;font-size:12px;background:#fff">'+opts.map(function(o){return '<option value="'+o[0]+'"'+(String(v)===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select>';}
+  function chk(v,fn,lb){return '<label style="font-size:12px;display:inline-flex;align-items:center;gap:3px;white-space:nowrap"><input type="checkbox"'+(v?' checked':'')+' onchange="'+fn+'">'+lb+'</label>';}
+  window.tnRenderAdmin=function(){
+    var b=document.getElementById('tn-admin-body');if(!b||!ED)return;
+    var h='<div style="display:flex;align-items:center;margin-bottom:10px"><div style="font-size:16px;font-weight:900;color:#1e2a5a">📡 팀즈 → 공지 자동 공유</div><button onclick="document.getElementById(\'tn-admin\').remove()" style="margin-left:auto;border:none;background:#e7e9f3;border-radius:8px;padding:6px 10px;font-weight:800">닫기</button></div>';
+    h+='<div style="background:#fff;border-radius:12px;padding:11px 12px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">'+
+      chk(ED.enabled,'_TNE.enabled=this.checked','<b>기능 사용 (ON)</b>')+
+      chk(ED.isn_only!==false,'_TNE.isn_only=this.checked','쿠팡 담당자([ISN_…]) 글만')+
+      '<span style="font-size:11px;color:#8a8fa8;width:100%">스케줄 기사 = 오늘 해당 캠프 라우트 근무자 (8로 시작=8캠프, 808 야간 제외, 나머지=3캠프). 문병국 본인 글·봇 글·신선 2회전 글은 항상 제외.</span></div>';
+    ['8','3'].forEach(function(camp){
+      h+='<div style="background:#fff;border-radius:12px;padding:11px 12px;margin-bottom:10px"><div style="font-weight:900;font-size:13px;margin-bottom:8px;color:'+(camp==='8'?'#c62828':'#2e7d32')+'">'+(camp==='8'?'🏛️ 일산8캠프 2W':'🏢 일산3캠프')+' 키워드</div>';
+      ED.keywords.forEach(function(k,i){if(String(k.camp)!==camp)return;
+        h+='<div style="border:1px solid #eceef6;border-radius:10px;padding:8px;margin-bottom:7px">'+
+          '<div style="display:flex;gap:6px;align-items:center"><input value="'+esc(k.kw)+'" oninput="_TNE.keywords['+i+'].kw=this.value" style="flex:1;border:1px solid #d5d9ea;border-radius:8px;padding:6px 8px;font-size:13px" placeholder="키워드 (예: 미스캔+공유)">'+
+          '<button onclick="_TNE.keywords.splice('+i+',1);tnRenderAdmin()" style="border:none;background:#fdecea;color:#c62828;border-radius:8px;padding:6px 9px;font-weight:800">삭제</button></div>'+
+          '<div style="display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:7px">'+
+          sel(k.target||'sched',[['sched','스케줄 기사만'],['all','전체']],'_TNE.keywords['+i+'].target=this.value')+
+          chk(k.push,'_TNE.keywords['+i+'].push=this.checked','🔔 푸시')+
+          chk(k.banner,'_TNE.keywords['+i+'].banner=this.checked','🕑 홈 배너')+
+          chk(k.on!==false,'_TNE.keywords['+i+'].on=this.checked','사용')+'</div></div>';
+      });
+      h+='<button onclick="_TNE.keywords.push({camp:\''+camp+'\',kw:\'\',target:\'sched\',push:false,banner:false,on:true});tnRenderAdmin()" style="border:1px dashed #9fa8da;background:#f5f6ff;color:#3949ab;border-radius:9px;padding:7px;width:100%;font-weight:800;font-size:12px">+ 키워드 추가</button></div>';
+    });
+    h+='<div style="font-size:11px;color:#8a8fa8;margin:-2px 2px 10px">💡 띄어쓰기는 무시해요. "미스캔+공유"처럼 +로 쓰면 두 단어가 모두 있을 때만 공유돼요. 홈 배너는 오늘 근무자 홈 맨 위에 시간만 크게 보여줘요.</div>';
+    h+='<button onclick="tnSaveCfg()" style="width:100%;border:none;background:linear-gradient(135deg,#2f6fed,#4b2bd1);color:#fff;font-weight:900;font-size:14px;border-radius:12px;padding:12px;margin-bottom:14px">저장</button>';
+    var log=TN.feed.slice(0,60);
+    h+='<div style="font-weight:900;font-size:13px;color:#1e2a5a;margin-bottom:7px">🗂 자동 공지 기록 (최근 7일)</div>';
+    if(!log.length)h+='<div style="font-size:12px;color:#9aa0b8">기록 없음</div>';
+    log.forEach(function(x){var id=String(x.chat)+':'+String(x.id);var hid=TN.hidden.indexOf(id)>=0;
+      h+='<div style="background:#fff;border-radius:10px;padding:9px 10px;margin-bottom:6px;opacity:'+(hid?'.45':'1')+'"><div style="display:flex;gap:6px;align-items:center;font-size:11.5px"><b>'+esc(x.date)+' '+esc(x.time||'')+'</b>'+badge(x)+'<span style="color:#555">'+esc(x.kw)+'</span>'+
+        '<button onclick="tnHide(\''+esc(id)+'\','+(hid?'false':'true')+')" style="margin-left:auto;border:none;background:'+(hid?'#e8f5e9;color:#2e7d32':'#fdecea;color:#c62828')+';border-radius:7px;padding:4px 8px;font-weight:800;font-size:11px">'+(hid?'복구':'숨김')+'</button></div>'+
+        '<div style="font-size:12px;color:#444;margin-top:4px;line-height:1.5">'+esc((x.text||'').slice(0,140)).replace(/\n/g,' / ')+'</div>'+
+        '<div style="font-size:11px;color:#8a8fa8;margin-top:3px">'+(x.target==='all'?'전체':'대상 '+(x.targets||[]).length+'명: '+esc((x.targets||[]).join(', ')))+(x.push?' · 🔔':'')+(x.banner?' · 🕑배너':'')+'</div></div>';
+    });
+    b.innerHTML=h;window._TNE=ED;
+  };
+  window.tnSaveCfg=function(){
+    if(!isAdm()||!ED)return;
+    ED.keywords=ED.keywords.filter(function(k){return (k.kw||'').trim();}).map(function(k){k.kw=k.kw.trim();return k;});
+    sbClient.from('app_settings').upsert({key:'teams_notice_cfg',value:JSON.stringify(ED)},{onConflict:'key'}).then(function(r){
+      if(r&&r.error){alert('저장 실패: '+r.error.message);return;}
+      TN.cfg=JSON.parse(JSON.stringify(ED));try{showToast('저장됐어요 (서버 반영 1분 이내)',true);}catch(e){}
+      tnRenderAdmin();TN.sig='';tnLoad();
+    }).catch(function(e){alert('저장 실패: '+e);});
+  };
+  window.tnHide=function(id,hide){
+    if(!isAdm())return;
+    var h=TN.hidden.slice();var i=h.indexOf(id);if(hide&&i<0)h.push(id);if(!hide&&i>=0)h.splice(i,1);
+    h=h.slice(-300);
+    sbClient.from('app_settings').upsert({key:'teams_notice_hidden',value:JSON.stringify(h)},{onConflict:'key'}).then(function(r){
+      if(r&&r.error){alert('처리 실패: '+r.error.message);return;}
+      TN.hidden=h;tnRenderAdmin();TN.sig='';refreshSlots();
+    }).catch(function(e){alert('처리 실패: '+e);});
+  };
+})();
+</script>
 </body></html>
