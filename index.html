@@ -14,7 +14,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
 <link rel="manifest" href="/manifest.json">
 <title>TeamFlex 기사 포털</title>
-<style>/* [팀장/조장 뱃지] v780 */
+<style>/* [팀장/조장 뱃지] v781 */
 @keyframes ldSweep{0%{left:-60%}60%,100%{left:130%}}
 .ldb{display:block;margin-top:2px;line-height:1}
 #sched-inner td{position:relative}
@@ -33,7 +33,7 @@
 function _ldBadge(tl,hdr){return (hdr?'':'<span class="ldb">')+'<span class="ldg '+(tl?'ldT':'ldS')+(hdr?' h':'')+'">'+(hdr?(tl?'TEAM LEADER':'SUB LEADER'):(tl?'<span class="lw">TEAM</span> <span class="lw">LEADER</span>':'<span class="lw">SUB</span> <span class="lw">LEADER</span>'))+'</span>'+(hdr?'':'</span>');}
 function _ldMix(hex,p){try{hex=String(hex||'').replace('#','');if(hex.length===3)hex=hex.replace(/./g,'$&$&');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);if(isNaN(r+g+b))return '#ffffff';var f=function(c){return Math.round(c*p+255*(1-p));};return 'rgb('+f(r)+','+f(g)+','+f(b)+')';}catch(e){return '#ffffff';}}
 function _ldCellStyle(gc){return 'font-weight:800';}
-function _ldBoxStyle(gc){var c=(gc&&gc.bg)||'#607d8b';return 'background:linear-gradient(180deg,#ffffff 0%,'+_ldMix(c,.08)+' 45%,'+_ldMix(c,.18)+' 100%);box-shadow:inset 0 -4px 0 '+c;}
+function _ldBoxStyle(gc){var c=(gc&&gc.bg)||'#607d8b';return 'background:linear-gradient(180deg,'+_ldMix(c,.03)+' 0%,'+_ldMix(c,.12)+' 50%,'+_ldMix(c,.30)+' 100%);box-shadow:inset 0 0 0 1px '+_ldMix(c,.45)+',inset 0 -3px 0 '+c+',0 1px 3px rgba(0,0,0,.12)';}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- MSAL SDK는 오배송 MS사진 볼 때만 지연 로딩(ensureMsal) -->
