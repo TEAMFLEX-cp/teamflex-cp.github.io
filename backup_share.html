@@ -586,6 +586,8 @@ async function boot(){
     if(cf&&cf.data){HYEONADD=cf.data.hyeon_add;RATE['특정일']['아파트']=cf.data.teuk_apt;RATE['특정일']['지번']=cf.data.teuk_jib;APTP['아파트']=cf.data.teuk_apt;APTP['지번']=cf.data.teuk_jib;APTP['아파트+지번']=Math.round((cf.data.teuk_apt+cf.data.teuk_jib)/2);}
     ROUTES={};((rt&&rt.data)||[]).forEach(function(x){ROUTES[x.route_name]=x.base_price;});
     DRIVERS=((dv&&dv.data)||[]).map(function(x){return x.name;});
+    /* 팀플렉스: 허브 명단(초기 1회 복사본)에 없는 신규 기사를 기사포털 최신 명단(승인 기사)에서 보충 — 이름·연락처만 조회 */
+    if(MYCOMP==='teamflex'){try{var _pd=await fetch(PUSH_URL+'/rest/v1/drivers?select=name,phone,role,status&status=eq.approved',{headers:{apikey:PUSH_KEY,Authorization:'Bearer '+PUSH_KEY}}).then(function(x){return x.json();});if(Array.isArray(_pd)){_pd.forEach(function(x){if(!x.name||x.role==='admin')return;if(DRIVERS.indexOf(x.name)<0)DRIVERS.push(x.name);if(x.name===ME&&!MYPHONE&&x.phone)MYPHONE=x.phone;});DRIVERS.sort(function(a,b){return a.localeCompare(b,'ko');});}}catch(_e){}}
     var mine=((dv&&dv.data)||[]).find(function(x){return x.name===ME;}); if(mine){MYBANK=(mine.bank_name||'').trim();MYACCTNO=(mine.account_no||'').trim();MYACCT=(MYBANK+' '+MYACCTNO).trim();if(!MYPHONE&&mine.phone)MYPHONE=mine.phone;}
     try{if(fc&&fc.data){var _p=typeof fc.data.value==='string'?JSON.parse(fc.data.value):fc.data.value; PUSHHOURS=_p&&_p.pushHours;}}catch(_e){}
     try{if(nf&&nf.data&&nf.data.value){var np=typeof nf.data.value==='string'?JSON.parse(nf.data.value):nf.data.value; BPNOTIF=Object.assign(BPNOTIF,np);}}catch(_e){}
