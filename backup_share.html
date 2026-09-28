@@ -132,8 +132,12 @@ function go(p){page=p;sub=null;['cal','mine','sup','settle'].forEach(function(x)
 function rAvg(rt){if(!rt.length)return 0;return Math.round(rt.reduce(function(a,r){return a+(ROUTES[r]||800);},0)/rt.length);}
 function computeUnit(r){var ex=r.extra||0,u=0;if(r.viaSupport||r.mode==='개인')u=rAvg(r.routes)+ex;else if(r.mode==='현장')u=rAvg(r.routes)+HYEONADD+ex;else if(r.mode==='특정일')u=aptUnit('특정일',r.aptType||'아파트')+ex;return Math.max(0,u);}
 function reqUnit(r){if(r.negUnit)return r.negUnit;if(r.unit!=null)return r.unit;return computeUnit(r);}
-function reqTotal(r){var q=(r.finalQty||0),u=reqUnit(r);return u*q;}
-function estTotal(r){var q=(r.estQty||0),u=reqUnit(r);return u*q;}
+/* 스캔: 원단가 제외, 추가단가만 정산 / 미스캔(기본): 원단가+추가단가 */
+function payUnit(r){if(r.negUnit)return r.negUnit;return r.scan?Math.max(0,r.extra||0):reqUnit(r);}
+function baseUnit(r){if(r.negUnit)return r.negUnit;return Math.max(0,reqUnit(r)-(r.extra||0));}
+function scanBadge(r){if(r.negUnit)return '';return r.scan?'<span class="badge" style="background:#ede7f6;color:#5e35b1">📷 스캔</span>':'<span class="badge" style="background:#eceff1;color:#546e7a">📦 미스캔</span>';}
+function reqTotal(r){var q=(r.finalQty||0),u=payUnit(r);return u*q;}
+function estTotal(r){var q=(r.estQty||0),u=payUnit(r);return u*q;}
 function isCash(r){return r.settle==='개인';}
 function nAmt(r,a){return isCash(r)?Math.round((a||0)/1.1):(a||0);}
 function vatTag(r){return isCash(r)?' <span style="font-size:10px;color:#e65100;font-weight:800">(부가세 10% 제외)</span>':' <span style="font-size:10px;color:#1565c0;font-weight:800">(부가세 포함)</span>';}
@@ -253,9 +257,9 @@ function doneCompact(r){return '<div class="card req done" onclick="openDetail('
 function supMini(r){if(!r.supporters||!r.supporters.length)return '';return '<div class="row" style="gap:5px;margin-top:7px">'+r.supporters.map(function(s,i){var c=(s.state==='picked'||s.state==='accepted')?'b-green':(s.state==='declined'?'b-gray':'b-amber');return '<span class="badge '+c+'">지원자 '+(i+1)+'</span>';}).join('')+'</div>';}
 function reqCard(r){if(r.status==='done')return doneCompact(r);
   var qtyTxt=(r.finalQty?('실제 '+r.finalQty+'개'):(r.estQty?('예상 '+r.estQty+'개'):'수량 대기'))+(r.qtyNote?(' ('+r.qtyNote+')'):'');
-  var pr=r.finalQty?moneyR(r,reqTotal(r)):(r.estQty?moneyR(r,estTotal(r)):moneyR(r,reqUnit(r)));
+  var pr=r.finalQty?moneyR(r,reqTotal(r)):(r.estQty?moneyR(r,estTotal(r)):moneyR(r,payUnit(r)));
   var pl=r.finalQty?'정산금':(r.estQty?'예상 정산금':'단가/개');
-  return '<div class="card req '+r.status+'" onclick="openDetail('+r.id+')"><div class="row" style="margin-bottom:7px">'+dBadge(r.date)+stBadge(r.status)+kindBadge(r)+comp(r.rcomp)+collabBadge(r)+settleBadge(r)+(r.returnReq?'<span class="badge" style="background:#c62828;color:#fff">↩️ 회수필수</span>':'')+'</div>'
+  return '<div class="card req '+r.status+'" onclick="openDetail('+r.id+')"><div class="row" style="margin-bottom:7px">'+dBadge(r.date)+stBadge(r.status)+kindBadge(r)+comp(r.rcomp)+collabBadge(r)+settleBadge(r)+scanBadge(r)+(r.returnReq?'<span class="badge" style="background:#c62828;color:#fff">↩️ 회수필수</span>':'')+'</div>'
     +'<div class="rname">'+r.requester+'</div>'
     +'<div class="meta">라우트 '+r.routes.join(', ')+' · '+qtyTxt+(r.mapImg?' · 🗺️지도':'')+'</div>'
     +supMini(r)
@@ -269,7 +273,7 @@ function bpSettleData(scope){var inc={},exp={},tin=0,tout=0,ninc=0,nexp=0,thisYM
     var ym=(r.date||'').slice(0,7);
     if(scope==='this'&&ym!==thisYM)return;
     if(scope==='prev'&&ym!==prevYM)return;
-    var u=r.negUnit||reqUnit(r),q=r.finalQty||0,total=u*q;
+    var u=payUnit(r),q=r.finalQty||0,total=u*q;
     var sups=(r.supporters||[]).filter(function(s){return s.state==='picked';});if(!sups.length)sups=r.supporters||[];
     var share=sups.length?Math.round(total/sups.length):total;
     sups.forEach(function(s){if(s.company&&s.company!==MYCOMP)return;var nm=(s.name||'').split('(')[0].trim();inc[nm]=(inc[nm]||0)+share;tin+=share;ninc++;});
@@ -287,7 +291,7 @@ function settleHtml(){var D=bpSettleData(settleScope);
   function rows(obj,cls){var arr=Object.keys(obj).map(function(k){return [k,obj[k]];}).sort(function(a,b){return b[1]-a[1];});if(!arr.length)return '<div class="note">해당 없음</div>';return arr.map(function(x){var tp=(x[0].indexOf('(타업체)')>=0);return '<div class="row" style="justify-content:space-between;padding:9px 2px;border-bottom:1px dashed #eef2f6"><span class="rname" style="font-size:14px">'+x[0]+'</span><span class="price" style="color:'+(cls==='in'?'#1b7a4b':'#c0392b')+'">'+(cls==='in'?'+':'-')+money(x[1]).replace('₩','₩')+'</span></div>';}).join('');}
   h+='<div class="card"><div style="font-size:12.5px;font-weight:900;color:#0b6b4a;margin-bottom:4px">🟢 수익(지원) — '+lbl+'</div>'+rows(D.inc,'in')+'</div>';
   h+='<div class="card"><div style="font-size:12.5px;font-weight:900;color:#c0392b;margin-bottom:4px">🔴 지출(요청) — '+lbl+'</div>'+rows(D.exp,'out')+'</div>';
-  h+='<div style="margin-top:6px"><button class="btn b2" onclick="bpExportSettle()">📥 이번 달 정산 엑셀 내보내기</button></div>';
+  h+='<div style="margin-top:6px"><button class="btn b2" onclick="bpExportSettle()">📥 '+lbl+' 정산 엑셀 내보내기</button></div>';
   return h;
 }
 function listHtml(which){var arr=which==='mine'?reqs.filter(function(r){return meReq(r)&&r.status!=='rejected';}):reqs.filter(function(r){return iAmSup(r)&&!meReq(r)&&r.status!=='rejected';});
@@ -308,7 +312,7 @@ function listHtml(which){var arr=which==='mine'?reqs.filter(function(r){return m
   return h;
 }
 // ── 요청 등록 ──
-function startRegister(){draft={mode:'현장',aptType:'아파트',routes:[],_rtOpen:false,routeInfo:'',mapImg:'',estQty:'',extra:0,date:TODAY,settle:'정산일',acctShare:false,collab:false,collabExtra:1,returnReq:false,qtyNote:''};sub='register';pushHist();render();}
+function startRegister(){draft={mode:'현장',aptType:'아파트',routes:[],_rtOpen:false,routeInfo:'',mapImg:'',estQty:'',extra:0,date:TODAY,settle:'정산일',acctShare:false,collab:false,collabExtra:1,returnReq:false,scan:false,qtyNote:''};sub='register';pushHist();render();}
 function dSet(k,v){draft[k]=v;render();}
 function dExtraStep(d){draft.extra=(draft.extra||0)+d;render();}
 function dCollabStep(d){draft.collabExtra=Math.max(1,(draft.collabExtra||1)+d);render();}
@@ -321,7 +325,7 @@ function calcInner(){var u=0,h='';
   else if(draft.mode==='특정일'){var base=aptUnit('특정일',draft.aptType);u=base+(draft.extra||0);h+='<div class="li"><span>['+draft.aptType+'] 단가'+(draft.aptType==='아파트+지번'?'(평균)':'')+'</span><span>'+money(base)+'</span></div>';}
   else{var b2=rAvg(draft.routes||[]);u=b2+(draft.extra||0);h+='<div class="li"><span>라우트 원단가'+((draft.routes||[]).length>1?'(2개 평균)':'')+'</span><span>'+money(b2)+'</span></div>';}
   h+='<div class="li"><span>추가 +@</span><span>+ '+money(draft.extra||0)+'</span></div>';
-  u=Math.max(0,u);h+='<div class="tot"><span>적용 단가 / 개</span><span>'+moneyR({settle:draft.settle},u)+'</span></div>';
+  u=Math.max(0,u);if(draft.scan){h+='<div class="li" style="color:#5e35b1"><span>📷 스캔 → 원단가 제외</span><span>'+money(Math.max(0,u-(draft.extra||0)))+' 제외</span></div>';u=Math.max(0,draft.extra||0);}h+='<div class="tot"><span>적용 단가 / 개</span><span>'+moneyR({settle:draft.settle},u)+'</span></div>';
   if(draft.estQty)h+='<div class="li" style="border-top:1px dashed #cfe0f5;margin-top:4px;padding-top:5px"><span>예상 정산금 (예상 '+draft.estQty+'개)</span><span style="font-weight:900;color:#1565c0">'+moneyR({settle:draft.settle},u*draft.estQty)+'</span></div>';
   h+='<div class="li" style="border:none;color:#8090a0;margin-top:2px">※ 실제 수량은 지원 기사가 완료 후 입력 → 최종 정산금 확정</div>';
   return h;
@@ -348,12 +352,13 @@ function registerHtml(){
   h+='<label class="f">정산 방식</label><div class="seg"><div class="'+(draft.settle==='정산일'?'on':'')+'" onclick="dSet(\'settle\',\'정산일\')">📅 정산일 정산(VAT포함)</div><div class="'+(draft.settle==='개인'?'on':'')+'" onclick="dSet(\'settle\',\'개인\')">💵 개인 정산(현금)</div></div>';
   if(draft.settle==='정산일')h+='<div style="margin-top:8px;padding:11px 13px;background:#e8f2ff;border:1.5px solid #1565c0;border-radius:10px;font-size:12.5px;font-weight:800;color:#0d47a1;text-align:center">🧾 세금계산서 발행 (부가세 포함 단가)</div>';
   if(draft.settle==='개인')h+='<div class="cbrow" onclick="draft.acctShare=!draft.acctShare;render()"><input type="checkbox" '+(draft.acctShare?'checked':'')+'><div style="font-size:12px;font-weight:800;color:#33475b">개인 계좌번호 공유 동의<div style="font-size:10.5px;font-weight:400;color:#8090a0;margin-top:2px">체크 시에만 계좌 공유. 미동의 시 <b>개인간 협의로 정산</b>.</div></div></div>';
+  h+='<label class="f">스캔 여부</label><div class="seg"><div class="'+(!draft.scan?'on':'')+'" onclick="draft.scan=false;render()">📦 미스캔 <small>(원단가+추가)</small></div><div class="'+(draft.scan?'on':'')+'" onclick="draft.scan=true;render()">📷 스캔 <small>(추가단가만)</small></div></div>';
   h+='<div class="calc" id="calc-box">'+calcInner()+'</div><div style="margin-top:14px"><button class="btn b1" onclick="submitReq()">✅ 요청 등록</button></div>';
   return h;
 }
-function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}if(isPastDate(draft.date)){toast('지난 날짜에는 요청 등록을 할 수 없습니다.');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,returnReq:!!draft.returnReq,qtyNote:draft.qtyNote||'',settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;if(draft._editId){var ex=reqs.find(function(x){return x.id===draft._editId;})||{};r.id=draft._editId;r.supporters=ex.supporters||[];r.status=ex.status||'open';bpSaveReq(r);go('mine');toast('✏️ 요청 수정됨');}else{bpNewReq(r);bpBroadcast('📋 새 백업 요청',ME+'님이 '+bpLabel(r)+' 백업을 요청했습니다.');go('mine');toast('📨 요청 등록·전체 알림');}}
+function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}if(isPastDate(draft.date)){toast('지난 날짜에는 요청 등록을 할 수 없습니다.');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,returnReq:!!draft.returnReq,scan:!!draft.scan,qtyNote:draft.qtyNote||'',settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;if(draft._editId){var ex=reqs.find(function(x){return x.id===draft._editId;})||{};r.id=draft._editId;r.supporters=ex.supporters||[];r.status=ex.status||'open';bpSaveReq(r);go('mine');toast('✏️ 요청 수정됨');}else{bpNewReq(r);bpBroadcast('📋 새 백업 요청',ME+'님이 '+bpLabel(r)+' 백업을 요청했습니다.');go('mine');toast('📨 요청 등록·전체 알림');}}
 // ── 역지원 등록 ──
-function startSupReg(){draft={who:'',route:'',extra:0,qty:'',date:TODAY,settle:'정산일',acctShare:false};sub='supReg';pushHist();render();}
+function startSupReg(){draft={who:'',route:'',extra:0,qty:'',date:TODAY,scan:false,settle:'정산일',acctShare:false};sub='supReg';pushHist();render();}
 function sExtraStep(d){draft.extra=(draft.extra||0)+d;render();}
 function supRegHtml(){
   var u=(ROUTES[draft.route]||0)+(draft.extra||0);
@@ -365,12 +370,14 @@ function supRegHtml(){
   h+='<label class="f">추가 단가 +@ (50원, 협의된 경우)</label><div class="stp"><button onclick="sExtraStep(-50)">−</button><div class="v">'+money(draft.extra||0)+'</div><button onclick="sExtraStep(50)">＋</button></div>';
   h+='<label class="f">완료 수량 (실제)</label><input type="number" placeholder="내가 배송한 수량" value="'+(draft.qty||'')+'" oninput="draft.qty=parseInt(this.value||0,10)||0">';
   h+='<label class="f">정산 방식</label><div class="seg"><div class="'+(draft.settle==='정산일'?'on':'')+'" onclick="draft.settle=\'정산일\';render()">📅 정산일</div><div class="'+(draft.settle==='개인'?'on':'')+'" onclick="draft.settle=\'개인\';render()">💵 개인</div></div>';
+  h+='<label class="f">스캔 여부</label><div class="seg"><div class="'+(!draft.scan?'on':'')+'" onclick="draft.scan=false;render()">📦 미스캔 <small>(원단가+추가)</small></div><div class="'+(draft.scan?'on':'')+'" onclick="draft.scan=true;render()">📷 스캔 <small>(추가단가만)</small></div></div>';
+  if(draft.scan)u=Math.max(0,draft.extra||0);
   h+='<div class="calc"><div class="li"><span>라우트 기본단가</span><span>'+money(ROUTES[draft.route]||0)+'</span></div><div class="li"><span>추가 +@</span><span>+ '+money(draft.extra||0)+'</span></div><div class="tot"><span>단가 / 개</span><span>'+money(u)+'</span></div></div>';
   h+='<div style="margin-top:14px"><button class="btn b2" onclick="submitSupReg()">📤 확정 요청 보내기</button></div>';
   return h;
 }
 function submitSupReg(){if(!draft.who){toast('요청 기사를 선택하세요');return;}if(!draft.route){toast('라우트를 선택하세요');return;}if(!(draft.qty>0)){toast('완료 수량을 입력하세요');return;}if(draft.who===ME){toast('본인에게는 요청할 수 없습니다');return;}
-  var r={requester:draft.who,rcomp:MYCOMPNAME,rphone:'',date:draft.date||TODAY,company_id:MYCOMP,mode:'개인',viaSupport:true,routes:[draft.route],extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:false,needCount:1,supporters:[{name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'}],finalQty:draft.qty||0,status:'confirm'};r.unit=computeUnit(r);
+  var r={requester:draft.who,rcomp:MYCOMPNAME,rphone:'',date:draft.date||TODAY,company_id:MYCOMP,mode:'개인',viaSupport:true,scan:!!draft.scan,routes:[draft.route],extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:false,needCount:1,supporters:[{name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'}],finalQty:draft.qty||0,status:'confirm'};r.unit=computeUnit(r);
   bpNewReq(r);bpReqNotify(r,[r.requester],'📤 역지원 확정 요청',ME+'님이 '+r.date.slice(5).replace('-','/')+' '+bpLabel(r)+' '+r.finalQty+'개 역지원 확정을 요청했습니다. 확인 후 확정해 주세요.');sub=null;go('sup');toast('📤 '+draft.who+' 기사에게 확정 요청 전송');
 }
 // ── 상세 ──
@@ -393,20 +400,21 @@ function compAdminHtml(){
 }
 function bpExportSettle(){
   if(typeof XLSX==='undefined'){toast('엑셀 모듈 로딩중 · 잠시 후 다시');return;}
-  var ym=TODAY.slice(0,7);
-  var rows=[['일자','근무자','지원자','수량','기본단가']];var cnt=0;
-  reqs.filter(function(r){return r.status==='done'&&r.settle==='정산일'&&(r.date||'').slice(0,7)===ym;}).forEach(function(r){
+  var sc=(typeof settleScope!=='undefined'&&settleScope)||'this',thisYM=TODAY.slice(0,7),prevYM=bpPrevYM();
+  var lbl={this:thisYM,prev:prevYM,all:'전체'}[sc]||thisYM;
+  var rows=[['일자','근무자','지원자','수량','기본단가','스캔여부','원단가','추가단가','정산금액']];var cnt=0;
+  reqs.filter(function(r){if(r.status!=='done'||r.settle!=='정산일')return false;var ym=(r.date||'').slice(0,7);if(sc==='this')return ym===thisYM;if(sc==='prev')return ym===prevYM;return true;}).sort(function(a,b){return (a.date||'')<(b.date||'')?-1:1;}).forEach(function(r){
     var p=(r.date||'').split('-');var mmdd=p.length>=3?(p[1]+'/'+p[2]):(r.date||'');
     var sups=(r.supporters||[]).filter(function(s){return s.state==='picked';});if(!sups.length)sups=r.supporters||[];
     var q=sups.length?Math.round((r.finalQty||0)/sups.length):(r.finalQty||0);
-    var reqMine=(!r.company_id||r.company_id===MYCOMP);
-    sups.forEach(function(s){var supMine=(!s.company||s.company===MYCOMP);if(!reqMine&&!supMine)return;rows.push([mmdd, r.requester, (s.name||'').split('(')[0].trim(), q, r.negUnit||reqUnit(r)]);cnt++;});
+    var reqMine=(!r.company_id||r.company_id===MYCOMP);var pu=payUnit(r);
+    sups.forEach(function(s){var supMine=(!s.company||s.company===MYCOMP);if(!reqMine&&!supMine)return;rows.push([mmdd, r.requester, (s.name||'').split('(')[0].trim(), q, pu, r.negUnit?'-':(r.scan?'스캔':'미스캔'), baseUnit(r), r.negUnit?0:(r.extra||0), q*pu]);cnt++;});
   });
-  if(!cnt){toast('내보낼 정산일 완료건이 없습니다 (이번 달)');return;}
-  var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:8},{wch:12},{wch:12},{wch:8},{wch:10}];
+  if(!cnt){toast('내보낼 정산일 완료건이 없습니다 ('+lbl+')');return;}
+  var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:8},{wch:12},{wch:12},{wch:8},{wch:10},{wch:9},{wch:9},{wch:9},{wch:12}];
   var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'백업');
-  XLSX.writeFile(wb,'백업정산_'+ym+'.xlsx');
-  toast('📥 '+cnt+'행 내보내기 완료');
+  XLSX.writeFile(wb,'백업정산_'+lbl+'.xlsx');
+  toast('📥 '+cnt+'행 내보내기 완료 ('+lbl+')');
 }
 function openAdmin(){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}draft={ha:HYEONADD,ta:RATE['특정일']['아파트'],tj:RATE['특정일']['지번'],cpw:CANCEL_PW};sub='admin';pushHist();render();}
 function aAdm(k,d){draft[k]=Math.max(0,(draft[k]||0)+d);render();}
@@ -447,10 +455,10 @@ function detailHtml(r){if(!r)return '';var iReq=(meReq(r)),iSup=iAmSup(r);var si
   if(supH&&ROLE==='admin'&&['matched','qty','done'].indexOf(r.status)>=0)supH+='<button class="btn" style="margin-top:10px;background:#fff3cd;color:#8a6d00;border:2px solid #e0a800;font-weight:800" onclick="cancelConfirm('+r.id+')">🚫 업무 확정 취소 (관리자)</button>';
   if(supH)supH='<div class="card" style="border-left:5px solid #1565c0;background:#f3f8ff">'+supH+'</div>';
   h+=supH;
-  h+='<div class="card"><div class="row" style="margin-bottom:6px">'+stBadge(r.status)+kindBadge(r)+comp(r.rcomp)+collabBadge(r)+settleBadge(r)+(r.returnReq?'<span class="badge" style="background:#c62828;color:#fff">↩️ 회수필수</span>':'')+'</div>';
+  h+='<div class="card"><div class="row" style="margin-bottom:6px">'+stBadge(r.status)+kindBadge(r)+comp(r.rcomp)+collabBadge(r)+settleBadge(r)+scanBadge(r)+(r.returnReq?'<span class="badge" style="background:#c62828;color:#fff">↩️ 회수필수</span>':'')+'</div>';
   h+='<div class="rname" style="margin-bottom:4px">'+r.requester+'</div>';
   h+='<div class="kv"><span>라우트</span><b>'+r.routes.join(', ')+'</b></div>';
-  h+='<div class="kv"><span>단가/개</span><b style="color:#1565c0">'+moneyR(r,reqUnit(r))+'</b></div>';
+  h+='<div class="kv"><span>단가/개</span><b style="color:#1565c0">'+moneyR(r,payUnit(r))+'</b></div>';if(r.scan&&!r.negUnit)h+='<div class="kv"><span style="color:#5e35b1">📷 스캔 정산</span><b style="color:#5e35b1;font-size:12px">원단가 '+money(baseUnit(r))+' 제외 · 추가단가만</b></div>';
   h+='<div class="kv"><span>예상 수량</span><b>'+(r.estQty?r.estQty+'개':'-')+(r.qtyNote?(' <span style="color:#e65100;font-weight:800">('+r.qtyNote+')</span>'):'')+'</b></div>';
   h+='<div class="kv"><span>실제 수량</span><b>'+(r.finalQty?r.finalQty+'개':'지원기사 입력 대기')+'</b></div>';
   h+='<div class="kv" style="border:none"><span>정산금</span><b class="price">'+(r.finalQty?moneyR(r,reqTotal(r)):(r.estQty?(moneyR(r,estTotal(r))+' (예상)'):'-'))+'</b></div></div>';
@@ -498,7 +506,7 @@ function _cashShareSet(id,yes){_cashShare=yes;var y=document.getElementById('cs-
  if(yes){b.innerHTML=(MYACCTNO?'<div style="font-size:12px;color:#2e7d32;background:#eef8ee;border-radius:8px;padding:7px 9px;margin-bottom:8px">📌 회사 앱에 등록된 계좌를 불러왔어요. 다른 계좌로 받으려면 직접 수정하세요.</div>':'<div style="font-size:12px;color:#8a6d00;background:#fff8e1;border-radius:8px;padding:7px 9px;margin-bottom:8px">등록된 계좌가 없어요. 받으실 계좌를 입력해 주세요.</div>')+'<div style="font-size:12px;font-weight:800;color:#33475b">은행명</div><input id="cs-bank" style="'+inp+'" placeholder="예: 국민은행" value="'+_esc(MYBANK)+'"><div style="font-size:12px;font-weight:800;color:#33475b;margin-top:8px">계좌번호</div><input id="cs-no-in" style="'+inp+'" inputmode="numeric" placeholder="예: 123456-78-901234" value="'+_esc(MYACCTNO)+'">';}
  else b.innerHTML='<div style="font-size:12.5px;color:#666;background:#f4f4f4;border-radius:8px;padding:9px 10px;text-align:center">계좌는 공유되지 않아요.<br>입금 방법은 등록기사와 <b>개인적으로 협의</b>해 주세요.</div>';}
 function _cashClose(){var o=document.getElementById('cashov');if(o)o.remove();}
-function applyReqCash(id){var _r=reqs.find(function(x){return x.id===id;});if(!_r)return;var _u=reqUnit(_r),_cu=Math.round(_u/1.1),_q=_r.estQty||0;var ov=document.createElement('div');ov.id='cashov';ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100300;display:flex;align-items:center;justify-content:center;padding:20px';ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;overflow:hidden;box-shadow:0 12px 44px rgba(0,0,0,.35)"><div style="background:#c62828;color:#fff;padding:15px;text-align:center;font-size:17px;font-weight:900">⚠️ 중요 안내</div><div style="padding:18px 18px 4px;font-size:14px;color:#333;line-height:1.8;text-align:center">현금 지급 시 <b>부가세 10% 제외</b> 단가가 적용됩니다.<div style="margin:12px 0 4px;background:#fff5f5;border:1px solid #f3c1c1;border-radius:10px;padding:10px 12px;text-align:left"><div style="display:flex;justify-content:space-between"><span>단가/개</span><b><s style="color:#999;font-weight:600">'+money(_u)+'<small>(부가세 포함)</small></s> → <span style="color:#c62828">'+money(_cu)+'</span></b></div>'+(_q?'<div style="display:flex;justify-content:space-between;margin-top:4px"><span>예상 정산금 ('+_q+'개)</span><b><s style="color:#999;font-weight:600">'+money(_u*_q)+'</s> → <span style="color:#c62828">'+money(_cu*_q)+'</span></b></div>':'')+'</div></div><div style="padding:12px 18px 18px;display:flex;gap:8px"><button onclick="_cashAcctStep('+id+')" style="flex:1;padding:12px;background:#c62828;color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer">💵 현금 지급으로 신청</button><button onclick="_cashClose()" style="padding:12px 16px;background:#eee;border:none;border-radius:10px;cursor:pointer">취소</button></div></div>';document.body.appendChild(ov);}
+function applyReqCash(id){var _r=reqs.find(function(x){return x.id===id;});if(!_r)return;var _u=payUnit(_r),_cu=Math.round(_u/1.1),_q=_r.estQty||0;var ov=document.createElement('div');ov.id='cashov';ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100300;display:flex;align-items:center;justify-content:center;padding:20px';ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;overflow:hidden;box-shadow:0 12px 44px rgba(0,0,0,.35)"><div style="background:#c62828;color:#fff;padding:15px;text-align:center;font-size:17px;font-weight:900">⚠️ 중요 안내</div><div style="padding:18px 18px 4px;font-size:14px;color:#333;line-height:1.8;text-align:center">현금 지급 시 <b>부가세 10% 제외</b> 단가가 적용됩니다.<div style="margin:12px 0 4px;background:#fff5f5;border:1px solid #f3c1c1;border-radius:10px;padding:10px 12px;text-align:left"><div style="display:flex;justify-content:space-between"><span>단가/개</span><b><s style="color:#999;font-weight:600">'+money(_u)+'<small>(부가세 포함)</small></s> → <span style="color:#c62828">'+money(_cu)+'</span></b></div>'+(_q?'<div style="display:flex;justify-content:space-between;margin-top:4px"><span>예상 정산금 ('+_q+'개)</span><b><s style="color:#999;font-weight:600">'+money(_u*_q)+'</s> → <span style="color:#c62828">'+money(_cu*_q)+'</span></b></div>':'')+'</div></div><div style="padding:12px 18px 18px;display:flex;gap:8px"><button onclick="_cashAcctStep('+id+')" style="flex:1;padding:12px;background:#c62828;color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer">💵 현금 지급으로 신청</button><button onclick="_cashClose()" style="padding:12px 16px;background:#eee;border:none;border-radius:10px;cursor:pointer">취소</button></div></div>';document.body.appendChild(ov);}
 function _cashApplyGo(id){if(_cashShare===null){toast('계좌 공유 동의/미동의를 선택해 주세요.');return;}var bk='',an='';if(_cashShare){bk=((document.getElementById('cs-bank')||{}).value||'').trim();an=((document.getElementById('cs-no-in')||{}).value||'').trim();if(!bk||!an){toast('은행명과 계좌번호를 입력해 주세요.');return;}}_cashClose();var r=reqs.find(function(x){return x.id===id;});if(!r)return;r.supporters=r.supporters||[];var _prev=(r.supporters.filter(function(s){return s.cash&&s.settlePrev;})[0]||{}).settlePrev||r.settlePrev||(r.settle!=='개인'?r.settle:null)||'정산일';r.supporters.push({name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:_cashShare?(bk+' '+an):'',bank:bk,acctNo:an,acctShare:!!_cashShare,state:'joined',cash:true,settlePrev:_prev});if(r.settlePrev==null)r.settlePrev=_prev;r.settle='개인';bpSaveReq(r);bpReqNotify(r,[r.requester],'💵 현금 당일지급 지원 신청',ME+'님이 '+bpLabel(r)+'에 현금 당일지급으로 지원 신청했습니다. (부가세 10% 제외 단가 적용)');toast('💵 현금 당일지급 신청 · 부가세 10% 제외 적용');render();}
 function cancelConfirm(id){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}if(!CANCEL_PW){toast('⚠️ 취소 비밀번호가 설정되지 않았습니다. 관리자·단가 설정에서 등록하세요.');return;}var r=reqs.find(function(x){return x.id===id;});if(!r)return;var pw=prompt('🔒 업무 확정 취소\n\n설정된 취소 비밀번호를 입력하세요.');if(pw===null)return;if(pw!==CANCEL_PW){toast('❌ 비밀번호가 일치하지 않습니다.');return;}var _nm=(r.supporters||[]).map(function(s){return {name:s.name,company:s.company};});r.finalQty=0;r.collab=(r.needCount>1);if(r.viaSupport){(r.supporters||[]).forEach(function(s){s.state='joined';});r.status='confirm';}else{var _rm=r.supporters||[];r.supporters=[];r.status='open';fixCashSettle(r,_rm);}bpSaveReq(r);bpReqNotify(r,_nm.concat([r.requester]),'🚫 업무 확정 취소',bpLabel(r)+' 업무 확정이 관리자에 의해 취소되었습니다.'+(r.viaSupport?'':' (지원 내역 삭제)'));toast(r.viaSupport?'🚫 업무 확정 취소 완료':'🚫 확정 취소 · 지원자 삭제 · 다시 모집 상태');render();}
 function pickOne(id,i){var r=reqs.find(function(x){return x.id===id;});r.supporters=[Object.assign(r.supporters[i],{state:'picked'})];r.collab=false;r.needCount=1;r.status='matched';bpSaveReq(r);bpReqNotify(r,[r.supporters[0].name,r.requester],'✅ 업무 확정',bpLabel(r)+' 업무가 확정되었습니다.');toast('✅ '+r.supporters[0].name+' 업무 확정 · 매칭 완료');render();}
@@ -518,9 +526,9 @@ function enterQty(id){var r=reqs.find(function(x){return x.id===id;});var v=prom
 function confirmDone(id){var r=reqs.find(function(x){return x.id===id;});r.status='done';bpSaveReq(r);bpReqNotify(r,r.supporters.slice(),'✅ 정산 확정',bpLabel(r)+' 정산이 확정되었습니다.');toast('✅ 최종 확정 · 정산 반영');render();}
 
 // ── 허브 연동 데이터 레이어 ──
-function dbToReq(x){var _ri=x.route_info||'';var _qn='';var _qm=_ri.indexOf('[[QN]]');if(_qm>=0){_qn=_ri.slice(_qm+6);_ri=_ri.slice(0,_qm);}var _ret=_ri.indexOf('[[RET]]')>=0;_ri=_ri.replace('[[RET]]','');return {id:x.id,requester:x.requester,rcomp:x.rcomp,rphone:x.rphone,date:x.date,mode:x.mode,aptType:x.apt_type,routes:x.routes||[],routeInfo:_ri,returnReq:_ret,qtyNote:_qn,mapImg:x.map_img||'',estQty:x.est_qty,finalQty:x.final_qty,extra:x.extra||0,settle:x.settle,acctShare:x.acct_share,collab:x.collab,needCount:x.need_count||1,negUnit:x.neg_unit,negBy:x.neg_by,viaSupport:x.via_support,status:x.status,supporters:x.supporters||[],unit:x.unit,company_id:x.company_id};}
+function dbToReq(x){var _ri=x.route_info||'';var _qn='';var _qm=_ri.indexOf('[[QN]]');if(_qm>=0){_qn=_ri.slice(_qm+6);_ri=_ri.slice(0,_qm);}var _ret=_ri.indexOf('[[RET]]')>=0;_ri=_ri.replace('[[RET]]','');var _scan=_ri.indexOf('[[SCAN]]')>=0;_ri=_ri.replace('[[SCAN]]','');return {scan:_scan,id:x.id,requester:x.requester,rcomp:x.rcomp,rphone:x.rphone,date:x.date,mode:x.mode,aptType:x.apt_type,routes:x.routes||[],routeInfo:_ri,returnReq:_ret,qtyNote:_qn,mapImg:x.map_img||'',estQty:x.est_qty,finalQty:x.final_qty,extra:x.extra||0,settle:x.settle,acctShare:x.acct_share,collab:x.collab,needCount:x.need_count||1,negUnit:x.neg_unit,negBy:x.neg_by,viaSupport:x.via_support,status:x.status,supporters:x.supporters||[],unit:x.unit,company_id:x.company_id};}
 function dbToSlot(x){return {id:x.id,driver:x.driver_name,company:x.driver_company,date:x.date,type:x.type,qty:x.qty,unit:x.unit,status:x.status,company_id:x.company_id};}
-function reqToDb(r){return {company_id:r.company_id||MYCOMP,requester:r.requester,rcomp:r.rcomp,rphone:r.rphone,date:r.date,mode:r.mode,apt_type:r.aptType||null,routes:r.routes||[],route_info:(r.routeInfo||'')+(r.returnReq?'[[RET]]':'')+(r.qtyNote?('[[QN]]'+r.qtyNote):''),map_img:r.mapImg||'',est_qty:r.estQty||null,final_qty:r.finalQty||null,extra:r.extra||0,settle:r.settle,acct_share:!!r.acctShare,collab:!!r.collab,need_count:r.needCount||1,neg_unit:r.negUnit||null,neg_by:r.negBy||null,via_support:!!r.viaSupport,status:r.status,supporters:r.supporters||[],unit:r.unit||null,updated_at:new Date().toISOString()};}
+function reqToDb(r){return {company_id:r.company_id||MYCOMP,requester:r.requester,rcomp:r.rcomp,rphone:r.rphone,date:r.date,mode:r.mode,apt_type:r.aptType||null,routes:r.routes||[],route_info:(r.routeInfo||'')+(r.returnReq?'[[RET]]':'')+(r.scan?'[[SCAN]]':'')+(r.qtyNote?('[[QN]]'+r.qtyNote):''),map_img:r.mapImg||'',est_qty:r.estQty||null,final_qty:r.finalQty||null,extra:r.extra||0,settle:r.settle,acct_share:!!r.acctShare,collab:!!r.collab,need_count:r.needCount||1,neg_unit:r.negUnit||null,neg_by:r.negBy||null,via_support:!!r.viaSupport,status:r.status,supporters:r.supporters||[],unit:r.unit||null,updated_at:new Date().toISOString()};}
 function reload(){loadData().then(function(){render();});}
 var PUSHHOURS=null; var BP_QUIET_EXEMPT={}; /* 야간(금지시간) 예외 인원: 관리자 지시가 있을 때만 이름 추가 */ var BPNOTIF={on:true,gongwal:true,teamjang:true,jojang:true,gisa:true};
 function bpQuiet(){try{var qs,qe;if(PUSHHOURS&&PUSHHOURS.start&&PUSHHOURS.end){qs=parseInt(String(PUSHHOURS.end).slice(0,2),10);qe=parseInt(String(PUSHHOURS.start).slice(0,2),10);}else{qs=22;qe=7;}if(qs===qe)return false;var d=new Date(Date.now()+9*3600000);var h=d.getUTCHours();return (qs>qe)?(h>=qs||h<qe):(h>=qs&&h<qe);}catch(_e){return false;}}
@@ -538,7 +546,7 @@ function bpPushMany(names,title,body){(names||[]).forEach(function(n){bpPush(n,t
 function bpBroadcast(title,body){if(!bpNotifOn())return;if(bpQuiet())return;try{fetch(PUSH_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':PUSH_KEY},body:JSON.stringify({title:title,body:body,target_roles:bpRoles(),data:{tag:'backup'}})}).catch(function(){});}catch(_e){}}
 function cancelSlot(id){if(!confirm('지원 가능 등록을 취소할까요?'))return;sb.from('bp_slots').delete().eq('id',id).then(function(){reload();});toast('🗑 지원 취소됨');}
 function cancelReq(id){if(!confirm('백업 요청을 취소할까요?'))return;sb.from('bp_requests').delete().eq('id',id).then(function(){reload();});sub=null;go('mine');toast('🗑 요청 취소됨');}
-function startEditReq(id){var r=reqs.find(function(x){return x.id===id;});if(!r)return;draft={_editId:id,mode:r.mode,aptType:r.aptType||'아파트',routes:(r.routes||[]).slice(),_rtOpen:false,routeInfo:r.routeInfo||'',mapImg:r.mapImg||'',estQty:r.estQty||'',extra:r.extra||0,date:r.date,settle:r.settle||'정산일',acctShare:!!r.acctShare,collab:!!r.collab,collabExtra:Math.max(1,(r.needCount||1)-1),returnReq:!!r.returnReq,qtyNote:r.qtyNote||''};sub='register';render();}
+function startEditReq(id){var r=reqs.find(function(x){return x.id===id;});if(!r)return;draft={_editId:id,mode:r.mode,aptType:r.aptType||'아파트',routes:(r.routes||[]).slice(),_rtOpen:false,routeInfo:r.routeInfo||'',mapImg:r.mapImg||'',estQty:r.estQty||'',extra:r.extra||0,date:r.date,settle:r.settle||'정산일',acctShare:!!r.acctShare,collab:!!r.collab,collabExtra:Math.max(1,(r.needCount||1)-1),returnReq:!!r.returnReq,scan:!!r.scan,qtyNote:r.qtyNote||''};sub='register';render();}
 function bpLabel(r){return '「'+((r.routes&&r.routes.join('/'))||'백업')+'」';}
 function bpNotifOn(){return BPNOTIF.on!==false;}
 function bpRoles(){var r={admin:1};if(BPNOTIF.gongwal||BPNOTIF.teamjang)r.leader=1;if(BPNOTIF.jojang)r.sub=1;if(BPNOTIF.gisa)r.driver=1;return Object.keys(r);}
