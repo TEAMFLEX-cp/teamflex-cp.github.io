@@ -18786,7 +18786,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   function dismissed(){try{var v=JSON.parse(localStorage.getItem(dkey())||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
   var _tap={id:'',t:0};
   window.tnTap=function(id){var now=Date.now();if(_tap.id===id&&now-_tap.t<450){_tap={id:'',t:0};tnDismiss(id);}else{_tap={id:id,t:now};}};
-  window.tnDismiss=function(id){try{var d=dismissed();if(d.indexOf(id)<0)d.push(id);localStorage.setItem(dkey(),JSON.stringify(d.slice(-200)));}catch(e){}refreshSlots();};
+  window.tnDismiss=function(id){try{var d=dismissed();if(d.indexOf(id)<0)d.push(id);d=d.slice(-200);localStorage.setItem(dkey(),JSON.stringify(d));if(window.sbClient&&myName())sbClient.from('app_settings').upsert({key:dkey(),value:JSON.stringify(d)},{onConflict:'key'}).then(function(){}).catch(function(){});}catch(e){}refreshSlots();};
   window.tnHomeHTML=function(){
     try{
       var dis=dismissed();
@@ -18830,14 +18830,14 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   window.tnLoad=function(){
     try{
       if(!window.sbClient||!window.CU)return;
-      var keys=['teams_notice_feed','teams_notice_hidden'];if(isAdm())keys.push('teams_notice_cfg');
+      var keys=['teams_notice_feed','teams_notice_hidden',dkey()];if(isAdm())keys.push('teams_notice_cfg');
       sbClient.from('app_settings').select('key,value').in('key',keys).then(function(r){
         if(!r||r.error||!r.data)return;
         var m={};r.data.forEach(function(x){m[x.key]=x.value;});
         var f=pj(m.teams_notice_feed,[]);TN.feed=Array.isArray(f)?f:[];try{TN.feed.sort(function(a,b){return (Number(b.id)||0)-(Number(a.id)||0);});}catch(e){}
-        var h=pj(m.teams_notice_hidden,[]);TN.hidden=Array.isArray(h)?h:[];
+        var h=pj(m.teams_notice_hidden,[]);TN.hidden=Array.isArray(h)?h:[];try{var sd=pj(m[dkey()],[]);if(Array.isArray(sd)&&sd.length){var ld=dismissed();sd.forEach(function(x){if(ld.indexOf(x)<0)ld.push(x);});localStorage.setItem(dkey(),JSON.stringify(ld.slice(-200)));}}catch(e){}
         if(isAdm()){var c=pj(m.teams_notice_cfg,null);TN.cfg=(c&&typeof c==='object')?c:null;}
-        var sig=JSON.stringify([TN.feed.map(function(x){return x.chat+':'+x.id;}),TN.hidden,TN.cfg&&TN.cfg.enabled]);
+        var sig=JSON.stringify([TN.feed.map(function(x){return x.chat+':'+x.id;}),TN.hidden,TN.cfg&&TN.cfg.enabled,dismissed().length]);
         if(sig!==TN.sig){TN.sig=sig;refreshSlots();}
       }).catch(function(){});
     }catch(e){}
