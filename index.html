@@ -18711,7 +18711,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
 
 </script>
 <script>
-/* ══════════ [팀즈→공지 자동 공유] v773 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
+/* ══════════ [팀즈→공지 자동 공유] v774 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
 (function(){
   var TN={feed:[],hidden:[],cfg:null,sig:'',timer:null};
   window._TN=TN;
@@ -18783,7 +18783,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   window.tnAnnHTML=function(){
     try{
       if(!isAdm())return '';
-      return '<div id="tn-ann-slot" style="display:flex;justify-content:flex-end;margin:4px 0 8px"><button onclick="tnOpenAdmin()" style="border:none;background:#eef1ff;color:#3949ab;font-weight:800;font-size:12px;border-radius:9px;padding:6px 10px">📡 팀즈 자동공지 ⚙ 키워드·기록</button></div>';
+      return '<div id="tn-ann-slot" style="display:flex;justify-content:flex-end;margin:4px 0 8px"><button onclick="tnOpenAdmin()" style="border:none;background:#eef1ff;color:#3949ab;font-weight:800;font-size:12px;border-radius:9px;padding:6px 10px">📡 팀즈 자동공지 ⚙ 키워드 설정</button></div>';
     }catch(e){return '';}
   };
   function wrap(){
@@ -18859,15 +18859,6 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     });
     h+='<div style="font-size:11px;color:#8a8fa8;margin:-2px 2px 10px">💡 띄어쓰기는 무시해요. "미스캔+공유"처럼 +로 쓰면 두 단어가 모두 있을 때만 공유돼요. 홈 배너는 오늘 근무자 홈 맨 위에 시간만 크게 보여줘요.</div>';
     h+='<button onclick="tnSaveCfg()" style="width:100%;border:none;background:linear-gradient(135deg,#2f6fed,#4b2bd1);color:#fff;font-weight:900;font-size:14px;border-radius:12px;padding:12px;margin-bottom:14px">저장</button>';
-    var log=TN.feed.slice(0,60);
-    h+='<div style="font-weight:900;font-size:13px;color:#1e2a5a;margin-bottom:7px">🗂 자동 공지 기록 (최근 7일)</div>';
-    if(!log.length)h+='<div style="font-size:12px;color:#9aa0b8">기록 없음</div>';
-    log.forEach(function(x){var id=String(x.chat)+':'+String(x.id);var hid=TN.hidden.indexOf(id)>=0;
-      h+='<div style="background:#fff;border-radius:10px;padding:9px 10px;margin-bottom:6px;opacity:'+(hid?'.45':'1')+'"><div style="display:flex;gap:6px;align-items:center;font-size:11.5px"><b>'+esc(x.date)+' '+esc(x.time||'')+'</b>'+badge(x)+'<span style="color:#555">'+esc(x.kw)+'</span>'+
-        '<button onclick="tnHide(\''+esc(id)+'\','+(hid?'false':'true')+')" style="margin-left:auto;border:none;background:'+(hid?'#e8f5e9;color:#2e7d32':'#fdecea;color:#c62828')+';border-radius:7px;padding:4px 8px;font-weight:800;font-size:11px">'+(hid?'복구':'숨김')+'</button></div>'+
-        '<div style="font-size:12px;color:#444;margin-top:4px;line-height:1.5">'+esc((x.text||'').slice(0,140)).replace(/\n/g,' / ')+'</div>'+
-        '<div style="font-size:11px;color:#8a8fa8;margin-top:3px">'+(false?'':'대상 '+(x.targets||[]).length+'명: '+esc((x.targets||[]).join(', ')))+(x.push?' · 🔔':'')+(x.banner?' · 🕑배너':'')+'</div></div>';
-    });
     b.innerHTML=h;window._TNE=ED;
   };
   window.tnSaveCfg=function(){
