@@ -18711,7 +18711,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
 
 </script>
 <script>
-/* ══════════ [팀즈→공지 자동 공유] v768 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
+/* ══════════ [팀즈→공지 자동 공유] v769 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
 (function(){
   var TN={feed:[],hidden:[],cfg:null,sig:'',timer:null};
   window._TN=TN;
@@ -18796,7 +18796,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     }catch(e){}
   }
   function refreshSlots(){
-    try{var hs=document.getElementById('tn-home-slot');if(hs)hs.innerHTML=tnHomeHTML();}catch(e){}
+    try{var hs=document.getElementById('tn-home-slot');if(!hs&&window.CUR_TAB==='hm'&&!window._ctScreenOpen){var mc=document.getElementById('mc');if(mc){hs=document.createElement('div');hs.id='tn-home-slot';mc.insertBefore(hs,mc.firstChild);}}if(hs)hs.innerHTML=tnHomeHTML();}catch(e){}
     try{var as=document.getElementById('tn-ann-slot');if(as){var tmp=document.createElement('div');tmp.innerHTML=tnAnnHTML();as.replaceWith(tmp.firstChild||document.createElement('div'));}}catch(e){}
   }
   window.tnLoad=function(){
