@@ -32,6 +32,23 @@
 .ldb .ldg{max-width:100%}
 @media (max-width:820px){.ldin{font-size:13px;padding:3px 1px 4px;min-height:38px}.ldin .ldb .ldg{font-size:8px;line-height:12px;padding:0 5px;letter-spacing:.3px;border-radius:3px;margin:0 auto}.ldg.h{font-size:8px;line-height:14px;padding:0 4px;margin-left:3px;letter-spacing:.2px}}
 </style>
+<script>/* [스케줄 조편성 메타] v791 — 조편성 정보(sched_groups_meta)가 없으면 기존 화면 그대로 */
+var _SGM=null;
+function _sgEsc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function _sgMeta(wk){try{return (_SGM&&wk&&_SGM[wk])||null;}catch(e){return null;}}
+function _sgHexRGB(h){h=String(h||'').replace('#','');if(h.length===3)h=h.replace(/./g,'$&$&');var r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);return isNaN(r+g+b)?null:[r,g,b];}
+function _sgShade(h,p){var c=_sgHexRGB(h);if(!c)return h;var f=function(v){return Math.max(0,Math.min(255,Math.round(v*(1-p))));};return 'rgb('+f(c[0])+','+f(c[1])+','+f(c[2])+')';}
+function _sgLum(h){var c=_sgHexRGB(h);return c?(c[0]*.299+c[1]*.587+c[2]*.114):128;}
+function _gcmByLead(lk){try{var f=String(lk||'').split('|')[0];if(!f||typeof GCM!=='object')return null;for(var k in GCM){if(k.split('|')[0]===f)return GCM[k];}}catch(e){}return null;}
+function _sgGC(wk,lk){try{var m=_sgMeta(wk);var g=m&&m.groups&&m.groups[lk];if(!g||!g.color)return null;var c=g.color;var bg=_sgLum(c)>200?_sgShade(c,.28):c;var dark=_sgLum(c)>200?(_sgLum(c)*.72>150):(_sgLum(c)>150);return {bg:bg,tx:dark?'#1a1a1a':'#fff',mid:c,lt:c,mtx:dark?'#1a1a1a':'#fff'};}catch(e){return null;}}
+function _sgLeadObj(wk,n){try{var m=_sgMeta(wk);var L=m&&m.leaders&&m.leaders[n];if(!L||!L.color)return null;return {bg:L.color};}catch(e){return null;}}
+function _sgIsTJ(wk,n){try{var m=_sgMeta(wk);var L=m&&m.leaders&&m.leaders[n];return !!(L&&L.role==='팀장');}catch(e){return false;}}
+function _sgOrder(wk,arr){try{var m=_sgMeta(wk);if(!m||!m.order||!m.order.length||!arr)return arr;var idx={};m.order.forEach(function(k,i){idx[k]=i;});return arr.map(function(g,i){return {g:g,i:i};}).sort(function(a,b){var ia=idx[a.g.l.join('|')],ib=idx[b.g.l.join('|')];ia=(ia==null?9000+a.i:ia);ib=(ib==null?9000+b.i:ib);return ia-ib;}).map(function(x){return x.g;});}catch(e){return arr;}}
+function _sgSecHead(wk,lk,prev){var m=_sgMeta(wk);var g=m&&m.groups&&m.groups[lk];if(!g||!g.section)return {h:'',sec:prev};var sec=g.section;if(sec===prev)return {h:'',sec:prev};var ic=sec.indexOf('아파트')>=0?'🏢':'📍';return {h:(prev?'<div class="sg-gap"></div>':'')+'<div class="sg-sec">'+ic+' '+_sgEsc(sec)+'</div>',sec:sec};}
+function _sgLoad(){try{if(!window.sbClient)return;sbClient.from('app_settings').select('value').eq('key','sched_groups_meta').maybeSingle().then(function(r){var v=r&&r.data&&r.data.value;try{if(typeof v==='string')v=JSON.parse(v);}catch(e){v=null;}if(!v||typeof v!=='object')return;var ch=JSON.stringify(v)!==JSON.stringify(_SGM);_SGM=v;if(ch&&(window.CUR_TAB==='fs'||window.CUR_TAB==='as')&&!window.EDIT_MODE&&typeof pgFullSched==='function'){try{var mc=document.getElementById('mc');if(mc){var st=mc.scrollTop;mc.innerHTML=pgFullSched();requestAnimationFrame(function(){try{initSchedScrollSync();}catch(e){}mc.scrollTop=st;});}}catch(e){}}}).catch(function(){});}catch(e){}}
+setTimeout(_sgLoad,2500);setTimeout(_sgLoad,8000);setInterval(function(){if(document.visibilityState!=='hidden')_sgLoad();},300000);
+</script>
+<style>.sg-sec{font-weight:900;font-size:14px;color:#1e2a5a;background:linear-gradient(90deg,#fff3c4,rgba(255,255,255,0));border-left:5px solid #f0b400;border-radius:8px;padding:6px 12px;margin:6px 0 8px}.sg-gap{height:16px}</style>
 <script>/* [팀장/조장 뱃지] v776 helpers */
 function _ldBadge(tl,hdr){return (hdr?'':'<span class="ldb">')+'<span class="ldg '+(tl?'ldT':'ldS')+(hdr?' h':'')+'">'+(hdr?'LEADER':(tl?'LEADER':'<span class="lw">SUB</span> <span class="lw">LEADER</span>'))+'</span>'+(hdr?'':'</span>');}
 function _ldMix(hex,p){try{hex=String(hex||'').replace('#','');if(hex.length===3)hex=hex.replace(/./g,'$&$&');var r=parseInt(hex.substr(0,2),16),g=parseInt(hex.substr(2,2),16),b=parseInt(hex.substr(4,2),16);if(isNaN(r+g+b))return '#ffffff';var f=function(c){return Math.round(c*p+255*(1-p));};return 'rgb('+f(r)+','+f(g)+','+f(b)+')';}catch(e){return '#ffffff';}}
@@ -8049,10 +8066,11 @@ function pgFullSched(){
 
   // 단일 가로 스크롤 컨테이너 — 모든 조가 동시에 이동
   h+='<div id="sched-scroll-wrap"><div id="sched-inner">';
-  for(var gi=0;gi<wk.g.length;gi++){
-    var g=wk.g[gi];var lk=g.l.join('|');
+  var _sgGl=_sgOrder(SCHED_WK,wk.g),_sgPrev='';
+  for(var gi=0;gi<_sgGl.length;gi++){
+    var g=_sgGl[gi];try{var _sgH=_sgSecHead(SCHED_WK,g.l.join('|'),_sgPrev);_sgPrev=_sgH.sec;h+=_sgH.h;}catch(_sge){}var lk=g.l.join('|');
     var ldisplay=g.l.map(function(n){return (n.indexOf('팀장')>=0?n.replace(/\s*팀장\s*$/,'')+_ldBadge(1,1):(n.indexOf('조장')>=0?n.replace(/\s*조장\s*$/,'')+_ldBadge(0,1):n));}).join(' / ');
-    var gc=GCM[lk]||{bg:'#607d8b',tx:'#fff',mid:'#90a4ae',lt:'#eceff1',mtx:'#37474f'};
+    var gc=GCM[lk]||_gcmByLead(lk)||_sgGC(SCHED_WK,lk)||{bg:'#607d8b',tx:'#fff',mid:'#90a4ae',lt:'#eceff1',mtx:'#37474f'};
     var ghStyle='background:linear-gradient(135deg,'+gc.bg+','+gc.mid+');color:'+gc.tx+';border-left:4px solid rgba(255,255,255,.3)';
     // Route column uses group accent color
     var rtdStyle='color:#1a1a1a;border-right:3px solid '+gc.bg;
@@ -8109,10 +8127,10 @@ function pgFullSched(){
         var dp=splitDriverSuffix(driver);
         var dBase=dp.base;
         // isLead: this group's leaders PLUS any leader from LCM (팀장/조장 in any group shows their own color)
-        var isLead=dBase&&(leaderBaseNames.indexOf(dBase)>=0||LCM[dBase]!==undefined);
+        var isLead=dBase&&(leaderBaseNames.indexOf(dBase)>=0||LCM[dBase]!==undefined||!!_sgLeadObj(SCHED_WK,dBase));
         // isTJ: check global ALL_TJ list (팀장은 어느 그룹에 있어도 ★)
-        var isTJ=dBase&&ALL_TJ.indexOf(dBase)>=0;
-        var ddisp=dBase?dBase+(dp.suf?'<span style="font-size:9px;background:#E3F2FD;color:#1565C0;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;vertical-align:middle">'+dp.suf+'</span>':''):'';if(dBase&&(isTJ||isLead)){if(isTJ)ddisp+=_ldBadge(1);ddisp='<span class="ldin" style="'+_ldBoxStyle((isLead&&LCM[dBase])?LCM[dBase]:gc)+((typeof spanVal!=='undefined'&&spanVal>1)?';min-height:'+(spanVal*44-6)+'px':'')+'">'+ddisp+'</span>';}
+        var isTJ=dBase&&(ALL_TJ.indexOf(dBase)>=0||_sgIsTJ(SCHED_WK,dBase));
+        var ddisp=dBase?dBase+(dp.suf?'<span style="font-size:9px;background:#E3F2FD;color:#1565C0;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;vertical-align:middle">'+dp.suf+'</span>':''):'';if(dBase&&(isTJ||isLead)){if(isTJ)ddisp+=_ldBadge(1);ddisp='<span class="ldin" style="'+_ldBoxStyle((isLead&&(LCM[dBase]||_sgLeadObj(SCHED_WK,dBase)))||gc)+((typeof spanVal!=='undefined'&&spanVal>1)?';min-height:'+(spanVal*44-6)+'px':'')+'">'+ddisp+'</span>';}
         // sat/sun color ONLY on <th> headers — never on data <td> cells
         var tdCC=(cc==='tod-col')?'tod-col':'';
         // ★ 변경된 스케줄(순변경·근무일 안 지남) → New 배지 + 무지개 테두리. spanVal로 병합된 라우트도 함께 검사.
