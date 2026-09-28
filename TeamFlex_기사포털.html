@@ -18711,7 +18711,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
 
 </script>
 <script>
-/* ══════════ [팀즈→공지 자동 공유] v770 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
+/* ══════════ [팀즈→공지 자동 공유] v771 — 독립 모듈 (기존 공지 데이터/로직 미변경) ══════════ */
 (function(){
   var TN={feed:[],hidden:[],cfg:null,sig:'',timer:null};
   window._TN=TN;
@@ -18869,7 +18869,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   };
   window.tnSaveCfg=function(){
     if(!isAdm()||!ED)return;
-    ED.keywords=ED.keywords.filter(function(k){return (k.kw||'').trim();}).map(function(k){k.kw=k.kw.trim();return k;});
+    ED.keywords=ED.keywords.filter(function(k){return (k.kw||'').trim();}).map(function(k){k.kw=k.kw.trim();return k;});if(ED.enabled&&!(TN.cfg&&TN.cfg.enabled))ED.since_ms=Date.now();
     sbClient.from('app_settings').upsert({key:'teams_notice_cfg',value:JSON.stringify(ED)},{onConflict:'key'}).then(function(r){
       if(r&&r.error){alert('저장 실패: '+r.error.message);return;}
       TN.cfg=JSON.parse(JSON.stringify(ED));try{showToast('저장됐어요 (서버 반영 1분 이내)',true);}catch(e){}
