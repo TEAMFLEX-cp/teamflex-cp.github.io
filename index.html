@@ -11466,9 +11466,14 @@ async function mdLoadCases(){
 
     // 요약 카운트 (팀장/관리자)
     if(isAdmin||isLeader){
-      var nP=_mdCases.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&!_mdNoAction(c);}).length;
-      var nNo=_mdCases.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&_mdNoAction(c);}).length;
-      var nW=_mdCases.filter(function(c){return c.status==='replied';}).length;
+      var _mdL=_mdLatestOnly(_mdCases);  // ★ 같은 송장 재공유 → 최신 건만
+      var _lP=_mdL.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&!_mdNoAction(c);});
+      var _lNo=_mdL.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&_mdNoAction(c);});
+      var _lW=_mdL.filter(function(c){return c.status==='replied';});
+      window._mdCountLists={pending:_lP,noaction:_lNo,waiting:_lW};
+      var nP=_lP.length;
+      var nNo=_lNo.length;
+      var nW=_lW.length;
       var _cm=kstToday().slice(0,7);
       var nD=_mdCases.filter(function(c){return c.status==='approved'&&(kstDateStr(c.created_at||c.occurred_at)||'').slice(0,7)===_cm;}).length;
       var nReq=(_rqCases||[]).filter(function(r){return r.status==='approved'&&(kstDateStr(r.created_at)||'').slice(0,7)===_cm;}).length;
@@ -11476,6 +11481,7 @@ async function mdLoadCases(){
       if((el=document.getElementById('md-n-pending')))el.textContent=nP;
       if((el=document.getElementById('md-n-noaction')))el.textContent=nNo;
       if((el=document.getElementById('md-n-waiting')))el.textContent=nW;
+      try{_mdBindCountCards();}catch(_be){}
       if((el=document.getElementById('md-n-done')))el.textContent=nD;
       if((el=document.getElementById('md-n-req')))el.textContent=nReq;
     }
@@ -11581,6 +11587,33 @@ async function mdLossRequest(caseId){
   var text='운송장번호  '+wb+'\n주문번호  '+order+'\n\n해당건은 차감[분실] 요청 부탁드립니다.';
   var ok=await rqSubmit({type:'loss', camp:(c.camp||rqGetCamp()), text:text, photos:[], okId:''});
   if(ok){alert('📉 차감[분실] 요청을 전송했습니다.');}
+}
+
+/* [요약 카드 눌러서 보기 + 같은 송장 재공유는 최신 건만 카운트] */
+function _mdLatestOnly(list){var last={};(list||[]).forEach(function(c){var w=String(c.waybill_no||'').trim();if(!w)return;var t=new Date(c.created_at||c.occurred_at||0).getTime()||0;if(!last[w]||t>last[w].t||(t===last[w].t&&c.id>last[w].id))last[w]={t:t,id:c.id};});return (list||[]).filter(function(c){var w=String(c.waybill_no||'').trim();return !w||!last[w]||last[w].id===c.id;});}
+function _mdBindCountCards(){[['md-n-pending','pending'],['md-n-noaction','noaction'],['md-n-waiting','waiting']].forEach(function(p){var n=document.getElementById(p[0]);if(!n||!n.parentElement)return;var card=n.parentElement;card.style.cursor='pointer';card.onclick=function(){mdOpenCountList(p[1]);};if(!card.getAttribute('data-cl')){card.setAttribute('data-cl','1');var lb=n.nextElementSibling;if(lb)lb.innerHTML=lb.innerHTML+' <span style="color:#b0b8c4">›</span>';}});}
+function mdCloseCountList(){var o=document.getElementById('md-cl-ov');if(o)o.remove();}
+function mdOpenCountList(kind){
+  mdCloseCountList();
+  var L=(window._mdCountLists||{})[kind]||[];
+  var ttl={pending:'미답변',noaction:'미응답 완료',waiting:'승인대기'}[kind]||'';
+  var sub={pending:'공유 후 3일 이내 · 기사 답변 없음 (기간 필터와 무관, 같은 송장은 최신 건만)',noaction:'공유 후 3일 경과 · 기사 미조치 (같은 송장은 최신 건만)',waiting:'기사 답변 완료 · 관리자 승인 대기'}[kind]||'';
+  var col={pending:'#e53935',noaction:'#e65100',waiting:'#1565c0'}[kind]||'#333';
+  L=L.slice().sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
+  var now=Date.now();
+  var rows=L.map(function(c){
+    var t=new Date(c.created_at||c.occurred_at).getTime();var dd=isNaN(t)?'':Math.max(0,3-Math.floor((now-t)/86400000));
+    var chip=kind==='pending'?'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:'+(dd<=1?'#fff3e0':'#ffebee')+';color:'+(dd<=1?'#e65100':'#c62828')+'">D-'+dd+'일</span>':(kind==='noaction'?'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:#fff3e0;color:#e65100">'+Math.floor((now-t)/86400000)+'일 경과</span>':'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:#e3f2fd;color:#1565c0">승인요청</span>');
+    var d=new Date(t);var ds=isNaN(t)?'':((d.getMonth()+1)+'.'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2));
+    var cat=c.category||'';var rt=c.route?(' · '+c.route):'';
+    var rs=c._reshare?'<span style="font-size:10px;font-weight:800;color:#c62828;margin-left:4px">재요청</span>':'';
+    return '<div onclick="mdCloseCountList();mdOpenDetail('+c.id+')" style="display:flex;align-items:center;gap:9px;border:1px solid #edf0f4;border-radius:11px;padding:10px 11px;margin-bottom:7px;cursor:pointer;background:#fff">'+chip+'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:800;color:#1a2433">'+mdEsc(c.driver_name||'')+rs+' <span style="font-size:11.5px;color:#8a97a8;font-weight:500">'+ds+'</span></div><div style="font-size:12px;color:#6b7a8c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+mdEsc(cat+rt)+(c.waybill_no?' · '+mdEsc(String(c.waybill_no).slice(-4)):'')+'</div></div><span style="color:#b0b8c4;font-size:18px">›</span></div>';
+  }).join('')||'<div style="text-align:center;color:#9aa7b8;padding:26px 0;font-size:13px">해당 건이 없어요</div>';
+  var ov=document.createElement('div');ov.id='md-cl-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,25,45,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.onclick=function(e){if(e.target===ov)mdCloseCountList();};
+  ov.innerHTML='<div style="background:#f6f8fb;border-radius:16px;width:100%;max-width:440px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid #edf0f4"><div style="font-size:16px;font-weight:900;color:'+col+'">'+ttl+' '+L.length+'건</div><button onclick="mdCloseCountList()" style="border:none;background:#f1f3f6;border-radius:9px;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button></div><div style="font-size:11.5px;color:#8a97a8;padding:8px 16px 2px">'+sub+'</div><div style="padding:8px 12px 12px;overflow-y:auto">'+rows+'</div></div>';
+  document.body.appendChild(ov);
 }
 function _mdNoAction(c){
   if(!c||(c.status!=='pending'&&c.status!=='rejected'))return false;
