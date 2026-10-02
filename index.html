@@ -443,6 +443,7 @@ table.dt td.r0{color:#888;white-space:nowrap}
 .cta-shared-in{position:relative;display:inline-block;background:#0d47a1;color:#e3f2fd;font-size:9px;font-weight:900;padding:1px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 0 6px rgba(66,165,245,.6)}
 /* ===== 계약서 작성·서명 모듈 ===== */
 .bk-badge{display:inline-block;background:#ffb300;color:#fff;font-size:10.5px;font-weight:900;border-radius:6px;padding:1px 7px;margin-bottom:4px}.bk-row{display:flex;justify-content:space-between;gap:6px;border-bottom:1px dashed #e6ebf0;padding:2px 0}.bk-fin{color:#c62828}.bk-note{font-size:.85em;color:#6b7785;margin-top:3px}.ctc-note{display:block;font-size:.9em;color:#46525e}.ctc-fix{font-weight:800}
+.ctrtbox{display:flex;flex-wrap:wrap;gap:3px;align-items:center;min-height:30px;border:1.3px dashed #9cc9b4;border-radius:8px;padding:4px 5px;cursor:pointer;background:#f6fcf9}.ctchip{background:#0b8a5f;color:#fff;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 5px}.ctchip0{font-size:11px;color:#8aa;}.ctrtadd{margin-left:auto;color:#0b8a5f;font-weight:900}.ctfee{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}.ctfp{font-size:10px;background:#fff6e0;border:1px solid #ffe08a;border-radius:5px;padding:1px 4px;color:#6a5000;white-space:nowrap}.ctfp.miss{background:#ffeaea;border-color:#f5b5b5;color:#c62828}.ctxfee .ctfp{display:inline-block;margin:1px}.ctrp-sheet{background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:520px;padding:16px 14px 22px;max-height:86vh;display:flex;flex-direction:column}.ctrp-h{font-size:16px;font-weight:900;color:#123a6b;text-align:center}.ctrp-h span{font-size:12px;color:#0b8a5f}.ctrp-sub{font-size:11px;color:#8090a0;text-align:center;margin:4px 0 8px}.ctrp-body{overflow:auto;flex:1}.ctrp-g{font-size:11.5px;font-weight:800;color:#5c6bc0;margin:8px 2px 4px}.ctrp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.ctrp-it{display:flex;flex-direction:column;align-items:center;border:1.5px solid #dbe5ee;border-radius:9px;padding:6px 2px;cursor:pointer;background:#fff}.ctrp-it input{display:none}.ctrp-it b{font-size:12.5px;color:#33475b}.ctrp-it small{font-size:9.5px;color:#8a96a3}.ctrp-it.on{background:#0b8a5f;border-color:#0b8a5f}.ctrp-it.on b,.ctrp-it.on small{color:#fff}.ctrp-b0{flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800}.ctrp-b1{flex:2;padding:12px;background:#0b8a5f;color:#fff;border:none;border-radius:11px;font-weight:800}
 .ctc-paper{background:#fff;border-radius:10px;padding:18px 14px;font-size:12px;line-height:1.85;color:#1a2530;box-shadow:inset 0 0 0 1px #edf1f5}
 .ctc-ttl{text-align:center;font-size:15px;font-weight:900;letter-spacing:.5px;margin:2px 0 12px}
 .ctc-sttl{text-align:center;font-size:13.5px;font-weight:900;margin:22px 0 12px;padding-top:14px;border-top:2px dashed #d5deea}
@@ -1962,6 +1963,46 @@ function ctEndDateSetup(){var c=window._ctCfg||{};var e=/^\d{4}-\d{2}-\d{2}$/.te
   _ctCfgPop('📅 계약 만료일','모든 기사 계약서의 <b>종료일</b>을 이 날짜로 맞춥니다. (1년 단위 계약)<br>계약기간 = 작성일자 ~ 만료일 · 개별 지정한 만료일이 있으면 그 값 우선','<input id="ctcfg-ed" type="date" min="2020-01-01" max="2099-12-31" value="'+e+'" style="width:100%;border:1.5px solid #d5e2f0;border-radius:10px;padding:11px;font-size:16px;font-weight:800;box-sizing:border-box;text-align:center">',
   async function(){var v=document.getElementById('ctcfg-ed').value;if(v&&!/^\d{4}-\d{2}-\d{2}$/.test(v)){alert('날짜를 확인하세요');return;}if(await ctCfgSave({endDate:v})){document.getElementById('ctcfg-pop').remove();showToast('📅 계약 만료일 '+(v||'(해제)')+' 저장',true);openContractAdmin(true);}});}
 window.ctBkExtraSetup=ctBkExtraSetup;window.ctEndDateSetup=ctEndDateSetup;window.ctCfgLoad=ctCfgLoad;
+// ── [2026-10-03] 담당구역 여러 개 · 신/구 라우트번호 매칭 · 단가 자동 ──
+function _ctRpAll(){return ((window._ctCfg||{}).rp)||{};}
+function _ctRmap(){return ((window._ctCfg||{}).rmap)||{};}
+function ctRtExpand(v){var out=[];String(v==null?'':v).toUpperCase().replace(/_/g,'').split(/[,\s·]+/).forEach(function(tok){if(!tok)return;tok.split('/').forEach(function(p){var m=p.match(/^(\d{3})([A-Z]+)$/);if(m){m[2].split('').forEach(function(ch){out.push(m[1]+ch);});}else if(p)out.push(p);});});return out;}
+function ctRtPrice(r){var rp=_ctRpAll(),mp=_ctRmap();var k=mp[r]?mp[r]:r;var p=rp[k];return p?{b:+p[0],w:+p[1],old:(k!==r?k:'')}:null;}
+function ctRtCalc(route,x){x=x||0;return ctRtExpand(route).map(function(r){var p=ctRtPrice(r);return p?{r:r,b:p.b,w:p.w,x:x,t:p.b+p.w+x,old:p.old}:{r:r,miss:1};});}
+function ctAutoPrice(route){var L=ctRtCalc(route,0);if(!L.length)return '';for(var i=0;i<L.length;i++){if(L[i].miss||L[i].t!==L[0].t)return '';}return String(L[0].t);}
+function ctFeePreview(route,bk){var x=bk?(parseInt((window._ctCfg||{}).bkExtra,10)||0):0;var L=ctRtCalc(route,x);if(!L.length)return '';var a=bk?'':ctAutoPrice(route);if(a)return '<span class="ctfp">자동 <b>'+a+'원</b></span>';return L.map(function(o){return '<span class="ctfp'+(o.miss?' miss':'')+'">'+o.r+' <b>'+(o.miss?'미등록':o.t+'원')+'</b></span>';}).join('');}
+function _ctDateCell(v){if(v==null||v==='')return '';if(typeof v==='number'&&v>20000&&v<80000){return new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10);}if(v instanceof Date&&!isNaN(v.getTime()))return new Date(v.getTime()-v.getTimezoneOffset()*6e4).toISOString().slice(0,10);var t=String(v).trim().replace(/[.\/]/g,'-');var m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);return m?(m[1]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[3]).slice(-2)):'';}
+function ctXlsParse(arr,db){
+  var names=Object.keys(db||{});var hd=(arr[0]||[]).map(function(h){return String(h==null?'':h).replace(/\s+/g,'');});
+  function col(re,def){for(var i=0;i<hd.length;i++){if(re.test(hd[i]))return i;}return def;}
+  var cOld=col(/이전라우트/,-1),o=(cOld>=0&&cOld<=1)?1:0;
+  var cN=col(/기사명|이름|성명/,0),cR=col(/담당구역|^라우트/,1+o),cP=col(/단가/,2+o),cS=col(/작성일자|계약시작/,3+o),cE=col(/계약만료|계약종료|만료/,4+o),cB=col(/백업/,5+o);
+  var parsed=[],miss=[],rmap={},warn=[];
+  for(var r=1;r<arr.length;r++){var row=arr[r];if(!row)continue;var nm=String(row[cN]==null?'':row[cN]).trim();if(!nm)continue;
+    if(names.indexOf(nm)<0){miss.push(nm);continue;}
+    var route=String(row[cR]==null?'':row[cR]).trim();var price=String(row[cP]==null?'':row[cP]).replace(/[^0-9]/g,'');
+    var _bkr=String(row[cB]==null?'':row[cB]).trim().toUpperCase();var bk=(_bkr==='')?null:/^(O|Y|YES|1|TRUE|백업|○|V)$/.test(_bkr);
+    if(cOld>=0){var nw=ctRtExpand(route),od=ctRtExpand(row[cOld]);if(nw.length&&nw.length===od.length){nw.forEach(function(x,i){if(rmap[x]&&rmap[x]!==od[i]){warn.push(nm+'('+x+')');}rmap[x]=od[i];});}else if(od.length&&nw.length){warn.push(nm);}}
+    parsed.push({name:nm,route:route,price:price,cstart:_ctDateCell(row[cS]),cend:_ctDateCell(row[cE]),bk:bk});}
+  return {parsed:parsed,miss:miss,rmap:rmap,warn:warn};}
+function ctXlsFill(parsed){parsed.forEach(function(p){if(!p.price&&!p.bk){var a=ctAutoPrice(p.route);if(a){p.price=a;p.auto=1;}}});return parsed;}
+function ctXlsFeeCell(p){var esc=function(x){return String(x==null?'':x).replace(/</g,'&lt;');};if(p.bk)return ctFeePreview(p.route,true)||'-';if(p.price)return esc(p.price)+(p.auto?' <span style="color:#0b8a5f;font-weight:800">자동</span>':'');return ctFeePreview(p.route,false)||'<span style="color:#c62828">확인 필요</span>';}
+var _ctPickT=null;
+function _ctPickList(){var rp=_ctRpAll(),mp=_ctRmap();var used={};var L=[];Object.keys(mp).forEach(function(k){L.push(k);used[mp[k]]=1;});Object.keys(rp).forEach(function(k){if(!used[k]&&L.indexOf(k)<0)L.push(k);});return L.sort();}
+function ctRoutePick(inpId,bkId,ref){var inp=document.getElementById(inpId);if(!inp)return;var cur=ctRtExpand(inp.value);var all=_ctPickList();cur.forEach(function(r){if(all.indexOf(r)<0)all.push(r);});all.sort();
+  var groups={};all.forEach(function(r){var g=/^\d/.test(r)?r.charAt(0)+'00번대':'기타';(groups[g]=groups[g]||[]).push(r);});
+  var gh=Object.keys(groups).sort().map(function(g){return '<div class="ctrp-g">'+g+'</div><div class="ctrp-grid">'+groups[g].map(function(r){var on=cur.indexOf(r)>=0;var p=ctRtPrice(r);return '<label class="ctrp-it'+(on?' on':'')+'"><input type="checkbox" value="'+r+'"'+(on?' checked':'')+' onchange="this.parentNode.classList.toggle(\'on\',this.checked);ctRpCount()"><b>'+r+'</b><small>'+(p?(p.b+p.w)+'원':'-')+'</small></label>';}).join('')+'</div>';}).join('');
+  var old=document.getElementById('ctrp-pop');if(old)old.remove();var pop=document.createElement('div');pop.id='ctrp-pop';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:11000;display:flex;align-items:flex-end;justify-content:center';
+  pop.innerHTML='<div class="ctrp-sheet"><div class="ctrp-h">🗺️ 담당구역 선택 <span id="ctrp-n"></span></div><div class="ctrp-sub">여러 개 선택 가능 · 2개 이상이면 백업 기사로 자동 체크 (해제 가능)</div><div class="ctrp-body">'+gh+'</div><div style="display:flex;gap:8px;margin-top:10px"><button class="ctrp-b0" onclick="ctRpClear()">전체 해제</button><button class="ctrp-b1" onclick="ctRpOk()">확인</button></div></div>';
+  document.body.appendChild(pop);_ctPickT={inp:inpId,bk:bkId,ref:ref};ctRpCount();}
+function ctRpSel(){var p=document.getElementById('ctrp-pop');return p?[].slice.call(p.querySelectorAll('input[type=checkbox]:checked')).map(function(c){return c.value;}):[];}
+function ctRpCount(){var n=document.getElementById('ctrp-n');if(n)n.textContent=ctRpSel().length+'개 선택';}
+function ctRpClear(){var p=document.getElementById('ctrp-pop');if(!p)return;p.querySelectorAll('input[type=checkbox]').forEach(function(c){c.checked=false;c.parentNode.classList.remove('on');});ctRpCount();}
+function ctRpOk(){var t=_ctPickT||{};var sel=ctRpSel();var inp=document.getElementById(t.inp);if(inp)inp.value=sel.join(',');var bk=document.getElementById(t.bk);if(bk&&sel.length>1)bk.checked=true;var p=document.getElementById('ctrp-pop');if(p)p.remove();if(typeof t.ref==='number')ctBulkRefresh(t.ref);else if(t.ref==='dh')dhFeeRefresh();}
+function _ctChips(route){var rs=ctRtExpand(route);return rs.length?rs.map(function(r){return '<span class="ctchip">'+r+'</span>';}).join(''):'<span class="ctchip0">눌러서 선택</span>';}
+function ctBulkRefresh(i){var r=document.getElementById('cb-route-'+i);if(!r)return;var bk=document.getElementById('cb-bk-'+i);var c=document.getElementById('cb-rtc-'+i);var f=document.getElementById('cb-fee-'+i);var p=document.getElementById('cb-price-'+i);var isB=!!(bk&&bk.checked);if(c)c.innerHTML=_ctChips(r.value);if(p){p.style.display=isB?'none':'';var a=ctAutoPrice(r.value);p.placeholder=a?('비우면 '+a):'단가';}if(f)f.innerHTML=(isB||!(p&&p.value))?ctFeePreview(r.value,isB):'';}
+function dhFeeRefresh(){var r=document.getElementById('dhct-route');if(!r)return;var bk=document.getElementById('dhct-bk');var f=document.getElementById('dhct-fee');var p=document.getElementById('dhct-price');var isB=!!(bk&&bk.checked);if(p){var a=ctAutoPrice(r.value);p.placeholder=a?('비우면 자동 '+a+'원'):'단가';p.disabled=isB;p.style.opacity=isB?'.45':'';}if(f)f.innerHTML=(isB||!(p&&p.value))?ctFeePreview(r.value,isB):'';}
+window.ctRtExpand=ctRtExpand;window.ctRtCalc=ctRtCalc;window.ctAutoPrice=ctAutoPrice;window.ctRoutePick=ctRoutePick;window.ctRpOk=ctRpOk;window.ctRpClear=ctRpClear;window.ctRpCount=ctRpCount;window.ctBulkRefresh=ctBulkRefresh;window.dhFeeRefresh=dhFeeRefresh;window.ctXlsParse=ctXlsParse;
 function _ctCfgEnd(){var e=(window._ctCfg||{}).endDate;return /^\d{4}-\d{2}-\d{2}$/.test(e||'')?e:'';}
 function openCtShare(type,renew){
   if(!CU||CU.role!=='admin')return;
@@ -2032,9 +2073,9 @@ function openCtBulkInfo(names,type,mode){
     var route=ext.route||'';var price=ext.price||'';
     var cstart=/^\d{4}-\d{2}-\d{2}$/.test(ext.cstart||'')?ext.cstart:'';
     return '<tr><td class="cbnm">'+nm+'<span class="cbrl">'+rl+'</span></td>'+
-      '<td><input id="cb-route-'+i+'" value="'+esc(route)+'" placeholder="라우트"></td>'+
-      '<td><input id="cb-price-'+i+'" value="'+esc(price)+'" inputmode="numeric" placeholder="단가"></td>'+
-      '<td style="text-align:center"><input type="checkbox" id="cb-bk-'+i+'"'+(ext.backup?' checked':'')+' style="width:18px;height:18px"></td>'+
+      '<td><input type="hidden" id="cb-route-'+i+'" value="'+esc(route)+'"><div class="ctrtbox" onclick="ctRoutePick(\'cb-route-'+i+'\',\'cb-bk-'+i+'\','+i+')"><span id="cb-rtc-'+i+'">'+_ctChips(route)+'</span><span class="ctrtadd">＋</span></div></td>'+
+      '<td><input id="cb-price-'+i+'" value="'+esc(price)+'" inputmode="numeric" placeholder="단가" oninput="ctBulkRefresh('+i+')"><div id="cb-fee-'+i+'" class="ctfee"></div></td>'+
+      '<td style="text-align:center"><input type="checkbox" id="cb-bk-'+i+'"'+(ext.backup?' checked':'')+' onchange="ctBulkRefresh('+i+')" style="width:18px;height:18px"></td>'+
       '<td><input id="cb-start-'+i+'" type="date" min="2020-01-01" max="2099-12-31" value="'+cstart+'" oninput="ctBulkEnd('+i+')"></td>'+
       '<td><input id="cb-end-'+i+'" type="date" min="2020-01-01" max="2099-12-31" value="'+(/^\d{4}-\d{2}-\d{2}$/.test(ext.cend||'')?ext.cend:'')+'" data-manual="'+(/^\d{4}-\d{2}-\d{2}$/.test(ext.cend||'')?'1':'')+'" oninput="this.setAttribute(&quot;data-manual&quot;,&quot;1&quot;)" style="width:100%;box-sizing:border-box"></td></tr>';
   }).join('');
@@ -2047,23 +2088,23 @@ function openCtBulkInfo(names,type,mode){
     '<div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:12px auto 8px"></div>'+
     '<div style="font-size:15px;font-weight:900;color:#0b6b4a;text-align:center">'+title+'</div>'+
     '<div style="font-size:11px;color:#8090a0;text-align:center;margin:3px 14px 8px;line-height:1.5">선택한 <b>'+names.length+'명</b>의 담당구역(여러 개는 쉼표)·단가·작성일자 입력. 백업 체크 시 라우트별 단가 자동(기본+가중요인+백업 추가단가). 만료일은 [📅 계약 만료일] 값 자동. 비우면 기존 값 유지.</div>'+
-    '<div style="overflow:auto;padding:0 12px;flex:1"><table class="ctbulk"><thead><tr><th style="text-align:left">이름</th><th>라우트</th><th>단가</th><th>백업</th><th>작성일자</th><th>만료일</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div style="overflow:auto;padding:0 12px;flex:1"><table class="ctbulk"><thead><tr><th style="text-align:left">이름</th><th>담당구역 (눌러서 여러 개)</th><th>단가</th><th>백업</th><th>작성일자</th><th>만료일</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div style="padding:10px 14px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #eef2f6">'+
       '<div style="display:flex;gap:8px;margin-bottom:9px"><button onclick="ctBulkCopyFirst()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📋 첫 행 → 전체</button><button onclick="ctBulkSameStart()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📅 시작·종료일 전체 동일</button></div>'+
       '<button onclick="ctBulkInfoConfirm()" style="width:100%;padding:14px;background:linear-gradient(135deg,#12a374,#0b6b4a);color:#fff;border:none;border-radius:12px;font-weight:900;font-size:15px">'+(mode==='change'?('📝 '+names.length+'명 변경 요청 보내기'):(mode==='renew'?('🔄 '+names.length+'명 갱신 요청 보내기'):('📤 '+names.length+'명에게 발송')))+'</button>'+
     '</div></div>';
   document.body.appendChild(pop);
-  names.forEach(function(_n,i){ctBulkEnd(i);});
+  names.forEach(function(_n,i){ctBulkEnd(i);ctBulkRefresh(i);});
 }
 function ctBulkEnd(i){var _ce=_ctCfgEnd();if(_ce){var _e=document.getElementById('cb-end-'+i);if(_e&&!(_e.dataset&&_e.dataset.manual==='1')){_e.value=_ce;}return;}var s=document.getElementById('cb-start-'+i);var e=document.getElementById('cb-end-'+i);if(!s||!e)return;if(e.dataset&&e.dataset.manual==='1')return;var v=s.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){e.value='';return;}var d=new Date(v);if(isNaN(d.getTime())){e.value='';return;}d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);e.value=d.toISOString().slice(0,10);}
-function ctBulkCopyFirst(){var r=document.getElementById('cb-route-0');var p=document.getElementById('cb-price-0');if(!r)return;for(var i=1;i<_ctBulkNames.length;i++){var ri=document.getElementById('cb-route-'+i);var pi=document.getElementById('cb-price-'+i);if(ri)ri.value=r.value;if(pi&&p)pi.value=p.value;}}
+function ctBulkCopyFirst(){var r=document.getElementById('cb-route-0');var p=document.getElementById('cb-price-0');if(!r)return;for(var i=1;i<_ctBulkNames.length;i++){var ri=document.getElementById('cb-route-'+i);var pi=document.getElementById('cb-price-'+i);if(ri)ri.value=r.value;if(pi&&p)pi.value=p.value;ctBulkRefresh(i);}}
 function ctBulkSameStart(){var s=document.getElementById('cb-start-0');var e0=document.getElementById('cb-end-0');for(var i=1;i<_ctBulkNames.length;i++){var si=document.getElementById('cb-start-'+i);var ei=document.getElementById('cb-end-'+i);if(si&&s&&s.value)si.value=s.value;if(ei){if(e0&&e0.value){ei.value=e0.value;ei.setAttribute('data-manual','1');}else{ei.removeAttribute('data-manual');ctBulkEnd(i);}}else{ctBulkEnd(i);}}}
 async function ctBulkInfoConfirm(){
   var names=_ctBulkNames.slice();var type=_ctBulkType;var mode=_ctBulkMode;if(!names.length)return;
   if(!_driverExt)_driverExt={};var db=getDB();var dbDirty=false;
   names.forEach(function(nm,i){
     var route=(((document.getElementById('cb-route-'+i)||{}).value)||'').trim();
-    var price=(((document.getElementById('cb-price-'+i)||{}).value)||'').trim();
+    var price=(((document.getElementById('cb-price-'+i)||{}).value)||'').trim();var _bk0=document.getElementById('cb-bk-'+i);if(price===''&&!(_bk0&&_bk0.checked)){price=ctAutoPrice(route);}
     var cstart=(((document.getElementById('cb-start-'+i)||{}).value)||'').trim();
     if(!/^\d{4}-\d{2}-\d{2}$/.test(cstart))cstart='';
     if(!_driverExt[nm])_driverExt[nm]={name:nm};
@@ -2453,14 +2494,15 @@ function openSchedPermPopup(){
   function _cfg(){return window._ctCfg||{};}
   function _ctEnd(){var e=_cfg().endDate;return /^\d{4}-\d{2}-\d{2}$/.test(e||'')?e:'';}
   function _mon(d){var a=new Date(d.start),b=new Date(d.end);if(isNaN(a)||isNaN(b))return '약 12';b.setDate(b.getDate()+1);var m=(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth());return m>0?String(m):'약 12';}
-  function _rts(route){return String(route||'').toUpperCase().split(/[,\s\/·]+/).map(function(r){return r.replace(/_/g,'');}).filter(Boolean);}
-  function _bkCalc(route){var c=_cfg(),rp=c.rp||{},x=parseInt(c.bkExtra,10)||0;return _rts(route).map(function(r){var p=rp[r];return p?{r:r,b:+p[0],w:+p[1],x:x,t:(+p[0])+(+p[1])+x}:{r:r,miss:1};});}
+  function _rts(route){return window.ctRtExpand?window.ctRtExpand(route):String(route||'').toUpperCase().split(/[,\s\/·]+/).filter(Boolean);}
+  function _bkCalc(route,x){var c=_cfg();if(x===undefined)x=parseInt(c.bkExtra,10)||0;if(window.ctRtCalc)return window.ctRtCalc(route,x);var rp=c.rp||{};return _rts(route).map(function(r){var p=rp[r];return p?{r:r,b:+p[0],w:+p[1],x:x,t:(+p[0])+(+p[1])+x}:{r:r,miss:1};});}
+  function _feeList(L,bk){return (bk?'<div class="bk-badge">백업 기사 · 라우트별 단가</div>':'')+L.map(function(o){return '<div class="bk-row"><b>'+o.r+'</b><span>'+(o.miss?'<span style="color:#c62828">단가 미등록</span>':(o.b+' + '+o.w+(bk?' + '+o.x:'')+' = <b class="bk-fin">'+o.t+'원</b>'))+'</span></div>';}).join('')+'<div class="bk-note">(기본단가 + 프레시백 가중요인 단가'+(bk?' + 백업 추가단가':'')+') · 1건당 · 가중요인 미충족 시 차감</div>';}
   function _tbl2(d,period){
     var rts=_rts(d.route),fee;
-    if(d.backup){var L=Array.isArray(d.bkp)?d.bkp:_bkCalc(d.route);
-      fee='<div class="bk-badge">백업 기사 · 라우트별 단가</div>'+L.map(function(o){return '<div class="bk-row"><b>'+o.r+'</b><span>'+(o.miss?'<span style="color:#c62828">단가 미등록</span>':(o.b+' + '+o.w+' + '+o.x+' = <b class="bk-fin">'+o.t+'원</b>'))+'</span></div>';}).join('')+'<div class="bk-note">(기본단가 + 프레시백 가중요인 단가 + 백업 추가단가) · 1건당 · 가중요인 미충족 시 차감</div>';
-    }else fee='1건당 '+fv(d.price)+' 원 ( 단, 가중요인 충족되지않을시 차감됨 )';
-    return '<div class="ctc-tbl">'+trr('계약기간',period)+trr('담당구역',fv(rts.length?rts.join(', '):d.route))+trr('집화수수료','해당 없음')+trr('배송수수료',fee)+trr('지급일','매월 15일')+trr('차량/자격','화물차량(영업용 넘버) / 화물운송자격증')+'</div>';
+    if(d.backup){fee=_feeList(Array.isArray(d.bkp)?d.bkp:_bkCalc(d.route),true);
+    }else if(String(d.price||'').trim()){fee='1건당 '+fv(d.price)+' 원 ( 단, 가중요인 충족되지않을시 차감됨 )';
+    }else{var L0=Array.isArray(d.bkp)?d.bkp:_bkCalc(d.route,0);var a0=(L0.length&&L0.every(function(o){return !o.miss&&o.t===L0[0].t;}))?L0[0].t:'';fee=a0?('1건당 '+fv(String(a0))+' 원 ( 단, 가중요인 충족되지않을시 차감됨 )'):_feeList(L0,false);}
+    return '<div class="ctc-tbl">'+trr('계약기간',period)+trr('담당구역',fv(d.route||rts.join(', ')))+trr('집화수수료','해당 없음')+trr('배송수수료',fee)+trr('지급일','매월 15일')+trr('차량/자격','화물차량(영업용 넘버) / 화물운송자격증')+'</div>';
   }
   window.CT_bkCalc=_bkCalc;
   function contractHTML(d,mode){
@@ -2664,7 +2706,7 @@ function openSchedPermPopup(){
   function mc(){return document.getElementById('mc');}
   function val(id){var e=document.getElementById('ctc-'+id);return e?e.value:'';}
   function collect(){var ps=S.d.signDate;if(S.kind==='badge')S.d=Object.assign({name:val('name'),jumin:val('jumin'),addr:val('addr'),phone:val('phone'),car:val('car'),cyear:val('cyear'),load:val('load'),carno:val('carno'),lic:val('lic'),lictype:val('lictype'),qual:val('qual'),qualdate:val('qualdate'),fuel:val('fuel'),start:val('start')},{selFuel:S.d.selFuel,fuelEtc:S.d.fuelEtc,selMfr:S.d.selMfr,selForm:S.d.selForm,selLic:S.d.selLic});else S.d={name:val('name'),jumin:val('jumin'),addr:val('addr'),route:val('route'),price:val('price'),start:val('start'),backup:S.d.backup,cend:S.d.cend};S.d.signDate=today();}
-  function full(){var d=S.d;var j=String(d.jumin||'').replace(/[^0-9]/g,'');return {name:d.name,jumin:msk(d.jumin),addr:d.addr,route:d.route,price:d.price,phone:d.phone,car:d.car,cyear:d.cyear,load:d.load,carno:d.carno,lic:d.lic,lictype:d.lictype,qual:d.qual,qualdate:d.qualdate,birth:j.slice(0,6),fuel:d.fuel,selFuel:d.selFuel,fuelEtc:d.fuelEtc,selMfr:d.selMfr,selForm:d.selForm,selLic:d.selLic,start:d.start,end:(/^\d{4}-\d{2}-\d{2}$/.test(d.cend||'')?d.cend:(_ctEnd()||addY(d.start,1))),sign:today(),ver:'2026.09',backup:!!d.backup,bkp:(d.backup?_bkCalc(d.route):null)};}
+  function full(){var d=S.d;var j=String(d.jumin||'').replace(/[^0-9]/g,'');return {name:d.name,jumin:msk(d.jumin),addr:d.addr,route:d.route,price:d.price,phone:d.phone,car:d.car,cyear:d.cyear,load:d.load,carno:d.carno,lic:d.lic,lictype:d.lictype,qual:d.qual,qualdate:d.qualdate,birth:j.slice(0,6),fuel:d.fuel,selFuel:d.selFuel,fuelEtc:d.fuelEtc,selMfr:d.selMfr,selForm:d.selForm,selLic:d.selLic,start:d.start,end:(/^\d{4}-\d{2}-\d{2}$/.test(d.cend||'')?d.cend:(_ctEnd()||addY(d.start,1))),sign:today(),ver:'2026.09',backup:!!d.backup,bkp:(d.backup?_bkCalc(d.route):(String(d.price||'').trim()?null:_bkCalc(d.route,0)))};}
   function paint(h){var m=mc();if(m){m.innerHTML=h;window.scrollTo(0,0);}}
   function startWrite(kind,name,badgeKind,mode){window._ctScreenOpen=true;S={kind:kind,badgeKind:badgeKind||'new',step:0,d:{},sig:{},chk:{},cur:0,mode:mode||'admin',showPrev:false};var t=today();var sd=(kind==='badge'&&S.badgeKind==='renew')?addD(t,5):addD(t,7);if(name){var db=(typeof getDB==='function')?getDB():{};var dd=db[name]||{};var ex=(window._driverExt&&window._driverExt[name])||{};S.d={name:name,jumin:ex.jumin||dd.jumin||'',addr:ex.addr||dd.addr||'',route:ex.route||dd.route||'',price:ex.price||dd.price||'',backup:!!ex.backup,phone:dd.phone||ex.phone||'',car:ex.car||dd.car_type||'',cyear:ex.cyear||'',load:ex.load||'',carno:ex.carno||dd.car_no||'',lic:ex.lic||'',lictype:ex.lictype||'',qual:ex.qual||'',qualdate:ex.qualdate||'',fuel:ex.fuel||dd.fuel_type||'',start:(kind==='wc'&&/^\d{4}-\d{2}-\d{2}$/.test(ex.cstart||''))?ex.cstart:sd,cend:(/^\d{4}-\d{2}-\d{2}$/.test(ex.cend||'')?ex.cend:'')};}else S.d={start:sd,cend:''};if(kind==='badge'){var _fu=S.d.fuel||'';S.d.selFuel=/EV|전기/i.test(_fu)?'전기':(/LPG/i.test(_fu)?'LPG':(_fu?'기타':''));S.d.fuelEtc=(S.d.selFuel==='기타')?_fu:'';var _lt=S.d.lictype||'';S.d.selLic=/1종.*대형/.test(_lt)?'1종대형':(/1종.*보통/.test(_lt)?'1종보통':(/2종.*보통/.test(_lt)?'2종보통':(/특수.*대형/.test(_lt)?'특수대형':(/특수.*소형/.test(_lt)?'특수소형':''))));var _c=S.d.car||'';S.d.selMfr=/봉고|PV5|카니발|레이|모닝|니로|K\d/i.test(_c)?'기아':(/포터|스타렉스|스타리아|쏠라티/i.test(_c)?'현대':'');S.d.selForm=S.d.selForm||'';}if(kind==='badge'&&S.badgeKind==='renew')S.d.signDate=t;ensureUI();renderStep();}
   function renderStep(){paint(stepHTML());after();}
@@ -9178,20 +9220,21 @@ function dhContractSetup(name,afterApprove,mode){
   pop=document.createElement('div');pop.id='dh-ctset';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:10700;display:flex;align-items:flex-end;justify-content:center';
   pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:520px;padding:18px 16px 26px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div>'
     +'<div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">📝 '+name+' 계약 정보</div>'
-    +'<div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:14px">'+(afterApprove?'승인 완료! 계약서에 들어갈 정보를 입력하세요.':'계약서 작성에 자동 반영됩니다.')+' 계약 시작일만 넣으면 종료일은 자동(1년).</div>'
-    +'<label style="display:flex;align-items:center;gap:8px;background:#fff8e1;border:1.5px solid #ffe08a;border-radius:10px;padding:9px 11px;font-size:13px;font-weight:800;color:#7a5a00;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="dhct-bk"'+(ext.backup?' checked':'')+' style="width:18px;height:18px"> 백업 기사 (담당구역 여러 개 · 라우트별 단가 자동)</label>'
-    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">담당구역</label><input id="dhct-route" value="'+String(route).replace(/"/g,"&quot;")+'" placeholder="예: 316A" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
-    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">단가(원)</label><input id="dhct-price" value="'+String(price).replace(/"/g,"&quot;")+'" inputmode="numeric" placeholder="예: 900" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
+    +'<div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:14px">'+(afterApprove?'승인 완료! 계약서에 들어갈 정보를 입력하세요.':'계약서 작성에 자동 반영됩니다.')+' 작성일자를 넣으면 종료일은 [📅 계약 만료일] 값(미설정 시 +1년) 자동.</div>'
+    +'<label style="display:flex;align-items:center;gap:8px;background:#fff8e1;border:1.5px solid #ffe08a;border-radius:10px;padding:9px 11px;font-size:13px;font-weight:800;color:#7a5a00;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="dhct-bk"'+(ext.backup?' checked':'')+' onchange="dhFeeRefresh()" style="width:18px;height:18px"> 백업 기사 (담당구역 여러 개 · 라우트별 단가 자동)</label>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">담당구역</label><input id="dhct-route" value="'+String(route).replace(/"/g,"&quot;")+'" placeholder="눌러서 선택 (여러 개 가능)" readonly onclick="ctRoutePick(\'dhct-route\',\'dhct-bk\',\'dh\')" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">단가(원)</label><input id="dhct-price" value="'+String(price).replace(/"/g,"&quot;")+'" inputmode="numeric" placeholder="예: 900" oninput="dhFeeRefresh()" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
+    +'<div id="dhct-fee" class="ctfee" style="margin:-4px 0 9px 96px"></div>'
     +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">작성일자</label><input type="date" id="dhct-start" min="2020-01-01" max="2099-12-31" value="'+cstart+'" oninput="dhCtEnd()" style="flex:1;border:1.5px solid #d5e2f0;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
     +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><label style="width:88px;flex-shrink:0;font-size:12px;font-weight:700;color:#4a5a6a;text-align:right">계약 종료</label><input type="date" id="dhct-end" min="2020-01-01" max="2099-12-31" value="'+cend+'" data-manual="'+(cend?'1':'')+'" oninput="this.setAttribute(&quot;data-manual&quot;,&quot;1&quot;)" style="flex:1;border:1.5px solid #bfe6cc;background:#f0faf3;color:#1b7a38;font-weight:700;border-radius:9px;padding:9px 10px;font-size:13px;box-sizing:border-box"></div>'
     +'<div style="display:flex;gap:8px"><button onclick="var p=document.getElementById(\'dh-ctset\');if(p)p.remove();" style="flex:1;padding:12px;background:#eef2f6;color:#5a6b7c;border:none;border-radius:11px;font-weight:800">나중에</button><button onclick="dhSaveContractInfo(\''+name+'\')" style="flex:2;padding:12px;background:#12b5a3;color:#fff;border:none;border-radius:11px;font-weight:800">💾 저장</button></div></div>';
-  document.body.appendChild(pop);try{var _md=mode||(afterApprove?'edit':'view');if(_md==='view'){['dhct-route','dhct-price','dhct-start','dhct-end'].forEach(function(id){var el=pop.querySelector('#'+id);if(el){el.readOnly=true;el.style.background='#f2f4f7';el.style.color='#667';el.style.pointerEvents='none';}});pop.querySelectorAll('button').forEach(function(b){var tx=b.textContent||'';if(tx.indexOf('저장')>=0){b.remove();}else if(tx.indexOf('나중에')>=0){b.textContent='닫기';b.style.flex='1';}});try{var _h=document.createElement('div');_h.style.cssText='font-size:12px;color:#c0392b;font-weight:800;text-align:center;margin:8px 0 4px';_h.textContent='🔒 이미 작성된 계약서는 수정이 불가합니다.';pop.firstChild.appendChild(_h);}catch(_hh){}}else if(_md==='share'){pop.querySelectorAll('button').forEach(function(b){if((b.textContent||'').indexOf('저장')>=0){b.textContent='💾 저장 후 공유';b.style.background='#3949ab';b.onclick=function(){dhShareContract(name);};}});}}catch(_e){}dhCtEnd();
+  document.body.appendChild(pop);try{var _md=mode||(afterApprove?'edit':'view');if(_md==='view'){['dhct-route','dhct-price','dhct-start','dhct-end'].forEach(function(id){var el=pop.querySelector('#'+id);if(el){el.readOnly=true;el.style.background='#f2f4f7';el.style.color='#667';el.style.pointerEvents='none';}});pop.querySelectorAll('button').forEach(function(b){var tx=b.textContent||'';if(tx.indexOf('저장')>=0){b.remove();}else if(tx.indexOf('나중에')>=0){b.textContent='닫기';b.style.flex='1';}});try{var _h=document.createElement('div');_h.style.cssText='font-size:12px;color:#c0392b;font-weight:800;text-align:center;margin:8px 0 4px';_h.textContent='🔒 이미 작성된 계약서는 수정이 불가합니다.';pop.firstChild.appendChild(_h);}catch(_hh){}}else if(_md==='share'){pop.querySelectorAll('button').forEach(function(b){if((b.textContent||'').indexOf('저장')>=0){b.textContent='💾 저장 후 공유';b.style.background='#3949ab';b.onclick=function(){dhShareContract(name);};}});}}catch(_e){}dhCtEnd();try{dhFeeRefresh();}catch(_df){}
 }
 async function dhShareContract(name){try{await dhSaveContractInfo(name);}catch(e){}try{if(typeof ctaSet==='function'){await ctaSet(name,'wc','share');}}catch(e){}try{if(typeof showToast==='function')showToast('📤 조건 저장 + 계약서 공유 완료',true);}catch(_){}try{var _p=document.getElementById('dh-ctset');if(_p)_p.remove();}catch(_){}try{if(typeof openContractAdmin==='function')openContractAdmin(true);}catch(_){}}
 function dhCtEnd(){var _ce=_ctCfgEnd();if(_ce){var _e0=document.getElementById('dhct-end');if(_e0&&_e0.dataset.manual!=='1')_e0.value=_ce;return;}var s=document.getElementById('dhct-start');var e=document.getElementById('dhct-end');if(!s||!e)return;if(e.dataset.manual==='1')return;var v=s.value;if(!v){e.value='';return;}var d=new Date(v);if(isNaN(d.getTime())){e.value='';return;}d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);e.value=d.toISOString().slice(0,10);}
 async function dhSaveContractInfo(name){
   var route=(document.getElementById('dhct-route').value||'').trim();
-  var price=(document.getElementById('dhct-price').value||'').trim();
+  var price=(document.getElementById('dhct-price').value||'').trim();var _bkd=document.getElementById('dhct-bk');if(price===''&&!(_bkd&&_bkd.checked)){price=ctAutoPrice(route);}
   var cstart=(document.getElementById('dhct-start').value||'').trim();var cend=(document.getElementById('dhct-end').value||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(cend))cend='';
   if(!/^\d{4}-\d{2}-\d{2}$/.test(cstart)){cstart='';}
   if(!_driverExt)_driverExt={};if(!_driverExt[name])_driverExt[name]={name:name};
@@ -18790,21 +18833,14 @@ function ctXlsUpload(inp){
       try{
         var wb=XLSX.read(new Uint8Array(rd.result),{type:'array'});
         var ws=wb.Sheets[wb.SheetNames[0]];
-        var arr=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-        var db=getDB();var names=Object.keys(db);var parsed=[],miss=[];
-        for(var r=1;r<arr.length;r++){
-          var row=arr[r];if(!row)continue;var nm=String(row[0]==null?'':row[0]).trim();if(!nm)continue;
-          if(names.indexOf(nm)<0){miss.push(nm);continue;}
-          var route=String(row[1]==null?'':row[1]).trim();var price=String(row[2]==null?'':row[2]).trim();
-          var cs=String(row[3]==null?'':row[3]).trim().slice(0,10);var ce=String(row[4]==null?'':row[4]).trim().slice(0,10);
-          if(!/^\d{4}-\d{2}-\d{2}$/.test(cs))cs='';if(!/^\d{4}-\d{2}-\d{2}$/.test(ce))ce='';
-          var _bkr=String(row[5]==null?'':row[5]).trim().toUpperCase();var bk=(_bkr==='')?null:/^(O|Y|YES|1|TRUE|백업|○|V)$/.test(_bkr);parsed.push({name:nm,route:route,price:price,cstart:cs,cend:ce,bk:bk});
-        }
+        var arr=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+        var _px=ctXlsParse(arr,getDB());var parsed=ctXlsFill((function(){window._ctCfg=window._ctCfg||{};window._ctCfg.rmap=Object.assign({},_ctRmap(),_px.rmap);return _px.parsed;})()),miss=_px.miss;window._ctXlsMap=_px.rmap;
         window._ctXlsParsed=parsed;
         var esc=function(x){return String(x==null?'':x).replace(/</g,'&lt;');};
         var html='✅ 인식 '+parsed.length+'명'+(miss.length?(' · ⚠ 미매칭 '+miss.length+'명('+miss.slice(0,5).join(', ')+(miss.length>5?'…':'')+')'):'');
         html+='<div style="max-height:170px;overflow:auto;margin-top:8px;border:1px solid #e5eaf0;border-radius:8px"><table style="width:100%;font-size:11px;border-collapse:collapse"><tr style="background:#f4f7fb;font-weight:800"><td style="padding:4px 6px">기사</td><td>담당구역</td><td>단가</td><td>작성일자</td><td>만료</td><td>백업</td></tr>';
-        parsed.forEach(function(p){html+='<tr><td style="padding:4px 6px">'+esc(p.name)+'</td><td>'+esc(p.route||'-')+'</td><td>'+esc(p.price||'-')+'</td><td>'+esc(p.cstart||'-')+'</td><td>'+esc(p.cend||_ctCfgEnd()||'+1년')+'</td><td>'+(p.bk===null?'-':(p.bk?'O':'X'))+'</td></tr>';});
+        if(Object.keys(_px.rmap).length)html+='<div style="font-size:11px;color:#0b6b4a;margin-top:6px">🔁 이전 라우트 → 새 번호 <b>'+Object.keys(_px.rmap).length+'개</b> 연결 (단가는 이전 라우트 기준)'+(_px.warn.length?' · ⚠ 개수 불일치: '+_px.warn.join(', '):'')+'</div>';
+        parsed.forEach(function(p){html+='<tr><td style="padding:4px 6px;white-space:nowrap">'+esc(p.name)+'</td><td>'+esc(p.route||'-')+'</td><td class="ctxfee">'+ctXlsFeeCell(p)+'</td><td>'+esc(p.cstart||'-')+'</td><td>'+esc(p.cend||_ctCfgEnd()||'+1년')+'</td><td>'+(p.bk===null?'-':(p.bk?'O':'X'))+'</td></tr>';});
         html+='</table></div>';
         html+='<button onclick="ctXlsApply(false)" style="width:100%;padding:11px;background:#eef4ff;color:#2f5fc8;border:1.5px solid #cfe0f5;border-radius:11px;font-weight:800;margin-top:8px">💾 조건만 저장</button>';
         html+='<div style="display:flex;gap:6px;margin-top:6px"><button onclick="if(confirm(\'엑셀의 '+parsed.length+'명에게 개정 표준계약서로 [변경] 요청할까요?\\n기존 계약서는 보관되고 새로 서명해야 합니다.\'))ctXlsApply(\'change\')" style="flex:1;padding:11px;background:#3949ab;color:#fff;border:none;border-radius:11px;font-weight:800">📝 변경 요청</button><button onclick="if(confirm(\'엑셀의 '+parsed.length+'명에게 [갱신] 요청할까요?\\n기존 계약서는 보관되고 새로 서명해야 합니다.\'))ctXlsApply(\'renew\')" style="flex:1;padding:11px;background:#0b8a5f;color:#fff;border:none;border-radius:11px;font-weight:800">🔄 갱신 요청</button></div>';
@@ -18817,6 +18853,7 @@ function ctXlsUpload(inp){
 }
 async function ctXlsApply(share){
   var parsed=window._ctXlsParsed||[];if(!parsed.length)return;
+  try{var _mp=window._ctXlsMap||{};if(Object.keys(_mp).length){var _c0=await ctCfgLoad();await ctCfgSave({rmap:Object.assign({},(_c0&&_c0.rmap)||{},_mp)});}}catch(_e0){}
   if(!_driverExt)_driverExt={};var db=getDB();var dbDirty=false;
   parsed.forEach(function(p){
     if(!_driverExt[p.name])_driverExt[p.name]={name:p.name};
