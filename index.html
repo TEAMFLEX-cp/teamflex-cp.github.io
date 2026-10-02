@@ -6516,7 +6516,7 @@ function _rpHomeEnsure(){
   if(!sbClient)return;
   sbClient.from('app_settings').select('value').eq('key','route_perf_data').maybeSingle().then(function(q){
     try{ if(q&&q.data&&q.data.value){ var d=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value;
-      if(d&&d.routes&&d.routes.length&&!d.routes[0].cells){ var N=_rpNorm(d); d={updated:d.updated,wkNum:d.wkNum,weeks:N.weeks.slice().sort(_rpWkAsc),routes:Object.keys(N.map).map(function(rt){return {route:rt,wave:N.map[rt].wave,camp:N.map[rt].camp,cells:N.map[rt].cells};})}; }
+      if(d&&d.routes&&d.routes.length){ var N=_rpNorm(d); d={updated:d.updated,wkNum:d.wkNum,weeks:N.weeks.slice().sort(_rpWkAsc),routes:Object.keys(N.map).map(function(rt){return {route:rt,wave:N.map[rt].wave,camp:N.map[rt].camp,cells:N.map[rt].cells};})}; }
       _rpHomeData=d; } }catch(e){}
     try{ if(CUR_TAB==='hm'&&!window._ctScreenOpen){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();} }catch(e){}
   }).catch(function(){});
@@ -14850,13 +14850,20 @@ function rpRouteNum(rt){var m=String(rt||'').match(/(\d+)/);return m?parseInt(m[
 function _rpWkAsc(a,b){return (rpWkNum(a)||0)-(rpWkNum(b)||0);}
 // 저장형식(구/신) 정규화 → {weeks, map:{route:{wave,camp,cells:{WK:{pg,pr,rg,rr}}}}}
 function _rpNorm(p){
+  var _isWk=function(w){return /^WK\d+$/.test(String(w||''));};
+  var _pct=function(v){if(typeof v!=='number')return v;return (v>=0&&v<=1.5)?Math.round(v*10000)/100:v;};
   var map={},weeks=(p&&Array.isArray(p.weeks))?p.weeks.slice():[];
   (p&&p.routes||[]).forEach(function(r){
     var cells=r.cells;
     if(!cells){ cells={}; weeks.forEach(function(wk,i){ cells[wk]={pg:(r.pg||[])[i]!=null?r.pg[i]:null,pr:(r.pr||[])[i]!=null?r.pr[i]:null,rg:(r.rg||[])[i]!=null?r.rg[i]:null,rr:(r.rr||[])[i]!=null?r.rr[i]:null}; }); }
-    map[r.route]={wave:r.wave,camp:r.camp,cells:cells};
+    // [2026-10-02] 비주차 칸(WKWave 등) 제거 + 소수 수행률(1=100%, 0.99=99%) 보정
+    var cc={};Object.keys(cells).forEach(function(wk){if(!_isWk(wk))return;var c=cells[wk]||{};cc[wk]={pg:c.pg,pr:_pct(c.pr),rg:c.rg,rr:_pct(c.rr)};});
+    map[r.route]={wave:r.wave,camp:r.camp,cells:cc};
   });
-  return {weeks:weeks,map:map};
+  // 수행률·회수률 숫자가 하나도 없는 주차(잘못 읽힌 칸)는 제외
+  var has={};Object.keys(map).forEach(function(rt){var cs=map[rt].cells;Object.keys(cs).forEach(function(wk){var c=cs[wk];if(typeof c.pr==='number'||typeof c.rr==='number')has[wk]=1;});});
+  Object.keys(map).forEach(function(rt){var cs=map[rt].cells;Object.keys(cs).forEach(function(wk){if(!has[wk])delete cs[wk];});});
+  return {weeks:weeks.filter(function(w){return _isWk(w)&&has[w];}),map:map};
 }
 function _parseRP(rows){
   var cell=_uplCell(rows),mr=rows.length,mc=_uplMaxCol(rows);
@@ -14865,21 +14872,38 @@ function _parseRP(rows){
   if(!found)return null;
   var wc=2;for(var c=1;c<=mc;c++){if(String(cell(hdr,c)).trim().toLowerCase()==='wave'){wc=c;break;}}
   var routeCol=wc+2;
-  var labels=[];for(var c=routeCol+1;c<=mc;c++){var v=String(cell(hdr,c)).trim();if(!v)break;labels.push(v);}
-  var weeks=[],seen={};for(var i=0;i<labels.length;i++){if(seen[labels[i]]!=null)break;seen[labels[i]]=i;weeks.push('WK'+(rpWkNum(labels[i])||labels[i]));}
-  var nw=weeks.length||4;
-  var base=routeCol+1, bPG=base, bPR=base+nw, bRG=base+2*nw, bRR=base+3*nw;
+  function _isWk(v){return /^WK\s*\d+$/i.test(String(v==null?'':v).trim());}
+  // [2026-10-02] 블록 제목(헤더 윗줄) 기준으로 열 찾기 — 쿠팡 신양식(평일+주말 / [주말] / Return 6블록) + 구양식(4블록) 모두 지원
+  var weeks=[],col={};
+  var blocks=[];
+  if(hdr>1){for(var c=routeCol+1;c<=mc;c++){var tt=String(cell(hdr-1,c)||'').replace(/\s+/g,'');if(!tt)continue;var kind=null;
+    if(/^\[주말\]/.test(tt))kind='x';else if(/return|반품/i.test(tt))kind='r';else if(/routeperf|평일/i.test(tt))kind='p';
+    if(kind)blocks.push({c:c,key:(kind==='x'?'x':kind+(/등급/.test(tt)?'g':'r'))});}}
+  var hasP=blocks.some(function(b){return b.key==='pg';})&&blocks.some(function(b){return b.key==='pr';});
+  if(hasP){
+    blocks.forEach(function(b,i){if(b.key==='x')return;var end=(i+1<blocks.length)?blocks[i+1].c:mc+1;
+      for(var c=b.c;c<end;c++){var lb=cell(hdr,c);if(!_isWk(lb))break;var wk='WK'+rpWkNum(String(lb));
+        if(!col[wk]){col[wk]={};weeks.push(wk);}if(col[wk][b.key]==null)col[wk][b.key]=c;}});
+  }else{
+    // 구 방식(위치 기반) — 주차 라벨(WKnn)만 인정
+    var labels=[];for(var c=routeCol+1;c<=mc;c++){var v=String(cell(hdr,c)).trim();if(!_isWk(v))break;labels.push(v);}
+    var seen={};for(var i=0;i<labels.length;i++){if(seen[labels[i]]!=null)break;seen[labels[i]]=i;weeks.push('WK'+rpWkNum(labels[i]));}
+    var nw=weeks.length,base=routeCol+1;
+    weeks.forEach(function(wk,k){col[wk]={pg:base+k,pr:base+nw+k,rg:base+2*nw+k,rr:base+3*nw+k};});
+  }
+  if(!weeks.length)return null;
   var wkNum=null;
-  for(var r=1;r<hdr&&wkNum==null;r++){for(var c=1;c<=mc;c++){var m=String(cell(r,c)).match(/WK\s*(\d+)/i);if(m){wkNum=parseInt(m[1],10);break;}}}
-  if(wkNum==null)wkNum=rpWkNum(weeks[0]);
-  function _s(r,c){var raw=cell(r,c);var s=(raw==null)?'':String(raw).trim();return s===''?null:s;}
-  function _n(r,c){var s=_s(r,c);if(s==null)return null;var f=parseFloat(String(s).replace('%','').trim());return isNaN(f)?null:f;}
+  for(var r=1;r<hdr&&wkNum===null;r++){for(var c=1;c<=mc;c++){var m=String(cell(r,c)).match(/WK\s*(\d+)/i);if(m){wkNum=parseInt(m[1],10);break;}}}
+  if(wkNum===null)wkNum=Math.max.apply(null,weeks.map(function(w){return rpWkNum(w)||0;}));
+  function _s(r,c){if(c==null)return null;var raw=cell(r,c);var s=(raw==null)?'':String(raw).trim();return s===''?null:s;}
+  // 수행률: 엑셀 % 서식 숫자(1=100%, 0.99=99%)는 ×100, 문자 "99%"는 그대로 99
+  function _n(r,c){if(c==null)return null;var raw=cell(r,c);if(typeof raw==='number'){if(raw>=0&&raw<=1.5)return Math.round(raw*10000)/100;return raw;}var s=_s(r,c);if(s===null)return null;var f=parseFloat(String(s).replace('%','').trim());return isNaN(f)?null:f;}
   var out=[];
   for(var r=hdr+1;r<=mr;r++){
-    var rt=_s(r,routeCol);if(rt==null)continue;
+    var rt=_s(r,routeCol);if(rt===null)continue;
     if(/^(total|route|wave)$/i.test(rt))continue;
     var cells={};
-    for(var k=0;k<nw;k++){cells[weeks[k]]={pg:_s(r,bPG+k),pr:_n(r,bPR+k),rg:_s(r,bRG+k),rr:_n(r,bRR+k)};}
+    weeks.forEach(function(wk){var q=col[wk];cells[wk]={pg:_s(r,q.pg),pr:_n(r,q.pr),rg:_s(r,q.rg),rr:_n(r,q.rr)};});
     out.push({route:rt,wave:_s(r,wc),camp:_s(r,wc+1),cells:cells});
   }
   return {wkNum:wkNum,weeks:weeks,routes:out};
@@ -14929,7 +14953,7 @@ async function rpInit(){
   try{ var q=await sbClient.from('app_settings').select('value').eq('key','route_perf_data').maybeSingle();
        if(q&&q.data&&q.data.value){ RP_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
   // 구(舊)형식(주차 배열) → 신형식(cells) 정규화 (기존 업로드분도 정상 표시)
-  if(RP_D&&RP_D.routes&&RP_D.routes.length&&!RP_D.routes[0].cells){
+  if(RP_D&&RP_D.routes&&RP_D.routes.length){
     var N=_rpNorm(RP_D);
     RP_D={updated:RP_D.updated,wkNum:RP_D.wkNum,weeks:N.weeks.slice().sort(_rpWkAsc),
       routes:Object.keys(N.map).map(function(rt){return {route:rt,wave:N.map[rt].wave,camp:N.map[rt].camp,cells:N.map[rt].cells};})};
