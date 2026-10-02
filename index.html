@@ -7949,7 +7949,7 @@ function _metaPollJobs(jids,label,markIds){
           var _emsg=(failRows[0]&&failRows[0].result)||'';
           try{showToast('❌ '+label+' 반영 실패 ('+failed+'건)',false);}catch(e){}
           try{_metaFlash('❌ '+label+' 메타 반영 실패 — '+String(_emsg).slice(0,40),'fail');}catch(e){}
-          try{alert('❌ 메타 반영 실패 ('+failed+'/'+total+')\n\n쿠팡 오류내역:\n'+(_emsg||'(사유 미확인 — 서버 로그 확인)')+'\n\n※ 아이디가 비어있거나, 같은 기사가 중복된 경우입니다.');}catch(e){}
+          try{alert('❌ 메타 반영 실패 ('+failed+'/'+total+')\n\n쿠팡 오류내역:\n'+(_emsg||'(사유 미확인 — 서버 로그 확인)')+(/로그아웃|로그인/.test(_emsg||'')?'\n\n※ 쿠팡 로그인이 끊긴 경우입니다. 서버가 자동 재로그인을 시도했지만 실패했어요 — 서버 화면에서 로그인 후 다시 반영해 주세요.':'\n\n※ 아이디가 비어있거나, 같은 기사가 중복된 경우입니다.'));}catch(e){}
         }
       }
     }catch(e){}
