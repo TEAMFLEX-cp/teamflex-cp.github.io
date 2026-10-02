@@ -8292,6 +8292,10 @@ function pgFullSched(){
           var routeDisp=route;
           var _seenSr={},_splitLines='';
           var _sortedSh=shareList.slice().sort(function(a,b){return (String(a.r||'')+_rotNorm(a.t)).localeCompare(String(b.r||'')+_rotNorm(b.t));});
+          // 회전 분할(1회전/2회전 각각 기사 1명)이면 라우트 없이 "1회전 : 이름 / 2회전 : 이름"만 표시
+          var _rotBy={},_rotOnly=_sortedSh.length>0;
+          for(var _rk=0;_rk<_sortedSh.length&&_rotOnly;_rk++){var _rn=_rotNorm(_sortedSh[_rk].t),_rnm=norm_name_js(_sortedSh[_rk].d||'');if(_rn==='12'||!_rnm||(_rotBy[_rn]&&_rotBy[_rn]!==_rnm))_rotOnly=false;else _rotBy[_rn]=_rnm;}
+          if(_rotOnly){['1','2'].forEach(function(_rq){if(_rotBy[_rq])_splitLines+='<div style="font-size:11px;line-height:1.45;white-space:nowrap;padding:1px 0"><b style="color:#6a1b9a">'+_rq+'회전</b> : '+escQ(_rotBy[_rq])+'</div>';});_sortedSh=[];}
           for(var _shk=0;_shk<_sortedSh.length;_shk++){
             var _sp=_sortedSh[_shk];var _sr=String(_sp.r||routeDisp);var _rl=_rotLbl(_sp.t);if(_seenSr[_sr+'|'+_rl])continue;_seenSr[_sr+'|'+_rl]=1;
             var _spn=norm_name_js(_sp.d||'');var _spTj='';
