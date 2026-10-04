@@ -64,11 +64,11 @@ function _rrRouteCell(route,wkKey){try{var R=_RRG&&_RRG.reorgs&&_RRG.reorgs[0];i
   /* [v812] 날짜 기준만: 개편일(10/14) 전에 끝나는 주는 기존 그대로(표시 없음) · 개편일이 들어간 주부터 새 번호+캠프 · 구 번호는 showOldUntil 주까지 */
   if(window.EDIT_MODE)return null;var wkE=_rrAddDays(wkKey,6);if(!wkE||wkE<String(R.from))return null;
   var p=_rrPfx(route);if(!p)return null;var rv=_rrRev();
-  var nl,ol;if(R.applied){if(!rv[p])return null;nl=route;ol=route.replace(/\d{3}/g,function(n){return rv[n]||n;});}else{if(!R.map[p])return null;nl=_rrMapLabel(route,R.map);ol=route;}
-  var np=(R.newPlace||{})[_rrPfx(nl)]||'';var chip=(np?'<span class="rr-c">'+_rrChip(np)+'</span>':'');
-  /* [v816] 주 기준(오늘 날짜와 무관): 개편일이 든 주 ~ showOldUntil 주 = 옛 번호 / 캠프 / → 새 번호 · 그 다음 주부터 = 새 번호 + 캠프 */
-  if((ol!==nl)&&(!R.showOldUntil||String(wkKey)<=String(R.showOldUntil)))return '<span class="rr-r1">'+_rrEsc(ol)+'</span>'+chip+'<span class="rr-new">→ '+_rrEsc(nl)+'</span>';
-  return '<span class="rr-r1">'+_rrEsc(nl)+'</span>'+chip;
+  var nl,ol;if(R.applied){if(!rv[p])return null;nl=route;ol=route.replace(/\d{3}/g,function(n){return rv[n]||n;});}else{if(!R.map[p])return null;nl=_rrMapLabel(route,R.map);ol=route;
+    /* [v814] 오늘이 개편일 전이면: 옛 번호 / 바뀔 캠프 / → 새 번호 (미리 안내) */
+    if(_rrToday()<String(R.from)){var np0=(R.newPlace||{})[_rrPfx(nl)]||'';return '<span class="rr-r1">'+_rrEsc(route)+'</span>'+(np0?'<span class="rr-c">'+_rrChip(np0)+'</span>':'')+(nl!==route?'<span class="rr-new">→ '+_rrEsc(nl)+'</span>':'');}}
+  var np=(R.newPlace||{})[_rrPfx(nl)]||'';var showOld=(ol!==nl)&&(!R.showOldUntil||String(wkKey)<=String(R.showOldUntil));
+  return '<span class="rr-r1">'+_rrEsc(nl)+'</span>'+(np?'<span class="rr-c">'+_rrChip(np)+'</span>':'')+(showOld?'<span class="rr-old">구 '+_rrEsc(ol)+'</span>':'');
 }catch(e){return null;}}
 /* 관리자: 개편·캠프 관리 */
 function rrOpenAdmin(){try{if(!CU||CU.role!=='admin'){alert('관리자 전용입니다.');return;}}catch(e){return;}
