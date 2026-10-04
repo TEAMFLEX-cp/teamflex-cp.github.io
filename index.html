@@ -60,8 +60,11 @@ function _rrMapLabel(l,map){return String(l||'').replace(/\d{3}/g,function(n){re
 function _rrCls(place){var s=String(place||'').replace(/\s+/g,'');if(s.indexOf('6캠프')===0)return 'c6';if(s.indexOf('8캠프')===0)return s.indexOf('양평')>=0?'c8y':'c8';if(s.indexOf('3캠프')===0){if(s.indexOf('덕은')>=0)return 'c3d';if(s.indexOf('양평')>=0)return 'c3y';return 'c3';}return 'cx';}
 function _rrChip(place){return place?'<span class="rr-chip '+_rrCls(place)+'">'+_rrEsc(place)+'</span>':'';}
 /* 스케줄 라우트 칸: 표시만 바꿈. null 이면 기존처럼 라우트 이름만 */
-function _rrRouteCell(route,wkKey){try{var R=_RRG&&_RRG.reorgs&&_RRG.reorgs[0];if(!R||!R.map)return null;var p=_rrPfx(route);if(!p||!R.map[p])return null;
-  if(R.applied)return null; /* 변환 후 표시는 다음 단계에서 추가 — 그 전까지는 기존 표시 */
+function _rrRouteCell(route,wkKey){try{var R=_RRG&&_RRG.reorgs&&_RRG.reorgs[0];if(!R||!R.map)return null;var p=_rrPfx(route);if(!p||(!R.map[p]&&!(R.applied&&_rrRev()[p])))return null;
+  if(R.applied){if(window.EDIT_MODE)return null;var wkE=_rrAddDays(wkKey,6);
+    if(!(wkE&&wkE<String(R.from))){var rv=_rrRev();var np=(R.newPlace||{})[p]||'';if(!rv[p]&&!np)return null;var ol=rv[p]?route.replace(/\d{3}/g,function(n){return rv[n]||n;}):route;
+      var showOld=(ol!==route)&&(!R.showOldUntil||String(wkKey)<=String(R.showOldUntil));
+      return '<span class="rr-r1">'+_rrEsc(route)+'</span>'+(np?'<span class="rr-c">'+_rrChip(np)+'</span>':'')+(showOld?'<span class="rr-old">구 '+_rrEsc(ol)+'</span>':'');}}
   var nl=_rrMapLabel(route,R.map);var place=(R.newPlace||{})[_rrPfx(nl)]||'';
   if(nl===route)return '<span class="rr-r1">'+_rrEsc(route)+'</span>'+(place?'<span class="rr-c">'+_rrChip(place)+'</span>':'');
   return '<span class="rr-r1">'+_rrEsc(route)+'</span><span class="rr-arw">→ '+_rrChip(place)+'</span><span class="rr-new">'+_rrEsc(nl)+'</span>';
@@ -93,8 +96,43 @@ function rrSaveCamps(){try{if(!CU||CU.role!=='admin')return;}catch(e){return;}va
     v.campsUpdated=new Date().toISOString();
     return sbClient.from('app_settings').upsert({key:'route_reorg',value:JSON.stringify(v)},{onConflict:'key'}).then(function(res){if(res&&res.error)throw res.error;_RRG=v;if(msg)msg.textContent='✅ 저장했어요';});
   }).catch(function(e){if(msg){msg.style.color='#c62828';msg.textContent='저장 오류: '+((e&&e.message)||e);}});}
+/* [라우트 개편] v811 — 변환 후 표시·메타 캠프·변경이력 번호 보정 */
+function _rrR0(){try{return (_RRG&&_RRG.reorgs&&_RRG.reorgs[0])||null;}catch(e){return null;}}
+function _rrApplied(){var R=_rrR0();return !!(R&&R.applied);}
+function _rrLoadNow(){return new Promise(function(res){try{if(!window.sbClient){res(_RRG);return;}sbClient.from('app_settings').select('value').eq('key','route_reorg').maybeSingle().then(function(r){var v=_rrParse(r&&r.data&&r.data.value);if(v)_RRG=v;res(_RRG);}).catch(function(){res(_RRG);});}catch(e){res(_RRG);}});}
+function _rrAddDays(ds,n){var m=String(ds||'').match(/(\d{4})-(\d{2})-(\d{2})/);if(!m)return '';var d=new Date(+m[1],+m[2]-1,+m[3]);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+function _rrRev(){var R=_rrR0();var o={};if(R&&R.map)Object.keys(R.map).forEach(function(k){o[R.map[k]]=k;});return o;}
+/* 캠프 번호(3/6/8). _RRG 없으면 1·2·3xx=3, 8xx=8, 나머지='?'(미확인) */
+function _rrCampKey(route,date){var b=String(route||'').replace(/\s*\(.*?\)/g,'').trim();var p=_rrPfx(b);var R=_rrR0();
+  if(R&&p){var np=R.newPlace||{},op=R.oldPlace||{};var place=date?((String(date)>=String(R.from)?np[p]:op[p])||np[p]||op[p]):((np[p]&&!op[p])?np[p]:(op[p]||np[p]));if(place){var m=String(place).match(/(\d+)\s*캠프/);if(m)return m[1];}}
+  var c=b.charAt(0);if(c==='8')return '8';if(c==='1'||c==='2'||c==='3')return '3';return '?';}
+function _rrCampCfg(k){try{return (_RRG&&_RRG.camps&&_RRG.camps[k])||{};}catch(e){return {};}}
+function _rrMetaUnset(route,date){var k=_rrCampKey(route,date);if(k==='3'||k==='8')return false;var c=_rrCampCfg(k),d=c.day||{};return !(c.meta&&d.wave&&d.rot);}
+function _rrMetaCamp(route,date){var k=_rrCampKey(route,date);if(k==='8')return '일산8';if(k==='3')return '일산3';return _rrCampCfg(k).meta||'';}
+function _rrMetaWave(route,night,date){var k=_rrCampKey(route,date);if(k==='3'||k==='8')return night?_SX_CFG.night_wave:_SX_CFG.day_wave;var s=_rrCampCfg(k)[night?'night':'day']||{};return s.wave||'';}
+function _rrMetaRot(route,night,date){var k=_rrCampKey(route,date);if(k==='3'||k==='8')return night?_SX_CFG.night_rot:_SX_CFG.day_rot;var s=_rrCampCfg(k)[night?'night':'day']||{};return s.rot||'';}
+function _rrCampLabel(route,date){var k=_rrCampKey(route,date);if(k==='8')return '일산8';if(k==='3')return '일산3';var c=_rrCampCfg(k);return c.meta||((c.label||(k+'캠프'))+'(미설정)');}
+window._rrMetaSkip=[];
+function _rrSkipAlert(){try{var L=window._rrMetaSkip||[];if(!L.length)return;var u={};L.forEach(function(x){u[x]=1;});var ks=Object.keys(u);window._rrMetaSkip=[];alert('⚠ 캠프 설정이 비어 있는 라우트 '+ks.length+'건은 메타 엑셀에서 뺐어요.\n(앱 설정 → 🔁 개편·캠프 관리에서 메타 캠프명·웨이브·회전을 입력하면 다음부터 포함돼요)\n\n예: '+ks.slice(0,6).join(', '));}catch(e){}}
+/* 변환 전에 기록된 변경이력(적용일 이후 날짜, 옛 번호) → 새 번호로 */
+function _rrLogRoute(route,workDate,at){try{var R=_rrR0();if(!R||!R.applied||!R.map)return route;if(String(workDate)<String(R.from))return route;var ap=String(R.applied.at||'');if(ap&&at&&String(at)>=ap)return route;return _rrMapLabel(route,R.map);}catch(e){return route;}}
+/* 스케줄 화면: 전환 주에 옛 줄(적용일 전)과 새 줄(적용일 후)을 한 줄로 (보기 모드 전용, 원본 데이터 안 바꿈) */
+function _rrMergeGroup(g,wk){try{var R=_rrR0();if(!R||!R.applied||!R.map||!g||!g.rt||!wk||!wk.dt)return g;var frm=String(R.from);
+  var hasB=wk.dt.some(function(d){return d<frm;}),hasA=wk.dt.some(function(d){return d>=frm;});if(!(hasB&&hasA))return g;
+  function filled(rt){var ks=[];Object.keys(rt.d||{}).forEach(function(k){if(rt.d[k])ks.push(k);});Object.keys(rt.sh||{}).forEach(function(k){ks.push(k);});return ks;}
+  function onlyBefore(rt){var ks=filled(rt);return ks.length>0&&ks.every(function(k){return k<frm;});}
+  function onlyAfter(rt){var ks=filled(rt);return ks.length>0&&ks.every(function(k){return k>=frm;});}
+  var used={},out=[];
+  g.rt.forEach(function(rt,i){if(used[i])return;
+    if(onlyBefore(rt)){var cn=_rrMapLabel(rt.r,R.map);if(cn!==rt.r){var tj=-1;for(var j=0;j<g.rt.length;j++){if(j!==i&&!used[j]&&g.rt[j].r===cn&&onlyAfter(g.rt[j])){tj=j;break;}}
+      if(tj>=0){var t=g.rt[tj];used[tj]=1;var m={r:t.r,d:Object.assign({},t.d||{}),_rrOld:rt.r};Object.keys(rt.d||{}).forEach(function(k){if(k<frm)m.d[k]=rt.d[k];});
+        if(rt.sh||t.sh){m.sh=Object.assign({},t.sh||{});Object.keys(rt.sh||{}).forEach(function(k){if(k<frm)m.sh[k]=rt.sh[k];});}out.push(m);return;}}}
+    out.push(rt);});
+  if(out.length===g.rt.length&&out.every(function(x,k){return x===g.rt[k];}))return g;
+  var g2={};Object.keys(g).forEach(function(k){g2[k]=g[k];});g2.rt=out;return g2;}catch(e){return g;}}
+function _rrHdrMark(dt){try{var R=_rrR0();if(R&&String(dt)===String(R.from))return '<div class="rr-hm">🔁 번호 변경일</div>';}catch(e){}return '';}
 </script>
-<style>.rr-r1{display:block;font-weight:900;line-height:1.25}.rr-arw{display:block;font-size:10px;font-weight:900;color:#e65100;line-height:1.5;white-space:nowrap}.rr-new{display:block;font-size:11.5px;font-weight:900;color:#1565C0;line-height:1.25}.rr-c{display:block;margin-top:2px}
+<style>.rr-hm{font-size:8.5px;font-weight:900;color:#c62828;line-height:1.2}.rr-old{display:block;font-size:9.5px;color:#8a93a3;font-weight:700;line-height:1.3}.rr-r1{display:block;font-weight:900;line-height:1.25}.rr-arw{display:block;font-size:10px;font-weight:900;color:#e65100;line-height:1.5;white-space:nowrap}.rr-new{display:block;font-size:11.5px;font-weight:900;color:#1565C0;line-height:1.25}.rr-c{display:block;margin-top:2px}
 .rr-chip{display:inline-block;font-size:9.5px;font-weight:800;border-radius:5px;padding:0 4px;line-height:15px;white-space:nowrap;vertical-align:middle}.rr-chip.c3{background:#e8f5e9;color:#1b5e20}.rr-chip.c3d{background:#e0f2f1;color:#00695c}.rr-chip.c3y{background:#e3f2fd;color:#0d47a1}.rr-chip.c6{background:#fff3e0;color:#e65100}.rr-chip.c8y{background:#f3e5f5;color:#6a1b9a}.rr-chip.c8{background:#ffebee;color:#b71c1c}.rr-chip.cx{background:#eceff1;color:#455a64}</style>
 <script>/* [팀장/조장 뱃지] v776 helpers */
 function _ldBadge(tl,hdr){return (hdr?'':'<span class="ldb">')+'<span class="ldg '+(tl?'ldT':'ldS')+(hdr?' h':'')+'">'+(hdr?'LEADER':(tl?'LEADER':'<span class="lw">SUB</span> <span class="lw">LEADER</span>'))+'</span>'+(hdr?'':'</span>');}
@@ -7815,9 +7853,11 @@ function _sxBuildList(data,didmap){
     var shareKey=date+'|'+rawForNm;var shareList=shareMap[shareKey];
     if(shareList&&!writtenShare[shareKey]){writtenShare[shareKey]=1;
       shareList.forEach(function(s){var sRoutes=(s.routes||routes).slice().sort();var firstR=sRoutes[0]||routes[0];var night=_sxIsNight(firstR);var baseRt=firstR.replace(/\s*\(.*?\)/g,'').trim();
-        out.push([date,_SX_CFG.bizno,(baseRt.charAt(0)==='8'?'일산8':'일산3'),(night?_SX_CFG.night_wave:_SX_CFG.day_wave),_sxDid(didmap,s.driver||'',''),_SX_CFG.status,(s.rot||'1회전'),sRoutes.join(',')]);});
+        if(_rrMetaUnset(baseRt,date)){window._rrMetaSkip.push(date+' '+baseRt);return;}
+        out.push([date,_SX_CFG.bizno,_rrMetaCamp(baseRt,date),_rrMetaWave(baseRt,night,date),_sxDid(didmap,s.driver||'',''),_SX_CFG.status,(s.rot||'1회전'),sRoutes.join(',')]);});
     } else if(!shareList&&!writtenShare[shareKey]){var firstRoute=routes[0];var night=_sxIsNight(firstRoute);var baseRt=firstRoute.replace(/\s*\(.*?\)/g,'').trim();
-      out.push([date,_SX_CFG.bizno,(baseRt.charAt(0)==='8'?'일산8':'일산3'),(night?_SX_CFG.night_wave:_SX_CFG.day_wave),_sxDid(didmap,nm,sfx),_SX_CFG.status,(night?_SX_CFG.night_rot:_SX_CFG.day_rot),routes.join(',')]);}
+      if(_rrMetaUnset(baseRt,date)){window._rrMetaSkip.push(date+' '+baseRt);return;}
+      out.push([date,_SX_CFG.bizno,_rrMetaCamp(baseRt,date),_rrMetaWave(baseRt,night,date),_sxDid(didmap,nm,sfx),_SX_CFG.status,_rrMetaRot(baseRt,night,date),routes.join(',')]);}
   });
   return out;
 }
@@ -7832,7 +7872,9 @@ async function _sxDoList(){
     var data=(q&&q.data)||[];
     if(!data.length){if(!window._sxMetaCap)alert('이 주차 스케줄 데이터가 없습니다. (Supabase weekly_schedules)');if(st)st.textContent='';return;}
     var didmap=await _sxDidMap();
+    try{await _rrLoadNow();}catch(_e){}window._rrMetaSkip=[];
     var rows=_sxBuildList(data,didmap);
+    try{_rrSkipAlert();}catch(_e){}
     if(!rows.length){alert('생성된 리스트가 없습니다.');if(st)st.textContent='';return;}
     var aoa=[['업무일','사업자등록번호','캠프명','웨이브','아이디','업무상태','회전','업무라우트']];
     rows.forEach(function(r){aoa.push([_sxDateVal(r[0]),r[1],r[2],r[3],r[4],r[5],r[6],r[7]]);});
@@ -7857,7 +7899,7 @@ async function _sxDoTableDown(){
     var dates=Array.from(new Set(data.map(function(r){return r.work_date;}))).sort();
     // 앱 화면과 동일 순서: id순으로 훑되 팀장/조장(그룹)별로 묶고, 그룹 내 라우트는 최초등장 순.
     var byKey={},grpOrder=[],grpRoutes={};
-    data.forEach(function(r){var gl=r.grp_leaders;if(typeof gl==='string'){try{gl=JSON.parse(gl);}catch(e){gl=[];}}gl=gl||[];var lk=gl.join('·');var rr=r.route_raw||r.route||'';var key=lk+'|||'+rr;if(!(lk in grpRoutes)){grpRoutes[lk]=[];grpOrder.push(lk);}if(!byKey[key]){byKey[key]={leader:lk,camp:(String(rr).charAt(0)==='8'?'일산8':'일산3'),route:rr,d:{}};grpRoutes[lk].push(rr);}if(r.driver_name)byKey[key].d[r.work_date]=r.driver_name;});
+    data.forEach(function(r){var gl=r.grp_leaders;if(typeof gl==='string'){try{gl=JSON.parse(gl);}catch(e){gl=[];}}gl=gl||[];var lk=gl.join('·');var rr=r.route_raw||r.route||'';var key=lk+'|||'+rr;if(!(lk in grpRoutes)){grpRoutes[lk]=[];grpOrder.push(lk);}if(!byKey[key]){byKey[key]={leader:lk,camp:_rrCampLabel(String(rr)),route:rr,d:{}};grpRoutes[lk].push(rr);}if(r.driver_name)byKey[key].d[r.work_date]=r.driver_name;});
     var hdr=['팀장·조장','캠프','라우트'].concat(dates.map(function(d){return _sxDateVal(d);}));
     var aoa=[hdr];
     grpOrder.forEach(function(lk){grpRoutes[lk].forEach(function(rr){var o=byKey[lk+'|||'+rr];var row=[o.leader,o.camp,o.route];dates.forEach(function(d){row.push(o.d[d]||'');});aoa.push(row);});});
@@ -7882,9 +7924,11 @@ async function _sxDoTableUp(file){
     var ws0=SCHED_WK;
     if(!confirm('업로드한 표로 '+_sxWeekLabel(ws0)+' 주차의 기사 배정을 덮어씁니다.\n('+dateCols.length+'일 × 라우트) 계속할까요?'))return;
     var upd=0,miss=0,cell=0;
+    var _rrOldTbl=false;try{await _rrLoadNow();var _R=_rrR0();if(_R&&_R.applied&&_R.map){var _ov={},_nv={};Object.keys(_R.map).forEach(function(k){_ov[k]=1;});Object.keys(_R.map).forEach(function(k){_nv[_R.map[k]]=1;});var _ho=false,_hn=false;for(var _q=1;_q<rows.length;_q++){var _rt=String((rows[_q]||[])[2]||'');(_rt.match(/\d{3}/g)||[]).forEach(function(p){if(_ov[p]&&!_nv[p])_ho=true;if(_nv[p]&&!_ov[p])_hn=true;});}_rrOldTbl=_ho&&!_hn;}}catch(_e){}
     for(var r=1;r<rows.length;r++){var row=rows[r];if(!row)continue;var route=String(row[2]==null?'':row[2]).trim();if(!route)continue;
       for(var k=0;k<dateCols.length;k++){var dc=dateCols[k];var drv=String(row[dc.c]==null?'':row[dc.c]).trim();if(!drv)continue;cell++;
-        try{var res=await sbClient.from('weekly_schedules').update({driver_name:drv,synced_at:new Date().toISOString()}).eq('week_start',ws0).eq('work_date',dc.date).eq('route_raw',route);if(res&&res.error)miss++;else upd++;}catch(e){miss++;}
+        var _rtU=route;try{var _R2=_rrR0();if(_rrOldTbl&&_R2&&String(dc.date)>=String(_R2.from))_rtU=_rrMapLabel(route,_R2.map);}catch(_e){}
+        try{var res=await sbClient.from('weekly_schedules').update({driver_name:drv,synced_at:new Date().toISOString()}).eq('week_start',ws0).eq('work_date',dc.date).eq('route_raw',_rtU);if(res&&res.error)miss++;else upd++;}catch(e){miss++;}
         if(st)st.textContent='반영 중… ('+cell+')';}
     }
     alert('✅ 표 업로드 완료\n반영: '+upd+'셀'+(miss?(' / 실패 '+miss):'')+'\n\n※ 분할(share)은 그대로 유지됩니다.');
@@ -8015,6 +8059,8 @@ async function _sxDoChanged(){
     var log=(typeof _mergeSchedLogs==='function')?_mergeSchedLogs(sharedLog,localLog):sharedLog;
     if(!Array.isArray(log))log=[];
     // ★ 이미 변경분으로 업로드 성공한 항목은 제외(델타) — uploaded 플래그가 붙은 건 다음 변경분에서 빠짐
+    try{await _rrLoadNow();}catch(_e){}window._rrMetaSkip=[];
+    try{log=log.map(function(c){var nr=_rrLogRoute(c.route,c.workDate,c.at);if(nr===c.route)return c;var c2={};Object.keys(c).forEach(function(k){c2[k]=c[k];});c2.route=nr;return c2;});}catch(_e){}
     var scoped=log.filter(function(c){return weekDates[c.workDate] && !c.uploaded;});
     window._sxPendingChangedIds=scoped.map(function(c){return c.id;}).filter(Boolean);
     if(!scoped.length){if(!window._sxSilent){var _sd=Array.from(new Set(log.map(function(c){return c.workDate;}).filter(Boolean))).sort().slice(-10).join(', ');alert('이 주차('+_sxWeekLabel(ws0)+')의 변경 건이 없습니다.\n\n전체 변경이력: '+log.length+'건\n변경된 날짜: '+(_sd||'없음')+'\n\n※ 변경분은 지금 보고 있는 주차의 변경만 담습니다. 변경한 날짜가 포함된 주차로 이동 후 눌러주세요.');}if(st)st.textContent='';return;}
@@ -8026,7 +8072,7 @@ async function _sxDoChanged(){
       _sxNames(c.oldDriver).forEach(function(_nm){net[key].drv[norm_name_js(_nm)]=_nm;});
       _sxNames(c.newDriver).forEach(function(_nm){net[key].drv[norm_name_js(_nm)]=_nm;});});
     // 캠프+주야 키 (803/805=8캠프주간, 808=8캠프야간, 그외=3캠프주간)
-    function _sxCW(raw){var b=String(raw||'').replace(/\s*\(.*?\)/g,'').trim();var camp=(b.charAt(0)==='8')?'8':'3';var ni=_sxIsNight(b)?'N':'D';return camp+'|'+ni;}
+    function _sxCW(raw){var b=String(raw||'').replace(/\s*\(.*?\)/g,'').trim();var camp=_rrCampKey(b);var ni=_sxIsNight(b)?'N':'D';return camp+'|'+ni;}
     // 그날 최종 스케줄에서 '어느 캠프+주야'에 근무 중인지 (캠프/주야가 다르면 덮어쓰기가 아니라 새 배정 → 옛 캠프 휴무 필요)
     var workingByDate={},workingCW={},currentByRoute={},_shByRoute={};
     try{var wq=await sbClient.from('weekly_schedules').select('work_date,route,route_raw,driver_name,share').eq('week_start',ws0);
@@ -8050,7 +8096,8 @@ async function _sxDoChanged(){
       // ★ 되돌림(정원준→문병국→정원준)이라도 그 사이 중간상태(문병국)가 이미 메타에 올라갔을 수 있음.
       //   → 라우트를 건너뛰지 않고, 항상 '현재 배정 기사'를 출근으로 다시 보내 메타를 앱 현재상태와 강제 일치시킨다.
       var routes=_sxSplitRt(c.route||'');var first=routes[0]||'';var night=_sxIsNight(first);var baseRt=first.replace(/\s*\(.*?\)/g,'').trim();
-      var camp=baseRt.charAt(0)==='8'?'일산8':'일산3';var wave=night?_SX_CFG.night_wave:_SX_CFG.day_wave;var rot=night?_SX_CFG.night_rot:_SX_CFG.day_rot;var routeStr=routes.join(',');
+      if(_rrMetaUnset(baseRt,c.workDate)){window._rrMetaSkip.push(c.workDate+' '+baseRt);return;}
+      var camp=_rrMetaCamp(baseRt,c.workDate);var wave=_rrMetaWave(baseRt,night,c.workDate);var rot=_rrMetaRot(baseRt,night,c.workDate);var routeStr=routes.join(',');
       var myCW=_sxCW(first||c.route);   // 이 라우트의 캠프+주야
       // 이 라우트를 거쳐간 기사 중 '현재 배정자가 아닌' 기사 처리:
       //  - 같은 캠프+주야에서 여전히 근무 → 덮어쓰기이므로 휴무 불필요(스킵)
@@ -8097,6 +8144,7 @@ async function _sxDoChanged(){
     sh['!cols']=[{wch:18},{wch:16},{wch:8},{wch:8},{wch:16},{wch:8},{wch:14},{wch:22}];
     for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}
     XLSX.utils.book_append_sheet(wb,sh,'변경리스트');
+    try{_rrSkipAlert();}catch(_e){}
     _sxOut(wb,_sxWeekLabel(ws0)+'_변경리스트.xlsx');
     var _exTxt=(skipPast?(' · 변경불가일(D+1이내)제외 '+skipPast):'')+(skipUnreg?(' · 미등록제외 '+skipUnreg):'')+(skipHumu?(' · 근무중휴무제외 '+skipHumu):'');
     if(st)st.textContent='✅ 변경분 '+n+'행'+_exTxt;
@@ -8246,7 +8294,7 @@ function pgFullSched(){
   h+='<div id="sched-scroll-wrap"><div id="sched-inner">';
   var _sgGl=_sgOrder(SCHED_WK,wk.g),_sgPrev='';
   for(var gi=0;gi<_sgGl.length;gi++){
-    var g=_sgGl[gi];try{var _sgH=_sgSecHead(SCHED_WK,g.l.join('|'),_sgPrev);_sgPrev=_sgH.sec;h+=_sgH.h;}catch(_sge){}var lk=g.l.join('|');
+    var g=_sgGl[gi];try{if(!EDIT_MODE&&typeof _rrMergeGroup==='function')g=_rrMergeGroup(g,wk);}catch(_rrme){}try{var _sgH=_sgSecHead(SCHED_WK,g.l.join('|'),_sgPrev);_sgPrev=_sgH.sec;h+=_sgH.h;}catch(_sge){}var lk=g.l.join('|');
     var ldisplay=g.l.map(function(n){return (n.indexOf('팀장')>=0?n.replace(/\s*팀장\s*$/,'')+_ldBadge(1,1):(n.indexOf('조장')>=0?n.replace(/\s*조장\s*$/,'')+_ldBadge(0,1):n));}).join(' / ');
     var gc=GCM[lk]||_gcmByLead(lk)||_sgGC(SCHED_WK,lk)||{bg:'#607d8b',tx:'#fff',mid:'#90a4ae',lt:'#eceff1',mtx:'#37474f'};
     var ghStyle='background:linear-gradient(135deg,'+gc.bg+','+gc.mid+');color:'+gc.tx+';border-left:4px solid rgba(255,255,255,.3)';
@@ -8287,7 +8335,7 @@ function pgFullSched(){
       var cc=colClasses[di];
       var isTod=(di===todayColIdx);
       var todBadge=isTod?'<span class="tod-badge">&#x1F4CD; 오늘</span>':'';
-      hdr+='<th'+(cc?' class="'+cc+'"':'')+'>'+wk.dl[di]+todBadge+'</th>';
+      hdr+='<th'+(cc?' class="'+cc+'"':'')+'>'+wk.dl[di]+todBadge+((typeof _rrHdrMark==='function')?_rrHdrMark(wk.dt[di]):'')+'</th>';
     }
     var rows='';
     for(var ri=0;ri<g.rt.length;ri++){
