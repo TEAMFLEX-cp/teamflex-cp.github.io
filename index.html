@@ -4449,7 +4449,7 @@ var QBK={loaded:false,cats:['지번','아파트','양평','야간'],_g1:[],_g2:[
 var QBK_DAYS=['일','월','화','수','목','금','토'];
 var QBK_FIXED={'104CD':'정원준','211AB':'오창훈','301AD':'류준선','112CD':'황형희','304AB':'김태동','113D/115D':'이성국','302AB':'이철희','302CD':'김재현','304CD':'이경용','301BC':'김민기','316B':'김병진','115BC':'정승원','206BC':'조명근','209AB':'윤동호','316AD':'서민지','316C':'황윤근','111CD':'김근형','113ABC':'홍순자','803B/805B':'한선준','311CD':'박성진','312CD':'송우석','112AB':'이진희','114D/115A':'김현정','311AB':'강승오','808CD':'이승석'};
 var QBK_COLOR_DEFAULT={'김윤종':'김연이'};
-function qbkFixedFor(r){r=String(r||'').replace(/\s*\(.*\)\s*$/,'').trim();return QBK_FIXED[r]||'';}
+function qbkFixedFor(r){r=String(r||'').replace(/\s*\(.*\)\s*$/,'').trim();if(QBK_FIXED[r])return QBK_FIXED[r];try{var R=(typeof _rrR0==='function')?_rrR0():null;if(R&&R.applied&&R.map){var rv=_rrRev();var o=r.replace(/\d{3}/g,function(n){return rv[n]||n;});if(o!==r&&QBK_FIXED[o])return QBK_FIXED[o];}}catch(e){}return '';}
 function qbkRedraft(){if(!confirm('현재 스케줄에서 조 편성을 다시 불러옵니다.\n(현재 편집 내용 대체) 진행할까요?'))return;qbkDraft();qbkSave();qbkRender();}
 function qbkFillFixed(){if(!confirm('모든 라우트를 고정기사로 일~토 채웁니다.\n(기존 배정 덮어씀) 진행할까요?'))return;QBK.groups.forEach(function(g){g.rt.forEach(function(ro){var fx=qbkFixedFor(ro.r);if(fx){var d={};QBK_DAYS.forEach(function(w){d[w]=fx;});ro.d=d;ro.b=fx;}});});qbkSave();qbkRender();}
 function qbkStrip(n){try{return (typeof splitDriverSuffix==='function')?splitDriverSuffix(n).base:String(n||'').split(' ')[0];}catch(e){return String(n||'').split(' ')[0];}}
