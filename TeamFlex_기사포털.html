@@ -64,7 +64,9 @@ function _rrRouteCell(route,wkKey){try{var R=_RRG&&_RRG.reorgs&&_RRG.reorgs[0];i
   /* [v812] 날짜 기준만: 개편일(10/14) 전에 끝나는 주는 기존 그대로(표시 없음) · 개편일이 들어간 주부터 새 번호+캠프 · 구 번호는 showOldUntil 주까지 */
   if(window.EDIT_MODE)return null;var wkE=_rrAddDays(wkKey,6);if(!wkE||wkE<String(R.from))return null;
   var p=_rrPfx(route);if(!p)return null;var rv=_rrRev();
-  var nl,ol;if(R.applied){if(!rv[p])return null;nl=route;ol=route.replace(/\d{3}/g,function(n){return rv[n]||n;});}else{if(!R.map[p])return null;nl=_rrMapLabel(route,R.map);ol=route;}
+  var nl,ol;if(R.applied){if(!rv[p])return null;nl=route;ol=route.replace(/\d{3}/g,function(n){return rv[n]||n;});}else{if(!R.map[p])return null;nl=_rrMapLabel(route,R.map);ol=route;
+    /* [v814] 오늘이 개편일 전이면: 옛 번호 / 바뀔 캠프 / → 새 번호 (미리 안내) */
+    if(_rrToday()<String(R.from)){var np0=(R.newPlace||{})[_rrPfx(nl)]||'';return '<span class="rr-r1">'+_rrEsc(route)+'</span>'+(np0?'<span class="rr-c">'+_rrChip(np0)+'</span>':'')+(nl!==route?'<span class="rr-new">→ '+_rrEsc(nl)+'</span>':'');}}
   var np=(R.newPlace||{})[_rrPfx(nl)]||'';var showOld=(ol!==nl)&&(!R.showOldUntil||String(wkKey)<=String(R.showOldUntil));
   return '<span class="rr-r1">'+_rrEsc(nl)+'</span>'+(np?'<span class="rr-c">'+_rrChip(np)+'</span>':'')+(showOld?'<span class="rr-old">구 '+_rrEsc(ol)+'</span>':'');
 }catch(e){return null;}}
@@ -129,6 +131,7 @@ function _rrMergeGroup(g,wk){try{var R=_rrR0();if(!R||!R.applied||!R.map||!g||!g
     out.push(rt);});
   if(out.length===g.rt.length&&out.every(function(x,k){return x===g.rt[k];}))return g;
   var g2={};Object.keys(g).forEach(function(k){g2[k]=g[k];});g2.rt=out;return g2;}catch(e){return g;}}
+function _rrToday(){try{if(typeof todStr==='function')return String(todStr());}catch(e){}var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 function _rrHdrMark(dt){try{var R=_rrR0();if(R&&String(dt)===String(R.from))return '<div class="rr-hm">🔁 번호 변경일</div>';}catch(e){}return '';}
 </script>
 <style>.rr-hm{font-size:8.5px;font-weight:900;color:#c62828;line-height:1.2}.rr-old{display:block;font-size:9.5px;color:#8a93a3;font-weight:700;line-height:1.3}.rr-r1{display:block;font-weight:900;line-height:1.25}.rr-arw{display:block;font-size:10px;font-weight:900;color:#e65100;line-height:1.5;white-space:nowrap}.rr-new{display:block;font-size:11.5px;font-weight:900;color:#1565C0;line-height:1.25}.rr-c{display:block;margin-top:2px}
@@ -8392,7 +8395,7 @@ function pgFullSched(){
           for(var _rk=0;_rk<_sortedSh.length&&_rotOnly;_rk++){var _rn=_rotNorm(_sortedSh[_rk].t),_rnm=norm_name_js(_sortedSh[_rk].d||'');if(_rn==='12'||!_rnm||(_rotBy[_rn]&&_rotBy[_rn]!==_rnm))_rotOnly=false;else _rotBy[_rn]=_rnm;}
           if(_rotOnly){['1','2'].forEach(function(_rq){if(_rotBy[_rq])_splitLines+='<div style="font-size:11px;line-height:1.45;white-space:nowrap;padding:1px 0"><b style="color:#6a1b9a">'+_rq+'회전</b> : '+escQ(_rotBy[_rq])+'</div>';});_sortedSh=[];}
           for(var _shk=0;_shk<_sortedSh.length;_shk++){
-            var _sp=_sortedSh[_shk];var _sr=String(_sp.r||routeDisp);try{var _R9=(typeof _rrR0==='function')?_rrR0():null;if(_R9&&!_R9.applied&&_R9.map&&String(dt)>=String(_R9.from))_sr=_rrMapLabel(_sr,_R9.map);}catch(_e9){}var _rl=_rotLbl(_sp.t);if(_seenSr[_sr+'|'+_rl])continue;_seenSr[_sr+'|'+_rl]=1;
+            var _sp=_sortedSh[_shk];var _sr=String(_sp.r||routeDisp);try{var _R9=(typeof _rrR0==='function')?_rrR0():null;if(_R9&&!_R9.applied&&_R9.map&&String(dt)>=String(_R9.from)&&_rrToday()>=String(_R9.from))_sr=_rrMapLabel(_sr,_R9.map);}catch(_e9){}var _rl=_rotLbl(_sp.t);if(_seenSr[_sr+'|'+_rl])continue;_seenSr[_sr+'|'+_rl]=1;
             var _spn=norm_name_js(_sp.d||'');var _spTj='';
             _splitLines+='<div style="font-size:11px;line-height:1.45;white-space:nowrap;padding:1px 0"><b style="color:#1565C0">'+escQ(_sr)+(_rl?' <span style="color:#6a1b9a">'+_rl+'</span>':'')+'</b> : '+_spTj+escQ(_spn)+'</div>';
           }
