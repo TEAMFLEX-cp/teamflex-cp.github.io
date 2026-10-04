@@ -138,29 +138,6 @@ function _rrMergeGroup(g,wk){try{var R=_rrR0();if(!R||!R.applied||!R.map||!g||!g
 function _rrToday(){try{if(typeof todStr==='function')return String(todStr());}catch(e){}var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 function _rrHdrMark(dt){try{var R=_rrR0();if(R&&String(dt)===String(R.from))return '<div class="rr-hm">🔁 번호 변경일</div>';}catch(e){}return '';}
 </script>
-<script>/* [조장 명단 연동] v818 — app_settings.leader_registry (앱·스케줄·정산 공용 기록). 기록이 없는 사람은 기존 화면 그대로 */
-var _LRG=null;
-function _lrParse(v){try{if(typeof v==='string')v=JSON.parse(v);}catch(e){v=null;}return (v&&typeof v==='object'&&Array.isArray(v.log))?v:null;}
-function _lrRoleAtIn(v,nm,dt){try{if(!v||!nm)return null;nm=String(nm).trim();var b=null;for(var i=0;i<v.log.length;i++){var e=v.log[i];if(!e||e.n!==nm||String(e.d)>String(dt))continue;if(!b||String(e.d)>String(b.d)||(String(e.d)===String(b.d)&&String(e.at||'')>=String(b.at||'')))b=e;}return b?(b.r||''):null;}catch(e){return null;}}
-function _lrRoleAt(nm,dt){return _LRG?_lrRoleAtIn(_LRG,nm,dt):null;}
-function _lrRef(wk){try{var t=_rrToday(),e=_rrAddDays(wk,6);if(!e)return t;return t<wk?wk:(t>e?e:t);}catch(x){return wk;}}
-function _lrBase(ln){return String(ln||'').replace(/\s*(팀장|조장)\s*$/,'').trim();}
-/* 이 주에 새로 임명된 조장 → 가장 많이 탄 조의 구분선에 추가 */
-function _lrAdds(groups,wk){var res={};try{if(!_LRG||!groups)return res;var ref=_lrRef(wk),wkE=_rrAddDays(wk,6),cand={};
-  _LRG.log.forEach(function(e){if(e&&e.by!=='init'&&e.r&&String(e.d)<=String(wkE))cand[e.n]=1;});
-  Object.keys(cand).forEach(function(nm){var r=_lrRoleAt(nm,ref);if(r)cand[nm]=r;else delete cand[nm];});
-  groups.forEach(function(g){(g.l||[]).forEach(function(ln){delete cand[_lrBase(ln)];});});
-  Object.keys(cand).forEach(function(nm){var best=null,bc=0;groups.forEach(function(g){var c=0;(g.rt||[]).forEach(function(rt){var d=rt.d||{};for(var k in d){if(splitDriverSuffix(d[k]||'').base===nm)c++;}});if(c>bc){bc=c;best=g;}});if(best){var k=(best.l||[]).join('|');(res[k]=res[k]||[]).push(nm+' '+cand[nm]);}});
-}catch(e){}return res;}
-/* 구분선에 보여줄 팀장·조장 (주 기준: 지난 주=그 주 마지막 날, 이번 주=오늘, 다음 주=그 주 첫날) */
-function _lrGroupLeaders(g,wk,adds){try{if(!_LRG)return g.l;var ref=_lrRef(wk),out=[];(g.l||[]).forEach(function(ln){var b=_lrBase(ln);var r=_lrRoleAt(b,ref);if(r===null){out.push(ln);return;}if(r)out.push(b+' '+r);});((adds||{})[(g.l||[]).join('|')]||[]).forEach(function(x){if(out.indexOf(x)<0)out.push(x);});
-  out.sort(function(a,b){return (a.indexOf('팀장')>=0?0:1)-(b.indexOf('팀장')>=0?0:1);});return out;}catch(e){return g.l;}}
-function _lrLoad(){try{if(!window.sbClient)return;sbClient.from('app_settings').select('value').eq('key','leader_registry').maybeSingle().then(function(r){var v=_lrParse(r&&r.data&&r.data.value);if(!v)return;var ch=JSON.stringify(v)!==JSON.stringify(_LRG);_LRG=v;if(ch&&(window.CUR_TAB==='fs'||window.CUR_TAB==='as')&&!window.EDIT_MODE&&typeof pgFullSched==='function'){try{var mc=document.getElementById('mc');if(mc){var st=mc.scrollTop;mc.innerHTML=pgFullSched();requestAnimationFrame(function(){try{initSchedScrollSync();}catch(e){}mc.scrollTop=st;});}}catch(e){}}}).catch(function(){});}catch(e){}}
-setTimeout(_lrLoad,2400);setTimeout(_lrLoad,8000);setInterval(function(){if(document.visibilityState!=='hidden')_lrLoad();},120000);
-/* 직급 변경 기록 남기기 (r: '팀장' | '조장' | '' ) */
-async function _lrPush(nm,r,by){if(!window.sbClient)return false;var q=await sbClient.from('app_settings').select('value').eq('key','leader_registry').maybeSingle();var v=_lrParse(q&&q.data&&q.data.value)||{version:1,log:[]};var t=_rrToday();var cur=_lrRoleAtIn(v,nm,t);if(cur===r){_LRG=v;return true;}
-  v.log.push({n:nm,r:r,d:t,at:new Date().toISOString(),by:by,prev:cur});v.updated=new Date().toISOString();var res=await sbClient.from('app_settings').upsert({key:'leader_registry',value:JSON.stringify(v)},{onConflict:'key'});if(res&&res.error)throw res.error;_LRG=v;return true;}
-</script>
 <style>.rr-hm{font-size:8.5px;font-weight:900;color:#c62828;line-height:1.2}.rr-old{display:block;font-size:9.5px;color:#8a93a3;font-weight:700;line-height:1.3}.rr-r1{display:block;font-weight:900;line-height:1.25}.rr-arw{display:block;font-size:10px;font-weight:900;color:#e65100;line-height:1.5;white-space:nowrap}.rr-new{display:block;font-size:11.5px;font-weight:900;color:#1565C0;line-height:1.25}.rr-c{display:block;margin-top:2px}
 .rr-chip{display:inline-block;font-size:9.5px;font-weight:800;border-radius:5px;padding:0 4px;line-height:15px;white-space:nowrap;vertical-align:middle}.rr-chip.c3{background:#e8f5e9;color:#1b5e20}.rr-chip.c3d{background:#e0f2f1;color:#00695c}.rr-chip.c3y{background:#e3f2fd;color:#0d47a1}.rr-chip.c6{background:#fff3e0;color:#e65100}.rr-chip.c8y{background:#f3e5f5;color:#6a1b9a}.rr-chip.c8{background:#ffebee;color:#b71c1c}.rr-chip.cx{background:#eceff1;color:#455a64}</style>
 <script>/* [팀장/조장 뱃지] v776 helpers */
@@ -4485,7 +4462,7 @@ function qbkFillFixed(){if(!confirm('모든 라우트를 고정기사로 일~토
 function qbkStrip(n){try{return (typeof splitDriverSuffix==='function')?splitDriverSuffix(n).base:String(n||'').split(' ')[0];}catch(e){return String(n||'').split(' ')[0];}}
 function qbkCatCol(c){return {'지번':['#e6f1fb','#0c447c'],'아파트':['#fcebeb','#a32d2d'],'양평':['#eaf3de','#3b6d11'],'야간':['#faeeda','#854f0b']}[c]||['#eef2f6','#37474f'];}
 function qbkBuildRole(){QBK.role=QBK.role||{};try{var wkKey=(typeof findCurWeek==='function')?findCurWeek():SCHED_WK;var wk=AW[wkKey];if(wk&&wk.g)wk.g.forEach(function(g){(g.l||[]).forEach(function(ln){var m=String(ln).match(/^(.+?)\s*(팀장|조장)$/);if(m)QBK.role[m[1].trim()]=m[2];});});}catch(e){}try{if(typeof GCM!=='undefined')Object.keys(GCM).forEach(function(k){k.split('|').forEach(function(ln){var m=String(ln).match(/^(.+?)\s*(팀장|조장)$/);if(m)QBK.role[m[1].trim()]=m[2];});});}catch(e){}}
-function qbkRoleTag(nm){nm=String(nm||'');var role=QBK.role[nm];try{if(typeof _lrRoleAt==='function'){var _lb=splitDriverSuffix(nm).base||nm;var _lr0=_lrRoleAt(_lb,_rrToday());if(_lr0==='')return {isL:false,star:false,lc:null};if(_lr0)role=_lr0;}}catch(_lre){}var _co=(QBK.colorOf&&QBK.colorOf[nm]);var lc=null,alias=nm;if(_co&&typeof _co==='object'){lc=_co;}else{alias=_co||nm;lc=(alias&&typeof LCM!=='undefined'&&LCM[alias])?LCM[alias]:null;}var isL=!!role||!!lc;return {isL:isL,star:(role==='팀장'),lc:lc};}
+function qbkRoleTag(nm){nm=String(nm||'');var role=QBK.role[nm];var _co=(QBK.colorOf&&QBK.colorOf[nm]);var lc=null,alias=nm;if(_co&&typeof _co==='object'){lc=_co;}else{alias=_co||nm;lc=(alias&&typeof LCM!=='undefined'&&LCM[alias])?LCM[alias]:null;}var isL=!!role||!!lc;return {isL:isL,star:(role==='팀장'),lc:lc};}
 function qbkDraft(){QBK.groups=[];try{var wkKey=(typeof findCurWeek==='function')?findCurWeek():SCHED_WK;if(!AW[wkKey]||!AW[wkKey].g){var ks=Object.keys(AW).filter(function(k){return AW[k]&&AW[k].g&&AW[k].g.length;}).sort();if(ks.length)wkKey=ks[ks.length-1];}var wk=AW[wkKey];if(!wk||!wk.g)return;var ovr=(typeof getSchedOvr==='function')?getSchedOvr():{};var WD=['일','월','화','수','목','금','토'];
  wk.g.forEach(function(g){var lk=(g.l||[]).join('|');var grp={cat:'지번',l:(g.l||[]).slice(),rt:[]};
   (g.rt||[]).forEach(function(ro){var perDay={},freq={};
@@ -8321,18 +8298,17 @@ function pgFullSched(){
 
   // 단일 가로 스크롤 컨테이너 — 모든 조가 동시에 이동
   h+='<div id="sched-scroll-wrap"><div id="sched-inner">';
-  var _sgGl=_sgOrder(SCHED_WK,wk.g),_sgPrev='';var _lrAd={};try{if(typeof _lrAdds==='function')_lrAd=_lrAdds(wk.g,SCHED_WK);}catch(_lre){}
+  var _sgGl=_sgOrder(SCHED_WK,wk.g),_sgPrev='';
   for(var gi=0;gi<_sgGl.length;gi++){
     var g=_sgGl[gi];try{if(!EDIT_MODE&&typeof _rrMergeGroup==='function')g=_rrMergeGroup(g,wk);}catch(_rrme){}try{var _sgH=_sgSecHead(SCHED_WK,g.l.join('|'),_sgPrev);_sgPrev=_sgH.sec;h+=_sgH.h;}catch(_sge){}var lk=g.l.join('|');
-    var _lrL=g.l;try{if(typeof _lrGroupLeaders==='function')_lrL=_lrGroupLeaders(g,SCHED_WK,_lrAd)||g.l;}catch(_lre){_lrL=g.l;}
-    var ldisplay=_lrL.map(function(n){return (n.indexOf('팀장')>=0?n.replace(/\s*팀장\s*$/,'')+_ldBadge(1,1):(n.indexOf('조장')>=0?n.replace(/\s*조장\s*$/,'')+_ldBadge(0,1):n));}).join(' / ');
+    var ldisplay=g.l.map(function(n){return (n.indexOf('팀장')>=0?n.replace(/\s*팀장\s*$/,'')+_ldBadge(1,1):(n.indexOf('조장')>=0?n.replace(/\s*조장\s*$/,'')+_ldBadge(0,1):n));}).join(' / ');
     var gc=GCM[lk]||_gcmByLead(lk)||_sgGC(SCHED_WK,lk)||{bg:'#607d8b',tx:'#fff',mid:'#90a4ae',lt:'#eceff1',mtx:'#37474f'};
     var ghStyle='background:linear-gradient(135deg,'+gc.bg+','+gc.mid+');color:'+gc.tx+';border-left:4px solid rgba(255,255,255,.3)';
     // Route column uses group accent color
     var rtdStyle='color:#1a1a1a;border-right:3px solid '+gc.bg;
     // Leader name detection for this group (strip 팀장/조장 suffix)
-    var leaderBaseNames=_lrL.map(function(ln){return ln.replace(/\s*(팀장|조장)$/,'').trim();});
-    var tjBaseNames=_lrL.filter(function(ln){return ln.indexOf('팀장')>=0;}).map(function(ln){return ln.replace(/\s*팀장$/,'').trim();});
+    var leaderBaseNames=g.l.map(function(ln){return ln.replace(/\s*(팀장|조장)$/,'').trim();});
+    var tjBaseNames=g.l.filter(function(ln){return ln.indexOf('팀장')>=0;}).map(function(ln){return ln.replace(/\s*팀장$/,'').trim();});
     // Build rowspan map: same driver on consecutive routes in same date column → merge
     // ★ 편집 모드에서는 병합하지 않음 — 병합하면 서로 다른 route_raw(316D·316C)를 한 셀로 묶어
     //    수정 시 한 라우트만 저장되고 나머지는 옛 값이 남아 엑셀에서 개별 인식이 안 됨.
@@ -8384,10 +8360,9 @@ function pgFullSched(){
         var dp=splitDriverSuffix(driver);
         var dBase=dp.base;
         // isLead: this group's leaders PLUS any leader from LCM (팀장/조장 in any group shows their own color)
-        var _lrR=null;try{_lrR=(dBase&&typeof _lrRoleAt==='function')?_lrRoleAt(dBase,dt):null;}catch(_lre){_lrR=null;}
-        var isLead=dBase&&(_lrR!==null?!!_lrR:(leaderBaseNames.indexOf(dBase)>=0||LCM[dBase]!==undefined||!!_sgLeadObj(SCHED_WK,dBase)));
+        var isLead=dBase&&(leaderBaseNames.indexOf(dBase)>=0||LCM[dBase]!==undefined||!!_sgLeadObj(SCHED_WK,dBase));
         // isTJ: check global ALL_TJ list (팀장은 어느 그룹에 있어도 ★)
-        var isTJ=dBase&&(_lrR!==null?(_lrR==='팀장'):(ALL_TJ.indexOf(dBase)>=0||_sgIsTJ(SCHED_WK,dBase)));
+        var isTJ=dBase&&(ALL_TJ.indexOf(dBase)>=0||_sgIsTJ(SCHED_WK,dBase));
         var ddisp=dBase?dBase+(dp.suf?'<span style="font-size:9px;background:#E3F2FD;color:#1565C0;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;vertical-align:middle">'+dp.suf+'</span>':''):'';if(dBase&&(isTJ||isLead)){if(isTJ)ddisp+=_ldBadge(1);ddisp='<span class="ldin" style="'+_ldBoxStyle((isLead&&(LCM[dBase]||_sgLeadObj(SCHED_WK,dBase)))||gc)+((typeof spanVal!=='undefined'&&spanVal>1)?';min-height:'+(spanVal*44-6)+'px':'')+'">'+ddisp+'</span>';}
         // sat/sun color ONLY on <th> headers — never on data <td> cells
         var tdCC=(cc==='tod-col')?'tod-col':'';
@@ -9895,7 +9870,7 @@ async function setRole(name,role){
   // Supabase 동기화
   if(sbClient){
     try{
-      var r=await sbClient.from('drivers').update({role:role,rank:({'leader':'팀장','sub':'조장'})[role]||'일반',synced_at:new Date().toISOString()}).eq('name',name);
+      var r=await sbClient.from('drivers').update({role:role,synced_at:new Date().toISOString()}).eq('name',name);
       if(r.error)console.error('[setRole] SB err',r.error);
       else console.log('[setRole] Supabase 역할 변경 완료:',name,'→',role);
       // [즉시 적용] 푸시 구독 role도 함께 동기화 — 직급 변경이 알림 대상에 바로 반영(본인 앱 재실행 불필요)
@@ -9906,8 +9881,6 @@ async function setRole(name,role){
       }catch(e2){console.warn('[setRole] push role 동기화 예외',e2);}
     }catch(e){console.warn('[setRole] SB err',e);}
   }
-  /* [v818] 조장 명단 기록 → 스케줄 프로그램·정산 프로그램도 따라감 */
-  try{await _lrPush(name,({'leader':'팀장','sub':'조장'})[role]||'','app');}catch(_lre){console.warn('[setRole] 조장 명단 기록 실패',_lre);}
   var labels={'driver':'기사','leader':'팀장','sub':'조장'};
   alert(name+' → '+labels[role]+' 으로 변경되었습니다.');go('ap');
 }
