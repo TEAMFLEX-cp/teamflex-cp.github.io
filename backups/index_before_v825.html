@@ -8168,29 +8168,25 @@ async function _sxDoChanged(){
     // 캠프+주야 키 (803/805=8캠프주간, 808=8캠프야간, 그외=3캠프주간)
     function _sxCW(raw){var b=String(raw||'').replace(/\s*\(.*?\)/g,'').trim();var camp=_rrCampKey(b);var ni=_sxIsNight(b)?'N':'D';return camp+'|'+ni;}
     // 그날 최종 스케줄에서 '어느 캠프+주야'에 근무 중인지 (캠프/주야가 다르면 덮어쓰기가 아니라 새 배정 → 옛 캠프 휴무 필요)
-    var workingByDate={},workingCW={},currentByRoute={},_shByRoute={},_subRaw={},_wqOk=false;
+    var workingByDate={},workingCW={},currentByRoute={},_shByRoute={};
     try{var wq=await sbClient.from('weekly_schedules').select('work_date,route,route_raw,driver_name,share').eq('week_start',ws0);
       (wq.data||[]).forEach(function(e){var d=e.work_date;if(!workingByDate[d])workingByDate[d]={};if(!workingCW[d])workingCW[d]={};
         var rr=e.route_raw||e.route||'';var cw=_sxCW(rr);
         function _addCW(nm){var k=norm_name_js(nm||'');if(!k)return;workingByDate[d][k]=1;(workingCW[d][k]=workingCW[d][k]||{})[cw]=1;}
         if(e.driver_name){_addCW(e.driver_name);}
-        if(rr&&e.driver_name)currentByRoute[d+'|'+rr]=e.driver_name;_wqOk=true;if(rr){_subRaw[d+'|'+rr]=rr;if(e.route)_subRaw[d+'|'+e.route]=rr;try{_sxSplitRt(rr).forEach(function(x){_subRaw[d+'|'+x]=rr;});}catch(_x){}}
+        if(rr&&e.driver_name)currentByRoute[d+'|'+rr]=e.driver_name;
         if(e.share){try{var sh=typeof e.share==='string'?JSON.parse(e.share):e.share;(sh||[]).forEach(function(s){if(s.driver)_addCW(s.driver);});if(sh&&sh.length)_shByRoute[d+'|'+rr]=sh;}catch(ex){}}});
     }catch(e){}
     function _sxWorking(date,nm){return !!(workingByDate[date]&&workingByDate[date][norm_name_js(nm||'')]);}
     // 같은 캠프+주야에서 근무 중인지 (같으면 덮어쓰기 → 휴무 불필요 / 다르면 옛 캠프 휴무 필요)
     function _sxWorkingCW(date,nm,cw){var m=workingCW[date]&&workingCW[date][norm_name_js(nm||'')];return !!(m&&m[cw]);}
-    /* [v825] 이력의 라우트가 서브라우트(209A·304C)로 남아 있어도 그날 스케줄의 묶음 라우트(209AB·304CD)로 합쳐 한 번만 처리.
-       (관리자 기기의 자동 변경감지 이력은 서브라우트 단위라, 그대로 두면 이력 글자의 기사가 '출근'으로 들어가 라우트가 겹쳤음) */
-    if(!_wqOk){if(!window._sxSilent)alert('현재 스케줄을 불러오지 못해 변경분을 만들 수 없습니다. 잠시 후 다시 시도하세요.');if(st)st.textContent='';window._sxMetaB64='';return;}
-    try{var _net2={};Object.keys(net).forEach(function(k){var c=net[k];var rk=_subRaw[c.workDate+'|'+c.route]||c.route;var nk=c.workDate+'|'+rk;var t=_net2[nk];if(!t){t=_net2[nk]={workDate:c.workDate,route:rk,oldDriver:c.oldDriver,newDriver:c.newDriver,oldAt:c.oldAt,newAt:c.newAt,drv:Object.assign({},c.drv||{})};}else{Object.keys(c.drv||{}).forEach(function(x){t.drv[x]=c.drv[x];});if(String(c.newAt)>String(t.newAt)){t.newDriver=c.newDriver;t.newAt=c.newAt;}if(String(c.oldAt)<String(t.oldAt)){t.oldDriver=c.oldDriver;t.oldAt=c.oldAt;}}});net=_net2;}catch(_rk){}
     var didmap=await _sxDidMap();
     var aoa=[['업무일','사업자등록번호','캠프명','웨이브','아이디','업무상태','회전','업무라우트']];var n=0,skipHumu=0;
     var skipPast=0,skipUnreg=0;
     Object.keys(net).sort().forEach(function(key){var c=net[key];
       // ★ 이미 지난 날짜(오늘 이전)는 쿠팡 메타에서도 수정 불가 → 변경분 엑셀에서 제외
       if(_sxDateLocked(c.workDate)){skipPast++;return;}
-      var curNew=currentByRoute[c.workDate+'|'+c.route]||'';   /* [v825] 출근은 현재 스케줄(진실)에서만 — 이력 글자(newDriver)로는 만들지 않음 */   // 출근 = 최종 스케줄의 현재 배정 기사(진실)
+      var curNew=currentByRoute[c.workDate+'|'+c.route]||c.newDriver;   // 출근 = 최종 스케줄의 현재 배정 기사(진실)
       // ★ 되돌림(정원준→문병국→정원준)이라도 그 사이 중간상태(문병국)가 이미 메타에 올라갔을 수 있음.
       //   → 라우트를 건너뛰지 않고, 항상 '현재 배정 기사'를 출근으로 다시 보내 메타를 앱 현재상태와 강제 일치시킨다.
       var routes=_sxSplitRt(c.route||'');var first=routes[0]||'';var night=_sxIsNight(first);var baseRt=first.replace(/\s*\(.*?\)/g,'').trim();
