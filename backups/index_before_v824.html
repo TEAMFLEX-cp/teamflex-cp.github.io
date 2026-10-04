@@ -9392,7 +9392,7 @@ function dhMyEditStart(name){
   if(cur&&pw!==cur){alert('비밀번호가 일치하지 않습니다.');return;}
   _dhRender(name,true,'self');
 }
-var _dhPhotoCache={};var DH_PHOTOS=[['id','신분증'],['car','차량등록증(배넘버)'],['haul','화물운송허가증'],['qual','화물운송자격증'],['biz','사업자등록증']];
+var _dhPhotoCache={};var DH_PHOTOS=[['id','신분증'],['car','차량등록증(배넘버)'],['haul','화물운송허가증'],['qual','화물운송자격증']];
 function _dhPhotoBoxes(name){
   var ph=_dhPhotoCache[name]||{};
   var h='<div style="font-size:12px;font-weight:800;color:#2f6bb0;margin:14px 2px 7px;padding-left:8px;border-left:3px solid #4aa3f0">서류 사진 <span style="color:#e65100;font-size:10px;font-weight:800">( 추후 꼭 첨부! )</span></div><div style="display:flex;gap:7px;flex-wrap:wrap">';
