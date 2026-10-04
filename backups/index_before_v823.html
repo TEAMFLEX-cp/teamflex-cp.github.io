@@ -2642,8 +2642,6 @@ function openSchedPermPopup(){
     return '<div class="ctc-agree" id="'+cid+'"><div class="q">'+q+'</div><div class="ctc-opts"><div class="ctc-opt" data-v="y" onclick="CT_agree(\''+cid+'\',\'y\')"><div class="cb">✓</div>동의함</div><div class="ctc-opt" data-v="n" onclick="CT_agree(\''+cid+'\',\'n\')"><div class="cb">✓</div>동의안함</div></div></div>';
   }
   function _v2(d){return !!(d&&d.ver==='2026.09');}
-  /* [v823] 새 서명분(2026.10) 본문 보완: 제4조② 분류 수행 표시 · 제4조③ 문구 · 제6조③④ 택배사명 */
-  function _cl3(){return CLAUSES2.map(function(c){return [c[0],c[1].map(function(l){return String(l).replace('분류작업을 수행 / 미수행 한다.','분류작업을 <b>■ 수행</b> / □ 미수행 한다.').replace('시간당 <span class="ctc-blank2">단가에 포함</span>원으로 한다.','시간당 <span class="ctc-blank2">배송수수료(단가)에 포함</span>하는 것으로 한다.').replace('택배사로부터 위탁받은','쿠팡 택배사로부터 위탁받은').replace('정부기관 및 택배사의 요청','정부기관 및 쿠팡 택배사의 요청');})];});}
   function _cfg(){return window._ctCfg||{};}
   function _ctEnd(){var e=_cfg().endDate;return /^\d{4}-\d{2}-\d{2}$/.test(e||'')?e:'';}
   function _mon(d){var a=new Date(d.start),b=new Date(d.end);if(isNaN(a)||isNaN(b))return '약 12';b.setDate(b.getDate()+1);var m=(b.getFullYear()-a.getFullYear())*12+(b.getMonth()-a.getMonth());return m>0?String(m):'약 12';}
@@ -2671,8 +2669,8 @@ function openSchedPermPopup(){
     var period=fv(kd(d.start))+' 부터 '+fv(kd(d.end))+' 까지 ('+(_v2(d)?_mon(d):'약 12')+'개월)';
     var h='<div class="ctc-paper"><div class="ctc-ttl">영업점 - 택배기사 위·수탁 표준계약서</div>';
     h+=_v2(d)?('<p class="ctc-p" style="text-indent:0">팀플렉스 주식회사(쿠팡) 영업점(이하, “위탁자”라 한다)과 택배종사자인 '+fv(d.name)+'(이하, “수탁자”라 한다)은 택배 운송 업무에 관하여 다음과 같이 위‧수탁계약을 체결한다.</p>'):('<p class="ctc-p" style="text-indent:0">팀플렉스 주식회사(쿠팡) 영업점(이하 “위탁자”)과 택배종사자인 '+fv(d.name)+'(이하 “수탁자”)은 다음과 같이 위·수탁계약을 체결한다.</p>');
-    (_v2(d)?((d&&d.bver==='2026.10')?_cl3():CLAUSES2):CLAUSES).forEach(function(c){h+='<div class="ctc-art">'+c[0]+'</div>';c[1].forEach(function(l){if(l==='§TABLE'){h+=(_v2(d)?_tbl2(d,period):'<div class="ctc-tbl">'+trr('계약기간',period)+trr('담당 라우트',fv(d.route))+trr('배송수수료','1건당 '+fv(d.price)+' 원 ( 단, 가중요인 충족되지않을시 차감됨 )')+trr('지급일','매월 15일')+trr('차량/자격','화물차량(영업용 넘버) / 화물운송자격증')+'</div>');}else h+='<p class="ctc-p">'+l+'</p>';});});
-    h+='<div class="ctc-sigblock">'+((d&&d.bver==='2026.10')?'<p class="ctc-p" style="text-indent:0;padding-left:0;margin-top:12px">［별지］ 개인정보 수집ㆍ이용 동의서 1부</p>':'')+'<p style="text-align:center;margin-top:16px;font-weight:700;font-size:12.5pt">'+kd(d.sign)+'</p>'+issuerBlock(mode)+sb2(d,'수탁자','sigMain',mode)+'</div>';
+    (_v2(d)?CLAUSES2:CLAUSES).forEach(function(c){h+='<div class="ctc-art">'+c[0]+'</div>';c[1].forEach(function(l){if(l==='§TABLE'){h+=(_v2(d)?_tbl2(d,period):'<div class="ctc-tbl">'+trr('계약기간',period)+trr('담당 라우트',fv(d.route))+trr('배송수수료','1건당 '+fv(d.price)+' 원 ( 단, 가중요인 충족되지않을시 차감됨 )')+trr('지급일','매월 15일')+trr('차량/자격','화물차량(영업용 넘버) / 화물운송자격증')+'</div>');}else h+='<p class="ctc-p">'+l+'</p>';});});
+    h+='<div class="ctc-sigblock"><p style="text-align:center;margin-top:16px;font-weight:700;font-size:12.5pt">'+kd(d.sign)+'</p>'+issuerBlock(mode)+sb2(d,'수탁자','sigMain',mode)+'</div>';
     h+='<div class="ctc-sttl">［별지］개인정보 수집ㆍ이용 동의서</div>';
     h+='<p class="ctc-p" style="text-indent:0"><b>가. 개인정보 수집ㆍ이용 목적</b></p><p class="ctc-p">◦ 택배 운송 위·수탁계약 체결 및 그 이행</p><p class="ctc-p">◦ 「화물자동차 운수사업법」등 관련 법령에 따른 자격보유 여부 확인</p>';
     h+='<p class="ctc-p" style="text-indent:0"><b>나. 개인정보 수집 항목</b></p><p class="ctc-p">◦ 이름, 주소, 전화번호, 통장계좌번호, 생년월일, 주민등록번호, 사업자등록번호(사업자등록을 한 경우), 운수종사자 자격증 등록번호</p>';
