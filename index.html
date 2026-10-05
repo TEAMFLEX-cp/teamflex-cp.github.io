@@ -18055,7 +18055,7 @@ async function loadFreshStatus(){
     var _pddVisLog=isAdmin?_pddLog:_pddLog.filter(function(e){return (e.date||'')>=_PDD_PUB;});
     var _pddMiss=_pddVisLog.filter(function(e){return (e.date||'')>=_pper.start&&(e.date||'')<=_pper.end;}).reduce(function(s,e){return s+((e.status==='정상배송인정')?0:(e.miss||0));},0);
     var _pddPubOpen=isAdmin||(_kdate>=_PDD_PUB)||_pddShare;
-    var _pddBtn=_pddBtnHtml(isAdmin,_pddPubOpen,_pddMiss,_pddMiss*100000);
+    var _pddBtn=_pddBtnHtml(isAdmin,_pddPubOpen,_pddMiss,_pddCounts(_pddVisLog.filter(function(e){return (e.date||'')>=_pper.start&&(e.date||'')<=_pper.end;})));
     // ── 팀플 마감 시간 미준수 카드 (마감시각·미준수 로그) ──
     var _ddl='19:50', _ddlLog=[];
     try{
@@ -18498,6 +18498,11 @@ function _pddPeriod(off){
   return {start:s(start),end:s(end),label:L(start)+' ~ '+L(end).slice(5)};
 }
 function _pddWon(n){return (n||0).toLocaleString('ko-KR')+'원';}
+/* [v827] PDD MISS 금액 표시 제거 · 날짜/이름/건수 목록 · 확정/사유확인중/정상배송 인정(취소) 구분 */
+function _pddGrp(e){var st=(e&&e.status)||'';if(st==='정상배송인정')return 'X';if(st==='사유확인중')return 'R';return (e&&e.confirmed)?'C':'N';}
+function _pddCounts(list){var c={C:0,R:0,X:0,N:0};(list||[]).forEach(function(e){c[_pddGrp(e)]+=(parseInt(e.miss,10)||0);});return c;}
+function _pddMD(d){var p=String(d||'').split('-');if(p.length<3)return String(d||'');var w=['일','월','화','수','목','금','토'][new Date(Date.UTC(+p[0],+p[1]-1,+p[2])).getUTCDay()];return parseInt(p[1],10)+'/'+parseInt(p[2],10)+' <span style="color:#9aa3ad;font-size:11px">('+w+')</span>';}
+var _PDD_G={C:['&#x2714; 확정','#c62828','#ffebee','#f5c2c2'],R:['&#x23F3; 사유확인중','#ef6c00','#fff8e1','#f6dca0'],X:['&#x2705; 정상배송 인정(취소)','#2e7d32','#e8f5e9','#bfe0c1'],N:['&#x1F4E5; 접수 (확정 전)','#1565c0','#e3f2fd','#bcd8f3']};
 // ── 팀플 마감 시간 미준수 카드 + 관리자 마감시간 설정 팝업 ──────────────
 function _ddlMissCardHtml(log,ddl,kdate,kmon,nowK,isAdm){
   if(!Array.isArray(log))log=[];
@@ -18560,25 +18565,20 @@ async function saveFrDeadline(){
   try{ await sbClient.from('app_settings').upsert({key:'fresh_deadline_time',value:t},{onConflict:'key'}); window._FR_DDL=t; closeFrDeadlinePopup(); if(typeof showToast==='function')showToast('⏱ 마감 시간 '+t+' 저장됨',true); if(typeof loadFreshStatus==='function'&&CUR_TAB==='fr')loadFreshStatus(); }
   catch(e){ alert('저장 실패: 인터넷/권한 확인'); }
 }
-function _pddBtnHtml(isAdmin,share,miss,amt){
-  var sm='<div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1;background:#fff;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#888">이번 미스</div><div style="font-size:16px;font-weight:800;color:#333">'+miss+'건</div></div><div style="flex:1;background:#fff;border-radius:8px;padding:6px;text-align:center"><div style="font-size:10px;color:#c62828">총 차감</div><div style="font-size:16px;font-weight:800;color:#c62828">'+_pddWon(amt)+'</div></div></div>';
+function _pddBtnHtml(isAdmin,share,miss,cnt){
+  cnt=cnt||{C:0,R:0,X:0,N:0};
+  function bx(k,l){var G=_PDD_G[k];return '<div style="flex:1;background:#fff;border-radius:8px;padding:6px 2px;text-align:center"><div style="font-size:10px;color:'+G[1]+';font-weight:700">'+l+'</div><div style="font-size:16px;font-weight:800;color:'+G[1]+'">'+(cnt[k]||0)+'건</div></div>';}
+  var sm='<div style="display:flex;gap:6px;margin-top:8px">'+(cnt.N?bx('N','접수'):'')+bx('C','확정')+bx('R','사유확인중')+bx('X','정상배송 인정')+'</div>';
   var full='<div onclick="showFreshPddLog()" style="cursor:pointer;background:#fde5ee;border:1px solid #f5b8d0;border-radius:14px;padding:11px 13px;margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><span style="color:#c2185b;font-size:14px;font-weight:700">&#x1F338; PDD MISS 전체 기록</span><span style="display:flex;align-items:center;gap:7px"><span style="font-size:10.5px;font-weight:700;color:#1565c0;background:#e3f0fc;border:1px solid #b9d7f5;padding:2px 8px;border-radius:20px">7월 26일부터 전체 공개</span><span style="font-size:11px;color:#c2185b">열기 &#x203A;</span></span></div>';
   if(isAdmin) return full+sm+'</div>';
   if(share){ return full+sm+'</div>'; }
   return '<div onclick="alert(\'\\uD83D\\uDD27 업데이트 테스트 중입니다\')" style="cursor:pointer;background:#f6eef1;border:1px solid #e3c9d4;border-radius:14px;padding:12px 13px;margin-bottom:10px;opacity:.85"><div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#a86985;font-size:14px;font-weight:700">&#x1F338; PDD MISS 기록</span><span style="font-size:10px;background:#bbb;color:#fff;padding:2px 9px;border-radius:20px">준비중</span></div></div>';
 }
-function _pddShowName(e){
-  var role=(CU&&CU.role)||'', me=(CU&&CU.name)||'';
-  if(role==='admin')return true;
-  if(e.status==='미공유')return false;
-  if(e.status==='정상배송인정')return role==='leader';
-  if(role==='leader')return true;
-  return e.worker===me;
-}
+function _pddShowName(e){ return true; } /* [v827] 벌금 아님 → 이름 전체 공개 */
 function _pddNotice(){
   return '<div style="background:#fff5f5;border:1px solid #f3c0c0;border-radius:12px;padding:11px 12px;margin-bottom:12px;font-size:11.5px;color:#7a2c2c;line-height:1.6">'
     +'<div style="font-weight:800;color:#c62828;font-size:12px;margin-bottom:6px">&#x26A0; 신선 PDD MISS 안내</div>'
-    +'<div>&#x2022; 미스 1건당 <b>100,000원 차감</b> &#xB7; 전액 개인 기부로 기부증 전달<br>&#x2022; 어플 오작동 miss (본사 확인하여 인정되지 않으면 miss로 판정)<br>&#x2022; 선완료 등으로 인한 인입 또는 miss 판정<br>&#x2022; 통신 저하&#xB7;시간 초과 miss<br>&#x2022; 20시 이후 사진 중복 촬영으로 miss</div>'
+    +'<div>&#x2022; 어플 오작동 miss (본사 확인하여 인정되지 않으면 miss로 판정)<br>&#x2022; 선완료 등으로 인한 인입 또는 miss 판정<br>&#x2022; 통신 저하&#xB7;시간 초과 miss<br>&#x2022; 20시 이후 사진 중복 촬영으로 miss</div>'
     +'<div style="margin-top:8px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:8px;padding:8px 10px;color:#e65100;font-weight:800;font-size:12px;line-height:1.5">&#x1F557; 신선 체크는 프로그램으로 <u>20시 이후에도 정확히 미스가 감지</u>됩니다!<br>어플 조작 미스(중복 사진 촬영)로 miss 발생하지 않도록 각별히 주의하세요.</div>'
     +'<div style="margin-top:7px;font-weight:800;color:#c62828">신선 PDD MISS는 어떤 이유든 미스입니다.</div>'
     +'<div style="margin-top:3px;font-weight:800;color:#b71c1c">SLA 점수 반영 부분으로 절대 발생하면 안 되기에 강력하게 제재합니다.</div></div>';
@@ -18587,33 +18587,43 @@ function _pddRowHtml(e){
   var role=(CU&&CU.role)||'', me=(CU&&CU.name)||'', admin=(role==='admin');
   var own=(role!=='admin'&&e.worker===me);
   var show=_pddShowName(e);
-  var nm=show?e.worker:'***', rt=show?(e.route||''):'***';
-  var st=e.status||'', cancel=(st==='정상배송인정'), conf=!!e.confirmed, amt=(e.miss||0)*_PDD_D;
-  var STm={'':['공유중','#e3f2fd','#1565c0'],'사유확인중':['사유확인 중','#fff8e1','#ef6c00'],'정상배송인정':['정상배송 인정(취소)','#e8f5e9','#2e7d32'],'미공유':['담당자 미공유(익명)','#ede7f6','#5e35b1']};
-  var bd=STm[st]||STm[''], showBadge=(admin||st==='사유확인중'||st==='정상배송인정');
-  var badge=showBadge?'<span style="font-size:10px;font-weight:700;background:'+bd[1]+';color:'+bd[2]+';padding:2px 8px;border-radius:20px">'+bd[0]+'</span>':'';
-  var confB=conf?' <span style="font-size:10px;font-weight:800;color:#fff;background:#2e7d32;padding:2px 7px;border-radius:20px">&#x2713; 확정</span>':'';
-  var meB=(own&&show&&(st===''||st==='사유확인중'))?' <span style="font-size:10px;font-weight:700;color:#fff;background:#1976d2;padding:2px 7px;border-radius:20px">나</span>':'';
-  var nmS=show?'color:#1a237e':'color:#bbb;letter-spacing:3px';
+  var nm=show?rqEsc(e.worker||''):'***';
+  var st=e.status||'', g=_pddGrp(e), cancel=(g==='X');
+  var nmS=own?'color:#0d47a1;font-weight:800':(show?'color:#1a237e;font-weight:700':'color:#bbb;letter-spacing:3px');
+  var meB=(own&&show)?' <span style="font-size:9.5px;font-weight:700;color:#fff;background:#1976d2;padding:1px 6px;border-radius:20px;vertical-align:1px">나</span>':'';
+  var anonB='';
+  var td='padding:8px 6px;border-top:1px solid #f1f1f1;font-size:13px;';
   var ctrl='';
   if(admin){
-    var opts=[['','공유중'],['사유확인중','사유확인 중'],['정상배송인정','정상배송 인정(취소)'],['미공유','담당자 미공유']].map(function(o){return '<option value="'+o[0]+'"'+(st===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');
-    ctrl='<div style="display:flex;gap:6px;margin-top:8px;align-items:center"><select onchange="pddSetStatus(\''+e.id+'\',this.value)" style="flex:1;padding:5px;border:1px solid #ccc;border-radius:7px;font-size:11px">'+opts+'</select>'
-      +'<button onclick="pddToggleConfirm(\''+e.id+'\')" style="border:1px solid '+(conf?'#2e7d32':'#ccc')+';background:'+(conf?'#e8f5e9':'#fff')+';color:'+(conf?'#2e7d32':'#777')+';border-radius:7px;padding:5px 8px;font-size:11px;font-weight:700;cursor:pointer">'+(conf?'&#x2713;확정':'확정')+'</button>'
-      +'<button onclick="pddDelRecord(\''+e.id+'\')" style="border:1px solid #ef9a9a;background:#fff;color:#c62828;border-radius:7px;padding:5px 9px;font-size:12px;cursor:pointer">&#x1F5D1;</button></div>';
+    var cur=g;
+    var opts=[['N','접수(확정 전)'],['C','확정'],['R','사유확인 중'],['X','정상배송 인정(취소)']].map(function(o){return '<option value="'+o[0]+'"'+(cur===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('');
+    ctrl='<td style="'+td+'text-align:right;white-space:nowrap"><select onchange="pddSetGrp(\''+e.id+'\',this.value)" style="max-width:96px;padding:3px;border:1px solid #ccc;border-radius:6px;font-size:10.5px">'+opts+'</select> <span onclick="pddDelRecord(\''+e.id+'\')" style="cursor:pointer;font-size:13px;color:#c62828">&#x1F5D1;</span></td>';
   }
-  var _inner='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px"><span style="font-size:12px;color:'+(own?'#0d47a1':'#666')+'">'+(e.date||'')+'</span><span>'+badge+confB+meB+'</span></div>'
-    +'<div style="font-size:13px;color:#333">담당자 <b style="'+(own?'color:#0d47a1':nmS)+'">'+nm+'</b> &#xB7; 라우트 <b style="'+(own?'color:#0d47a1':nmS)+'">'+rt+'</b></div>'
-    +'<div style="font-size:12px;color:#555;margin-top:4px">미스 <b style="color:#c62828">'+(e.miss||0)+'건</b> &#x2192; 차감 <b style="color:#c62828;'+(cancel?'text-decoration:line-through;color:#999':'')+'">'+_pddWon(amt)+'</b>'+(cancel?' <b style="color:#2e7d32">취소</b>':'')+'</div>'+ctrl;
-  if(own){ return '<div style="border:2px solid #1565c0;background:#e8f1fd;border-radius:14px;margin-bottom:10px;box-shadow:0 3px 14px rgba(21,101,192,.28);overflow:hidden"><div style="background:#1565c0;color:#fff;font-size:11px;font-weight:800;padding:5px 12px">&#x1F4CC; 내 PDD 기록</div><div style="padding:9px 12px">'+_inner+'</div></div>'; }
-  return '<div style="border:1px solid '+(conf?'#cfe3d0':'#eee')+';background:'+(cancel?'#f6faf6':'#fff')+';border-radius:12px;padding:10px 12px;margin-bottom:8px">'+_inner+'</div>';
+  var bg=own?'background:#e8f1fd;':'';
+  return '<tr style="'+bg+'"><td style="'+td+'color:'+(own?'#0d47a1':'#555')+';white-space:nowrap">'+_pddMD(e.date)+'</td>'
+    +'<td style="'+td+'"><span style="'+nmS+'">'+nm+'</span>'+meB+anonB+'</td>'
+    +'<td style="'+td+'text-align:right;white-space:nowrap;font-weight:800;color:'+(cancel?'#9e9e9e;text-decoration:line-through':'#c62828')+'">'+(parseInt(e.miss,10)||0)+'건</td>'+ctrl+'</tr>';
+}
+function _pddGroupHtml(k,items,always){
+  var G=_PDD_G[k], admin=((CU&&CU.role)==='admin');
+  if(!items.length&&!always)return '';
+  var sum=items.reduce(function(s,e){return s+(parseInt(e.miss,10)||0);},0);
+  var th='padding:6px;font-size:11px;color:#8a94a0;font-weight:700;background:#fafafa;';
+  var body=items.length?items.map(_pddRowHtml).join(''):'<tr><td colspan="'+(admin?4:3)+'" style="padding:12px;text-align:center;color:#b0b0b0;font-size:12px">해당 없음</td></tr>';
+  return '<div style="border:1px solid '+G[3]+';border-radius:12px;overflow:hidden;margin-bottom:10px">'
+    +'<div style="background:'+G[2]+';padding:8px 12px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:800;color:'+G[1]+'">'+G[0]+'</span><span style="font-size:12px;font-weight:800;color:'+G[1]+'">'+(function(){var u={};items.forEach(function(e){u[e.worker]=1;});return Object.keys(u).length;})()+'명 &#xB7; '+sum+'건</span></div>'
+    +'<table style="width:100%;border-collapse:collapse;background:#fff"><thead><tr><th style="'+th+'text-align:left;width:30%">날짜</th><th style="'+th+'text-align:left">이름</th><th style="'+th+'text-align:right;width:18%">건수</th>'+(admin?'<th style="'+th+'text-align:right">관리</th>':'')+'</tr></thead><tbody>'+body+'</tbody></table></div>';
 }
 function _pddRenderPopup(){
   var role=(CU&&CU.role)||'', admin=(role==='admin');
   var per=_pddPeriod(_PDD.month);
   var list=_PDD.log.filter(function(e){return (e.date||'')>=per.start&&(e.date||'')<=per.end;});
   list.sort(function(a,b){return (b.date||'').localeCompare(a.date||'');});
-  var rows=list.length?list.map(_pddRowHtml).join(''):'<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">이번 정산월 기록 없음</div>';
+  var by={C:[],R:[],X:[],N:[]}; list.forEach(function(e){by[_pddGrp(e)].push(e);});
+  var cnt=_pddCounts(list);
+  function box(k,lbl){var G=_PDD_G[k];return '<div style="flex:1;background:'+G[2]+';border:1px solid '+G[3]+';border-radius:9px;padding:6px 4px;text-align:center"><div style="font-size:10px;color:'+G[1]+';font-weight:700">'+lbl+'</div><div style="font-size:16px;font-weight:800;color:'+G[1]+'">'+cnt[k]+'건</div></div>';}
+  var sumRow='<div style="display:flex;gap:6px;margin-bottom:10px">'+(cnt.N?box('N','접수'):'')+box('C','확정')+box('R','사유확인중')+box('X','정상배송 인정')+'</div>';
+  var rows=list.length?(_pddGroupHtml('N',by.N,false)+_pddGroupHtml('C',by.C,true)+_pddGroupHtml('R',by.R,true)+_pddGroupHtml('X',by.X,true)):'<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">이번 정산월 기록 없음</div>';
   function mb(off,t){var a=(_PDD.month===off);return '<button onclick="pddSetMonth('+off+')" style="flex:1;padding:7px;border:1px solid '+(a?'#c2185b':'#ddd')+';background:'+(a?'#fce4ec':'#fff')+';color:'+(a?'#c2185b':'#777')+';border-radius:8px;font-size:12px;font-weight:'+(a?'700':'400')+';cursor:pointer">'+t+'</button>';}
   var monthTab='<div style="display:flex;gap:6px;margin-bottom:10px">'+mb(0,'이번 달')+mb(-1,'지난 달')+'</div>';
   var shareBar=admin?('<div style="display:flex;align-items:center;justify-content:space-between;background:'+(_PDD.share?'#e8f5e9':'#f2f2f2')+';border-radius:10px;padding:9px 12px;margin-bottom:10px"><span style="font-size:12px;font-weight:700;color:'+(_PDD.share?'#2e7d32':'#888')+'">&#x1F465; 팀장&#xB7;담당자 공유 '+(_PDD.share?'활성화됨':'비활성(테스트중)')+'</span><button onclick="pddToggleShare()" style="border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:800;color:#fff;background:'+(_PDD.share?'#2e7d32':'#9e9e9e')+';cursor:pointer">'+(_PDD.share?'&#x25CF; ON':'&#x25CB; OFF')+'</button></div>'):'';
@@ -18623,13 +18633,22 @@ function _pddRenderPopup(){
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:15px;font-weight:800;color:#c2185b">&#x1F338; PDD MISS 전체 기록 ('+list.length+'건)</span><button onclick="var p=document.getElementById(\'pdd-log-popup\');if(p)p.remove()" style="border:none;background:#eee;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer">&#x2715; 닫기</button></div>'
     +monthTab
     +'<div style="font-size:11px;color:#c2185b;background:#fdf0f5;border-radius:8px;padding:5px 10px;margin-bottom:10px;display:inline-block">&#x1F4C5; 정산월 &#xB7; '+per.label+'</div>'
-    +shareBar+_pddNotice()+rows+delAll+'</div></div>';
+    +shareBar+_pddNotice()+sumRow+rows+delAll+'</div></div>';
   var ex=document.getElementById('pdd-log-popup'); if(ex)ex.remove();
   document.body.insertAdjacentHTML('beforeend',popup);
 }
 async function _pddSave(){ try{ await sbClient.from('app_settings').upsert({key:'fresh_pdd_miss_log',value:JSON.stringify(_PDD.log)},{onConflict:'key'}); }catch(e){} }
 function pddSetMonth(off){ _PDD.month=off; _pddRenderPopup(); }
 async function pddSetStatus(id,st){ var e=_PDD.log.filter(function(x){return String(x.id)===String(id);})[0]; if(e){e.status=st; await _pddSave(); if(_PDD.share&&st!=='미공유'){var _m={'':'PDD 미스가 공유되었습니다.','사유확인중':'PDD 미스 사유를 확인 중입니다.','정상배송인정':'PDD 미스가 정상배송으로 인정되어 취소되었습니다.'}; _pddPush(e.worker,'📌 PDD 미스 상태 변경',_m[st]||'PDD 미스 상태가 변경되었습니다.');} _pddRenderPopup();} }
+async function pddSetGrp(id,v){ var e=_PDD.log.filter(function(x){return String(x.id)===String(id);})[0]; if(!e)return; var anon=(e.status==='미공유');
+  if(v==='H'){e.status='미공유';}
+  else if(v==='C'){e.confirmed=true; if(!anon)e.status='';}
+  else if(v==='N'){e.confirmed=false; if(!anon)e.status='';}
+  else if(v==='R'){e.status='사유확인중';e.confirmed=false;}
+  else if(v==='X'){e.status='정상배송인정';e.confirmed=false;}
+  await _pddSave();
+  if(_PDD.share&&e.status!=='미공유'){var _m={N:'PDD 미스가 공유되었습니다.',C:'PDD 미스가 확정되었습니다.',R:'PDD 미스 사유를 확인 중입니다.',X:'PDD 미스가 정상배송으로 인정되어 취소되었습니다.'}; if(_m[v])_pddPush(e.worker,'📌 PDD 미스 상태 변경',_m[v]);}
+  _pddRenderPopup(); }
 async function pddToggleConfirm(id){ var e=_PDD.log.filter(function(x){return String(x.id)===String(id);})[0]; if(e){e.confirmed=!e.confirmed; await _pddSave(); _pddRenderPopup();} }
 async function pddDelRecord(id){ if(!confirm('이 기록을 삭제할까요?'))return; _PDD.log=_PDD.log.filter(function(x){return String(x.id)!==String(id);}); await _pddSave(); _pddRenderPopup(); }
 async function pddToggleShare(){ _PDD.share=!_PDD.share; try{ await sbClient.from('app_settings').upsert({key:'fresh_pdd_share_active',value:_PDD.share?'1':'0'},{onConflict:'key'}); }catch(e){} _pddRenderPopup(); }
