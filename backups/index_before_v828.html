@@ -2760,8 +2760,6 @@ h+='<div class="ctc-bukbox"><div class="ctc-sttl">택배기사 위·수탁 계�
   }
     function badgeHTML(d,mode){
      var renew=(S.badgeKind==='renew');
-     /* [v828] 배넘버 서류(허가 신청 현황 확인서)는 주민번호 전체 표기 — 기사정보의 전체번호로 채움(앞 7자리 일치할 때만) */
-     function _bjFull(d){var raw='';try{var ex=(window._driverExt&&window._driverExt[d.name])||{};var db=(typeof getDB==='function')?(getDB()||{}):{};raw=ex.jumin||((db[d.name]||{}).jumin)||'';}catch(e){}if(!raw&&S&&S.d&&S.d.name===d.name)raw=S.d.jumin||'';var g=String(raw).replace(/[^0-9]/g,''),m=String(d.jumin||'').replace(/[^0-9]/g,'');if(g.length===13&&g.slice(0,7)===m.slice(0,7))return g.slice(0,6)+'-'+g.slice(6);return d.jumin;}
      var SVC='쿠팡로지스틱스서비스 유한회사';
      var GAP='쿠팡로지스틱스서비스',GAP_CEO='강현오',GAP_ADDR='서울특별시 강남구 광평로 280 7층<br>(수서동, 로즈데일빌딩)';
      var EUL='팀플렉스 주식회사',EUL_CEO='문병국',EUL_ADDR='경기도 파주시 와석순환로 15 , 807동 203호',EUL_TEL='010 - 7139 - 8602',EUL_BIZ='633 - 87 - 02978';
@@ -2786,12 +2784,12 @@ h+='<div class="ctc-bukbox"><div class="ctc-sttl">택배기사 위·수탁 계�
      /* ① 신청인 */
      if(!renew){
        h+='<tr><td rowspan="4" style="'+LB+';width:104px">① 신청인</td><td colspan="2" style="'+TD+'">'+K('성　명 :')+fv(d.name)+'</td></tr>';
-       h+='<tr><td colspan="2" style="'+TD+'">'+K('주민등록번호 :')+fv(_bjFull(d))+'</td></tr>';
+       h+='<tr><td colspan="2" style="'+TD+'">'+K('주민등록번호 :')+fv(d.jumin)+'</td></tr>';
        h+='<tr><td colspan="2" style="'+TD+'">'+K('주소(주민등록 상) :')+fv(d.addr)+'</td></tr>';
        h+='<tr><td style="'+TD+';font-size:9.5px;color:#333;font-weight:600">＊주민등록 상 주소지와 영업점(대리점) 주소지가 비인접할 경우, 접수 반려됨.</td><td style="'+TD+'">'+K('(연락처)')+fv(_fmtPhone(d.phone))+'</td></tr>';
      }else{
        h+='<tr><td rowspan="4" style="'+LB+';width:104px">① 신청인</td><td colspan="2" style="'+TD+'">'+K('성　명 :')+fv(d.name)+'</td></tr>';
-       h+='<tr><td colspan="2" style="'+TD+'">'+K('주민등록번호 :')+fv(_bjFull(d))+'</td></tr>';
+       h+='<tr><td colspan="2" style="'+TD+'">'+K('주민등록번호 :')+fv(d.jumin)+'</td></tr>';
        h+='<tr><td colspan="2" style="'+TD+'">'+K('주소(주민등록 상) :')+fv(d.addr)+'</td></tr>';
        h+='<tr><td colspan="2" style="'+TD+'">'+K('연　락　처 :')+fv(_fmtPhone(d.phone))+'</td></tr>';
      }
