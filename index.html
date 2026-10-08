@@ -21,7 +21,32 @@
 .ldin .ldb{margin-top:2px}
 .ldin .ldb{text-align:center}
 .ldin .ldb .ldg{display:inline-block;margin:0 auto;text-align:center;font-size:8.6px;line-height:13px;padding:0 6px}
-@media (max-width:820px) and (pointer:coarse){#sched-inner table.ft{min-width:680px!important}}
+/* [v837] 휴대폰 스케줄 7일 한눈에 */.spl{font-size:11px;line-height:1.45;white-space:nowrap;padding:1px 0}
+@media (max-width:820px){
+#sched-inner table.ft{min-width:0!important;width:100%!important;font-size:11px}
+#sched-inner table.ft col:first-child,#sched-inner table.ft th.rth,#sched-inner table.ft td.rtd{width:44px!important}
+#sched-inner table.ft th{padding:3px 0;font-size:10px;white-space:normal;line-height:1.2;letter-spacing:-.4px}
+#sched-inner table.ft th .wdy{font-size:9.5px;font-weight:600}
+#sched-inner table.ft td{padding:2px 0}
+#sched-inner table.ft td.dname{font-size:10.5px;letter-spacing:-.7px;font-weight:700}
+#sched-inner table.ft td.rtd{font-size:10px;white-space:normal;word-break:keep-all;overflow-wrap:normal;text-overflow:clip;line-height:1.15;letter-spacing:-.3px}
+#sched-inner .spl{font-size:9.5px;line-height:1.25;letter-spacing:-.7px}
+#sched-inner .ldin{font-size:10.5px;min-height:26px;padding:1px 0;border-radius:5px}
+#sched-inner .ldin .ldb .ldg{font-size:6.5px;line-height:10px;padding:0 2px;letter-spacing:0}
+#sched-inner .tod-badge{font-size:8.5px}
+#sched-inner table.ft td.tod-col,#sched-inner table.ft th.tod-col{border-left-width:2px!important;border-right-width:2px!important}
+#sched-inner table.ft th.tod-col{border-top-width:2px!important}
+#sched-inner .fgh{padding:5px 10px}#sched-inner .fc{font-size:12.5px}#sched-inner .fn2{font-size:10.5px}
+#sched-inner .fgrp{margin-bottom:8px;border-radius:10px}
+#sched-inner td.rtd .rr-r1{font-size:10px;white-space:normal;letter-spacing:-.5px}
+#sched-inner td.rtd .rr-chip{font-size:7.5px;padding:0 1px;letter-spacing:-.6px;line-height:11px;border-radius:3px;max-width:42px;overflow:hidden;text-overflow:clip}
+#sched-inner td.rtd .rr-new,#sched-inner td.rtd .rr-old{display:block;font-size:9.5px;white-space:normal;letter-spacing:-.6px;line-height:1.25}
+#sched-inner th .rr-hm{font-size:7.5px;letter-spacing:-.5px}
+#sched-inner td.dname span[style*="#00695c"]{font-size:8.5px!important;padding:0 2px!important;letter-spacing:-.6px}
+.mc:has(#sched-inner){padding-left:5px!important;padding-right:5px!important}
+.wk-nav{padding:5px 8px!important}
+.sched-sticky-nav{padding:4px 0!important;margin-bottom:6px!important}
+}
 .sched-new-badge{z-index:3}
 .ldg{display:inline-block;position:relative;overflow:hidden;white-space:nowrap;font-size:7.4px;line-height:12px;padding:0 5px;border-radius:4px;font-weight:900;letter-spacing:.35px;vertical-align:middle}
 .ldg.ldT{background:linear-gradient(180deg,#fffbe8 0%,#ffe27a 40%,#dca437 54%,#ffeaa8 100%);color:#4a2c00;text-shadow:0 1px 0 rgba(255,255,255,.9);box-shadow:0 0 0 1px #b8860b inset,0 1px 0 #8a5a00,0 1px 4px rgba(255,190,40,.55)}
@@ -8563,13 +8588,13 @@ function pgFullSched(){
       var cc=colClasses[di];
       var isTod=(di===todayColIdx);
       var todBadge=isTod?'<span class="tod-badge">&#x1F4CD; 오늘</span>':'';
-      hdr+='<th'+(cc?' class="'+cc+'"':'')+'>'+wk.dl[di]+todBadge+((typeof _rrHdrMark==='function')?_rrHdrMark(wk.dt[di]):'')+'</th>';
+      hdr+='<th'+(cc?' class="'+cc+'"':'')+'>'+String(wk.dl[di]).replace('(','<br><span class="wdy">(')+(String(wk.dl[di]).indexOf('(')>=0?'</span>':'')+todBadge+((typeof _rrHdrMark==='function')?_rrHdrMark(wk.dt[di]):'')+'</th>';
     }
     var rows='';
     for(var ri=0;ri<g.rt.length;ri++){
       var rtObj=g.rt[ri];var route=rtObj.r;
       var _rrC=null;try{_rrC=(typeof _rrRouteCell==='function')?_rrRouteCell(route,SCHED_WK):null;}catch(_rre){_rrC=null;}
-      var routeCell='<td class="rtd" style="'+rtdStyle+'">'+(_rrC||route)+'</td>';
+      var routeCell='<td class="rtd" style="'+rtdStyle+'">'+String(_rrC||route).replace(/([A-Za-z0-9)])\/(?=[0-9])/g,'$1<wbr>/')+'</td>';
       var cells='';
       for(var di=0;di<wk.dt.length;di++){
         var spanVal=spanMap[ri+'_'+di];
@@ -8621,11 +8646,11 @@ function pgFullSched(){
           // 회전 분할(1회전/2회전 각각 기사 1명)이면 라우트 없이 "1회전 : 이름 / 2회전 : 이름"만 표시
           var _rotBy={},_rotOnly=_sortedSh.length>0;
           for(var _rk=0;_rk<_sortedSh.length&&_rotOnly;_rk++){var _rn=_rotNorm(_sortedSh[_rk].t),_rnm=norm_name_js(_sortedSh[_rk].d||'');if(_rn==='12'||!_rnm||(_rotBy[_rn]&&_rotBy[_rn]!==_rnm))_rotOnly=false;else _rotBy[_rn]=_rnm;}
-          if(_rotOnly){['1','2'].forEach(function(_rq){if(_rotBy[_rq])_splitLines+='<div style="font-size:11px;line-height:1.45;white-space:nowrap;padding:1px 0"><b style="color:#6a1b9a">'+_rq+'회전</b> : '+escQ(_rotBy[_rq])+'</div>';});_sortedSh=[];}
+          if(_rotOnly){['1','2'].forEach(function(_rq){if(_rotBy[_rq])_splitLines+='<div class="spl"><b style="color:#6a1b9a">'+(_rq==='1'?'①':'②')+'</b>:'+escQ(_rotBy[_rq])+'</div>';});_sortedSh=[];}
           for(var _shk=0;_shk<_sortedSh.length;_shk++){
             var _sp=_sortedSh[_shk];var _sr=String(_sp.r||routeDisp);try{var _R9=(typeof _rrR0==='function')?_rrR0():null;if(_R9&&!_R9.applied&&_R9.map&&String(dt)>=String(_R9.from)&&_rrToday()>=String(_R9.from))_sr=_rrMapLabel(_sr,_R9.map);}catch(_e9){}var _rl=_rotLbl(_sp.t);if(_seenSr[_sr+'|'+_rl])continue;_seenSr[_sr+'|'+_rl]=1;
             var _spn=norm_name_js(_sp.d||'');var _spTj='';
-            _splitLines+='<div style="font-size:11px;line-height:1.45;white-space:nowrap;padding:1px 0"><b style="color:#1565C0">'+escQ(_sr)+(_rl?' <span style="color:#6a1b9a">'+_rl+'</span>':'')+'</b> : '+_spTj+escQ(_spn)+'</div>';
+            _splitLines+='<div class="spl"><b style="color:#1565C0">'+escQ(_srShort(_sr,route,_sp.r))+(_rl?'<span style="color:#6a1b9a">'+(_rl==='1회전'?'①':'②')+'</span>':'')+'</b>:'+_spTj+escQ(_spn)+'</div>';
           }
           cells+='<td class="dname'+(tdCC?' '+tdCC:'')+newCls+'"'+rowspanAttr
             +(EDIT_MODE?' onclick="openSplitCell(this)" style="cursor:pointer;background:#FFF8E1"':'')
@@ -8673,6 +8698,7 @@ function openSharePopup(td){
   }).join('');
   showAlertPopup('📋','쉐어 배정 상세','<div style="font-size:12px;color:#888;margin-bottom:10px">'+dateStr+' · '+route+'</div>'+lines,null);
 }
+/* [v837] 분할 표시: 같은 번호면 A/B만 (211A→A) */function _srShort(sr,route,orig){sr=String(sr);var p=(sr.match(/^\d+/)||[''])[0];if(!p)return sr;var rest=sr.slice(p.length);if(!rest)return sr;var rp=(String(route).match(/^\d+/)||[''])[0];if(p===rp||sr!==String(orig||''))return rest;return sr;}
 function escQ(s){return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // Split driver name into base + route-letter suffix  e.g. '박문도 AB' → {base:'박문도', suf:'AB'}
 function splitDriverSuffix(name){
