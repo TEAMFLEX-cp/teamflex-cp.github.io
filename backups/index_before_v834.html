@@ -1013,7 +1013,7 @@ textarea.ann-input:focus{border-color:#1565c0}
       </div>
       <div id="ec-split-wrap" style="display:none"></div>
       <button id="ec-split-toggle" onclick="ecToggleSplit()" style="display:none;width:100%;margin-top:2px;padding:9px;background:#EAF2FB;color:#1565C0;border:1px dashed #64B5F6;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">&#x1F500; 분할 배정 (나눠서 각각 지정)</button>
-      <button id="ec-ra-btn" onclick="ecRaToggle()" style="width:100%;margin-top:6px;padding:9px;background:#E0F2F1;color:#00695C;border:1px dashed #4DB6AC;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">동승교육</button>
+      <button id="ec-ra-btn" onclick="ecRaToggle()" style="width:100%;margin-top:6px;padding:9px;background:#E0F2F1;color:#00695C;border:1px dashed #4DB6AC;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">&#x1F393; 동승교육</button>
       <div id="ec-ra-wrap" style="display:none;margin-top:6px;background:#F1FAF9;border:1px solid #B2DFDB;border-radius:9px;padding:8px">
         <div style="font-size:11.5px;color:#00695C;font-weight:700;margin-bottom:5px">동승 교육받는 사람 · 스케줄에 '동승 : 이름'으로 표시 (쿠팡·정산 영향 없음)</div>
         <input type="text" id="ec-ra-name" list="ec-driver-list" placeholder="동승자 이름" style="width:100%;box-sizing:border-box;padding:8px;border:1.5px solid #B2DFDB;border-radius:8px;font-size:14px">
@@ -8710,22 +8710,22 @@ function openEditCell(td){
   setTimeout(function(){document.getElementById('ec-name').focus();},100);
 }
 function closeEditCell(){document.getElementById('edit-cell-modal').style.display='none';}
-/* ══ [v833] 동승교육 표시 (app_settings.sched_ridealong · 쿠팡/정산 영향 없음) ══ */
+/* ══ [v833] 🎓 동승교육 표시 (app_settings.sched_ridealong · 쿠팡/정산 영향 없음) ══ */
 var _RA=null;
 async function _raLoad(){try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_ridealong').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}_RA=(v&&typeof v==='object')?v:{};}catch(e){_RA=_RA||{};}return _RA;}
-function _raHtml(dt,rt){var n=_RA&&_RA[dt+'|'+rt];return n?'<div style="margin-top:2px"><span style="font-size:10px;font-weight:800;color:#00695c;background:#e0f2f1;border:1px solid #80cbc4;border-radius:6px;padding:1px 5px;white-space:nowrap">동승 : '+escQ(String(n))+'</span></div>':'';}
+function _raHtml(dt,rt){var n=_RA&&_RA[dt+'|'+rt];return n?'<div style="margin-top:2px"><span style="font-size:10px;font-weight:800;color:#00695c;background:#e0f2f1;border:1px solid #80cbc4;border-radius:6px;padding:1px 5px;white-space:nowrap">🎓 동승 : '+escQ(String(n))+'</span></div>':'';}
 async function _raSave(dt,rt,name){var v={};try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_ridealong').maybeSingle();var x=r&&r.data&&r.data.value;if(typeof x==='string')x=JSON.parse(x);if(x&&typeof x==='object')v=x;}catch(e){}
   var k=dt+'|'+rt;if(name)v[k]=name;else delete v[k];
   var t=kstToday();Object.keys(v).forEach(function(kk){if(String(kk).slice(0,10)<_ymdAdd(t,-60))delete v[kk];});   // 60일 지난 기록 정리
   var u=await sbClient.from('app_settings').upsert({key:'sched_ridealong',value:JSON.stringify(v)},{onConflict:'key'});if(u&&u.error)throw u.error;_RA=v;}
-function _ecRaInit(){try{var n=(_RA||{})[EC_STATE.date+'|'+EC_STATE.route]||'';var b=document.getElementById('ec-ra-btn');if(b)b.textContent=n?('동승교육 : '+n):'동승교육';var w=document.getElementById('ec-ra-wrap');if(w)w.style.display='none';var i=document.getElementById('ec-ra-name');if(i)i.value=n;var d=document.getElementById('ec-ra-del');if(d)d.style.display=n?'':'none';}catch(e){}}
+function _ecRaInit(){try{var n=(_RA||{})[EC_STATE.date+'|'+EC_STATE.route]||'';var b=document.getElementById('ec-ra-btn');if(b)b.textContent=n?('🎓 동승교육 : '+n):'🎓 동승교육';var w=document.getElementById('ec-ra-wrap');if(w)w.style.display='none';var i=document.getElementById('ec-ra-name');if(i)i.value=n;var d=document.getElementById('ec-ra-del');if(d)d.style.display=n?'':'none';}catch(e){}}
 function ecRaToggle(){var w=document.getElementById('ec-ra-wrap');if(!w)return;w.style.display=(w.style.display==='none')?'block':'none';if(w.style.display==='block'){var i=document.getElementById('ec-ra-name');if(i)setTimeout(function(){i.focus();},50);}}
 async function ecRaSave(del){var _rz=schedLockReason(EC_STATE&&EC_STATE.date);if(_rz){alert(_schedLockMsg(_rz));return;}
   var nm=del?'':((document.getElementById('ec-ra-name')||{}).value||'').trim();
   if(!del&&!nm){document.getElementById('ec-err').textContent='동승자 이름을 입력해주세요.';return;}
   try{await _raSave(EC_STATE.date,EC_STATE.route,nm);}catch(e){alert('동승 저장 실패: '+((e&&e.message)||e));return;}
   closeEditCell();var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);}
-  try{showToast(del?'동승 표시 삭제':'동승 : '+nm+' 표시됨',true);}catch(e){}}
+  try{showToast(del?'🎓 동승 표시 삭제':'🎓 동승 : '+nm+' 표시됨',true);}catch(e){}}
 window.ecRaToggle=ecRaToggle;window.ecRaSave=ecRaSave;
 
 /* ══ [v833] 🔄 기사 교체 — 기준일부터 A 자리 → B, B 원래 자리 → 지정 기사 또는 '미배정' (주차 전체 자동 · 미리보기 · 백업/되돌리기 · 쿠팡 변경분 주차별 자동) ══ */
