@@ -1013,12 +1013,6 @@ textarea.ann-input:focus{border-color:#1565c0}
       </div>
       <div id="ec-split-wrap" style="display:none"></div>
       <button id="ec-split-toggle" onclick="ecToggleSplit()" style="display:none;width:100%;margin-top:2px;padding:9px;background:#EAF2FB;color:#1565C0;border:1px dashed #64B5F6;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">&#x1F500; 분할 배정 (나눠서 각각 지정)</button>
-      <button id="ec-ra-btn" onclick="ecRaToggle()" style="width:100%;margin-top:6px;padding:9px;background:#E0F2F1;color:#00695C;border:1px dashed #4DB6AC;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">&#x1F393; 동승교육</button>
-      <div id="ec-ra-wrap" style="display:none;margin-top:6px;background:#F1FAF9;border:1px solid #B2DFDB;border-radius:9px;padding:8px">
-        <div style="font-size:11.5px;color:#00695C;font-weight:700;margin-bottom:5px">동승 교육받는 사람 · 스케줄에 '동승 : 이름'으로 표시 (쿠팡·정산 영향 없음)</div>
-        <input type="text" id="ec-ra-name" list="ec-driver-list" placeholder="동승자 이름" style="width:100%;box-sizing:border-box;padding:8px;border:1.5px solid #B2DFDB;border-radius:8px;font-size:14px">
-        <div style="display:flex;gap:6px;margin-top:6px"><button id="ec-ra-del" onclick="ecRaSave(true)" style="flex:1;padding:8px;border:1px solid #ef9a9a;background:#fff;color:#c62828;border-radius:8px;font-size:12.5px;font-weight:800;cursor:pointer">동승 삭제</button><button onclick="ecRaSave(false)" style="flex:1.6;padding:8px;border:none;background:#00897B;color:#fff;border-radius:8px;font-size:12.5px;font-weight:800;cursor:pointer">동승 저장</button></div>
-      </div>
       <div class="errmsg" id="ec-err"></div>
       <div id="ec-foot-single" style="display:flex;gap:8px;margin-top:10px">
         <button class="btn-s" style="flex:1" onclick="closeEditCell()">취소</button>
@@ -1116,7 +1110,7 @@ function _unreadSchedLog(){
 
 // ── 공유 변경이력 (Supabase) — 팀장·조장이 수정하면 관리자 기기에서도 보이게 ──
 //    app_settings.key='sched_change_log' 에 JSON 배열로 누적. 관리자가 '전체 삭제' 하기 전까지 유지.
-var _SHARED_LOG_MAX=1500;
+var _SHARED_LOG_MAX=300;
 var _sharedSchedLogCache=null;
 // 편집한 기기에서 1건 기록 (실제 수정자 = CU.name)
 async function _pushSharedSchedChange(workDate,route,oldDriver,newDriver){
@@ -8452,7 +8446,6 @@ function pgFullSched(){
   if(_sharedSchedLogCache===null && typeof _loadSharedSchedLog==='function'){
     try{_loadSharedSchedLog().then(function(){var mc=document.getElementById('mc');if(mc&&(CUR_TAB==='fs'||CUR_TAB==='as')){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);}});}catch(e){}
   }
-  if(_RA===null&&sbClient){_RA={};try{_raLoad().then(function(){var mc=document.getElementById('mc');if(mc&&(CUR_TAB==='fs'||CUR_TAB==='as')){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);}});}catch(_e){}}
   var _newKeys=_schedNewKeySet();   // 변경분 New 표시용 (건드린 라우트·근무일 안 지남)
   var keys=getWeekKeys();var idx=keys.indexOf(SCHED_WK);
   var prevDis=idx<=0?'disabled':'';var nextDis=idx>=keys.length-1?'disabled':'';
@@ -8485,7 +8478,6 @@ function pgFullSched(){
       '<button class="sxbtn b2" onclick="document.getElementById(\'sx-tbl-file\').click()">📤 표업로드</button>'+
       '<button class="sxbtn b3" onclick="schedDownloadList()">📋 리스트</button>'+
       '<button class="sxbtn b4" onclick="metaUpload(\'changed\')" title="변경분 쿠팡 메타 자동 반영">🔴 변경분<span style="font-size:8px;background:#1e9e63;color:#fff;border-radius:6px;padding:0 4px;margin-left:3px;vertical-align:middle">↑쿠팡</span></button>'+
-      '<button class="sxbtn" style="background:linear-gradient(135deg,#ff8f00,#e65100);color:#fff" onclick="swOpen()">🔄 기사교체</button>'+
     '</div>'+
     '<div id="sx-status" style="'+_wrap+';text-align:center;font-size:11px;color:#00695c;font-weight:700;margin-bottom:5px"></div>'
   ):'';
@@ -8587,7 +8579,6 @@ function pgFullSched(){
         // isTJ: check global ALL_TJ list (팀장은 어느 그룹에 있어도 ★)
         var isTJ=dBase&&(_lrR!==null?(_lrR==='팀장'):(ALL_TJ.indexOf(dBase)>=0||_sgIsTJ(SCHED_WK,dBase)));
         var ddisp=dBase?dBase+(dp.suf?'<span style="font-size:9px;background:#E3F2FD;color:#1565C0;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;vertical-align:middle">'+dp.suf+'</span>':''):'';if(dBase&&(isTJ||isLead)){if(isTJ)ddisp+=_ldBadge(1);ddisp='<span class="ldin" style="'+_ldBoxStyle((isLead&&(LCM[dBase]||_sgLeadObj(SCHED_WK,dBase)||(typeof _lrOwn==='function'&&_lrOwn(dBase))))||gc)+((typeof spanVal!=='undefined'&&spanVal>1)?';min-height:'+(spanVal*44-6)+'px':'')+'">'+ddisp+'</span>';}
-        if(dBase==='미배정')ddisp='<span style="color:#c62828;font-weight:900;background:#ffebee;border:1px dashed #ef9a9a;border-radius:6px;padding:1px 6px">미배정</span>';
         // sat/sun color ONLY on <th> headers — never on data <td> cells
         var tdCC=(cc==='tod-col')?'tod-col':'';
         // ★ 변경된 스케줄(순변경·근무일 안 지남) → New 배지 + 무지개 테두리. spanVal로 병합된 라우트도 함께 검사.
@@ -8630,15 +8621,15 @@ function pgFullSched(){
           cells+='<td class="dname'+(tdCC?' '+tdCC:'')+newCls+'"'+rowspanAttr
             +(EDIT_MODE?' onclick="openSplitCell(this)" style="cursor:pointer;background:#FFF8E1"':'')
             +' data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-route="'+escQ(routeDisp)+'" data-dt="'+dt+'" data-share="'+shareJson+'">'
-            +newBadge+_splitLines+_raHtml(dt,route)
+            +newBadge+_splitLines
             +(EDIT_MODE?'<div style="font-size:9px;color:#E65100;font-weight:700;margin-top:1px">✏ 분할수정</div>':'')
             +'</td>';
         } else if(EDIT_MODE){
           var eStyle=isLead?(' style="'+_ldCellStyle(cellGC)+'"'):'';
-          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+' editable'+newCls+'"'+eStyle+rowspanAttr+' onclick="openEditCell(this)" data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-rt="'+route+'" data-dt="'+dt+'" data-driver="'+dBase+'">'+newBadge+ddisp+_raHtml(dt,route)+'</td>';
+          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+' editable'+newCls+'"'+eStyle+rowspanAttr+' onclick="openEditCell(this)" data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-rt="'+route+'" data-dt="'+dt+'" data-driver="'+dBase+'">'+newBadge+ddisp+'</td>';
         } else {
           var lStyle=isLead?(' style="'+_ldCellStyle(cellGC)+'"'):'';
-          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+newCls+'"'+lStyle+rowspanAttr+'>'+newBadge+ddisp+_raHtml(dt,route)+'</td>';
+          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+newCls+'"'+lStyle+rowspanAttr+'>'+newBadge+ddisp+'</td>';
         }
       }
       rows+='<tr>'+routeCell+cells+'</tr>';
@@ -8706,140 +8697,10 @@ function openEditCell(td){
   var _sp=_ecSplittable(rt);
   var _tgl=document.getElementById('ec-split-toggle');
   if(_tgl)_tgl.style.display=_sp?'block':'none';
-  _ecRotSeg(rt);document.getElementById('edit-cell-modal').style.display='';try{_ecRaInit();}catch(_ra){}
+  _ecRotSeg(rt);document.getElementById('edit-cell-modal').style.display='';
   setTimeout(function(){document.getElementById('ec-name').focus();},100);
 }
 function closeEditCell(){document.getElementById('edit-cell-modal').style.display='none';}
-/* ══ [v833] 🎓 동승교육 표시 (app_settings.sched_ridealong · 쿠팡/정산 영향 없음) ══ */
-var _RA=null;
-async function _raLoad(){try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_ridealong').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}_RA=(v&&typeof v==='object')?v:{};}catch(e){_RA=_RA||{};}return _RA;}
-function _raHtml(dt,rt){var n=_RA&&_RA[dt+'|'+rt];return n?'<div style="margin-top:2px"><span style="font-size:10px;font-weight:800;color:#00695c;background:#e0f2f1;border:1px solid #80cbc4;border-radius:6px;padding:1px 5px;white-space:nowrap">🎓 동승 : '+escQ(String(n))+'</span></div>':'';}
-async function _raSave(dt,rt,name){var v={};try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_ridealong').maybeSingle();var x=r&&r.data&&r.data.value;if(typeof x==='string')x=JSON.parse(x);if(x&&typeof x==='object')v=x;}catch(e){}
-  var k=dt+'|'+rt;if(name)v[k]=name;else delete v[k];
-  var t=kstToday();Object.keys(v).forEach(function(kk){if(String(kk).slice(0,10)<_ymdAdd(t,-60))delete v[kk];});   // 60일 지난 기록 정리
-  var u=await sbClient.from('app_settings').upsert({key:'sched_ridealong',value:JSON.stringify(v)},{onConflict:'key'});if(u&&u.error)throw u.error;_RA=v;}
-function _ecRaInit(){try{var n=(_RA||{})[EC_STATE.date+'|'+EC_STATE.route]||'';var b=document.getElementById('ec-ra-btn');if(b)b.textContent=n?('🎓 동승교육 : '+n):'🎓 동승교육';var w=document.getElementById('ec-ra-wrap');if(w)w.style.display='none';var i=document.getElementById('ec-ra-name');if(i)i.value=n;var d=document.getElementById('ec-ra-del');if(d)d.style.display=n?'':'none';}catch(e){}}
-function ecRaToggle(){var w=document.getElementById('ec-ra-wrap');if(!w)return;w.style.display=(w.style.display==='none')?'block':'none';if(w.style.display==='block'){var i=document.getElementById('ec-ra-name');if(i)setTimeout(function(){i.focus();},50);}}
-async function ecRaSave(del){var _rz=schedLockReason(EC_STATE&&EC_STATE.date);if(_rz){alert(_schedLockMsg(_rz));return;}
-  var nm=del?'':((document.getElementById('ec-ra-name')||{}).value||'').trim();
-  if(!del&&!nm){document.getElementById('ec-err').textContent='동승자 이름을 입력해주세요.';return;}
-  try{await _raSave(EC_STATE.date,EC_STATE.route,nm);}catch(e){alert('동승 저장 실패: '+((e&&e.message)||e));return;}
-  closeEditCell();var mc=document.getElementById('mc');if(mc){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);}
-  try{showToast(del?'🎓 동승 표시 삭제':'🎓 동승 : '+nm+' 표시됨',true);}catch(e){}}
-window.ecRaToggle=ecRaToggle;window.ecRaSave=ecRaSave;
-
-/* ══ [v833] 🔄 기사 교체 — 기준일부터 A 자리 → B, B 원래 자리 → 지정 기사 또는 '미배정' (주차 전체 자동 · 미리보기 · 백업/되돌리기 · 쿠팡 변경분 주차별 자동) ══ */
-var _SW={plan:null,opt:null};
-function _swShell(inner){var p=document.getElementById('sw-pop');if(p)p.remove();var o=document.createElement('div');o.id='sw-pop';o.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:20500;display:flex;align-items:flex-end;justify-content:center';o.innerHTML='<div style="background:#f6f7fb;width:100%;max-width:520px;max-height:94vh;overflow:auto;border-radius:18px 18px 0 0;padding:14px 14px 22px">'+inner+'</div>';document.body.appendChild(o);}
-function swClose(){var p=document.getElementById('sw-pop');if(p)p.remove();}
-function _swWd(d){var p=String(d).split('-');var w=['일','월','화','수','목','금','토'][new Date(+p[0],+p[1]-1,+p[2]).getDay()];return parseInt(p[1],10)+'/'+parseInt(p[2],10)+'('+w+')';}
-async function swOpen(){if(!(CU&&CU.role==='admin')){alert('관리자만 가능합니다.');return;}if(!sbClient){alert('서버 연결 없음');return;}
-  var bk=[];try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_swap_backup').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);if(Array.isArray(v))bk=v;}catch(e){}
-  var last=bk.filter(function(b){return !b.restored;})[0];
-  var o=_SW.opt||{d:_ymdAdd(kstToday(),1),a:'',b:'',c:''};
-  var inp='width:100%;box-sizing:border-box;padding:9px 10px;border:1.5px solid #cbd5e1;border-radius:9px;font-size:14px;background:#fff';
-  var lab=function(t,s){return '<div style="font-size:12.5px;font-weight:800;color:#334155;margin:11px 0 5px">'+t+(s?' <span style="font-size:11px;color:#94a3b8;font-weight:500">'+s+'</span>':'')+'</div>';};
-  var dl='<datalist id="sw-names">'+(ALL_NAMES||[]).map(function(n){return '<option value="'+escQ(String(n))+'">';}).join('')+'</datalist>';
-  _swShell('<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:17px;font-weight:900;color:#1e293b">🔄 기사 교체</span><button onclick="swClose()" style="border:none;background:#e2e8f0;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer">✕ 닫기</button></div>'
-    +'<div style="font-size:11.5px;color:#475569;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:9px 11px;line-height:1.6;margin-top:8px">기준 날짜부터 스케줄이 있는 <b>모든 주차</b>에서 <b>A 기사 자리를 B 기사</b>로 바꿉니다. B가 원래 맡던 자리는 아래에 지정한 기사로, 비워두면 <b style="color:#c62828">미배정</b>으로 바뀝니다. A는 그날 다른 자리가 없으면 쿠팡에 <b>휴무</b>로 올라가요.</div>'
-    +dl+lab('기준 날짜','(이 날부터 적용)')+'<input id="sw-d" type="date" value="'+o.d+'" min="'+kstToday()+'" style="'+inp+'">'
-    +lab('A 기사','(빠지는 사람)')+'<input id="sw-a" list="sw-names" value="'+escQ(o.a)+'" placeholder="예) 조계환" style="'+inp+'">'
-    +lab('B 기사','(A 자리에 들어갈 사람)')+'<input id="sw-b" list="sw-names" value="'+escQ(o.b)+'" placeholder="예) 문병국" style="'+inp+'">'
-    +lab('B 원래 자리 받을 기사','(선택 · 비우면 미배정)')+'<input id="sw-c" list="sw-names" value="'+escQ(o.c)+'" placeholder="비워두면 미배정" style="'+inp+'">'
-    +'<button onclick="swPreview()" style="width:100%;margin-top:14px;padding:12px;border:none;border-radius:11px;background:linear-gradient(100deg,#ff8f00,#e65100);color:#fff;font-size:14px;font-weight:800;cursor:pointer">🔍 미리보기</button>'
-    +(last?('<div style="margin-top:14px;background:#fff;border:1px solid #fecaca;border-radius:10px;padding:10px 11px;font-size:12px;color:#7f1d1d">마지막 교체: <b>'+escQ(last.a)+' → '+escQ(last.b)+'</b>'+(last.c?' · B자리→'+escQ(last.c):' · B자리→미배정')+' ('+last.d+'부터 · '+last.groups.length+'칸 · '+String(last.at||'').slice(5,16).replace('T',' ')+')<button onclick="swRestore()" style="display:block;width:100%;margin-top:8px;padding:9px;border:1px solid #fca5a5;background:#fff5f5;color:#b91c1c;border-radius:9px;font-size:12.5px;font-weight:800;cursor:pointer">↩ 마지막 교체 되돌리기</button></div>'):''));}
-async function _swFetch(d){var all=[],from=0;while(true){var r=await sbClient.from('weekly_schedules').select('id,week_start,work_date,route,route_raw,driver_name,share').gte('work_date',d).order('work_date',{ascending:true}).order('id',{ascending:true}).range(from,from+999);if(r.error)throw r.error;var rows=r.data||[];all=all.concat(rows);if(rows.length<1000)break;from+=1000;}return all;}
-function _swParseShare(s){if(!s)return null;try{var v=(typeof s==='string')?JSON.parse(s):s;return (Array.isArray(v)&&v.length)?v:null;}catch(e){return null;}}
-function _swSum(drv,sh){if(!sh)return drv||'';return sh.map(function(e){var r=_rotNorm(e.rot);return (e.routes||[]).join(',')+(r==='12'?'':' '+_rotLbl(e.rot))+':'+(e.driver||'');}).join(' / ');}
-function _swPlan(rows,o){var A=norm_name_js(o.a),B=norm_name_js(o.b),C=String(o.c||'').trim();
-  var aRt={};rows.forEach(function(r){var rr=r.route_raw||r.route||'';var ns=[r.driver_name];var sh=_swParseShare(r.share);if(sh)sh.forEach(function(e){ns.push(e.driver);});if(ns.some(function(n){return n&&norm_name_js(splitDriverSuffix(String(n)).base)===A;}))aRt[rr]=1;});   // A가 맡는 라우트(=A 자리) — A 휴무날 B가 대신하던 칸은 B 유지
-  function mp(nm,rr){if(!nm)return {n:nm,h:''};var p=splitDriverSuffix(String(nm));var base=norm_name_js(p.base);var suf=p.suf?(' '+p.suf):'';if(base===A)return {n:o.b.trim()+suf,h:'A'};if(base===B){if(aRt[rr])return {n:nm,h:''};return {n:C?(C+suf):'미배정',h:'B'};}return {n:nm,h:''};}
-  var g={},order=[];rows.forEach(function(r){var rr=r.route_raw||r.route||'';var k=r.week_start+'|'+r.work_date+'|'+rr;if(!g[k]){g[k]={ws:r.week_start,dt:r.work_date,rr:rr,drv:r.driver_name||'',sh:null,shRaw:null};order.push(k);}if(!g[k].shRaw&&r.share){g[k].shRaw=r.share;g[k].sh=_swParseShare(r.share);}});
-  var out=[];order.forEach(function(k){var x=g[k];var hits={};var m=mp(x.drv,x.rr);if(m.h)hits[m.h]=1;var nsh=null;
-    if(x.sh){nsh=x.sh.map(function(e){var mm=mp(e.driver,x.rr);if(mm.h)hits[mm.h]=1;var c={};Object.keys(e).forEach(function(kk){c[kk]=e[kk];});c.driver=mm.n;return c;});}
-    if(!hits.A&&!hits.B)return;
-    out.push({ws:x.ws,dt:x.dt,rr:x.rr,old_driver:x.drv,old_share:x.shRaw?(typeof x.shRaw==='string'?x.shRaw:JSON.stringify(x.shRaw)):null,new_driver:m.n,new_share:nsh?JSON.stringify(nsh):null,old_sum:_swSum(x.drv,x.sh),new_sum:_swSum(m.n,nsh),hitA:!!hits.A,hitB:!!hits.B});});
-  return out;}
-async function swPreview(){var o={d:(document.getElementById('sw-d').value||'').trim(),a:(document.getElementById('sw-a').value||'').trim(),b:(document.getElementById('sw-b').value||'').trim(),c:(document.getElementById('sw-c').value||'').trim()};_SW.opt=o;
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(o.d)){alert('기준 날짜를 넣어주세요.');return;}
-  if(o.d<kstToday()){alert('지난 날짜는 바꿀 수 없어요. 오늘 이후로 넣어주세요.');return;}
-  if(!o.a||!o.b){alert('A 기사와 B 기사를 넣어주세요.');return;}
-  if(norm_name_js(o.a)===norm_name_js(o.b)){alert('A와 B가 같은 사람이에요.');return;}
-  if(o.c&&(norm_name_js(o.c)===norm_name_js(o.a)||norm_name_js(o.c)===norm_name_js(o.b))){alert('B 자리 받을 기사가 A 또는 B와 같아요.');return;}
-  _swShell('<div style="padding:30px;text-align:center;color:#475569">⏳ 스케줄 불러오는 중…</div>');
-  var rows;try{rows=await _swFetch(o.d);}catch(e){alert('스케줄 불러오기 실패: '+((e&&e.message)||e));swOpen();return;}
-  var plan=_swPlan(rows,o);_SW.plan=plan;
-  var maxD=rows.length?rows[rows.length-1].work_date:o.d;
-  var nA=plan.filter(function(p){return p.hitA;}).length,nB=plan.filter(function(p){return p.hitB;}).length;
-  var byWk={};plan.forEach(function(p){(byWk[p.ws]=byWk[p.ws]||[]).push(p);});
-  var locked=plan.filter(function(p){return _sxDateLocked(p.dt);}).length;
-  var list=Object.keys(byWk).sort().map(function(w){return '<div style="margin-top:9px"><div style="font-size:12px;font-weight:900;color:#1d4ed8;margin-bottom:3px">📅 '+_sxWeekLabel(w)+' · '+byWk[w].length+'칸</div>'+byWk[w].map(function(p){var col=p.hitA?'#0f766e':'#b91c1c';return '<div style="font-size:12px;color:#334155;padding:2px 0 2px 8px;border-left:3px solid '+col+'">'+_swWd(p.dt)+' <b>'+escQ(p.rr)+'</b> : '+escQ(p.old_sum||'-')+' → <b style="color:'+col+'">'+escQ(p.new_sum||'-')+'</b>'+(_sxDateLocked(p.dt)?' <span style="font-size:10px;color:#9a3412">(쿠팡 반영 불가일)</span>':'')+'</div>';}).join('')+'</div>';}).join('');
-  _swShell('<div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:16px;font-weight:900;color:#1e293b">🔍 교체 미리보기</span><button onclick="swOpen()" style="border:none;background:#e2e8f0;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer">‹ 다시 입력</button></div>'
-    +'<div style="margin-top:8px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 11px;font-size:12.5px;line-height:1.7;color:#1f2937">'
-    +'<b>'+o.d+'</b> ~ <b>'+maxD+'</b> (스케줄 있는 마지막 날)<br>'
-    +'🟢 <b>'+escQ(o.a)+'</b> 자리 <b>'+nA+'칸</b> → <b>'+escQ(o.b)+'</b><br>'
-    +'🔴 <b>'+escQ(o.b)+'</b> 원래 자리 <b>'+nB+'칸</b> → <b>'+(o.c?escQ(o.c):'<span style="color:#c62828">미배정</span>')+'</b><br>'
-    +'📤 쿠팡 메타: 주차별 변경분 자동 반영 ('+Object.keys(byWk).length+'개 주차)'+(locked?'<br><span style="color:#9a3412">⚠ 오늘·내일 '+locked+'칸은 쿠팡에서 이미 확정이라 앱에만 반영돼요</span>':'')
-    +'</div>'
-    +(plan.length?('<div style="max-height:44vh;overflow:auto;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:4px 10px 10px;margin-top:10px">'+list+'</div>'
-      +'<button onclick="swApply()" style="width:100%;margin-top:12px;padding:12px;border:none;border-radius:11px;background:#e65100;color:#fff;font-size:14px;font-weight:800;cursor:pointer">✅ '+plan.length+'칸 적용 (백업 후 진행)</button>')
-      :'<div style="text-align:center;color:#94a3b8;padding:20px">바꿀 칸이 없어요 ('+escQ(o.a)+'·'+escQ(o.b)+' 둘 다 이 기간 스케줄에 없음)</div>'));}
-async function _swWriteGroups(groups,useOld,progress){var fail=[];for(var i=0;i<groups.length;i++){var p=groups[i];var drv=useOld?p.old_driver:p.new_driver,sh=useOld?p.old_share:p.new_share;
-    try{var res=await sbClient.from('weekly_schedules').update({driver_name:drv,share:sh,synced_at:new Date().toISOString()}).eq('week_start',p.ws).eq('work_date',p.dt).eq('route_raw',p.rr);if(res&&res.error)fail.push(p);}catch(e){fail.push(p);}
-    if(progress&&i%5===0)progress(i+1,groups.length);}
-  return fail;}
-async function _swLog(groups,useOld){var cur=[];try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_change_log').maybeSingle();if(r&&r.data&&r.data.value){var v=r.data.value;cur=(typeof v==='string')?JSON.parse(v):v;}}catch(e){}if(!Array.isArray(cur))cur=[];
-  var t0=Date.now();var add=groups.map(function(p,i){return {id:(t0+i).toString(36)+Math.random().toString(36).slice(2,5),at:new Date(t0+i).toISOString(),workDate:p.dt,route:p.rr,oldDriver:useOld?p.new_sum:p.old_sum,newDriver:useOld?p.old_sum:p.new_sum,changedBy:(CU&&CU.name)||'',role:(CU&&CU.role)||'',bulk:1};});
-  cur=add.reverse().concat(cur);if(cur.length>_SHARED_LOG_MAX)cur=cur.slice(0,_SHARED_LOG_MAX);
-  await sbClient.from('app_settings').upsert({key:'sched_change_log',value:JSON.stringify(cur)},{onConflict:'key'});_sharedSchedLogCache=cur;}
-async function _swVerify(groups,useOld){var bad=[];var byWk={};groups.forEach(function(p){(byWk[p.ws]=byWk[p.ws]||[]).push(p);});
-  for(var w in byWk){var r=await sbClient.from('weekly_schedules').select('work_date,route_raw,driver_name,share').eq('week_start',w);var rows=(r&&r.data)||[];
-    byWk[w].forEach(function(p){var want=useOld?p.old_driver:p.new_driver,wsh=useOld?p.old_share:p.new_share;var rs=rows.filter(function(x){return x.work_date===p.dt&&(x.route_raw||'')===p.rr;});if(!rs.length){bad.push(p);return;}
-      if(rs.some(function(x){var s=x.share?(typeof x.share==='string'?x.share:JSON.stringify(x.share)):null;return (x.driver_name||'')!==(want||'')||(s||null)!==(wsh||null);}))bad.push(p);});}
-  return bad;}
-function _swClearOvr(groups){try{var ovr=getSchedOvr();var ch=0;var set={};groups.forEach(function(p){set[p.ws+'|'+p.rr+'|'+p.dt]=1;});Object.keys(ovr).forEach(function(k){var a=k.split('|||');if(a.length>=4&&set[a[0]+'|'+a[2]+'|'+a[3]]){delete ovr[k];ch++;}});if(ch)saveSchedOvr(ovr);}catch(e){}}
-function _swMeta(weeks,label,cb){var tod=kstToday();weeks=weeks.filter(function(w){return _ymdAdd(w,6)>=_ymdAdd(tod,2);});if(!weeks.length){cb&&cb([]);return;}
-  hcLoadXLSX(function(ok){if(!ok){cb&&cb(null);return;}(async function(){var _sv=SCHED_WK,jobs=[];
-    try{for(var i=0;i<weeks.length;i++){SCHED_WK=weeks[i];window._sxMetaCap=true;window._sxSilent=true;window._sxMetaB64='';try{await _sxDoChanged();}catch(e){}
-        window._sxMetaCap=false;window._sxSilent=false;if(window._sxMetaB64){try{var j=await _metaCreateJob('changed',weeks[i],window._sxMetaFname,window._sxMetaB64);if(j){jobs.push({w:weeks[i],j:j});_metaPollJobs([j],label+' '+_sxWeekLabel(weeks[i]),(window._sxPendingChangedIds||[]).slice());}}catch(e){}}}}
-    finally{window._sxMetaCap=false;window._sxSilent=false;SCHED_WK=_sv;}
-    cb&&cb(jobs);})();});}
-async function swApply(){var plan=_SW.plan,o=_SW.opt;if(!plan||!plan.length)return;
-  if(!confirm('🔄 '+o.a+' → '+o.b+' ('+o.d+'부터)\n\n총 '+plan.length+'칸을 바꿉니다. 바꾸기 전에 원래 값을 백업해요.\n진행할까요?'))return;
-  var stl=function(t){_swShell('<div style="padding:26px 10px;text-align:center;color:#334155;font-size:14px;line-height:1.7">'+t+'</div>');};
-  stl('💾 백업 저장 중…');
-  try{var bk=[];var r=await sbClient.from('app_settings').select('value').eq('key','sched_swap_backup').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);if(Array.isArray(v))bk=v;
-    bk.unshift({id:'s'+Date.now(),at:new Date().toISOString(),by:(CU&&CU.name)||'',d:o.d,a:o.a,b:o.b,c:o.c,groups:plan});bk=bk.slice(0,5);
-    var u=await sbClient.from('app_settings').upsert({key:'sched_swap_backup',value:JSON.stringify(bk)},{onConflict:'key'});if(u&&u.error)throw u.error;}
-  catch(e){alert('백업 저장 실패 — 아무것도 바꾸지 않았어요.\n'+((e&&e.message)||e));swOpen();return;}
-  var fail=await _swWriteGroups(plan,false,function(i,n){stl('✏️ 스케줄 바꾸는 중… '+i+' / '+n);});
-  var okG=plan.filter(function(p){return fail.indexOf(p)<0;});
-  stl('📋 변경이력 기록 · 확인 중…');
-  try{await _swLog(okG,false);}catch(e){}
-  _swClearOvr(okG);
-  var bad=[];try{bad=await _swVerify(plan,false);}catch(e){}
-  var weeks=Array.from(new Set(okG.map(function(p){return p.ws;}))).sort();
-  stl('📤 쿠팡 메타 변경분 요청 중… ('+weeks.length+'개 주차)');
-  _swMeta(weeks,'기사교체',function(jobs){try{schedRefresh();}catch(e){}
-    _swShell('<div style="font-size:16px;font-weight:900;color:#1e293b;margin-bottom:8px">'+(bad.length?'⚠ 교체 완료 (확인 필요)':'✅ 교체 완료')+'</div>'
-      +'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:11px;font-size:13px;line-height:1.8;color:#1f2937">'
-      +'바뀐 칸: <b>'+okG.length+' / '+plan.length+'</b>'+(fail.length?' <span style="color:#b91c1c">(저장 실패 '+fail.length+')</span>':'')+'<br>'
-      +'서버 대조: '+(bad.length?'<b style="color:#b91c1c">'+bad.length+'칸 불일치</b>':'<b style="color:#15803d">전부 일치</b>')+'<br>'
-      +'쿠팡 메타: '+(jobs===null?'<span style="color:#b91c1c">엑셀 모듈 오류 — [변경분] 버튼으로 다시 반영</span>':(jobs.length?(jobs.length+'개 주차 요청됨 (결과는 화면 위 알림으로 표시)'):'보낼 변경분 없음'))+'</div>'
-      +((bad.length||fail.length)?'<div style="margin-top:8px;font-size:12px;color:#7f1d1d">'+bad.concat(fail).slice(0,10).map(function(p){return _swWd(p.dt)+' '+escQ(p.rr);}).join(' · ')+'</div>':'')
-      +'<div style="display:flex;gap:8px;margin-top:12px"><button onclick="swRestore()" style="flex:1;padding:11px;border:1px solid #fca5a5;background:#fff5f5;color:#b91c1c;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">↩ 되돌리기</button><button onclick="swClose()" style="flex:1.4;padding:11px;border:none;background:#1d4ed8;color:#fff;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">닫기</button></div>');});}
-async function swRestore(){var bk=[];try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_swap_backup').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);if(Array.isArray(v))bk=v;}catch(e){}
-  var last=bk.filter(function(b){return !b.restored;})[0];if(!last){alert('되돌릴 교체가 없어요.');return;}
-  if(!confirm('↩ 마지막 교체를 되돌릴까요?\n\n'+last.a+' → '+last.b+' ('+last.d+'부터 · '+last.groups.length+'칸)\n바꾸기 전 원래 기사로 돌려놓습니다.'))return;
-  _swShell('<div style="padding:26px;text-align:center;color:#334155">↩ 되돌리는 중…</div>');
-  var fail=await _swWriteGroups(last.groups,true,null);var okG=last.groups.filter(function(p){return fail.indexOf(p)<0;});
-  try{await _swLog(okG,true);}catch(e){}_swClearOvr(okG);
-  var bad=[];try{bad=await _swVerify(last.groups,true);}catch(e){}
-  last.restored=new Date().toISOString();try{await sbClient.from('app_settings').upsert({key:'sched_swap_backup',value:JSON.stringify(bk)},{onConflict:'key'});}catch(e){}
-  var weeks=Array.from(new Set(okG.map(function(p){return p.ws;}))).sort();
-  _swMeta(weeks,'교체 되돌리기',function(jobs){try{schedRefresh();}catch(e){}
-    _swShell('<div style="font-size:16px;font-weight:900;color:#1e293b;margin-bottom:8px">'+(bad.length||fail.length?'⚠ 되돌리기 (확인 필요)':'✅ 되돌리기 완료')+'</div><div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:11px;font-size:13px;line-height:1.8">원래대로: <b>'+okG.length+' / '+last.groups.length+'</b>칸<br>서버 대조: '+(bad.length?'<b style="color:#b91c1c">'+bad.length+'칸 불일치</b>':'<b style="color:#15803d">전부 일치</b>')+'<br>쿠팡 메타: '+(jobs&&jobs.length?jobs.length+'개 주차 요청됨':'보낼 변경분 없음')+'</div><button onclick="swClose()" style="width:100%;margin-top:12px;padding:11px;border:none;background:#1d4ed8;color:#fff;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">닫기</button>');});}
-window.swOpen=swOpen;window.swClose=swClose;window.swPreview=swPreview;window.swApply=swApply;window.swRestore=swRestore;
 // ── 분할 배정 (104CD → 104C/104D 각각 기사 지정, share 컬럼 기록) ──
 function _ecSplittable(route){var m=(route||'').match(/^(\d+)([A-Za-z]{2,})$/);if(!m)return null;var base=m[1],letters=m[2].toUpperCase().split('');return {base:base,letters:letters,subs:letters.map(function(ch){return base+ch;})};}
 function ecResetSplitUI(){
@@ -8953,7 +8814,7 @@ function ecEditExistingSplit(wk,lk,route,dt,pairsJson){
   document.getElementById('ec-err').textContent='';
   document.getElementById('ec-split-toggle').style.display='none';
   document.getElementById('edit-cell-modal').style.display='';
-  ecToggleSplit();try{_ecRaInit();}catch(_ra){}
+  ecToggleSplit();
   var fp=document.getElementById('ec-foot-split');
   if(fp)fp.innerHTML='<button class="btn-s" style="flex:1" onclick="closeEditCell()">취소</button>'
     +'<button class="btn-s" style="flex:1;background:#FFF3E0;color:#E65100;border:1px solid #FFB74D" onclick="mergeFromSplitModal()">🔗 합치기</button>'
