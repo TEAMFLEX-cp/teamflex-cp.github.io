@@ -1,5 +1,5 @@
 // TeamFlex Service Worker v347 — v346 원복(잘못된 consignment 필드로 PDD미스 판정 오류 → 복구)
-const CACHE_NAME = 'teamflex-v841';
+const CACHE_NAME = 'teamflex-v840';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -203,7 +203,7 @@ async function checkScheduleInBackground() {
     await self.registration.showNotification('📅 업무 변경 알림 ' + changes.length + '건', {
     body: lines.join('\n'),
     icon: '/icons/icon-192.png',
-    badge: '/icons/badge-96.png',
+    badge: '/icons/icon-192.png',
     tag: 'tf-sched-' + Date.now(),
     renotify: true,
     requireInteraction: true,
@@ -220,7 +220,7 @@ self.addEventListener('push', e => {
   const opts = {
     body:               d.body || '새 알림이 있습니다.',
     icon:               '/icons/icon-192.png',
-    badge:              '/icons/badge-96.png',
+    badge:              '/icons/icon-192.png',
     tag:                'tf-' + Date.now(),
     renotify:           true,
     requireInteraction: true,
