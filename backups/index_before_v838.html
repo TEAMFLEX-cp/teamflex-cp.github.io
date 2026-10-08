@@ -27,14 +27,12 @@
 #sched-inner table.ft col:first-child,#sched-inner table.ft th.rth,#sched-inner table.ft td.rtd{width:44px!important}
 #sched-inner table.ft th{padding:3px 0;font-size:10px;white-space:normal;line-height:1.2;letter-spacing:-.4px}
 #sched-inner table.ft th .wdy{font-size:9.5px;font-weight:600}
-#sched-inner{--ldrow:22px}
-#sched-inner table.ft td{padding:1px 0}
+#sched-inner table.ft td{padding:2px 0}
 #sched-inner table.ft td.dname{font-size:10.5px;letter-spacing:-.7px;font-weight:700}
 #sched-inner table.ft td.rtd{font-size:10px;white-space:normal;word-break:keep-all;overflow-wrap:normal;text-overflow:clip;line-height:1.15;letter-spacing:-.3px}
 #sched-inner .spl{font-size:9.5px;line-height:1.25;letter-spacing:-.7px}
-#sched-inner .ldin{font-size:10.5px;min-height:0;padding:1px 0;border-radius:5px;line-height:1.05}
-#sched-inner .ldin .ldb{margin-top:0;line-height:8px}
-#sched-inner .ldin .ldb .ldg{font-size:6px;line-height:8px;padding:0 2px;letter-spacing:0}/* [v838] 리더칸·병합칸 높이 축소 */
+#sched-inner .ldin{font-size:10.5px;min-height:26px;padding:1px 0;border-radius:5px}
+#sched-inner .ldin .ldb .ldg{font-size:6.5px;line-height:10px;padding:0 2px;letter-spacing:0}
 #sched-inner .tod-badge{font-size:8.5px}
 #sched-inner table.ft td.tod-col,#sched-inner table.ft th.tod-col{border-left-width:2px!important;border-right-width:2px!important}
 #sched-inner table.ft th.tod-col{border-top-width:2px!important}
@@ -8613,7 +8611,7 @@ function pgFullSched(){
         var isLead=dBase&&_lrR!==''&&(!!_lrR||leaderBaseNames.indexOf(dBase)>=0||LCM[dBase]!==undefined||!!_sgLeadObj(SCHED_WK,dBase)||(typeof _lrOwn==='function'&&!!_lrOwn(dBase)));
         // isTJ: check global ALL_TJ list (팀장은 어느 그룹에 있어도 ★)
         var isTJ=dBase&&(_lrR!==null?(_lrR==='팀장'):(ALL_TJ.indexOf(dBase)>=0||_sgIsTJ(SCHED_WK,dBase)));
-        var ddisp=dBase?dBase+(dp.suf?'<span style="font-size:9px;background:#E3F2FD;color:#1565C0;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;vertical-align:middle">'+dp.suf+'</span>':''):'';if(dBase&&(isTJ||isLead)){if(isTJ)ddisp+=_ldBadge(1);ddisp='<span class="ldin" style="'+_ldBoxStyle((isLead&&(LCM[dBase]||_sgLeadObj(SCHED_WK,dBase)||(typeof _lrOwn==='function'&&_lrOwn(dBase))))||gc)+((typeof spanVal!=='undefined'&&spanVal>1)?';min-height:calc(var(--ldrow,44px)*'+spanVal+' - 6px)':'')+'">'+ddisp+'</span>';}
+        var ddisp=dBase?dBase+(dp.suf?'<span style="font-size:9px;background:#E3F2FD;color:#1565C0;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;vertical-align:middle">'+dp.suf+'</span>':''):'';if(dBase&&(isTJ||isLead)){if(isTJ)ddisp+=_ldBadge(1);ddisp='<span class="ldin" style="'+_ldBoxStyle((isLead&&(LCM[dBase]||_sgLeadObj(SCHED_WK,dBase)||(typeof _lrOwn==='function'&&_lrOwn(dBase))))||gc)+((typeof spanVal!=='undefined'&&spanVal>1)?';min-height:'+(spanVal*44-6)+'px':'')+'">'+ddisp+'</span>';}
         if(dBase==='미배정')ddisp='<span style="color:#c62828;font-weight:900;background:#ffebee;border:1px dashed #ef9a9a;border-radius:6px;padding:1px 6px">미배정</span>';
         // sat/sun color ONLY on <th> headers — never on data <td> cells
         var tdCC=(cc==='tod-col')?'tod-col':'';
