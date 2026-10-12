@@ -146,7 +146,7 @@ function _rrMetaRot(route,night,date){var k=_rrCampKey(route,date);if(k==='3'||k
 function _rrCampLabel(route,date){var k=_rrCampKey(route,date);if(k==='8')return '일산8';if(k==='3')return '일산3';var c=_rrCampCfg(k);return c.meta||((c.label||(k+'캠프'))+'(미설정)');}
 window._rrMetaSkip=[];
 /* [v842] 메타 업로드: 데이터 변환 전이라도 개편일(10/14) 이후 날짜는 새 번호로 (변환 후엔 그대로 = 이중 변환 방지) */
-function _rrMetaRt(rt,date){try{var R=_rrR0();if(!R||R.applied||!R.map)return rt;if(String(date)<String(R.from))return rt;return _rrMapLabel(rt,R.map);}catch(e){return rt;}}
+function _rrMetaRt(rt,date){try{var R=_rrR0();if(!R||!R.map)return rt;if(String(date)<String(R.from))return rt;if(!R.applied)return _rrMapLabel(rt,R.map);/* [v843] 변환 후에도 옛 번호로 새로 넣은 스케줄은 자동으로 새 번호(새 번호와 겹치는 206·211·316 등은 그대로) */var vals={};Object.keys(R.map).forEach(function(k){vals[R.map[k]]=1;});return String(rt||'').replace(/\d{3}/g,function(n){return (R.map[n]&&!vals[n])?R.map[n]:n;});}catch(e){return rt;}}
 function _rrSkipAlert(){try{var L=window._rrMetaSkip||[];if(!L.length)return;var u={};L.forEach(function(x){u[x]=1;});var ks=Object.keys(u);window._rrMetaSkip=[];alert('⚠ 캠프 설정이 비어 있는 라우트 '+ks.length+'건은 메타 엑셀에서 뺐어요.\n(앱 설정 → 🔁 개편·캠프 관리에서 메타 캠프명·웨이브·회전을 입력하면 다음부터 포함돼요)\n\n예: '+ks.slice(0,6).join(', '));}catch(e){}}
 /* 변환 전에 기록된 변경이력(적용일 이후 날짜, 옛 번호) → 새 번호로 */
 function _rrLogRoute(route,workDate,at){try{var R=_rrR0();if(!R||!R.applied||!R.map)return route;if(String(workDate)<String(R.from))return route;var ap=String(R.applied.at||'');if(ap&&at&&String(at)>=ap)return route;return _rrMapLabel(route,R.map);}catch(e){return route;}}
