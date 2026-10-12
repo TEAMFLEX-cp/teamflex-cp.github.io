@@ -9851,11 +9851,11 @@ function _dhCsvFallback(cols,data){
 }
 function dhExcelDown(){
   var db=getDB();var ext=_driverExt||{};
-  var COLS=[['성명',9],['역할',7],['상태',8],['주민번호',15],['생년월일',11],['주소',34],['메인폰',14],['서브폰',14],['쿠팡ID',14],['운전면허번호',18],['면허종류',10],['화물운송자격번호',16],['자격취득일',12],['차량명',14],['연료',7],['차량등록일',12],['연식',7],['차량번호',12],['허가시도',9],['허가시군구',10],['배넘버허가일',12],['은행',10],['계좌번호',18],['입사일',12]];
+  var COLS=[['성명',9],['역할',7],['상태',8],['주민번호',15],['생년월일',11],['주소',34],['메인폰',14],['서브폰',14],['사업자등록번호',15],['쿠팡ID',14],['운전면허번호',18],['면허종류',10],['화물운송자격번호',16],['자격취득일',12],['차량명',14],['연료',7],['차량등록일',12],['연식',7],['차량번호',12],['허가시도',9],['허가시군구',10],['배넘버허가일',12],['은행',10],['계좌번호',18],['입사일',12]];
   var data=[];
   Object.values(db).filter(function(d){return d.name&&splitDriverSuffix(d.name).suf===''&&!isJunkDriver(d)&&d.role!=='admin'&&d.name!==ROOT_ADMIN.id;}).sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko');}).forEach(function(d){
     var e=_dhMerge(d.name,ext,db);
-    data.push([d.name,_dhDrole(d,ext),d.status,_deJ(e.jumin),_dhBirth(e.jumin),e.addr||'',_deP(e.phone),_deP(e.subphone),e.cpid||'',_deL(e.lic),e.lictype||'',_deQ(e.qual),_deD(e.qualdate),e.car||'',e.fuel||'',_deD(e.regdate),(_deDig(e.regdate).slice(0,4)||e.cyear||''),e.carno||'',e.sido||'',e.sigungu||'',_deD(e.badgedate),e.bank||'',e.acct||'',_deD(e.joindate)]);
+    data.push([d.name,_dhDrole(d,ext),d.status,_deJ(e.jumin),_dhBirth(e.jumin),e.addr||'',_deP(e.phone),_deP(e.subphone),_deB(e.bizno),e.cpid||'',_deL(e.lic),e.lictype||'',_deQ(e.qual),_deD(e.qualdate),e.car||'',e.fuel||'',_deD(e.regdate),(_deDig(e.regdate).slice(0,4)||e.cyear||''),e.carno||'',e.sido||'',e.sigungu||'',_deD(e.badgedate),e.bank||'',e.acct||'',_deD(e.joindate)]);
   });
   var fname='기사정보_'+new Date().toISOString().slice(0,10)+'.xlsx';
   _loadExcelJS(function(ok){
@@ -9879,6 +9879,7 @@ function dhExcelDown(){
 }
 window._loadExcelJS=_loadExcelJS;
 function _dhCol(h){h=String(h==null?'':h).replace(/\s|\./g,'');if(!h||h==='None')return '';
+  if(/사업자/.test(h))return 'bizno';/* [v846] */
   if(/^ID$/i.test(h)||/쿠팡/.test(h)||/플렉스ID/i.test(h)||/로그인/.test(h))return 'cpid';
   if(/비밀번호|비번|password/i.test(h))return '__skip';
   if(/생년월일/.test(h))return '__skip';
