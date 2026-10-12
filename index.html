@@ -2136,7 +2136,7 @@ function _ctRpAll(){return ((window._ctCfg||{}).rp)||{};}
 function _ctRmap(){return ((window._ctCfg||{}).rmap)||{};}
 function ctRtExpand(v){var out=[];String(v==null?'':v).toUpperCase().replace(/_/g,'').split(/[,\s·]+/).forEach(function(tok){if(!tok)return;tok.split('/').forEach(function(p){var m=p.match(/^(\d{3})([A-Z]+)$/);if(m){m[2].split('').forEach(function(ch){out.push(m[1]+ch);});}else if(p)out.push(p);});});return out;}
 function ctSup(){var v=parseInt((window._ctCfg||{}).supAmt,10);return isNaN(v)?10:v;}
-function ctRtPrice(r){var rp=_ctRpAll(),mp=_ctRmap();var k=mp[r]?mp[r]:r;var p=rp[k];if(!p)return null;var b=+p[0],sp=Math.min(ctSup(),b);return {b:b,w:+p[1],s:sp,b0:b-sp,old:(k!==r?k:'')};}
+function ctRtPrice(r){var rp=_ctRpAll(),mp=_ctRmap();var k=mp[r]?mp[r]:r;var p=rp[k];if(!p)return null;var b=+p[0],sp=Math.min(ctSup(),b);/* [v847] 계약서 가중요인 = 충족 시 최대(기본 25원) — 정산에서 덜 받는 라우트(304B→316B 10원)도 계약은 25 */var wf=parseInt((window._ctCfg||{}).wFull,10);if(isNaN(wf))wf=25;return {b:b,w:Math.max(+p[1]||0,wf),s:sp,b0:b-sp,old:(k!==r?k:'')};}
 /* [v844] 단가 구성 표시: 기본 + 지원 + 가중요인 (+ 백업) */function ctBrk(o,bk){if(!o||o.miss)return '';var s0=(o.s!=null)?o.s:ctSup(),b0=(o.b0!=null)?o.b0:(o.b-s0);return '기본 '+b0+' + 지원 '+s0+' + 가중요인 '+o.w+((bk&&o.x)?' + 백업 '+o.x:'');}
 function ctRtCalc(route,x){x=x||0;return ctRtExpand(route).map(function(r){var p=ctRtPrice(r);return p?{r:r,b:p.b,w:p.w,s:p.s,b0:p.b0,x:x,t:p.b+p.w+x,old:p.old}:{r:r,miss:1};});}
 function ctAutoPrice(route){var L=ctRtCalc(route,0);if(!L.length)return '';for(var i=0;i<L.length;i++){if(L[i].miss||L[i].t!==L[0].t)return '';}return String(L[0].t);}
