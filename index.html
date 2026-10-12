@@ -13696,6 +13696,7 @@ async function addMonitorChat(){
   var idInp=document.getElementById('md-chat-id-inp');
   var nameInp=document.getElementById('md-chat-name-inp');
   var id=idInp.value.trim();var name=nameInp.value.trim();
+  try{var _cm=decodeURIComponent(id).match(/19:[^\/?#\s"']+?@(?:thread\.v2|thread\.tacv2|unq\.gbl\.spaces)/);if(_cm)id=_cm[0];}catch(e){}
   if(!id){showToast('채팅방 ID를 입력하세요',false);return;}
   if(!name)name=id.slice(0,24)+'...';
   if(_monitorChats.find(function(c){return c.id===id;})){showToast('이미 있는 채팅방',false);return;}
@@ -16605,6 +16606,7 @@ function pgRequest(){
     '<span style="font-size:12px;font-weight:800;color:#3949ab">&#x1F3E2; 캠프</span>'+
     '<select id="rq-camp-select" onchange="rqSetCamp(this.value)" style="flex:1;padding:6px 10px;border:1.5px solid #7986cb;border-radius:8px;font-size:13px;font-weight:700;color:#3949ab;background:#fff;cursor:pointer">'+
       '<option value="일산3캠프"'+(rqGetCamp()==='일산3캠프'?' selected':'')+'>일산3캠프</option>'+
+      '<option value="일산6캠프"'+(rqGetCamp()==='일산6캠프'?' selected':'')+'>일산6캠프</option>'+
       '<option value="일산8캠프2wave"'+(rqGetCamp()==='일산8캠프2wave'?' selected':'')+'>일산8캠프2wave</option>'+
     '</select>'+
     '<span style="font-size:10px;color:#7986cb">전송 채팅방 구분</span>'+
@@ -16615,6 +16617,7 @@ function pgRequest(){
   if(_rqTab){
     var campC='<select id="rq-camp-select" onchange="rqSetCamp(this.value)" style="padding:5px 8px;border:1.5px solid #7986cb;border-radius:8px;font-size:12px;font-weight:700;color:#3949ab;background:#fff;cursor:pointer;min-width:0;max-width:150px">'+
       '<option value="일산3캠프"'+(rqGetCamp()==='일산3캠프'?' selected':'')+'>일산3캠프</option>'+
+      '<option value="일산6캠프"'+(rqGetCamp()==='일산6캠프'?' selected':'')+'>일산6캠프</option>'+
       '<option value="일산8캠프2wave"'+(rqGetCamp()==='일산8캠프2wave'?' selected':'')+'>일산8캠프2wave</option></select>';
     var oneLine='<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:nowrap;background:#e8eaf6;border-radius:10px;padding:7px 10px">'+
       '<span style="font-size:13px;font-weight:800;color:#283593;white-space:nowrap">📝 각종요청</span>'+
@@ -19577,7 +19580,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     return h;
   }
   function badge(x){return '<span style="display:inline-block;font-size:10.5px;font-weight:800;background:linear-gradient(135deg,#4b2bd1,#2f6fed);color:#fff;border-radius:6px;padding:2px 7px;margin-right:5px">📡 팀즈 자동</span>'+
-    '<span style="display:inline-block;font-size:10.5px;font-weight:800;background:'+(x.camp==='8'?'#fdecea;color:#c62828':'#e8f5e9;color:#2e7d32')+';border-radius:6px;padding:2px 7px;margin-right:5px">'+esc(x.camp)+'캠프</span>';}
+    '<span style="display:inline-block;font-size:10.5px;font-weight:800;background:'+(x.camp==='8'?'#fdecea;color:#c62828':x.camp==='6'?'#fff4d6;color:#b26a00':'#e8f5e9;color:#2e7d32')+';border-radius:6px;padding:2px 7px;margin-right:5px">'+esc(x.camp)+'캠프</span>';}
   function card(x,adm){
     return '<div style="background:#fff;border:1.5px solid #e3e7ff;border-radius:14px;padding:12px 13px;margin-bottom:9px;box-shadow:0 1px 6px rgba(47,111,237,.08)">'+
       '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-bottom:6px">'+badge(x)+
@@ -19675,9 +19678,9 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     h+='<div style="background:#fff;border-radius:12px;padding:11px 12px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">'+
       chk(ED.enabled,'_TNE.enabled=this.checked','<b>기능 사용 (ON)</b>')+
       chk(ED.isn_only!==false,'_TNE.isn_only=this.checked','쿠팡 담당자([ISN_…]) 글만')+
-      '<span style="font-size:11px;color:#8a8fa8;width:100%">오늘 스케줄 기사 = 오늘 그 캠프 라우트 근무자 / 캠프 입차 기사 전체 = 지난·다음 7일 스케줄에 그 캠프 라우트가 있는 기사 (8로 시작=8캠프, 808 야간 제외, 나머지=3캠프). 전사 발송은 없음. 문병국 본인 글·봇 글·신선 2회전 글은 항상 제외.</span></div>';
-    ['8','3'].forEach(function(camp){
-      h+='<div style="background:#fff;border-radius:12px;padding:11px 12px;margin-bottom:10px"><div style="font-weight:900;font-size:13px;margin-bottom:8px;color:'+(camp==='8'?'#c62828':'#2e7d32')+'">'+(camp==='8'?'🏛️ 일산8캠프 2W':'🏢 일산3캠프')+' 키워드</div>';
+      '<span style="font-size:11px;color:#8a8fa8;width:100%">오늘 스케줄 기사 = 오늘 그 캠프 라우트 근무자 / 캠프 입차 기사 전체 = 지난·다음 7일 스케줄에 그 캠프 라우트가 있는 기사 (8로 시작=8캠프, 6으로 시작=6캠프, 808 야간 제외, 나머지=3캠프). 전사 발송은 없음. 문병국 본인 글·봇 글·신선 2회전 글은 항상 제외.</span></div>';
+    ['8','6','3'].forEach(function(camp){
+      h+='<div style="background:#fff;border-radius:12px;padding:11px 12px;margin-bottom:10px"><div style="font-weight:900;font-size:13px;margin-bottom:8px;color:'+(camp==='8'?'#c62828':camp==='6'?'#d48200':'#2e7d32')+'">'+(camp==='8'?'🏛️ 일산8캠프 2W':camp==='6'?'☀️ 일산6캠프':'🏢 일산3캠프')+' 키워드</div>';
       ED.keywords.forEach(function(k,i){if(String(k.camp)!==camp)return;
         h+='<div style="border:1px solid #eceef6;border-radius:10px;padding:8px;margin-bottom:7px">'+
           '<div style="display:flex;gap:6px;align-items:center"><input value="'+esc(k.kw)+'" oninput="_TNE.keywords['+i+'].kw=this.value" style="flex:1;border:1px solid #d5d9ea;border-radius:8px;padding:6px 8px;font-size:13px" placeholder="키워드 (예: 미스캔+공유)">'+
