@@ -145,6 +145,8 @@ function _rrMetaWave(route,night,date){var k=_rrCampKey(route,date);if(k==='3'||
 function _rrMetaRot(route,night,date){var k=_rrCampKey(route,date);if(k==='3'||k==='8')return night?_SX_CFG.night_rot:_SX_CFG.day_rot;var s=_rrCampCfg(k)[night?'night':'day']||{};return s.rot||'';}
 function _rrCampLabel(route,date){var k=_rrCampKey(route,date);if(k==='8')return '일산8';if(k==='3')return '일산3';var c=_rrCampCfg(k);return c.meta||((c.label||(k+'캠프'))+'(미설정)');}
 window._rrMetaSkip=[];
+/* [v842] 메타 업로드: 데이터 변환 전이라도 개편일(10/14) 이후 날짜는 새 번호로 (변환 후엔 그대로 = 이중 변환 방지) */
+function _rrMetaRt(rt,date){try{var R=_rrR0();if(!R||R.applied||!R.map)return rt;if(String(date)<String(R.from))return rt;return _rrMapLabel(rt,R.map);}catch(e){return rt;}}
 function _rrSkipAlert(){try{var L=window._rrMetaSkip||[];if(!L.length)return;var u={};L.forEach(function(x){u[x]=1;});var ks=Object.keys(u);window._rrMetaSkip=[];alert('⚠ 캠프 설정이 비어 있는 라우트 '+ks.length+'건은 메타 엑셀에서 뺐어요.\n(앱 설정 → 🔁 개편·캠프 관리에서 메타 캠프명·웨이브·회전을 입력하면 다음부터 포함돼요)\n\n예: '+ks.slice(0,6).join(', '));}catch(e){}}
 /* 변환 전에 기록된 변경이력(적용일 이후 날짜, 옛 번호) → 새 번호로 */
 function _rrLogRoute(route,workDate,at){try{var R=_rrR0();if(!R||!R.applied||!R.map)return route;if(String(workDate)<String(R.from))return route;var ap=String(R.applied.at||'');if(ap&&at&&String(at)>=ap)return route;return _rrMapLabel(route,R.map);}catch(e){return route;}}
@@ -8100,10 +8102,10 @@ function _sxBuildList(data,didmap){
     var rawForNm='';for(var i=0;i<data.length;i++){if(data[i].work_date===date&&(data[i].driver_name||'')===nm){rawForNm=data[i].route_raw||data[i].route||'';break;}}
     var shareKey=date+'|'+rawForNm;var shareList=shareMap[shareKey];
     if(shareList&&!writtenShare[shareKey]){writtenShare[shareKey]=1;
-      shareList.forEach(function(s){var sRoutes=(s.routes||routes).slice().sort();var firstR=sRoutes[0]||routes[0];var night=_sxIsNight(firstR);var baseRt=firstR.replace(/\s*\(.*?\)/g,'').trim();
+      shareList.forEach(function(s){var sRoutes=(s.routes||routes).slice().map(function(x){return _rrMetaRt(x,date);}).sort();var firstR=sRoutes[0]||routes[0];var night=_sxIsNight(firstR);var baseRt=firstR.replace(/\s*\(.*?\)/g,'').trim();
         if(_rrMetaUnset(baseRt,date)){window._rrMetaSkip.push(date+' '+baseRt);return;}
         out.push([date,_SX_CFG.bizno,_rrMetaCamp(baseRt,date),_rrMetaWave(baseRt,night,date),_sxDid(didmap,s.driver||'',''),_SX_CFG.status,(s.rot||'1회전'),sRoutes.join(',')]);});
-    } else if(!shareList&&!writtenShare[shareKey]){var firstRoute=routes[0];var night=_sxIsNight(firstRoute);var baseRt=firstRoute.replace(/\s*\(.*?\)/g,'').trim();
+    } else if(!shareList&&!writtenShare[shareKey]){routes=routes.map(function(x){return _rrMetaRt(x,date);}).sort();var firstRoute=routes[0];var night=_sxIsNight(firstRoute);var baseRt=firstRoute.replace(/\s*\(.*?\)/g,'').trim();
       if(_rrMetaUnset(baseRt,date)){window._rrMetaSkip.push(date+' '+baseRt);return;}
       out.push([date,_SX_CFG.bizno,_rrMetaCamp(baseRt,date),_rrMetaWave(baseRt,night,date),_sxDid(didmap,nm,sfx),_SX_CFG.status,_rrMetaRot(baseRt,night,date),routes.join(',')]);}
   });
@@ -8347,10 +8349,10 @@ async function _sxDoChanged(){
       var curNew=currentByRoute[c.workDate+'|'+c.route]||'';   /* [v825] 출근은 현재 스케줄(진실)에서만 — 이력 글자(newDriver)로는 만들지 않음 */   // 출근 = 최종 스케줄의 현재 배정 기사(진실)
       // ★ 되돌림(정원준→문병국→정원준)이라도 그 사이 중간상태(문병국)가 이미 메타에 올라갔을 수 있음.
       //   → 라우트를 건너뛰지 않고, 항상 '현재 배정 기사'를 출근으로 다시 보내 메타를 앱 현재상태와 강제 일치시킨다.
-      var routes=_sxSplitRt(c.route||'');var first=routes[0]||'';var night=_sxIsNight(first);var baseRt=first.replace(/\s*\(.*?\)/g,'').trim();
+      var routes=_sxSplitRt(c.route||'').map(function(x){return _rrMetaRt(x,c.workDate);});var first=routes[0]||'';var night=_sxIsNight(first);var baseRt=first.replace(/\s*\(.*?\)/g,'').trim();
       if(_rrMetaUnset(baseRt,c.workDate)){window._rrMetaSkip.push(c.workDate+' '+baseRt);return;}
       var camp=_rrMetaCamp(baseRt,c.workDate);var wave=_rrMetaWave(baseRt,night,c.workDate);var rot=_rrMetaRot(baseRt,night,c.workDate);var routeStr=routes.join(',');
-      var myCW=_sxCW(first||c.route);   // 이 라우트의 캠프+주야
+      var myCW=_sxCW(c.route||first);   // 이 라우트의 캠프+주야
       // 이 라우트를 거쳐간 기사 중 '현재 배정자가 아닌' 기사 처리:
       //  - 같은 캠프+주야에서 여전히 근무 → 덮어쓰기이므로 휴무 불필요(스킵)
       //  - 다른 캠프/주야로 이동했거나 근무 없음 → 이 캠프엔 '새 배정' 잔재가 남으므로 반드시 휴무 처리(이중배정 방지)
@@ -8361,7 +8363,7 @@ async function _sxDoChanged(){
         if(_sxWorkingCW(c.workDate,dnm,myCW)){skipHumu++;return;}   // 같은 캠프+주야 근무 = 덮어쓰기 → 휴무 스킵
         aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,dnm,''),'휴무','','']);n++;});
       // ★ 현재 배정 기사도 미등록이면 출근행 생략(엑셀에 남기지 않음)
-      var _sh=_shByRoute[c.workDate+'|'+c.route];if(_sh&&_sh.length){_sh.forEach(function(s){if(!s.driver||!_sxReg(didmap,s.driver))return;var _rs=(s.routes&&s.routes.length)?s.routes.slice().sort():routes;aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,s.driver,''),_SX_CFG.status,(s.rot||rot),_rs.join(',')]);n++;});}else if(curNew && _sxReg(didmap,curNew)){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,curNew,''),_SX_CFG.status,rot,routeStr]);n++;}
+      var _sh=_shByRoute[c.workDate+'|'+c.route];if(_sh&&_sh.length){_sh.forEach(function(s){if(!s.driver||!_sxReg(didmap,s.driver))return;var _rs=(s.routes&&s.routes.length)?s.routes.slice().map(function(x){return _rrMetaRt(x,c.workDate);}).sort():routes;aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,s.driver,''),_SX_CFG.status,(s.rot||rot),_rs.join(',')]);n++;});}else if(curNew && _sxReg(didmap,curNew)){aoa.push([_sxDateVal(c.workDate),_SX_CFG.bizno,camp,wave,_sxDid(didmap,curNew,''),_SX_CFG.status,rot,routeStr]);n++;}
       else if(curNew){skipUnreg++;}
     });
     // ★ 중복 제거: 쿠팡은 같은 (업무일·캠프명·웨이브·아이디)가 2번 나오면 거부함 → 1기사=1행.
