@@ -2558,7 +2558,8 @@ function pgContractAdmin(){
     h+='</div></details>';
     h+='<details class="ctdet"><summary>&#x2705; 작성 완료 ('+approved.length+')</summary><div class="card" style="margin-top:8px">';
     if(!approved.length)h+='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">없음</div>';
-    approved.forEach(function(d){h+=ctRow(d,true);});
+    if(approved.length)h+='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 4px 10px;border-bottom:1px solid #e6ebf1;margin-bottom:4px"><label style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:#33475b;cursor:pointer"><input type="checkbox" id="ctpdf-all" onchange="ctPdfAll(this.checked)" style="width:18px;height:18px">전체 선택</label><button id="ctpdf-btn" onclick="ctPdfBulk()" style="margin-left:auto;border:none;background:#12b5a3;color:#fff;font-weight:800;font-size:12px;border-radius:14px;padding:8px 13px;cursor:pointer">📄 작성 완료 전체 '+approved.length+'명 PDF 받기</button><div style="width:100%;font-size:10.5px;color:#8a96a3">체크한 기사만 받거나, 체크 없이 누르면 전체를 받아요 · 기사별 PDF (2명 이상은 ZIP 하나)</div></div>';
+    approved.forEach(function(d){h+='<div style="display:flex;align-items:center;gap:4px"><input type="checkbox" class="ctpdfchk" value="'+String(d.name).replace(/"/g,'')+'" onchange="ctPdfCnt()" style="width:18px;height:18px;flex-shrink:0;margin-left:2px"><div style="flex:1;min-width:0">'+ctRow(d,true)+'</div></div>';});
     h+='</div></details>';
     h+='<details class="ctdet"><summary>&#x26D4; 미작성자 ('+unwritten.length+')</summary><div class="card" style="margin-top:8px">';
     if(!unwritten.length)h+='<div style="font-size:12px;color:#bbb;text-align:center;padding:8px">없음</div>';
@@ -2640,7 +2641,63 @@ function ctBadgeRow(d,type,done){
       : '<button onclick="CT_startWrite(\'badge\',\''+esc+'\',\''+((type==='badge_renew')?'renew':'new')+'\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #cbb6ef;background:#f3ecff;color:#5a2fb0;font-weight:700">✍️ 대신작성</button>')+
     '</div>';
 }
+/* [v852] 표준계약서 일괄 PDF — 작성 완료자 체크 → 기사별 PDF (2명 이상이면 ZIP 하나로) */
+function ctPdfCnt(){var n=document.querySelectorAll('.ctpdfchk:checked').length;var all=document.querySelectorAll('.ctpdfchk').length;var b=document.getElementById('ctpdf-btn');if(b)b.innerHTML='📄 '+(n?('선택한 '+n+'명'):('작성 완료 전체 '+all+'명'))+' PDF 받기';var a=document.getElementById('ctpdf-all');if(a)a.checked=(all>0&&n===all);}
+function ctPdfAll(on){document.querySelectorAll('.ctpdfchk').forEach(function(c){c.checked=!!on;});ctPdfCnt();}
+function _ctLoadJs(src,test){return new Promise(function(res,rej){if(test())return res();var sc=document.createElement('script');sc.src=src;sc.onload=function(){test()?res():rej(new Error('load '+src));};sc.onerror=function(){rej(new Error('load '+src));};document.head.appendChild(sc);});}
+function _ctPdfProg(t){var o=document.getElementById('ctpdf-prog');if(!o){o=document.createElement('div');o.id='ctpdf-prog';o.style.cssText='position:fixed;inset:0;z-index:12000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center';o.innerHTML='<div style="background:#fff;border-radius:16px;padding:20px 22px;min-width:240px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25)"><div style="font-size:30px">📄</div><div id="ctpdf-pt" style="font-size:14px;font-weight:800;color:#1e2a5a;margin-top:6px"></div><div style="font-size:11px;color:#8a96a3;margin-top:6px">창을 닫지 말고 잠시 기다려 주세요</div></div>';document.body.appendChild(o);}if(t===null){o.remove();return;}document.getElementById('ctpdf-pt').textContent=t;}
+async function _ctPdfOne(name,J){
+  var r=await sbClient.from('app_settings').select('value').eq('key','ct_doc_'+name).maybeSingle();
+  var cur=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{};
+  var rec=cur.wc;if(!rec)throw new Error('앱 서명본 없음 — 종이 계약 등');
+  var body=window.CT_docDone(rec);
+  var W=794,PH=1123,M=38;  /* A4 @96dpi, 여백 약 10mm */
+  var fr=document.createElement('iframe');fr.style.cssText='position:fixed;left:-12000px;top:0;width:'+W+'px;height:'+PH+'px;border:0;opacity:0;pointer-events:none';document.body.appendChild(fr);
+  try{
+    var html='<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><style>'+window.CT_PRINTCSS+'</style><style>html,body{margin:0;background:#fff}body{width:'+(W-2*M)+'px;padding:0 '+M+'px}</style><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"><'+'/script></head><body>'+body+'</body></html>';
+    await new Promise(function(res){fr.onload=res;fr.srcdoc=html;});
+    var w=fr.contentWindow,doc=fr.contentDocument;
+    for(var k=0;k<60&&!w.html2canvas;k++)await new Promise(function(r){setTimeout(r,100);});
+    if(!w.html2canvas)throw new Error('그림 변환 도구를 불러오지 못했어요');
+    try{if(doc.fonts&&doc.fonts.ready)await doc.fonts.ready;}catch(e){}
+    var imgs=[].slice.call(doc.images);await Promise.all(imgs.map(function(im){return im.complete?0:new Promise(function(r){im.onload=im.onerror=r;setTimeout(r,6000);});}));
+    var totH=Math.ceil(doc.documentElement.scrollHeight);fr.style.height=totH+'px';
+    /* 줄·표·서명 중간에서 안 잘리게: 블록 아랫선을 페이지 경계 후보로 */
+    var cand=[];[].forEach.call(doc.body.querySelectorAll('p,tr,li,.ctc-art,.ctc-sttl,.ctc-ttl,.ctc-tr,.ctc-agree,.ctc-sigblock,.ctc-bukbox,table,img,h1,h2,h3,div'),function(el){var b=el.getBoundingClientRect();if(b.height>0)cand.push(Math.round(b.bottom));});
+    var avoid=[];[].forEach.call(doc.body.querySelectorAll('.ctc-sigblock,.ctc-bukbox,.ctc-agree,tr,p,.ctc-tr'),function(el){var b=el.getBoundingClientRect();if(b.height>0&&b.height<PH*0.8)avoid.push([b.top,b.bottom]);});
+    cand=cand.filter(function(y){return !avoid.some(function(a){return y>a[0]+1&&y<a[1]-1;});}).sort(function(a,b){return a-b;});
+    var CH=PH-2*M,cuts=[0],st=0;
+    while(st+CH<totH){var lim=st+CH,best=0;for(var i=0;i<cand.length;i++){if(cand[i]>st+CH*0.5&&cand[i]<=lim)best=cand[i];}if(!best)best=lim;cuts.push(best);st=best;}
+    cuts.push(totH);
+    var cv=await w.html2canvas(doc.body,{scale:1.7,useCORS:true,backgroundColor:'#ffffff',windowWidth:W,width:W,height:totH,logging:false});
+    var sc=cv.width/W;var pdf=new J({unit:'px',format:[W,PH],orientation:'portrait',hotfixes:['px_scaling']});
+    for(var p=0;p<cuts.length-1;p++){var y0=cuts[p],y1=cuts[p+1];if(y1-y0<4)continue;var pc=document.createElement('canvas');pc.width=cv.width;pc.height=Math.round((y1-y0)*sc);var g=pc.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,pc.width,pc.height);g.drawImage(cv,0,Math.round(y0*sc),cv.width,pc.height,0,0,pc.width,pc.height);if(p>0)pdf.addPage([W,PH],'portrait');pdf.addImage(pc.toDataURL('image/jpeg',0.85),'JPEG',0,M,W,y1-y0);}
+    var dt=String((rec.data&&rec.data.sign)||rec.at||'').slice(0,10).replace(/-/g,'');
+    return {name:'위수탁계약서_'+name+(dt?('_'+dt):'')+'.pdf',blob:pdf.output('blob')};
+  }finally{fr.remove();}
+}
+function _ctSaveBlob(blob,fn){var u=URL.createObjectURL(blob);var a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},4000);}
+async function ctPdfBulk(){
+  if(!window.CU||CU.role!=='admin'){alert('관리자만 사용할 수 있어요');return;}
+  var names=[].map.call(document.querySelectorAll('.ctpdfchk:checked'),function(c){return c.value;});
+  if(!names.length)names=[].map.call(document.querySelectorAll('.ctpdfchk'),function(c){return c.value;});
+  if(!names.length){alert('작성 완료된 계약서가 없어요');return;}
+  if(!confirm(names.length+'명의 계약서를 기사별 PDF로 받을까요?'+(names.length>1?'\n(여러 명은 ZIP 파일 하나로 받아요)':'')))return;
+  try{
+    _ctPdfProg('도구 준비 중…');
+    await _ctLoadJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',function(){return !!(window.jspdf&&window.jspdf.jsPDF);});
+    if(names.length>1)await _ctLoadJs('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',function(){return !!window.JSZip;});
+    var J=window.jspdf.jsPDF,out=[],fail=[];
+    for(var i=0;i<names.length;i++){_ctPdfProg('PDF 만드는 중 '+(i+1)+'/'+names.length+' · '+names[i]);try{out.push(await _ctPdfOne(names[i],J));}catch(e){console.warn('ctPdf',names[i],e);fail.push(names[i]+'('+((e&&e.message)||e)+')');}}
+    if(!out.length)throw new Error('만들어진 PDF가 없어요');
+    if(out.length===1){_ctSaveBlob(out[0].blob,out[0].name);}
+    else{_ctPdfProg('ZIP 묶는 중…');var z=new JSZip();out.forEach(function(f){z.file(f.name,f.blob);});var zb=await z.generateAsync({type:'blob'});var td=(typeof kstToday==='function'?kstToday():new Date().toISOString().slice(0,10)).replace(/-/g,'');_ctSaveBlob(zb,'위수탁계약서_'+td+'_'+out.length+'명.zip');}
+    _ctPdfProg(null);
+    if(fail.length)alert('완료 '+out.length+'명 · 실패 '+fail.length+'명\n'+fail.join('\n'));else if(typeof showToast==='function')showToast('📄 '+out.length+'명 PDF 저장 완료',true);
+  }catch(e){_ctPdfProg(null);alert('PDF 만들기 실패: '+((e&&e.message)||e));}
+}
 function ctRow(d,done){
+
   var esc=d.name;
   var _rl={leader:'팀장',sub:'조장',driver:'기사'}[d.role]||'';
   var _rlBg={leader:'#fff3e0',sub:'#e0f2f1',driver:'#eef2f6'}[d.role]||'#eef2f6';
@@ -3057,7 +3114,7 @@ h+='<div class="ctc-bukbox"><div class="ctc-sttl">택배기사 위·수탁 계�
     if(!w){alert('팝업이 차단되어 PDF 창을 열 수 없습니다.\\n브라우저 설정에서 팝업을 허용한 뒤 다시 눌러주세요.');return;}
     w.document.open();w.document.write(html);w.document.close();
   }
-  window.CT_pdf=ctPdf;
+  window.CT_pdf=ctPdf;window.CT_PRINTCSS=PRINTCSS;window.CT_docDone=function(rec){var d=Object.assign({},rec.data,{_sigs:rec.sigs||{},_chks:rec.chks||{}});return contractHTML(d,'done');};
   window.CT_startWrite=function(k,n,bk,md){var run=function(){startWrite(k,n,bk,md);};if(n&&window.sbClient){window.sbClient.from('app_settings').select('value').eq('key','driver_ext').maybeSingle().then(function(r){try{if(r&&r.data&&r.data.value){var m=(typeof r.data.value==='string')?JSON.parse(r.data.value):r.data.value;if(m&&typeof m==='object')window._driverExt=m;}}catch(e){}run();}).catch(run);}else if(n&&window._driverExt==null&&typeof window._loadDriverExt==='function'){window._loadDriverExt().then(run).catch(run);}else run();};window.CT_prev=function(v){S.showPrev=v;renderStep();};window.CT_step=function(n){S.step=n;renderStep();};window.CT_apply=function(){collect();S.step=2;renderStep();};window.CT_sign=function(){S.step=3;S.sig={};S.chk={};S.firstSig=null;renderStep();};window.CT_end=endCalc;window.CT_slot=slot;window.CT_agree=agree;window.CT_choice=choice;window.CT_mclear=mclear;window.CT_mdone=mdone;window.CT_finish=finish;window.CT_back=back;window.CT_preview=preview;window.CT_toast=toast;window.CT_bchk=function(field,val){if(!S.d)return;S.d[field]=(S.d[field]===val)?'':val;var el=document.getElementById(field);if(el){var sps=el.querySelectorAll('[data-v]');for(var i=0;i<sps.length;i++){var sp=sps[i];var on=(S.d[field]===sp.getAttribute('data-v'));var t=sp.textContent.replace(/^\s*[■□]\s?/,'');sp.textContent=(on?'■ ':'□ ')+t;sp.style.fontWeight=on?'800':'400';}}if(S.step===3)advance();};
 })();
 
