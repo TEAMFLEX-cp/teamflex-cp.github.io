@@ -5760,7 +5760,7 @@ function launchApp(){
       '<div class="ni" id="ni-rl" onclick="go(\'rl\')"><span class="nicon"><span class="tfcoin"></span></span>놀이터</div>'+
       '<div class="ni" id="ni-cfg" onclick="openCfgSubMenu()"><span class="nicon">&#x2699;</span>설정</div>';
     go('hm');
-  } else if(CU.status==='suspended'){
+  } else if(false&&CU.status==='suspended'){ // v854: 정지 계정도 일반 메뉴 사용(내용은 _suspBlock에서 비움)
     // 정지된 기사: 정산 탭만 접근 가능
     bn.innerHTML=
       '<div class="ni on" id="ni-st" onclick="go(\'st\')"><span class="nicon">&#x1F4B0;</span>정산</div>';
@@ -6276,6 +6276,7 @@ function go(tab){
   var mc=document.getElementById('mc');
   try{if(typeof hbgApply==='function')hbgApply(tab==='hm');}catch(e){}
   if(ctRestricted()){mc.innerHTML=pgContractRequired();window.scrollTo(0,0);return;}
+  if(window._suspBlock&&_suspBlock(tab,mc))return;
   if(tab==='hm'){mc.innerHTML=pgHome();setTimeout(function(){try{inspHomeLoad();}catch(e){}},80);if(CU&&CU.role!=='admin'){try{tqLoadAlert().then(function(){if(CUR_TAB==='hm'){var _m=document.getElementById('mc');if(_m)_m.innerHTML=pgHome();try{inspHomeLoad();}catch(e){}}try{tqDriverPopup();}catch(_e){}});}catch(e){}}}
   else if(tab==='nc')mc.innerHTML=pgAnn(false);
   else if(tab==='my')mc.innerHTML=pgMySched();
@@ -19950,6 +19951,39 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   setTimeout(function(){wrap();load();},9000);
 })();
 </script>
+<script>
+/* ══════════ [정지 계정 화면] v854 — 메뉴는 그대로, 내용만 비움 ══════════ */
+(function(){
+  function isSusp(){try{return !!(window.CU&&CU.status==='suspended'&&CU.role!=='admin');}catch(e){return false;}}
+  window._isSusp=isSusp;
+  var HIDE={fs:1,my:1,fr:1,rq:1,pb:1,nc:1,tq:1,er:1};
+  function emptyPg(){return '<div style="padding:60px 16px;text-align:center;color:#9aa6b2;font-size:14px">표시할 내용이 없습니다.</div>';}
+  function homePg(){var h='';try{h=_wxCardHTML();setTimeout(function(){try{loadWeather();}catch(e){}},200);}catch(e){}return '<div style="padding-top:4px">'+h+'</div>';}
+  window._suspBlock=function(tab,mc){
+    if(!isSusp())return false;
+    if(tab==='hm'){mc.innerHTML=homePg();window.scrollTo(0,0);return true;}
+    if(HIDE[tab]){mc.innerHTML=emptyPg();window.scrollTo(0,0);return true;}
+    return false;
+  };
+  function guard(n){try{var f=window[n];if(typeof f!=='function'||f._sp)return;var g=function(){if(isSusp())return '';return f.apply(this,arguments);};for(var k in f){try{g[k]=f[k];}catch(e){}}g._sp=1;window[n]=g;}catch(e){}}
+  function wrapHome(){
+    try{var f=window.pgHome;if(typeof f!=='function'||f._sp)return;
+      var g=function(){if(isSusp())return homePg();return f.apply(this,arguments);};
+      for(var k in f){try{g[k]=f[k];}catch(e){}}g._sp=1;window.pgHome=g;try{pgHome=g;}catch(e){}}catch(e){}
+  }
+  function wrapUserMenu(){
+    try{var f=window.openUserSubMenu;if(typeof f!=='function'||f._sp)return;
+      var g=function(){var r=f.apply(this,arguments);if(isSusp()){try{var s=document.getElementById('usr-sub-sheet');if(s)s.querySelectorAll('button').forEach(function(b){if(String(b.getAttribute('onclick')||'').indexOf("go('er')")>=0)b.remove();});}catch(e){}}return r;};
+      g._sp=1;window.openUserSubMenu=g;try{openUserSubMenu=g;}catch(e){}}catch(e){}
+  }
+  ['checkUnreadAnns','showDailyGreeting','_startupPopupStep2','tqRiskPopup','tqDriverPopup','tnHomeHTML','m1HomeHTML'].forEach(guard);
+  wrapUserMenu();
+  // 홈 래퍼는 다른 홈 모듈(팀즈공지·미스캔) 뒤에 가장 바깥으로 — 주기적으로 확인
+  var n=0;var t;setTimeout(function(){wrapHome();},4000);t=setInterval(function(){wrapHome();if(++n>40)clearInterval(t);},1500);
+  setInterval(wrapHome,60000);
+})();
+</script>
+
 
 <script>
 /* [리스트확인 NEW 개선] v775 — 확인 기록 서버 동기화(app_settings pbseen_이름) + 3일 지난 업데이트는 NEW 표시 안 함 */
