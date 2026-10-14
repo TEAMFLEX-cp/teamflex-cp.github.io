@@ -19812,7 +19812,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
 })();
 </script>
 <script>
-/* ══════════ [1회전 미스캔 홈 공유 + 표 사진 확인] v853 — 독립 모듈 (기존 홈/공지 로직 미변경) ══════════ */
+/* ══════════ [1·2회전 미스캔 홈 공유 + 표 사진 확인] v853→v855 — 독립 모듈 (기존 홈/공지 로직 미변경) ══════════ */
 (function(){
   var M={v:null,rv:null,timer:null,sig:''};
   window._M1=M;
@@ -19841,6 +19841,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   function campHtml(camp,c,dis){
     var id='m1:'+camp+':'+c.mid;
     if(dis.indexOf(id)>=0)return '';
+    var rnd=Number(c.rnd)||(/_2$/.test(String(camp))?2:1);camp=c.camp||String(camp).split('_')[0];var RL=rnd+'회전 미스캔';
     var at=esc(c.at||'');
     if(isAll()){
       var drv=c.drivers||{};var names=Object.keys(drv).sort(function(a,b){return sum(drv[b])-sum(drv[a]);});
@@ -19852,7 +19853,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
         var um=(c.rows||[]).filter(function(x){return c.unmatched.indexOf(x.route)>=0;});
         t+='<tr><td style="color:#c62828;font-weight:800">주인 없음</td><td>'+um.map(function(x){return esc(x.route)+' '+esc(x.miss);}).join(' · ')+'</td><td>'+sum(um)+'</td></tr>';}
       t+='</table>';
-      return '<div class="m1c all" onclick="m1Tap(\''+esc(id)+'\')" ondblclick="m1Dismiss(\''+esc(id)+'\')"><div class="h"><span>🚚 '+esc(camp)+'캠프 1회전 미스캔 (전체)</span><span>'+at+' 공유</span></div>'+
+      return '<div class="m1c all" onclick="m1Tap(\''+esc(id)+'\')" ondblclick="m1Dismiss(\''+esc(id)+'\')"><div class="h"><span>🚚 '+esc(camp)+'캠프 '+RL+' (전체)</span><span>'+at+' 공유</span></div>'+
         '<div style="font-size:12.5px;margin-top:6px">총 <b>'+tot+'건</b> · 미스캔 있는 기사 '+withMiss+'명</div>'+t+'<div class="foot">더블 클릭하면 삭제됨</div></div>';
     }
     var lst=(c.drivers||{})[me()];
@@ -19860,15 +19861,15 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     var s=sum(lst);
     var chips=lst.map(function(x){return '<div class="chip"><span class="k">'+esc(x.route)+'</span><span class="v">'+esc(x.miss)+'</span></div>';}).join('');
     if(s>0){
-      return '<div class="m1c" onclick="m1Tap(\''+esc(id)+'\')" ondblclick="m1Dismiss(\''+esc(id)+'\')"><div class="h"><span>🚚 1회전 미스캔</span><span>'+esc(camp)+'캠프 · '+at+' 공유</span></div>'+
+      return '<div class="m1c" onclick="m1Tap(\''+esc(id)+'\')" ondblclick="m1Dismiss(\''+esc(id)+'\')"><div class="h"><span>🚚 '+RL+'</span><span>'+esc(camp)+'캠프 · '+at+' 공유</span></div>'+
         '<div class="chips">'+chips+'<span class="tot2">합계 '+s+'건</span></div>'+
         '<div style="display:flex;align-items:baseline;margin-top:5px"><span style="font-size:12px;font-weight:700;opacity:.92">실물 확인 부탁드려요</span><span class="foot" style="margin:0 0 0 auto">더블 클릭하면 삭제됨</span></div></div>';
     }
-    return '<div class="m1c ok" onclick="m1Tap(\''+esc(id)+'\')" ondblclick="m1Dismiss(\''+esc(id)+'\')"><div class="h"><span>✅ 1회전 미스캔</span><span>'+esc(camp)+'캠프 · '+at+' 공유</span></div>'+
+    return '<div class="m1c ok" onclick="m1Tap(\''+esc(id)+'\')" ondblclick="m1Dismiss(\''+esc(id)+'\')"><div class="h"><span>✅ '+RL+'</span><span>'+esc(camp)+'캠프 · '+at+' 공유</span></div>'+
       '<div class="chips">'+chips+'<span class="tot2">미스캔 없음 👍</span></div><div class="foot">더블 클릭하면 삭제됨</div></div>';
   }
   function rowsText(it){
-    return (it.rows||[]).map(function(r){return it.kind==='miss'?(r.route+' '+r.miss):(r.route+' '+r.fresh+' '+r.same);}).join('\n');
+    return (it.rows||[]).map(function(r){return (it.kind==='miss'||it.kind==='miss2')?(r.route+' '+r.miss):(r.route+' '+r.fresh+' '+r.same);}).join('\n');
   }
   function reviewHtml(){
     if(!isAdm())return '';
@@ -19876,14 +19877,14 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     var h='';
     (rv.items||[]).forEach(function(it){
       if(it.st!=='open')return;
-      var k=it.kind==='miss'?'1회전 미스캔':'2회전 예상물량';
+      
       var bad=(it.bad||[]).map(function(b){return esc(b.route||'?');}).join(', ');
       h+='<div style="background:#fff;border:2px solid #f59e0b;border-radius:14px;padding:11px 12px;margin:0 0 10px;color:#14284b">'+
         '<div style="font-size:13px;font-weight:900;color:#b45309">📷 표 사진 확인 필요 · '+esc(it.camp)+'캠프 '+esc(it.at||'')+'</div>'+
         '<div style="font-size:11.5px;color:#5d6b7a;margin:3px 0 7px">자동 판독이 확실하지 않아 기사에게 보내지 않았어요. 사진과 숫자를 비교해 고친 뒤 공유해 주세요.'+(bad?(' (읽지 못한 줄: '+bad+')'):'')+'</div>'+
         (it.img?'<a href="'+esc(it.img)+'" target="_blank"><img src="'+esc(it.img)+'" style="max-width:100%;max-height:340px;border:1px solid #e3e9f1;border-radius:8px;display:block;margin:0 auto 7px"></a>':'')+
         '<div style="display:flex;gap:6px;margin-bottom:6px"><select id="m1k_'+esc(it.mid)+'" style="flex:1;padding:6px;border:1px solid #cfd8e3;border-radius:8px;font-size:12px">'+
-        '<option value="r2"'+(it.kind!=='miss'?' selected':'')+'>2회전 예상물량 (라우트 신선 당배)</option><option value="miss"'+(it.kind==='miss'?' selected':'')+'>1회전 미스캔 (라우트 건수)</option></select></div>'+
+        '<option value="r2"'+(it.kind!=='miss'&&it.kind!=='miss2'?' selected':'')+'>2회전 예상물량 (라우트 신선 당배)</option><option value="miss"'+(it.kind==='miss'?' selected':'')+'>1회전 미스캔 (라우트 건수)</option><option value="miss2"'+(it.kind==='miss2'?' selected':'')+'>2회전 미스캔 (라우트 건수)</option></select></div>'+
         '<textarea id="m1x_'+esc(it.mid)+'" rows="8" style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px;padding:7px;border:1px solid #cfd8e3;border-radius:8px" placeholder="604C 12 55">'+esc(rowsText(it))+'</textarea>'+
         '<div style="display:flex;gap:6px;margin-top:7px"><button onclick="m1Share(\''+esc(it.mid)+'\')" style="flex:2;padding:9px;background:#2f6fed;color:#fff;border:none;border-radius:9px;font-weight:800;font-size:13px">✔ 확인 완료 · 기사에게 공유</button>'+
         '<button onclick="m1Ignore(\''+esc(it.mid)+'\')" style="flex:1;padding:9px;background:#eef1f6;color:#5d6b7a;border:none;border-radius:9px;font-weight:700;font-size:12px">표 아님 · 닫기</button></div></div>';
@@ -19912,8 +19913,8 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       var kind=(document.getElementById('m1k_'+mid)||{}).value||it.kind||'r2';
       var txt=String((document.getElementById('m1x_'+mid)||{}).value||'').trim();
       var lines=txt.split('\n').map(function(l){return l.trim();}).filter(Boolean);
-      var bad=lines.filter(function(l){return kind==='miss'?!/^\d{3}[A-D]\s+\d{1,4}$/i.test(l):!/^\d{3}[A-D]\s+\d{1,4}\s+\d{1,4}$/i.test(l);});
-      if(!lines.length||bad.length){alert('형식을 확인해 주세요.\n'+(kind==='miss'?'예) 606A 57':'예) 604C 12 55  (라우트 신선 당배)')+(bad.length?('\n\n맞지 않는 줄: '+bad.slice(0,5).join(' / ')):''));return;}
+      var isM=(kind==='miss'||kind==='miss2');var bad=lines.filter(function(l){return isM?!/^\d{3}[A-D]\s+\d{1,4}$/i.test(l):!/^\d{3}[A-D]\s+\d{1,4}\s+\d{1,4}$/i.test(l);});
+      if(!lines.length||bad.length){alert('형식을 확인해 주세요.\n'+(isM?'예) 606A 57':'예) 604C 12 55  (라우트 신선 당배)')+(bad.length?('\n\n맞지 않는 줄: '+bad.slice(0,5).join(' / ')):''));return;}
       if(!confirm(lines.length+'줄을 기사에게 공유할까요?'))return;
       var r=await sbClient.from('app_settings').select('value').eq('key','img_table_manual').maybeSingle();
       var mv=pj(r&&r.data&&r.data.value,{});if(!mv||mv.date!==today())mv={date:today(),items:[]};
