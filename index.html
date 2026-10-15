@@ -12005,8 +12005,8 @@ function pgMisdelivery(){
 
 // ── 오배송 검색 (관리자·팀장 전용) ──────────────────────────────────
 var _mdSearchTimer=null;
-function _mdReqSearch(q){try{var qlow=(q||'').toLowerCase();var _rq=(typeof _rqCases!=='undefined'&&_rqCases)?_rqCases:[];var reqM=_rq.filter(function(rr){var hay=(rr.requester_name||'')+' '+JSON.stringify(rr.payload||{})+' '+(rr.created_at||'')+' '+((typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'');return hay.toLowerCase().indexOf(qlow)>=0;});var _isMgr=(typeof CU!=='undefined'&&CU)&&(CU.role!=='driver');if(!_isMgr){var _myn=String((typeof CU!=='undefined'&&CU&&CU.name)||'').trim();reqM=reqM.filter(function(rr){return String(rr.requester_name||'').trim()===_myn||String(rr.requester_id||'')===String((typeof CU!=='undefined'&&CU&&CU.id)||'');});}if(!reqM.length)return '';var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var hi=function(s,q){if(!s||!q)return esc(s);var i=String(s).toLowerCase().indexOf(String(q).toLowerCase());if(i<0)return esc(s);return esc(String(s).slice(0,i))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(i,i+q.length))+'</mark>'+esc(String(s).slice(i+q.length));};var tm={damage:'파손',route:'라우트변경',return:'반품이관',dup:'이중출고',scan:'스캔삭제',lost:'분실',pretake:'전취반납',lostret:'분실반납',work:'업무신청',loss:'차감분실'};var rh='<div style="font-size:12px;color:#888;margin:16px 0 8px;padding:0 2px">📝 각종요청 <b style="color:#3949ab">'+reqM.length+'건</b></div>';reqM.forEach(function(rr){var p=rr.payload||{};var wb=p.waybill||p.waybill_no||p.wb||p.invoice||'';var dt2=(typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'';rh+='<div onclick="rqShowPopup('+rr.id+')" style="border:1px solid #e0e3f0;border-left:4px solid #3949ab;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fbfcff"><div style="display:flex;justify-content:space-between;margin-bottom:5px">'+(wb?'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#283593">'+hi(String(wb),q)+'</span>':'<span></span>')+'<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:#e8eaf6;color:#3949ab">'+esc(tm[rr.type]||rr.type||'요청')+'</span></div><div style="display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap"><span>👤 '+hi(rr.requester_name,q)+'</span>'+(dt2?'<span>📅 '+esc(dt2)+'</span>':'')+'</div>'+(p.text?'<div style="font-size:12px;color:#666;margin-top:4px">'+esc(String(p.text).slice(0,50))+'</div>':'')+'</div>';});return rh;}catch(e){return '';}}
-function _rqItems(q){try{var qlow=(q||'').toLowerCase();var _rq=(typeof _rqCases!=='undefined'&&_rqCases)?_rqCases:[];var reqM=_rq.filter(function(rr){var hay=(rr.requester_name||'')+' '+JSON.stringify(rr.payload||{})+' '+(rr.created_at||'')+' '+((typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'');return hay.toLowerCase().indexOf(qlow)>=0;});var _isMgr=(typeof CU!=='undefined'&&CU)&&(CU.role!=='driver');if(!_isMgr){var _myn=String((typeof CU!=='undefined'&&CU&&CU.name)||'').trim();reqM=reqM.filter(function(rr){return String(rr.requester_name||'').trim()===_myn||String(rr.requester_id||'')===String((typeof CU!=='undefined'&&CU&&CU.id)||'');});}var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var hi=function(s,q){if(!s||!q)return esc(s);var i=String(s).toLowerCase().indexOf(String(q).toLowerCase());if(i<0)return esc(s);return esc(String(s).slice(0,i))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(i,i+q.length))+'</mark>'+esc(String(s).slice(i+q.length));};var tm={damage:'파손',route:'라우트변경',return:'반품이관',dup:'이중출고',scan:'스캔삭제',lost:'분실',pretake:'전취반납',lostret:'분실반납',work:'업무신청',loss:'차감분실'};return reqM.map(function(rr){var p=rr.payload||{};var wb=p.waybill||p.waybill_no||p.wb||p.invoice||'';var dt2=(typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'';var h='<div onclick="rqShowPopup('+rr.id+')" style="border:1px solid #e0e3f0;border-left:4px solid #3949ab;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fbfcff"><div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+'<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:#e8eaf6;color:#3949ab">📝 '+esc(tm[rr.type]||rr.type||'요청')+'</span>'+(wb?'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#283593">'+hi(String(wb),q)+'</span>':'')+'</div><div style="display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap"><span>👤 '+hi(rr.requester_name,q)+'</span>'+(dt2?'<span>📅 '+esc(dt2)+'</span>':'')+'</div>'+(p.text?'<div style="font-size:12px;color:#666;margin-top:4px">'+esc(String(p.text).slice(0,50))+'</div>':'')+'</div>';return {d:String(rr.created_at||''),kind:'rq',h:h};});}catch(e){return [];}}
+function _mdReqSearch(q){try{var qlow=(q||'').toLowerCase();var _rq=(typeof _rqCases!=='undefined'&&_rqCases)?_rqCases:[];var reqM=_rq.filter(function(rr){var hay=(rr.requester_name||'')+' '+JSON.stringify(rr.payload||{})+' '+(rr.created_at||'')+' '+((typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'');return hay.toLowerCase().indexOf(qlow)>=0;});var _isMgr=(typeof CU!=='undefined'&&CU)&&(CU.role!=='driver');if(!_isMgr){var _myn=String((typeof CU!=='undefined'&&CU&&CU.name)||'').trim();reqM=reqM.filter(function(rr){return String(rr.requester_name||'').trim()===_myn||String(rr.requester_id||'')===String((typeof CU!=='undefined'&&CU&&CU.id)||'');});}if(!reqM.length)return '';var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var hi=function(s,q){if(!s||!q)return esc(s);var i=String(s).toLowerCase().indexOf(String(q).toLowerCase());if(i<0)return esc(s);return esc(String(s).slice(0,i))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(i,i+q.length))+'</mark>'+esc(String(s).slice(i+q.length));};var tm={damage:'파손',route:'라우트변경',return:'반품이관',dup:'이중출고',scan:'스캔삭제',olddel:'이전라우트삭제',lost:'분실',pretake:'전취반납',lostret:'분실반납',work:'업무신청',loss:'차감분실'};var rh='<div style="font-size:12px;color:#888;margin:16px 0 8px;padding:0 2px">📝 각종요청 <b style="color:#3949ab">'+reqM.length+'건</b></div>';reqM.forEach(function(rr){var p=rr.payload||{};var wb=p.waybill||p.waybill_no||p.wb||p.invoice||'';var dt2=(typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'';rh+='<div onclick="rqShowPopup('+rr.id+')" style="border:1px solid #e0e3f0;border-left:4px solid #3949ab;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fbfcff"><div style="display:flex;justify-content:space-between;margin-bottom:5px">'+(wb?'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#283593">'+hi(String(wb),q)+'</span>':'<span></span>')+'<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:#e8eaf6;color:#3949ab">'+esc(tm[rr.type]||rr.type||'요청')+'</span></div><div style="display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap"><span>👤 '+hi(rr.requester_name,q)+'</span>'+(dt2?'<span>📅 '+esc(dt2)+'</span>':'')+'</div>'+(p.text?'<div style="font-size:12px;color:#666;margin-top:4px">'+esc(String(p.text).slice(0,50))+'</div>':'')+'</div>';});return rh;}catch(e){return '';}}
+function _rqItems(q){try{var qlow=(q||'').toLowerCase();var _rq=(typeof _rqCases!=='undefined'&&_rqCases)?_rqCases:[];var reqM=_rq.filter(function(rr){var hay=(rr.requester_name||'')+' '+JSON.stringify(rr.payload||{})+' '+(rr.created_at||'')+' '+((typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'');return hay.toLowerCase().indexOf(qlow)>=0;});var _isMgr=(typeof CU!=='undefined'&&CU)&&(CU.role!=='driver');if(!_isMgr){var _myn=String((typeof CU!=='undefined'&&CU&&CU.name)||'').trim();reqM=reqM.filter(function(rr){return String(rr.requester_name||'').trim()===_myn||String(rr.requester_id||'')===String((typeof CU!=='undefined'&&CU&&CU.id)||'');});}var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var hi=function(s,q){if(!s||!q)return esc(s);var i=String(s).toLowerCase().indexOf(String(q).toLowerCase());if(i<0)return esc(s);return esc(String(s).slice(0,i))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(i,i+q.length))+'</mark>'+esc(String(s).slice(i+q.length));};var tm={damage:'파손',route:'라우트변경',return:'반품이관',dup:'이중출고',scan:'스캔삭제',olddel:'이전라우트삭제',lost:'분실',pretake:'전취반납',lostret:'분실반납',work:'업무신청',loss:'차감분실'};return reqM.map(function(rr){var p=rr.payload||{};var wb=p.waybill||p.waybill_no||p.wb||p.invoice||'';var dt2=(typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'';var h='<div onclick="rqShowPopup('+rr.id+')" style="border:1px solid #e0e3f0;border-left:4px solid #3949ab;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fbfcff"><div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+'<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:#e8eaf6;color:#3949ab">📝 '+esc(tm[rr.type]||rr.type||'요청')+'</span>'+(wb?'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#283593">'+hi(String(wb),q)+'</span>':'')+'</div><div style="display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap"><span>👤 '+hi(rr.requester_name,q)+'</span>'+(dt2?'<span>📅 '+esc(dt2)+'</span>':'')+'</div>'+(p.text?'<div style="font-size:12px;color:#666;margin-top:4px">'+esc(String(p.text).slice(0,50))+'</div>':'')+'</div>';return {d:String(rr.created_at||''),kind:'rq',h:h};});}catch(e){return [];}}
 function mdSearchCases(val){
   clearTimeout(_mdSearchTimer);
   var q=(val||'').trim();
@@ -12409,7 +12409,7 @@ function mdRenderList(cases){
           '<span style="font-size:10px;color:#2e9e5b;margin-left:auto;font-weight:700">한국시간 예약</span></div>'+
         '<div style="padding:0 10px 10px">'+
         _reqReserved.slice().sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at);}).map(function(r){
-          var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무신청',loss:'📉 차감[분실]'};
+          var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',olddel:'🧹 이전라우트삭제',lost:'🔍 분실',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무신청',loss:'📉 차감[분실]'};
           var _tl=_tm[r.type]||r.type;
           var _cp=(r.payload&&r.payload.camp)?' ['+mdEsc(r.payload.camp)+']':'';
           var _sdK=new Date(_rqReserveReleaseMs(r)).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
@@ -12550,7 +12550,7 @@ function mdRenderList(cases){
             items.map(function(it){
               if(it.k==='req'){
                 var r=it.c;
-                var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',lost:'🔍 분실',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무신청',loss:'📉 차감[분실]'};
+                var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',olddel:'🧹 이전라우트삭제',lost:'🔍 분실',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무신청',loss:'📉 차감[분실]'};
                 var _tl=_tm[r.type]||r.type;
                 var _cp=(r.payload&&r.payload.camp)?' ['+mdEsc(r.payload.camp)+']':'';
                 var _st=r.status==='approved'?'완료':'반려';
@@ -16671,7 +16671,8 @@ function pgRequest(){
     {k:'lost',   lbl:'&#x1F50D; 분실건 처리요청'},
     {k:'pretake',lbl:'&#x1F4E5; 전취건 반납 확인 요청'},
     {k:'lostret',lbl:'&#x1F50E; 분실건 반납 확인 요청'},
-    {k:'work',   lbl:'&#x1F9D1;&#x200D;&#x1F4BC; 업무신청'}
+    {k:'work',   lbl:'&#x1F9D1;&#x200D;&#x1F4BC; 업무신청'},
+    {k:'olddel', lbl:'🧹 이전 라우트 할당 삭제'}   // [v861]
   ];
   var tabHtml = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">';
   tabs.forEach(function(t){
@@ -16765,6 +16766,7 @@ function rqLandingHtml(){
             {k:'return',e:'↩️',l:'반품 이관'},{k:'dup',e:'🔁',l:'이중 출고'},
             {k:'scan',e:'🗑️',l:'스캔대기 삭제'},{k:'lost',e:'🔍',l:'분실건 처리요청'}];
   var grid='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px">';
+  grid+='<button onclick="rqSwitchTab(\'olddel\')" style="'+_b+';border:2px solid #f5b48a;background:#fff4ec;color:#c2410c;grid-column:span 2">🧹 잘못된 반품·인입 삭제 요청 (이전 라우트 할당)</button>';   // [v861]
   main.forEach(function(t){ grid+='<button onclick="rqSwitchTab(\''+t.k+'\')" style="'+_b+';'+_blue+'">'+t.e+' '+t.l+'</button>'; });
   grid+='<button onclick="rqSwitchTab(\'work\')" style="'+_b+';'+_green+';grid-column:span 2">🧑‍💼 업무신청</button>';
   grid+='</div>';
@@ -16833,7 +16835,7 @@ function rqRenderBody(){
   var mc = document.getElementById('mc');
   if(mc){
     var btns = mc.querySelectorAll('button[onclick^="rqSwitchTab"]');
-    var tabs = ['damage','route','return','dup','scan','lost','pretake','lostret','work'];
+    var tabs = ['damage','route','return','dup','scan','lost','pretake','lostret','work','olddel'];
     btns.forEach(function(b,i){ if(tabs[i]) b.dataset.rqtab = tabs[i]; });
   }
   if(_rqTab==='damage')      el.innerHTML = rqDamageForm();
@@ -16841,6 +16843,7 @@ function rqRenderBody(){
   else if(_rqTab==='return') el.innerHTML = rqReturnForm();
   else if(_rqTab==='dup')    el.innerHTML = rqDupForm();
   else if(_rqTab==='scan')   el.innerHTML = rqScanForm();
+  else if(_rqTab==='olddel') el.innerHTML = rqOldDelForm();   // [v861]
   else if(_rqTab==='lost')   el.innerHTML = rqLostForm();
   else if(_rqTab==='pretake')el.innerHTML = rqRetForm('pretake');
   else if(_rqTab==='lostret')el.innerHTML = rqRetForm('lostret');
@@ -17770,6 +17773,35 @@ async function rqSendWork(){
 }
 
 // ── 스캔 대기 삭제 폼 ──────────────────────────────────────────────
+function rqOldDelForm(){   // [v861] 이전 라우트로 잘못 할당된 반품·배송 삭제 요청
+  return rqSimpleForm('olddel','🧹 이전 라우트 할당 삭제 요청','rq-old',
+    function(items){var camp=rqGetCamp();var _seen={};var nums=[];items.forEach(function(it){[it.wb,it.od].forEach(function(x){x=String(x||'').replace(/\D/g,'');if(x.length>=10&&!_seen[x]){_seen[x]=1;nums.push(x);}});});var body=nums.join('\n')||'(운송장번호 없음)';return '■ 이전 라우트 할당 삭제 요청 ['+camp+']\n\n'+body+'\n\n업무 마감하였으나, 스캔 대기건 없습니다.\n삭제 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
+}
+
+// [v861] 이전 라우트 삭제 요청 중복 방지: 같은 운송장이 최근 12시간 안에 (누가 했든) 이미 요청됐으면 막음 + 연타 방지
+var _rqOldBusy=false;
+(function(){
+  var _orig=window.rqSubmit;
+  if(typeof _orig!=='function'||_orig._old)return;
+  var g=async function(opts){
+    if(!opts||opts.type!=='olddel')return _orig.apply(this,arguments);
+    if(_rqOldBusy){return false;}
+    _rqOldBusy=true;
+    try{
+      var nums=(String(opts.text||'').match(/\d{10,14}/g)||[]);
+      if(!nums.length){alert('운송장번호(또는 반송장번호)를 넣어주세요.');return false;}
+      try{
+        var since=new Date(Date.now()-12*3600*1000).toISOString();
+        var r=await sbClient.from('requests').select('id,payload,created_at,requester_name').eq('type','olddel').gte('created_at',since).limit(300);
+        var dup=[];(r&&r.data||[]).forEach(function(q){var t=(q.payload&&q.payload.text)||'';nums.forEach(function(n){if(t.indexOf(n)>=0&&dup.indexOf(n)<0)dup.push(n);});});
+        if(dup.length){alert('이미 삭제 요청된 운송장이 있어요 (최근 12시간):\n'+dup.join('\n')+'\n\n중복이라 보내지 않았어요. 빼고 다시 보내주세요.');return false;}
+      }catch(e){}
+      return await _orig.apply(this,arguments);
+    }finally{setTimeout(function(){_rqOldBusy=false;},1500);}
+  };
+  g._old=1;window.rqSubmit=g;try{rqSubmit=g;}catch(e){}
+})();
+
 function rqScanForm(){
   return rqSimpleForm('scan','&#x1F5D1;&#xFE0F; 스캔 대기 삭제','rq-sc',
     function(items){var camp=rqGetCamp();var body=items.filter(function(it){return (it.wb||'').trim();}).map(function(it){return '운송장번호  '+it.wb+(it.od?'\n주문번호  '+it.od:'');}).join('\n\n')||'(운송장번호 없음)';return '■ 스캔 대기 삭제 요청 ['+camp+']\n\n'+body+'\n\n업무 마감하였으나, 스캔 대기건 없습니다.\n삭제 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
@@ -18038,7 +18070,7 @@ function _rqResponsesHtml(txt){
 }
 function rqShowResponsePopup(r){
   if(document.getElementById('rq-resp-popup')) return; // 중복 방지
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',olddel:'🧹 이전 라우트 할당 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
   var typeLbl=typeMap[r.type]||r.type;
   var camp=(r.payload&&r.payload.camp)?r.payload.camp:'';
   var txt=r.teams_response_text||'';
@@ -18126,7 +18158,7 @@ function rqSetCamp(v){
 // ── 요청 카드 HTML (간소화 리스트 행) ─────────────────────────────
 function rqBuildCard(r){
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',olddel:'🧹 이전 라우트 할당 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
@@ -18168,7 +18200,7 @@ function rqShowPopup(id){
   var r = (_rqCases||[]).find(function(c){return c.id===id;});
   if(!r) return;
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',olddel:'🧹 이전 라우트 할당 삭제',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
