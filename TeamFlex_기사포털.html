@@ -12683,7 +12683,7 @@ function mdCardHtml(c,isAdmin,isLeader){
   var badgeCls={pending:'mb-red',rejected:'mb-blue',replied:'mb-orange',approved:'mb-green'}[c.status]||'mb-red';
   var badgeTxt={pending:'미답변',rejected:'재요청',replied:'승인요청',approved:'처리완료'}[c.status]||'미답변';
   var cat=c.category||(c.issue_content&&c.issue_content.indexOf('미반납')>=0?'미반납':c.issue_content&&c.issue_content.indexOf('오회수')>=0?'오회수':'오배송');
-  var catSty={'오배송':'background:#ffebee;color:#c62828','미반납':'background:#e0f7fa;color:#00838f','오회수':'background:#ede7f6;color:#4527a0','기타':'background:#eceff1;color:#546e7a'}[cat]||'background:#ffebee;color:#c62828';
+  var catSty={'오배송':'background:#ffebee;color:#c62828','미반납':'background:#e0f7fa;color:#00838f','오회수':'background:#ede7f6;color:#4527a0','수기회수':'background:#ede9fe;color:#6d28d9','기타':'background:#eceff1;color:#546e7a'}[cat]||'background:#ffebee;color:#c62828';
   var drvName=mdEsc(c.driver_name||c.driver_id||'미지정');
   var _ts=c.created_at||c.occurred_at, dtStr='';
   if(_ts){var _d=new Date(_ts);if(!isNaN(_d.getTime())){var _k=new Date(_d.getTime()+(_d.getTimezoneOffset()*60000)+9*3600000);dtStr=(_k.getMonth()+1)+'.'+_k.getDate()+' · '+_k.getHours()+':'+('0'+_k.getMinutes()).slice(-2);}}
@@ -13789,9 +13789,9 @@ async function deleteMonitorChat(idx){
   _monitorChats.splice(idx,1);
   await _saveMonitorChats();_renderMonitorChats();showToast('🗑 채팅방 삭제: '+name,true);
 }
-var _mdCatKw={'오배송':['배송 주소 상이','회수 필요'],'미반납':['미반납'],'오회수':['오회수'],'기타':[]};
+var _mdCatKw={'오배송':['배송 주소 상이','회수 필요'],'미반납':['미반납'],'오회수':['오회수'],'수기회수':['수기회수','수기 회수'],'기타':[]};
 var _frKw=['2회전 예상','2차 예상'];
-var _kwColor={'오배송':'#c62828','미반납':'#00838f','오회수':'#4527a0','기타':'#546e7a'};
+var _kwColor={'오배송':'#c62828','미반납':'#00838f','오회수':'#4527a0','수기회수':'#7c3aed','기타':'#546e7a'};
 
 async function _loadMdKw(){
   if(!sbClient)return;
@@ -13814,14 +13814,14 @@ async function _saveFrKw(){
 function _renderMdKwCats(){
   var el=document.getElementById('md-kw-cats');if(!el)return;
   var html='';
-  var cats=['오배송','미반납','오회수','기타'];
+  var cats=['오배송','미반납','오회수','수기회수','기타'];
   cats.forEach(function(cat){
     var color=_kwColor[cat]||'#546e7a';
     if(!_mdCatKw[cat])_mdCatKw[cat]=[];
     var kws=_mdCatKw[cat];
     html+='<div style="margin-bottom:12px;padding:12px;background:#fafafa;border-radius:10px;border:1.5px solid #eee">'+
       '<div style="font-size:12px;font-weight:800;color:'+color+';margin-bottom:8px">'+cat+
-      (cat==='기타'?'<span style="font-size:10px;font-weight:400;color:#9e9e9e;margin-left:6px">(@df ID 포함 시 자동분류)</span>':'')+'</div>'+
+      (cat==='기타'?'<span style="font-size:10px;font-weight:400;color:#9e9e9e;margin-left:6px">(@df ID 포함 시 자동분류)</span>':cat==='수기회수'?'<span style="font-size:10px;font-weight:400;color:#9e9e9e;margin-left:6px">(기사 ID 없음 → 글 속 라우트 605 / D04 → 605D 당일 근무자에게 전달)</span>':'')+'</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">'+
       kws.map(function(kw,i){
         return'<span style="display:inline-flex;align-items:center;gap:4px;background:'+color+'22;color:'+color+';padding:3px 8px;border-radius:12px;font-size:11px;border:1px solid '+color+'44">'+
@@ -19982,6 +19982,159 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   // 홈 래퍼는 다른 홈 모듈(팀즈공지·미스캔) 뒤에 가장 바깥으로 — 주기적으로 확인
   var n=0;var t;setTimeout(function(){wrapHome();},4000);t=setInterval(function(){wrapHome();if(++n>40)clearInterval(t);},1500);
   setInterval(wrapHome,60000);
+})();
+</script>
+<script>
+/* ══════════ [수기회수] v857 — 홈 카드 + 오배송 탭 필터 + 회수/미회수 빠른 답변 (독립 모듈) ══════════ */
+(function(){
+  var SG={rows:[],timer:null,sig:''};
+  window._SG=SG;
+  window._mdCatOnly=window._mdCatOnly||'';
+  function esc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function kToday(){var d=new Date(Date.now()+9*3600e3);return d.toISOString().slice(0,10);}
+  function role(){return (window.CU&&CU.role)||'';}
+  function isAll(){return role()==='admin'||role()==='leader';}
+  function me(){return String((window.CU&&CU.name)||'').trim();}
+  function susp(){try{return !!(window._isSusp&&_isSusp());}catch(e){return false;}}
+  function cat(c){try{return (typeof mdCat==='function')?mdCat(c):(c.category||'');}catch(e){return c.category||'';}}
+  function dong(a){var m=String(a||'').match(/([가-힣0-9]+(동|읍|면|가))(\s|$|,)/);return m?m[1]:String(a||'').slice(0,10);}
+  function rt(c){var r=String(c.route||'');var m=r.match(/(\d{3})\s*\/?\s*([A-Da-d])/);return m?(m[1]+m[2].toUpperCase()):r;}
+  var ACTIVE={pending:1,rejected:1,replied:1};
+
+  async function load(){
+    try{
+      if(!window.sbClient||!window.CU||susp())return;
+      var since=new Date(kToday()+'T00:00:00+09:00').toISOString();
+      var q=sbClient.from('misdelivery_cases').select('id,status,route,address,driver_name,created_at,category')
+        .eq('category','수기회수').gte('created_at',since).not('status','in','("archived","deleted")').limit(200);
+      if(!isAll())q=q.eq('driver_name',me());
+      var r=await q;var rows=(r&&r.data)||[];
+      var sig=JSON.stringify(rows.map(function(x){return [x.id,x.status,x.driver_name];}));
+      SG.rows=rows;
+      if(sig!==SG.sig){SG.sig=sig;refresh();}
+    }catch(e){}
+  }
+  window.sgLoad=load;
+
+  window.sgHomeHTML=function(){
+    try{
+      if(susp())return '';
+      var rows=SG.rows||[];if(!rows.length)return '';
+      var act=rows.filter(function(x){return ACTIVE[x.status];});
+      var done=rows.length-act.length;
+      if(isAll()){
+        var noOwner=rows.filter(function(x){return !x.driver_name;}).length;
+        return '<div onclick="sgOpen()" style="cursor:pointer;color:#fff;border-radius:16px;padding:11px 13px 8px;margin:0 0 10px;background:linear-gradient(135deg,#1e3a8a,#4b2bd1);box-shadow:0 4px 14px rgba(75,43,209,.22)">'+
+          '<div style="display:flex;font-size:12px;font-weight:800;opacity:.95"><span>🔁 수기회수 (전체)</span><span style="margin-left:auto;font-weight:600;opacity:.85">오늘</span></div>'+
+          '<div style="font-size:17px;font-weight:900;margin-top:4px">진행 '+act.length+' · 완료 '+done+(noOwner?(' · <span style="color:#ffd54f">주인 없음 '+noOwner+'</span>'):'')+'</div>'+
+          '<div style="text-align:right;font-size:10.5px;opacity:.8;margin-top:3px">눌러서 확인 ›</div></div>';
+      }
+      if(!act.length){
+        return '<div onclick="sgOpen()" style="cursor:pointer;color:#fff;border-radius:16px;padding:10px 13px 8px;margin:0 0 10px;background:linear-gradient(135deg,#065f46,#10b981);box-shadow:0 4px 14px rgba(16,185,129,.25)">'+
+          '<div style="display:flex;font-size:12px;font-weight:800"><span>✅ 수기회수</span><span style="margin-left:auto;font-weight:600;opacity:.85">오늘</span></div>'+
+          '<div style="font-size:16px;font-weight:900;margin-top:3px">수기회수 완료 ✅ ('+done+'건)</div></div>';
+      }
+      var chips=act.slice(0,6).map(function(x){return '<span style="background:rgba(255,255,255,.17);border-radius:9px;padding:2px 9px;font-size:12px;font-weight:700">'+esc(rt(x))+' · '+esc(dong(x.address))+'</span>';}).join('');
+      return '<div onclick="sgOpen()" style="cursor:pointer;color:#fff;border-radius:16px;padding:11px 13px 8px;margin:0 0 10px;background:linear-gradient(135deg,#5b21b6,#8b5cf6);box-shadow:0 4px 14px rgba(139,92,246,.28)">'+
+        '<div style="display:flex;font-size:12px;font-weight:800;opacity:.95"><span>🔁 수기회수</span><span style="margin-left:auto;font-weight:600;opacity:.85">오늘</span></div>'+
+        '<div style="font-size:18px;font-weight:900;margin-top:4px">수기회수 진행 '+act.length+'건 있음</div>'+
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+chips+'</div>'+
+        '<div style="text-align:right;font-size:10.5px;opacity:.8;margin-top:3px">눌러서 확인 ›</div></div>';
+    }catch(e){return '';}
+  };
+  function refresh(){var el=document.getElementById('sg-home-slot');if(el)el.innerHTML=sgHomeHTML();}
+
+  window.sgOpen=function(){
+    window._mdCatOnly='수기회수';
+    try{if(typeof mdSetDateFilter==='function')mdSetDateFilter('today');}catch(e){}
+    try{go('md');}catch(e){}
+    setTimeout(function(){try{mdRenderList();}catch(e){}},400);
+  };
+  window.sgClearFilter=function(){window._mdCatOnly='';try{mdRenderList();}catch(e){}};
+
+  // ── 오배송 목록: 카테고리 필터(수기회수) ──
+  function wrapList(){
+    try{var f=window.mdRenderList;if(typeof f!=='function'||f._sg)return;
+      var g=function(cases){
+        var only=window._mdCatOnly;
+        if(only){var cs=(cases==null?(window._mdCases||[]):cases)||[];cases=cs.filter(function(c){return cat(c)===only;});}
+        var r=f.call(this,cases);
+        if(only){try{var el=document.getElementById('md-list');if(el){var b=document.createElement('div');
+          b.innerHTML='<div style="display:flex;align-items:center;gap:8px;background:#ede9fe;border:1.5px solid #c4b5fd;border-radius:10px;padding:7px 11px;margin-bottom:9px;font-size:12.5px;font-weight:800;color:#6d28d9">🔁 '+esc(only)+'만 보는 중 <span onclick="sgClearFilter()" style="margin-left:auto;cursor:pointer;background:#fff;border-radius:8px;padding:2px 9px;color:#5d6b7a;font-weight:700">전체 보기 ✕</span></div>';
+          el.insertBefore(b.firstChild,el.firstChild);}}catch(e){}}
+        return r;};
+      for(var k in f){try{g[k]=f[k];}catch(e){}}g._sg=1;window.mdRenderList=g;try{mdRenderList=g;}catch(e){}
+    }catch(e){}
+  }
+  // 다른 탭으로 가면 필터 해제
+  function wrapGo(){
+    try{var f=window.go;if(typeof f!=='function'||f._sg)return;
+      var g=function(tab){if(tab!=='md'&&window._mdCatOnly)window._mdCatOnly='';return f.apply(this,arguments);};
+      for(var k in f){try{g[k]=f[k];}catch(e){}}g._sg=1;window.go=g;try{go=g;}catch(e){}
+    }catch(e){}
+  }
+
+  // ── 상세: 회수 완료 / 미회수 빠른 답변 ──
+  var REASONS=['고객 부재','상품 없음','고객 거부','주소 불명'];
+  window.sgPick=function(id,kind,reason){
+    var ta=document.getElementById('md-ta-'+id);if(!ta)return;
+    if(kind==='ok')ta.value='✅ 회수 완료';
+    else{var why=reason;if(reason==='직접 입력'){why=prompt('미회수 사유를 입력하세요','')||'';if(!why)return;}ta.value='❌ 미회수 — 사유: '+why;}
+    var box=document.getElementById('sg-why-'+id);if(box)box.style.display=(kind==='ok')?'none':'flex';
+    try{ta.focus();}catch(e){}
+  };
+  window.sgShowWhy=function(id){var box=document.getElementById('sg-why-'+id);if(box)box.style.display='flex';var ta=document.getElementById('md-ta-'+id);if(ta&&!/^❌/.test(ta.value))ta.value='❌ 미회수 — 사유: ';};
+  function wrapDetail(){
+    try{var f=window.mdOpenDetail;if(typeof f!=='function'||f._sg)return;
+      var g=function(caseId){var r=f.apply(this,arguments);
+        try{var c=(window._mdCases||[]).find(function(x){return x.id===caseId;});
+          if(c&&cat(c)==='수기회수'){var n=0;var t=setInterval(function(){injectQuick(caseId,c);if(document.getElementById('sg-q-'+caseId)||++n>20)clearInterval(t);},150);}}catch(e){}
+        return r;};
+      for(var k in f){try{g[k]=f[k];}catch(e){}}g._sg=1;window.mdOpenDetail=g;try{mdOpenDetail=g;}catch(e){}
+    }catch(e){}
+  }
+  function injectQuick(id,c){
+    var ta=document.getElementById('md-ta-'+id);if(!ta||document.getElementById('sg-q-'+id))return;
+    var d=document.createElement('div');d.id='sg-q-'+id;
+    d.innerHTML='<div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:10px;padding:9px 10px;margin-bottom:8px">'+
+      '<div style="font-size:12px;font-weight:800;color:#6d28d9;margin-bottom:6px">🔁 수기회수 · '+esc(rt(c))+' — 결과 선택 (사진 필수)</div>'+
+      '<div style="display:flex;gap:6px">'+
+        '<button type="button" onclick="sgPick('+id+',\'ok\')" style="flex:1;padding:10px 4px;background:#16a34a;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:900;cursor:pointer">✅ 회수 완료</button>'+
+        '<button type="button" onclick="sgShowWhy('+id+')" style="flex:1;padding:10px 4px;background:#fff;color:#c62828;border:2px solid #ef9a9a;border-radius:9px;font-size:13px;font-weight:900;cursor:pointer">❌ 미회수</button>'+
+      '</div>'+
+      '<div id="sg-why-'+id+'" style="display:none;flex-wrap:wrap;gap:5px;margin-top:7px">'+
+        REASONS.concat(['직접 입력']).map(function(w){return '<span onclick="sgPick('+id+',\'no\',\''+w+'\')" style="cursor:pointer;font-size:11.5px;border:1px solid #d5dbe6;border-radius:14px;padding:4px 9px;background:#fff">'+w+'</span>';}).join('')+
+      '</div></div>';
+    ta.parentNode.insertBefore(d,ta);
+  }
+  function wrapSend(){
+    try{var f=window.mdSendReply;if(typeof f!=='function'||f._sg)return;
+      var g=async function(caseId){
+        try{var c=(window._mdCases||[]).find(function(x){return x.id===caseId;});
+          if(c&&cat(c)==='수기회수'){
+            var ta=document.getElementById('md-ta-'+caseId);var v=ta?String(ta.value||'').trim():'';
+            if(!/^(✅ 회수 완료|❌ 미회수)/.test(v)){alert('⚠️ [✅ 회수 완료] 또는 [❌ 미회수]를 먼저 눌러주세요.');return;}
+            if(/^❌ 미회수/.test(v)&&!/사유:\s*\S/.test(v)){alert('⚠️ 미회수 사유를 선택해주세요.');return;}
+            var ph=(window._mdReplyPhotos&&_mdReplyPhotos[caseId])||[];
+            if(!ph.length){alert('⚠️ 사진을 1장 이상 첨부해주세요. (📷 촬영 / 🖼️ 사진첩)');return;}
+          }}catch(e){}
+        return f.apply(this,arguments);};
+      g._sg=1;window.mdSendReply=g;try{mdSendReply=g;}catch(e){}
+    }catch(e){}
+  }
+
+  // ── 홈 슬롯 ──
+  function wrapHome(){
+    try{var f=window.pgHome;if(typeof f!=='function'||f._sgh)return;
+      var g=function(){var r=f.apply(this,arguments);try{if(typeof r==='string'&&!susp())r='<div id="sg-home-slot">'+sgHomeHTML()+'</div>'+r;}catch(e){}return r;};
+      for(var k in f){try{g[k]=f[k];}catch(e){}}g._sgh=1;window.pgHome=g;try{pgHome=g;}catch(e){}
+    }catch(e){}
+  }
+  function wrapAll(){wrapHome();wrapList();wrapGo();wrapDetail();wrapSend();}
+  function start(){wrapAll();load();if(!SG.timer)SG.timer=setInterval(function(){wrapAll();if(document.visibilityState!=='hidden')load();},60000);}
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')load();});
+  if(document.readyState==='complete')setTimeout(start,3000);else window.addEventListener('load',function(){setTimeout(start,3000);});
+  setTimeout(function(){wrapAll();load();},9500);
 })();
 </script>
 
