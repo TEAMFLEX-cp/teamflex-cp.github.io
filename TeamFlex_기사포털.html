@@ -16500,27 +16500,50 @@ async function _pbUpload(blob,path){
 }
 var _pbUplErr='';
 async function _pbExtract(buf){
-  var pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;var OPS=pdfjsLib.OPS;var out=[];
+  var pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;var OPS=pdfjsLib.OPS;var out=[];var gCol=null;
   function mul(a,b){return [a[0]*b[0]+a[2]*b[1],a[1]*b[0]+a[3]*b[1],a[0]*b[2]+a[2]*b[3],a[1]*b[2]+a[3]*b[3],a[0]*b[4]+a[2]*b[5]+a[4],a[1]*b[4]+a[3]*b[5]+a[5]];}
+  function getObj(page,name){return new Promise(function(res){var done=false;var to=setTimeout(function(){if(!done){done=true;res(null);}},12000);
+    function ok(im){if(!done){done=true;clearTimeout(to);res(im||null);}}
+    try{var store=(/^g_/.test(String(name))&&page.commonObjs)?page.commonObjs:page.objs;store.get(name,ok);}catch(e){try{page.objs.get(name,ok);}catch(e2){ok(null);}}});}
   for(var pi=1;pi<=pdf.numPages;pi++){
     var page=await pdf.getPage(pi);
     var tc=await page.getTextContent();var byY={};
     tc.items.forEach(function(it){if(!it.str.trim())return;var y=Math.round(it.transform[5]/6)*6;(byY[y]=byY[y]||[]).push([it.transform[4],it.str]);});
-    var rows=Object.keys(byY).map(Number).sort(function(a,b){return b-a;}).map(function(y){return byY[y].sort(function(a,b){return a[0]-b[0];}).map(function(p){return p[1];}).join(' ').replace(/\s+/g,' ').trim();}).filter(function(s){return /2026/.test(s)&&s.split(' ').length>=5;});
-    var trows=rows.map(function(s){var p=s.split(' ');var pdd=p.slice(0,3).join(' ');var dm=pdd.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);var dk=dm?(dm[1]+'-'+('0'+dm[2]).slice(-2)+'-'+('0'+dm[3]).slice(-2)):'';return {pdd_date:dk,type:p[3]||'',camp:p[4]||'',route:p[5]||''};});
+    var rowsY=Object.keys(byY).map(Number).sort(function(a,b){return b-a;}).map(function(y){return {y:y,s:byY[y].sort(function(a,b){return a[0]-b[0];}).map(function(p){return p[1];}).join(' ').replace(/\s+/g,' ').trim()};}).filter(function(o){return /2026/.test(o.s)&&o.s.split(' ').length>=5;});
+    var trows=rowsY.map(function(o){var p=o.s.split(' ');var pdd=p.slice(0,3).join(' ');var dm=pdd.match(/(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})/);var dk=dm?(dm[1]+'-'+('0'+dm[2]).slice(-2)+'-'+('0'+dm[3]).slice(-2)):'';return {pdd_date:dk,type:p[3]||'',camp:p[4]||'',route:p[5]||'',_y:o.y};});
     try{var _vp=page.getViewport({scale:0.2});var _rcv=document.createElement('canvas');_rcv.width=Math.max(1,Math.ceil(_vp.width));_rcv.height=Math.max(1,Math.ceil(_vp.height));await page.render({canvasContext:_rcv.getContext('2d'),viewport:_vp}).promise;}catch(e){}
     var ops=await page.getOperatorList();var ctm=[1,0,0,1,0,0],stack=[],imgs=[];
     for(var i=0;i<ops.fnArray.length;i++){var fn=ops.fnArray[i],ar=ops.argsArray[i];
       if(fn===OPS.save)stack.push(ctm.slice());
       else if(fn===OPS.restore)ctm=stack.pop()||[1,0,0,1,0,0];
       else if(fn===OPS.transform)ctm=mul(ctm,ar);
-      else if(fn===OPS.paintImageXObject)imgs.push({name:ar[0],x:ctm[4],y:ctm[5]});}
+      else if(fn===OPS.paintImageXObject||fn===OPS.paintInlineImageXObject||(OPS.paintJpegXObject&&fn===OPS.paintJpegXObject)){
+        var w=Math.abs(ctm[0])+Math.abs(ctm[2]),h=Math.abs(ctm[1])+Math.abs(ctm[3]);
+        if(w<15||h<15)continue;   /* 아이콘·선 같은 작은 그림 제외 */
+        var y0=Math.min(ctm[5],ctm[5]+ctm[3]),y1=Math.max(ctm[5],ctm[5]+ctm[3]);
+        imgs.push({name:(fn===OPS.paintInlineImageXObject?null:ar[0]),inl:(fn===OPS.paintInlineImageXObject?ar[0]:null),x:ctm[4],y:ctm[5],y0:y0,y1:y1,yc:(y0+y1)/2});}}
     imgs.sort(function(a,b){return b.y-a.y||a.x-b.x;});
-    var imgData=[];for(var k=0;k<imgs.length;k++){imgData.push(await new Promise(function(res){var done=false;var to=setTimeout(function(){if(!done){done=true;res(null);}},5000);try{page.objs.get(imgs[k].name,function(im){if(!done){done=true;clearTimeout(to);res(im);}});}catch(e){if(!done){done=true;clearTimeout(to);res(null);}}}));}
-    for(var ri=0;ri<trows.length;ri++)out.push(Object.assign({},trows[ri],{miss:imgData[ri*2]||null,deliver:imgData[ri*2+1]||null}));
+    /* [v870] 사진을 '같은 높이의 행'에 붙임 — 사진 1장 빠진 행이 있어도 다음 행 사진이 밀려 붙지 않게 */
+    var byRow=trows.map(function(){return [];});var used=0;
+    imgs.forEach(function(im){var best=-1,bd=1e9;trows.forEach(function(r,ri){var inside=(r._y>=im.y0-8&&r._y<=im.y1+8);var d=inside?0:Math.min(Math.abs(r._y-im.y0),Math.abs(r._y-im.y1));if(d<bd){bd=d;best=ri;}});
+      var gap=40;if(trows.length>1){var gs=[];for(var q=1;q<trows.length;q++)gs.push(Math.abs(trows[q-1]._y-trows[q]._y));gs.sort(function(a,b){return a-b;});gap=Math.max(20,gs[Math.floor(gs.length/2)]*0.6);}
+      if(best>=0&&bd<=gap*0.5){byRow[best].push(im);used++;}});
+    var useY=imgs.length>0&&used>=Math.ceil(imgs.length*0.6);
+    var colX=null;if(useY){var xs=[];byRow.forEach(function(a){if(a.length===2){a.sort(function(p,q){return p.x-q.x;});xs.push([a[0].x,a[1].x]);}});if(xs.length){var m0=xs.map(function(v){return v[0];}).sort(function(a,b){return a-b;}),m1=xs.map(function(v){return v[1];}).sort(function(a,b){return a-b;});colX=[m0[Math.floor(m0.length/2)],m1[Math.floor(m1.length/2)]];gCol=colX;}else colX=gCol;}
+    for(var ri=0;ri<trows.length;ri++){var miss=null,del=null,mi=null,di=null;
+      if(useY){var a=byRow[ri].sort(function(p,q){return p.x-q.x;});
+        if(a.length>2&&colX){var pick=function(cx){var bi=null,bv=1e9;a.forEach(function(im){if(im===mi)return;var v=Math.abs(im.x-cx);if(v<bv){bv=v;bi=im;}});return bi;};mi=pick(colX[0]);di=pick(colX[1]);}
+        else if(a.length>=2){mi=a[0];di=a[1];}
+        else if(a.length===1){if(colX&&Math.abs(a[0].x-colX[1])<Math.abs(a[0].x-colX[0]))di=a[0];else mi=a[0];}}
+      else{mi=imgs[ri*2]||null;di=imgs[ri*2+1]||null;}
+      if(mi)miss=mi.inl||await getObj(page,mi.name);
+      if(di)del=di.inl||await getObj(page,di.name);
+      var r0=Object.assign({},trows[ri]);delete r0._y;
+      out.push(Object.assign(r0,{miss:miss,deliver:del}));}
   }
   return out;
 }
+
 function pbImportPdf(file){if(!file)return;var st=document.getElementById('pb-upl-status');if(st)st.textContent='PDF 모듈 준비 중…';pbLoadPdfJs(function(ok){if(!ok){alert('❌ PDF 모듈(pdf.js)을 불러오지 못했습니다. 인터넷/차단 확인.');if(st)st.textContent='❌ PDF 모듈 로드 실패';return;}_pbDoPdf(file);});}
 async function _pbDoPdf(file){
   var st=document.getElementById('pb-upl-status');
