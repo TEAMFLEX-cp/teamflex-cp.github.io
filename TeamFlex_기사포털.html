@@ -20199,6 +20199,67 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   setTimeout(function(){wrapAll();load();},10000);
 })();
 </script>
+<script>
+/* ══════════ [반품 재할당] v859 — 홈 카드 (독립 모듈) ══════════ */
+(function(){
+  var RA={v:null,sig:''};window._RA=RA;
+  function esc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function pj(v,d){try{if(v==null)return d;if(typeof v==='string')v=JSON.parse(v);if(typeof v==='string')v=JSON.parse(v);return v==null?d:v;}catch(e){return d;}}
+  function kToday(){return new Date(Date.now()+9*3600e3).toISOString().slice(0,10);}
+  function role(){return (window.CU&&CU.role)||'';}
+  function isAll(){return role()==='admin'||role()==='leader';}
+  function me(){return String((window.CU&&CU.name)||'').trim();}
+  function susp(){try{return !!(window._isSusp&&_isSusp());}catch(e){return false;}}
+  function dkey(){return 'ra_dismiss_'+(me()||'x')+'_'+kToday();}
+  function lastMid(){var v=RA.v;var m='';((v&&v.items)||[]).forEach(function(x){if((isAll()||x.driver===me())&&String(x.mid)>m)m=String(x.mid);});return m;}
+  function dismissed(){try{var d=localStorage.getItem(dkey());return !!d&&d===lastMid();}catch(e){return false;}}
+  var _tap=0;
+  window.raTap=function(){var n=Date.now();if(n-_tap<450){_tap=0;raDismiss();}else _tap=n;};
+  window.raDismiss=function(){try{localStorage.setItem(dkey(),lastMid());}catch(e){}refresh();};
+  function row(x,showDrv){
+    return '<div style="display:flex;gap:6px;align-items:baseline;background:rgba(255,255,255,.15);border-radius:8px;padding:4px 8px;margin-top:5px;font-size:12px">'+
+      '<b style="font-size:13.5px;flex-shrink:0">'+esc(x.route)+'</b>'+
+      (showDrv?'<span style="flex-shrink:0;font-weight:800">'+(x.driver?esc(x.driver):'<span style="color:#ffd54f">확인 필요</span>')+'</span>':'')+
+      '<span style="opacity:.9;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc((x.addr||'').replace(/^서울(특별시)?\s*/,''))+'</span>'+
+      '<span style="margin-left:auto;flex-shrink:0;opacity:.75;font-size:10.5px">'+esc(x.at||'')+'</span></div>';
+  }
+  window.raHomeHTML=function(){
+    try{
+      if(susp()||dismissed())return '';
+      var v=RA.v;if(!v||v.date!==kToday())return '';
+      var all=(v.items||[]);
+      var mine=isAll()?all:all.filter(function(x){return x.driver===me();});
+      if(!mine.length)return '';
+      var h='<div onclick="raTap()" ondblclick="raDismiss()" style="cursor:pointer;user-select:none;-webkit-user-select:none;color:#fff;border-radius:16px;padding:10px 13px 8px;margin:0 0 10px;background:linear-gradient(135deg,#7c2d12,#c2410c);box-shadow:0 4px 14px rgba(194,65,12,.25)">'+
+        '<div style="display:flex;font-size:12px;font-weight:800;opacity:.95"><span>📦 반품 재할당'+(isAll()?' (전체)':'')+'</span><span style="margin-left:auto;font-weight:600;opacity:.85">오늘</span></div>'+
+        '<div style="font-size:17px;font-weight:900;margin-top:3px">반품 재할당 '+mine.length+'건</div>'+
+        mine.slice(0,8).map(function(x){return row(x,isAll());}).join('')+
+        (mine.length>8?'<div style="font-size:11px;opacity:.8;margin-top:4px">외 '+(mine.length-8)+'건</div>':'')+
+        '<div style="display:flex;align-items:baseline;margin-top:5px"><span style="font-size:12px;font-weight:700;opacity:.92">'+(isAll()?'':'쿠팡 앱 새로고침 후 확인 부탁드려요')+'</span><span style="margin-left:auto;font-size:10px;opacity:.7">더블 클릭하면 삭제됨</span></div></div>';
+      return h;
+    }catch(e){return '';}
+  };
+  function refresh(){var el=document.getElementById('ra-home-slot');if(el)el.innerHTML=raHomeHTML();}
+  async function load(){
+    try{if(!window.sbClient||!window.CU||susp())return;
+      var r=await sbClient.from('app_settings').select('value').eq('key','reassign_today').maybeSingle();
+      var v=pj(r&&r.data&&r.data.value,null);var sig=JSON.stringify(v);RA.v=v;
+      if(sig!==RA.sig){RA.sig=sig;refresh();}
+    }catch(e){}
+  }
+  window.raLoad=load;
+  function wrapHome(){
+    try{var f=window.pgHome;if(typeof f!=='function'||f._ra)return;
+      var g=function(){var r=f.apply(this,arguments);try{if(typeof r==='string'&&!susp())r='<div id="ra-home-slot">'+raHomeHTML()+'</div>'+r;}catch(e){}return r;};
+      for(var k in f){try{g[k]=f[k];}catch(e){}}g._ra=1;window.pgHome=g;try{pgHome=g;}catch(e){}
+    }catch(e){}
+  }
+  function start(){wrapHome();load();setInterval(function(){wrapHome();if(document.visibilityState!=='hidden')load();},60000);}
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')load();});
+  if(document.readyState==='complete')setTimeout(start,3200);else window.addEventListener('load',function(){setTimeout(start,3200);});
+  setTimeout(function(){wrapHome();load();},10500);
+})();
+</script>
 
 
 <script>
