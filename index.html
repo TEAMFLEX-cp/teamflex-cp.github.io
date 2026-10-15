@@ -12119,6 +12119,21 @@ function mdCopyWb(btn){var wb=decodeURIComponent(btn.getAttribute('data-wb')||''
 function mdCopyFallback(wb,ok){try{var ta=document.createElement('textarea');ta.value=wb;ta.style.position='fixed';ta.style.opacity='0';ta.style.left='-9999px';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);ok();}catch(e){alert('복사 실패 — 수동 복사: '+wb);}}
 function mdCopyRaw(btn){var s=decodeURIComponent(btn.getAttribute('data-copy')||'');if(!s)return;function ok(){if(typeof showToast==='function')showToast('📋 복사됨',true);else alert('복사됨');}try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(s).then(ok,function(){mdCopyFallback(s,ok);});}else{mdCopyFallback(s,ok);}}catch(e){mdCopyFallback(s,ok);}}
 function mdWbFromText(txt){var a=String(txt||'').match(/\b(?:10\d{12}|99\d{10})\b/g);return a?a.join(' '):'';}
+/* [v871] 오배송 상세 정보칸 — 항목/값 2단 정렬 + 인입내용 줄 나눔 */
+function mdiClean(t){return String(t||'').replace(/\s*좋아요\s*반응\s*\d+\s*개\.?/g,'').replace(/ /g,' ').trim();}
+function mdiTitle(t){var s=mdiClean(t);var m=s.match(/인입유형\s*[:：]\s*(.+?)(?=\s+(배송시간|운송장|주문번호|주소|Route|회수시간)\s*[:：]|\s*ㄴ|$)/);if(m)return m[1].trim();return s.length>60?s.slice(0,60)+'…':s;}
+function mdiAddr(a){return String(a||'').replace(/\s*Route\s*[:：][\s\S]*$/i,'').replace(/\s+/g,' ').trim();}
+function mdiWb(c){var a=String(c.waybill_no||'').split(/[\n,]+/).map(function(x){return x.trim();}).filter(Boolean);if(!a.length)return '-';
+  var om=(String(c.issue_content||'').match(/주문번호\s*[:：]\s*(\d{8,})/)||[])[1]||'';
+  return a.map(function(w){return '<div class="mdi-wb">'+mdEsc(w)+(om&&w===om?' <span class="mdi-tag">주문번호</span>':'')+'</div>';}).join('');}
+function mdiIssue(t){var s=mdiClean(t);if(!s)return '-';
+  s=s.replace(/\s*(인입유형|배송시간|운송장|주문번호|주소|Route|회수시간|반품유형|요청사항)\s*[:：]\s*/g,'\n$1\u0001').replace(/\s*(ㄴ)/g,'\nㄴ').replace(/[ \t]{2,}/g,' ');
+  var lines=s.split('\n').map(function(x){return x.trim();}).filter(Boolean);
+  return lines.map(function(l){var k=l.split('\u0001');if(k.length===2)return '<div class="mdi-l kv"><span class="mdi-lk">'+mdEsc(k[0])+'</span><span>'+mdEsc(k[1].trim())+'</span></div>';return '<div class="mdi-l'+(/^ㄴ/.test(l)?' mdi-n':'')+'">'+mdEsc(l)+'</div>';}).join('');}
+(function(){try{var st=document.createElement('style');st.textContent='.mdi-box{display:grid;grid-template-columns:78px minmax(0,1fr);column-gap:10px;row-gap:9px;align-items:start;background:#e8f0fe;border-radius:14px;padding:14px 14px;margin-bottom:14px;font-size:13.5px;line-height:1.55;user-select:text;-webkit-user-select:text;cursor:text}'+
+ '.mdi-k{color:#5c6bc0;font-weight:800;white-space:nowrap;padding-top:1px}.mdi-v{color:#1a1a1a;min-width:0;word-break:break-all;overflow-wrap:anywhere}'+
+ '.mdi-wb{font-variant-numeric:tabular-nums;letter-spacing:.2px}.mdi-tag{font-size:10.5px;font-weight:800;color:#6b7280;background:#fff;border-radius:6px;padding:0 6px;margin-left:4px}'+
+ '.mdi-l{padding:1px 0}.mdi-l+.mdi-l{border-top:1px dashed rgba(92,107,192,.18);margin-top:3px;padding-top:4px}.mdi-l.kv{display:grid;grid-template-columns:62px minmax(0,1fr);column-gap:6px}.mdi-lk{color:#6b7280;font-weight:700;font-size:12px;padding-top:1px}.mdi-n{color:#374151}';document.head.appendChild(st);}catch(e){}})();
 function mdWbList(wb){var a=String(wb||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);if(!a.length)return '-';return a.map(mdEsc).join('<br>');}
 function mdWbShort(wb){var a=String(wb||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);if(!a.length)return '-';return mdEsc(a[0])+(a.length>1?' <span style="color:#e65100">외 '+(a.length-1)+'건</span>':'');}
 async function mdLoadCases(){
@@ -13518,14 +13533,14 @@ function mdOpenDetail(caseId){
         '<button onclick="document.getElementById(\'md-detail-modal\').style.display=\'none\';_mdOpenCaseId=null;" style="border:none;background:none;font-size:22px;cursor:pointer;color:#aaa;line-height:1">✕</button>'+
       '</div>'+
       ((typeof isAdmin!=='undefined'&&(isAdmin||isLeader))?'<button onclick="mdRedetect('+c.id+')" style="width:100%;margin:0 0 12px;padding:9px 12px;border:none;border-radius:9px;background:linear-gradient(100deg,#7b3fb5,#5f2e93);color:#fff;font-weight:800;font-size:13px;cursor:pointer">🔄 재감지 · 팀즈 수정분 다시 읽기</button>':'')+
-      '<div style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:12px;user-select:text;-webkit-user-select:text">'+mdEsc(c.issue_content||'오배송 처리 요청')+'</div>'+
-      '<div style="background:#e8f0fe;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:2;user-select:text;-webkit-user-select:text;cursor:text">'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">1. 배송기사</span><span style="color:#1a237e;font-weight:700">'+mdEsc(drvName)+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block;vertical-align:top">2. 운송장</span><span style="color:#1a1a1a">'+mdWbList(c.waybill_no)+'</span>'+((c.waybill_no&&String(c.waybill_no).trim())?'<button class="md-copy1" data-wb="'+encodeURIComponent(c.waybill_no)+'" onclick="mdCopyWb(this)" title="송장번호 복사" style="margin-left:6px;padding:2px 7px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:10.5px;font-weight:800;cursor:pointer;vertical-align:middle">📋 복사</button>':'')+'</div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">3. 라우트</span><span style="color:#1a1a1a">'+mdEsc(c.route||'-')+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">4. 주소</span><span style="color:#1a1a1a">'+mdEsc(c.address||'-')+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">5. 발생일</span><span style="color:#1a1a1a">'+mdEsc(dateStr)+'</span></div>'+
-        '<div><span style="color:#5c6bc0;font-weight:700;width:70px;display:inline-block">6. 인입내용</span><span style="color:#1a1a1a">'+mdEsc(c.issue_content||'-')+'</span>'+(mdWbFromText(c.issue_content)?'<button class="md-copy1" data-copy="'+encodeURIComponent(mdWbFromText(c.issue_content))+'" onclick="mdCopyRaw(this)" title="송장번호만 복사" style="margin-left:6px;padding:2px 7px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:10.5px;font-weight:800;cursor:pointer;vertical-align:middle">📋 송장복사</button>':'')+'</div>'+
+      '<div style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:12px;user-select:text;-webkit-user-select:text">'+mdEsc(mdiTitle(c.issue_content)||'오배송 처리 요청')+'</div>'+
+      '<div class="mdi-box">'+
+        '<div class="mdi-k">1. 배송기사</div><div class="mdi-v" style="color:#1a237e;font-weight:800">'+mdEsc(drvName)+'</div>'+
+        '<div class="mdi-k">2. 운송장</div><div class="mdi-v">'+mdiWb(c)+((c.waybill_no&&String(c.waybill_no).trim())?'<button class="md-copy1" data-wb="'+encodeURIComponent(c.waybill_no)+'" onclick="mdCopyWb(this)" title="송장번호 복사" style="margin-top:4px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 복사</button>':'')+'</div>'+
+        '<div class="mdi-k">3. 라우트</div><div class="mdi-v">'+mdEsc(c.route||'-')+'</div>'+
+        '<div class="mdi-k">4. 주소</div><div class="mdi-v">'+mdEsc(mdiAddr(c.address)||'-')+'</div>'+
+        '<div class="mdi-k">5. 발생일</div><div class="mdi-v">'+mdEsc(dateStr)+'</div>'+
+        '<div class="mdi-k">6. 인입내용</div><div class="mdi-v">'+mdiIssue(c.issue_content)+(mdWbFromText(c.issue_content)?'<button class="md-copy1" data-copy="'+encodeURIComponent(mdWbFromText(c.issue_content))+'" onclick="mdCopyRaw(this)" title="송장번호만 복사" style="margin-top:6px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 송장복사</button>':'')+'</div>'+
       '</div>'+
       photoHtml+
       replyHtml+
