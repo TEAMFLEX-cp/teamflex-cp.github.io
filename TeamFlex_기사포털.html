@@ -20623,7 +20623,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     s.querySelector('.ok').onclick=function(){if(canDis){try{c.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));}catch(e){}}closeSheet();};
   }
   var busy=false,qd=false;
-  function sched(){if(qd)return;qd=true;(window.requestAnimationFrame||setTimeout)(function(){qd=false;deco();});}
+  function sched(){if(qd)return;qd=true;setTimeout(function(){qd=false;deco();},30);}
   var _ld=false;
   function deco(){if(busy)return;busy=true;
     if(!_ld&&window.CU&&window.sbClient){_ld=true;setTimeout(loadSyn,300);}
