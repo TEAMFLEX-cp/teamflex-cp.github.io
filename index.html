@@ -9,9 +9,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="TeamFlex">
-<link rel="apple-touch-icon" href="/icons/icon-180.png">
-<link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-192.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/tf-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/tf-192.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/tf-fav-32.png">
 <link rel="manifest" href="/manifest.json">
 <title>TeamFlex 기사 포털</title>
 <style>/* [팀장/조장 뱃지] v789 */
@@ -748,7 +748,7 @@ if(document.readyState==='complete')done();else window.addEventListener('load',d
 setTimeout(hide,3500);})();</script>
 
 <div id="ls">
-  <div style="position:relative;width:160px;height:160px;display:flex;align-items:center;justify-content:center;margin-bottom:18px"><div style="position:absolute;width:158px;height:158px;border:1px solid rgba(255,193,7,.28);border-radius:50%"></div><div style="position:absolute;width:134px;height:134px;border:2px solid rgba(255,193,7,.85);border-radius:50%;box-shadow:0 0 18px rgba(255,193,7,.22)"></div><img src="/icons/icon-192.png" style="width:102px;height:102px;display:block"></div>
+  <div style="position:relative;width:160px;height:160px;display:flex;align-items:center;justify-content:center;margin-bottom:18px"><div style="position:absolute;width:158px;height:158px;border:1px solid rgba(255,193,7,.28);border-radius:50%"></div><div style="position:absolute;width:134px;height:134px;border:2px solid rgba(255,193,7,.85);border-radius:50%;box-shadow:0 0 18px rgba(255,193,7,.22)"></div><img src="/icons/tf-192.png" style="width:102px;height:102px;display:block;border-radius:50%;background:#fff;box-shadow:0 0 0 3px #fff,0 6px 18px rgba(0,0,0,.4)"></div>
   <div class="ltit">TEAM FLEX</div>
   <div style="width:78px;height:3px;background:#FFC107;border-radius:2px;margin:12px 0 26px"></div>
   <div class="lbox">
@@ -799,7 +799,7 @@ setTimeout(hide,3500);})();</script>
 </div>
 <div id="install-screen" style="display:none;position:fixed;inset:0;z-index:99999;background:linear-gradient(160deg,#0d1b6b,#1565c0);color:#fff;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center">
   <div style="background:white;border-radius:24px;padding:10px;width:100px;height:100px;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,.3)">
-    <img src="/icons/icon-192.png" style="width:80px;height:80px;border-radius:16px">
+    <img src="/icons/tf-192.png" style="width:80px;height:80px;border-radius:16px">
   </div>
   <div style="font-size:28px;font-weight:900;margin-bottom:4px">TeamFlex</div>
   <div style="font-size:11px;opacity:.5;margin-bottom:4px">v2026-04-26-B</div>
@@ -3561,7 +3561,7 @@ function sendNotif(title,body){
   if(cfg.notifSound===false)return;
   if(isQuietHour())return;
   if('Notification' in window && Notification.permission==='granted'){
-    new Notification(title,{body:body,tag:'tf-'+Date.now(),icon:'/icons/icon-192.png',
+    new Notification(title,{body:body,tag:'tf-'+Date.now(),icon:'/icons/tf-192.png',
       vibrate:[200,100,200],silent:true});
   }
 }
@@ -20475,14 +20475,20 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   +'#u3sheet .bt .ok{background:linear-gradient(180deg,#4f46e5,#3730a3);color:#fff;box-shadow:0 10px 20px -8px rgba(55,48,163,.7)}'
   +'#u3sheet .bt .cl{background:#e5e7eb;color:#374151;flex:.5}'
   +'#u3sheet .hint{font-size:11.5px;color:#9ca3af;text-align:center;margin-top:8px;font-weight:600}'
-  /* ── 하단 메뉴 ── */
-  +'html.u3 .bn{background:rgba(255,255,255,.9)!important;-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);border-top:0!important;box-shadow:0 -1px 0 rgba(0,0,0,.04),0 -10px 30px -12px rgba(31,41,90,.25)!important}'
-  +'html.u3 .bn .ni{color:#6b7280!important;text-shadow:none!important;font-weight:700!important}'
+  /* ── 하단 메뉴: 칸이 모자라면 옆으로 스크롤, 충분하면 꽉 채움 ── */
+  +'html.u3 .bn{background:rgba(255,255,255,.92)!important;-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);border-top:0!important;box-shadow:0 -1px 0 rgba(0,0,0,.04),0 -10px 30px -12px rgba(31,41,90,.25)!important}'
+  +'html.u3 .bn .ni{flex:1 1 0!important;min-width:0!important;padding:9px 1px 7px!important;color:#6b7280!important;text-shadow:none!important;font-weight:700!important;font-size:10px!important;white-space:nowrap;overflow:visible}'
+  +'html.u3 .bn:not(.u3scroll) .ni{letter-spacing:-.6px}'
   +'html.u3 .bn .ni.on{color:#111827!important;font-weight:900!important}'
-  +'html.u3 .bn .ni .nicon{display:flex;align-items:center;justify-content:center;height:30px;width:42px;border-radius:14px;transition:background .2s}'
+  +'html.u3 .bn .ni .nicon{display:flex;align-items:center;justify-content:center;height:30px;width:38px;max-width:100%;border-radius:13px;transition:background .2s}'
   +'html.u3 .bn .ni.on .nicon{background:linear-gradient(180deg,#eef2ff,#e0e7ff);box-shadow:inset 0 1px 0 #fff,0 4px 10px -4px rgba(79,70,229,.45)}'
-  +'html.u3 .bn .ni img.u3n{width:26px;height:26px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.18));transition:transform .2s}'
-  +'html.u3 .bn .ni.on img.u3n{transform:translateY(-2px) scale(1.12)}';
+  +'html.u3 .bn .ni img.u3n{width:25px;height:25px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.18));transition:transform .2s}'
+  +'html.u3 .bn .ni.on img.u3n{transform:translateY(-2px) scale(1.12)}'
+  +'html.u3 .bn.u3scroll{overflow-x:auto!important;overflow-y:hidden!important;justify-content:flex-start!important;padding-top:7px!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}'
+  +'html.u3 .bn.u3scroll::-webkit-scrollbar{display:none}'
+  +'html.u3 .bn.u3scroll .ni{flex:0 0 62px!important;padding-top:4px!important}'
+  +'html.u3 .bn.u3scroll .nv-num{top:-4px!important}'
+  +'html.u3 #u3navhint{position:fixed;right:0;bottom:0;width:26px;z-index:10001;pointer-events:none;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.95));display:none;align-items:center;justify-content:center;color:#9ca3af;font-size:15px;font-weight:900}';
   var st=document.createElement('style');st.id='u3-css';st.textContent=css;document.head.appendChild(st);
 
   function im(k,c){return I[k]?'<img class="'+(c||'')+'" src="'+I[k]+'" alt="">':'';}
@@ -20494,7 +20500,13 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   function kDate(){var d=new Date(Date.now()+9*3600e3);return (d.getUTCMonth()+1)+'월 '+d.getUTCDate()+'일 '+'일월화수목금토'.charAt(d.getUTCDay())+'요일';}
   /* ── 하단 메뉴 ── */
   var NAV={'ni-hm':'house','ni-nc':'megaphone','ni-ab':'megaphone','ni-fs':'spiral_calendar','ni-as':'spiral_calendar','ni-md':'police_car_light','ni-fr':'leafy_green','ni-tq':'bar_chart','ni-rq':'memo','ni-pb':'clipboard','ni-bp':'handshake','ni-cfg':'gear','ni-usr-cfg':'gear','ni-st':'money_bag','ni-az':'money_bag','ni-sl':'clipboard'};
-  function decoNav(){var bn=document.getElementById('bn');if(!bn)return;var ns=bn.querySelectorAll('.ni');
+  function navMode(){var bn=document.getElementById('bn');if(!bn)return;var n=bn.querySelectorAll('.ni').length;var w=bn.clientWidth||window.innerWidth;var sc=n*42>w;
+    if(bn.classList.contains('u3scroll')!==sc)bn.classList.toggle('u3scroll',sc);
+    var h=document.getElementById('u3navhint');if(!h){h=document.createElement('div');h.id='u3navhint';h.textContent='›';document.body.appendChild(h);}
+    var more=sc&&(bn.scrollLeft+bn.clientWidth<bn.scrollWidth-4);h.style.display=more?'flex':'none';h.style.height=bn.offsetHeight+'px';
+    if(sc&&!bn._u3s){bn._u3s=1;bn.addEventListener('scroll',function(){navMode();},{passive:true});var on=bn.querySelector('.ni.on');if(on&&on.offsetLeft+on.offsetWidth>bn.clientWidth)bn.scrollLeft=on.offsetLeft-bn.clientWidth/2;}}
+  window.addEventListener('resize',function(){setTimeout(navMode,60);});
+  function decoNav(){var bn=document.getElementById('bn');if(!bn)return;setTimeout(navMode,0);var ns=bn.querySelectorAll('.ni');
     for(var i=0;i<ns.length;i++){var n=ns[i],k=NAV[n.id],ic=n.querySelector('.nicon');if(!k||!ic||ic.querySelector('img.u3n')||ic.querySelector('.tfcoin'))continue;ic.innerHTML=im(k,'u3n');}}
   /* ── 헤더 ── */
   function decoHead(){
@@ -20604,6 +20616,20 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     var n=tiles.children.length;wrap.style.display=n?'':'none';
     var em=wrap.querySelector('.u3tl em');if(em)em.textContent=n?String(n):'';
   }
+  /* ── 수행률·SLA·가중요인 카드: 한 번 눌러 보면 새 자료 올라오기 전까지 숨김 ── */
+  var AK={rp:'_rpHomeData',sla:'_slaHomeData',wf:'_wfHomeData'};
+  function aSig(k,el){var d=window[AK[k]],st='';try{if(d)st=(d.updated||d.updated_at||d.uploaded_at||d.saved_at||'')+'#'+JSON.stringify(d).length;}catch(e){}return st+'|'+txt(el);}
+  function aKey(k){return 'u3_al_'+((window.CU&&CU.name)||'x')+'_'+k;}
+  function decoAlerts(mc){
+    var els=mc.querySelectorAll('[onclick*="pbGoSub("]'),rows=[];
+    for(var i=0;i<els.length;i++){var el=els[i];if(el.parentElement===mc||!el.parentElement||el.parentElement.parentElement!==mc||el.closest('.u3tw,.u3hero'))continue;
+      var m=(el.getAttribute('onclick')||'').match(/pbGoSub\('(\w+)'\)/);if(!m||!AK[m[1]])continue;var k=m[1];
+      if(!el.dataset.u3a){el.dataset.u3a='1';el.addEventListener('click',(function(k,el){return function(){try{localStorage.setItem(aKey(k),aSig(k,el));}catch(e){}};})(k,el),true);}
+      var seen='';try{seen=localStorage.getItem(aKey(k))||'';}catch(e){}
+      var g=(seen===aSig(k,el));if(el.classList.contains('u3gone')!==g)el.classList.toggle('u3gone',g);
+      if(rows.indexOf(el.parentElement)<0)rows.push(el.parentElement);}
+    rows.forEach(function(r){var vis=Array.prototype.some.call(r.children,function(c){return !c.classList.contains('u3gone');});var want=vis?'':'none';if(r.style.display!==want)r.style.display=want;});
+  }
   function closeSheet(){var s=document.getElementById('u3sheet');if(s){s.classList.remove('on');s.innerHTML='';}}
   window.u3CloseSheet=closeSheet;
   function openTile(c,hit,f){
@@ -20627,7 +20653,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   var _ld=false;
   function deco(){if(busy)return;busy=true;
     if(!_ld&&window.CU&&window.sbClient){_ld=true;setTimeout(loadSyn,300);}
-    try{var mc=document.getElementById('mc');if(mc&&document.body.classList.contains('htab')){decoTop(mc);decoWx();decoTasks(mc);}decoNav();decoHead();}catch(e){}
+    try{var mc=document.getElementById('mc');if(mc&&document.body.classList.contains('htab')){decoTop(mc);decoWx();decoTasks(mc);decoAlerts(mc);}decoNav();decoHead();}catch(e){}
     busy=false;}
   window.u3Deco=deco;
   function start(){var mc=document.getElementById('mc'),bn=document.getElementById('bn');

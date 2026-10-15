@@ -5,37 +5,31 @@
   "start_url": "/TeamFlex_기사포털.html",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#ffffff",
   "theme_color": "#1B6FD8",
   "orientation": "portrait",
   "lang": "ko",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/tf-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/tf-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/tf-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-180.png",
+      "src": "/icons/tf-180.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
