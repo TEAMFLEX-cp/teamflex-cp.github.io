@@ -20487,7 +20487,8 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   +'html.u3 .bn .ni.on img.u3n{transform:translateY(-2px) scale(1.12)}'
   +'html.u3 .bn.u3scroll{overflow-x:auto!important;overflow-y:hidden!important;justify-content:flex-start!important;padding-top:7px!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}'
   +'html.u3 .bn.u3scroll::-webkit-scrollbar{display:none}'
-  +'html.u3 .bn.u3scroll .ni{flex:0 0 62px!important;padding-top:4px!important}'
+  +'html.u3 .bn.u3scroll .ni{flex:0 0 var(--u3w,48px)!important;padding-top:4px!important;font-size:9.5px!important;letter-spacing:-.6px}'
+  +'html.u3 .bn.u3scroll .ni .nicon{width:32px}'+'html.u3 .bn.u3scroll .ni img.u3n{width:23px;height:23px}'
   +'html.u3 .bn.u3scroll .nv-num{top:-4px!important}'
   +'html.u3 .bn.u3tight .ni{padding:8px 0 6px!important;font-size:9px!important;letter-spacing:-.7px;white-space:normal!important;word-break:break-all;line-height:1.05;text-align:center}'
   +'html.u3 .bn.u3tight .ni .nicon{width:30px;height:26px;border-radius:10px}'
@@ -20505,7 +20506,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   function kDate(){var d=new Date(Date.now()+9*3600e3);return (d.getUTCMonth()+1)+'월 '+d.getUTCDate()+'일 '+'일월화수목금토'.charAt(d.getUTCDay())+'요일';}
   /* ── 하단 메뉴 ── */
   var NAV={'ni-hm':'house','ni-nc':'megaphone','ni-ab':'megaphone','ni-fs':'spiral_calendar','ni-as':'spiral_calendar','ni-md':'police_car_light','ni-fr':'leafy_green','ni-tq':'bar_chart','ni-rq':'memo','ni-pb':'clipboard','ni-bp':'handshake','ni-cfg':'gear','ni-usr-cfg':'gear','ni-st':'money_bag','ni-az':'money_bag','ni-sl':'clipboard'};
-  function navMode(){var bn=document.getElementById('bn');if(!bn)return;var n=bn.querySelectorAll('.ni').length;var w=bn.clientWidth||window.innerWidth;var adm=!!(window.CU&&CU.role==='admin');var sc=adm&&n*42>w;var tight=!sc&&(w/n)<47;if(bn.classList.contains('u3tight')!==tight)bn.classList.toggle('u3tight',tight);
+  function navMode(){var bn=document.getElementById('bn');if(!bn)return;var n=bn.querySelectorAll('.ni').length;var w=bn.clientWidth||window.innerWidth;var adm=!!(window.CU&&CU.role==='admin');var sc=adm&&n*42>w;if(sc){var iw=Math.max(44,Math.floor(w/8));if(bn.style.getPropertyValue('--u3w')!==iw+'px')bn.style.setProperty('--u3w',iw+'px');}var tight=!sc&&(w/n)<47;if(bn.classList.contains('u3tight')!==tight)bn.classList.toggle('u3tight',tight);
     if(bn.classList.contains('u3scroll')!==sc)bn.classList.toggle('u3scroll',sc);
     var h=document.getElementById('u3navhint');if(!h){h=document.createElement('div');h.id='u3navhint';h.textContent='›';document.body.appendChild(h);}
     var more=sc&&(bn.scrollLeft+bn.clientWidth<bn.scrollWidth-4);h.style.display=more?'flex':'none';h.style.height=bn.offsetHeight+'px';
@@ -20597,6 +20598,10 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       if(t.dataset.n!==String(n)){t.innerHTML='<span class="dt"></span>'+ico(d.ic)+'<div class="lb">'+esc(d.lb)+'</div><div class="nm">'+n+'<small>건</small></div>';t.dataset.n=String(n);}
       if(tiles.children[idx]!==t)tiles.insertBefore(t,tiles.children[idx]||null);idx++;});
   }
+  function dKey(){return 'u3_dis_'+((window.CU&&CU.name)||'x')+'_'+kToday();}
+  function cSig(c){return (c.className.indexOf('m1c')>=0?'m1|':'')+txt(c).replace(/\s/g,'').replace(/더블클릭하면삭제됨|눌러서확인›?/g,'').slice(0,400);}
+  function dList(){try{var v=JSON.parse(localStorage.getItem(dKey())||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
+  function dAdd(sg){try{var d=dList();if(d.indexOf(sg)<0)d.push(sg);localStorage.setItem(dKey(),JSON.stringify(d.slice(-80)));}catch(e){}}
   function decoTasks(mc){
     var hero=mc.querySelector(':scope > .u3hero');
     var wrap=mc.querySelector(':scope > .u3tw');
@@ -20612,6 +20617,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       var hit=kindOf(c);if(!hit){c.dataset.u3k='-';continue;}
       var k='t'+(++seq);c.dataset.u3k=k;c.classList.add('u3gone');MAP[k]=c;
       if(hit[1]==='u3-p'&&/수기회수/.test(hit[3])){try{if(localStorage.getItem(sgKey())===sgSig(c)){c.classList.add('u3seen');continue;}}catch(e){}}
+      if(dList().indexOf(cSig(c))>=0){c.classList.add('u3seen');continue;}
       var f=info(c,hit);
       var t=document.createElement('div');t.className='u3tile '+hit[1];t.dataset.k=k;
       t.innerHTML=(f.camp?'<span class="cp">'+f.camp+'</span>':'')+'<span class="dt"></span>'+ico(hit[2])+'<div class="lb">'+esc(f.lb)+'</div><div class="nm">'+(f.num?esc(f.num)+'<small>'+f.unit+'</small>':'<small>보기</small>')+'</div>';
@@ -20652,7 +20658,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     s.querySelector('.bx').appendChild(cl);
     s.querySelector('.bd').onclick=closeSheet;
     var cb=s.querySelector('.cl');if(cb)cb.onclick=closeSheet;
-    s.querySelector('.ok').onclick=function(){if(canDis){try{c.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));}catch(e){}}closeSheet();};
+    s.querySelector('.ok').onclick=function(){if(canDis){dAdd(cSig(c));c.classList.add('u3seen');try{c.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));}catch(e){}sched();}closeSheet();};
   }
   var busy=false,qd=false;
   function sched(){if(qd)return;qd=true;setTimeout(function(){qd=false;deco();},30);}
