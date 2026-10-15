@@ -17775,7 +17775,7 @@ async function rqSendWork(){
 // ── 스캔 대기 삭제 폼 ──────────────────────────────────────────────
 function rqOldDelForm(){   // [v861] 이전 라우트로 잘못 할당된 반품·배송 삭제 요청
   return rqSimpleForm('olddel','🧹 이전 라우트 할당 삭제 요청','rq-old',
-    function(items){var camp=rqGetCamp();var _seen={};var nums=[];items.forEach(function(it){[it.wb,it.od].forEach(function(x){x=String(x||'').replace(/\D/g,'');if(x.length>=10&&!_seen[x]){_seen[x]=1;nums.push(x);}});});var body=nums.join('\n')||'(운송장번호 없음)';return '■ 이전 라우트 할당 삭제 요청 ['+camp+']\n\n'+body+'\n\n업무 마감하였으나, 스캔 대기건 없습니다.\n삭제 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
+    function(items){var camp=rqGetCamp();var _seen={};var nums=[];items.forEach(function(it){[it.wb,it.od].forEach(function(x){x=String(x||'').replace(/\D/g,'');if(x.length>=10&&!_seen[x]){_seen[x]=1;nums.push(x);}});});var body=nums.join('\n')||'(운송장번호 없음)';return '■ 이전 라우트 할당 삭제 요청 ['+camp+']\n\n'+body+'\n\n라우트 변경 이전 라우트가 할당된 것 같습니다.\n확인 삭제 요청 드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
 }
 
 // [v861] 이전 라우트 삭제 요청 중복 방지: 같은 운송장이 최근 12시간 안에 (누가 했든) 이미 요청됐으면 막음 + 연타 방지
