@@ -19879,11 +19879,12 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       var drv=c.drivers||{};var names=Object.keys(drv).sort(function(a,b){return sum(drv[b])-sum(drv[a]);});
       var tot=sum(c.rows);var withMiss=names.filter(function(n){return sum(drv[n])>0;}).length;
       var t='<table class="m1t"><tr><th>기사</th><th>라우트</th><th>미스캔</th></tr>';
-      names.forEach(function(n){var s=sum(drv[n]);var z=s>0?'':' class="z"';
+      names.forEach(function(n){var s=sum(drv[n]);if(!(s>0))return;var z='';
         t+='<tr><td'+z+'>'+esc(n)+'</td><td'+z+'>'+drv[n].map(function(x){return esc(x.route)+' '+esc(x.miss);}).join(' · ')+'</td><td'+(s>0?(s>=20?' class="hi"':''):' class="z"')+'>'+s+'</td></tr>';});
       if(c.unmatched&&c.unmatched.length){
         var um=(c.rows||[]).filter(function(x){return c.unmatched.indexOf(x.route)>=0;});
         t+='<tr><td style="color:#c62828;font-weight:800">주인 없음</td><td>'+um.map(function(x){return esc(x.route)+' '+esc(x.miss);}).join(' · ')+'</td><td>'+sum(um)+'</td></tr>';}
+      if(!withMiss&&!(c.unmatched&&c.unmatched.length))t+='<tr><td colspan="3" class="z" style="text-align:center">미스캔 없음</td></tr>';
       t+='</table>';
       return '<div class="m1c all" onclick="m1Tap(\''+esc(id)+'\')" ondblclick="m1Dismiss(\''+esc(id)+'\')"><div class="h"><span>🚚 '+esc(camp)+'캠프 '+RL+' (전체)</span><span>'+at+' 공유</span></div>'+
         '<div style="font-size:12.5px;margin-top:6px">총 <b>'+tot+'건</b> · 미스캔 있는 기사 '+withMiss+'명</div>'+t+'<div class="foot">더블 클릭하면 삭제됨</div></div>';
