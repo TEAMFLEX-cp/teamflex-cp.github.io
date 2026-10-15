@@ -20640,7 +20640,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       var g=(seen===aSig(k,el));if(el.classList.contains('u3gone')!==g)el.classList.toggle('u3gone',g);
       if(rows.indexOf(el.parentElement)<0)rows.push(el.parentElement);}
     rows.forEach(function(r){if(r.children.length>=2&&!r.classList.contains('u3al'))r.classList.add('u3al');});
-    rows.forEach(function(r){var vis=Array.prototype.some.call(r.children,function(c){return !c.classList.contains('u3gone');});var want=vis?'':'none';if(r.style.display!==want)r.style.display=want;});
+    rows.forEach(function(r){var vis=Array.prototype.some.call(r.children,function(c){return !c.classList.contains('u3gone');});if(r.classList.contains('u3gone')===vis)r.classList.toggle('u3gone',!vis);if(vis&&r.style.display!=='flex')r.style.display='flex';});
   }
   function closeSheet(){var s=document.getElementById('u3sheet');if(s){s.classList.remove('on');s.innerHTML='';}}
   window.u3CloseSheet=closeSheet;
