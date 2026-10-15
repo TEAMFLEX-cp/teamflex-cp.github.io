@@ -20137,6 +20137,68 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   setTimeout(function(){wrapAll();load();},9500);
 })();
 </script>
+<script>
+/* ══════════ [담당자 확인 요청] v858 — 오배송 목록·상세에 배정 근거/요청 상태 표시 (독립 모듈) ══════════ */
+(function(){
+  var IQ={items:[],t:0};window._IDREQ=IQ;
+  function esc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function pj(v,d){try{if(v==null)return d;if(typeof v==='string')v=JSON.parse(v);if(typeof v==='string')v=JSON.parse(v);return v==null?d:v;}catch(e){return d;}}
+  function hm(iso){try{var d=new Date(iso);if(isNaN(d))return '';return d.toLocaleTimeString('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false});}catch(e){return '';}}
+  async function load(){
+    try{if(!window.sbClient||!window.CU)return;
+      var r=await sbClient.from('app_settings').select('value').eq('key','md_id_requests').maybeSingle();
+      var v=pj(r&&r.data&&r.data.value,{});var sig=JSON.stringify((v&&v.items)||[]);var ch=(sig!==IQ.sig);IQ.sig=sig;IQ.items=(v&&v.items)||[];IQ.t=Date.now();
+      if(ch){try{if(typeof CUR_TAB!=='undefined'&&CUR_TAB==='md'&&typeof mdRenderList==='function'&&!document.getElementById('md-detail-modal')||((document.getElementById('md-detail-modal')||{}).style||{}).display==='none'){if(typeof CUR_TAB!=='undefined'&&CUR_TAB==='md')mdRenderList();}}catch(e){}}
+    }catch(e){}
+  }
+  window.idqLoad=load;
+  function reqOf(id){var it=null;(IQ.items||[]).forEach(function(x){if(String(x.case_id)===String(id))it=x;});return it;}
+  window.idqReqOf=reqOf;
+  function boxHtml(c){
+    var r=reqOf(c.id);var st='',cls='';
+    if(r&&r.st==='open'){
+      var mins=Math.max(0,Math.round((Date.now()-new Date(r.asked_at).getTime())/60000));
+      var w=mins>=60?(Math.floor(mins/60)+'시간 '+(mins%60)+'분'):(mins+'분');
+      st='⏳ '+hm(r.asked_at)+' 쿠팡에 아이디 요청함 · 회신 대기 '+w+(mins>=120?'<br><b>2시간 넘음 — 아래에서 기사를 직접 지정해 주세요.</b>':'<br><span style="font-weight:400">회신 오면 자동으로 기사 지정돼요.</span>');cls='#fff8e1;color:#b26a00;border:1.5px solid #ffd54f';
+    }else if(r&&r.st==='need_admin'){
+      st='⚠️ 쿠팡 회신은 왔지만 기사를 특정하지 못했어요 — 직접 지정해 주세요.'+(r.reply_txt?'<br><span style="font-weight:400">회신: '+esc(String(r.reply_txt).slice(0,80))+'</span>':'');cls='#ffebee;color:#c62828;border:1.5px solid #ef9a9a';
+    }else if(r&&r.st==='done'){
+      st='✅ 쿠팡 회신으로 지정 · '+esc(r.how||r.name||'')+(r.done_at?(' ('+hm(r.done_at)+')'):'');cls='#e8f5e9;color:#2e7d32;border:1.5px solid #a5d6a7';
+    }else if(c.driver_name){
+      var did=String(c.driver_id||'');
+      if(/@df/.test(did))st='✅ 아이디로 지정 · '+esc(did)+' → '+esc(c.driver_name);
+      else if(c.route)st='✅ 그날 근무자로 지정 · '+esc(c.route)+(c.occurred_at?(' · '+esc(String(c.occurred_at).slice(0,10))):'');
+      else st='✅ 이름으로 지정 · '+esc(c.driver_name);
+      cls='#e3f2fd;color:#1565c0;border:1.5px solid #90caf9';
+    }
+    if(!st)return '';
+    return '<div id="idq-box-'+c.id+'" style="border-radius:10px;padding:8px 10px;font-size:12px;font-weight:700;margin:2px 0 10px;background:'+cls+'">'+st+'</div>';
+  }
+  function wrapCard(){
+    try{var f=window.mdCardHtml;if(typeof f!=='function'||f._iq)return;
+      var g=function(c){var h=f.apply(this,arguments);try{if(c&&!c.driver_name&&!c.driver_id){var r=reqOf(c.id);if(r&&(r.st==='open'||r.st==='need_admin'))h=h.replace('>미지정<','>'+(r.st==='open'?'🔎 담당자 확인 중':'⚠️ 기사 지정 필요')+'<');}}catch(e){}return h;};
+      for(var k in f){try{g[k]=f[k];}catch(e){}}g._iq=1;window.mdCardHtml=g;try{mdCardHtml=g;}catch(e){}
+    }catch(e){}
+  }
+  function wrapDetail(){
+    try{var f=window.mdOpenDetail;if(typeof f!=='function'||f._iq)return;
+      var g=function(caseId){var r=f.apply(this,arguments);
+        try{var c=(window._mdCases||[]).find(function(x){return x.id===caseId;});
+          if(c){var n=0;var t=setInterval(function(){
+            var m=document.getElementById('md-detail-modal');var box=m&&m.firstElementChild&&m.firstElementChild.firstElementChild;
+            if(box&&!document.getElementById('idq-box-'+caseId)){var h=boxHtml(c);if(h){var d=document.createElement('div');d.innerHTML=h;var ref=box.children[1]||null;box.insertBefore(d.firstChild,ref);}clearInterval(t);}
+            if(++n>20)clearInterval(t);},150);}
+        }catch(e){}
+        return r;};
+      for(var k in f){try{g[k]=f[k];}catch(e){}}g._iq=1;window.mdOpenDetail=g;try{mdOpenDetail=g;}catch(e){}
+    }catch(e){}
+  }
+  function wrapAll(){wrapCard();wrapDetail();}
+  function start(){wrapAll();load();setInterval(function(){wrapAll();if(document.visibilityState!=='hidden')load();},60000);}
+  if(document.readyState==='complete')setTimeout(start,3500);else window.addEventListener('load',function(){setTimeout(start,3500);});
+  setTimeout(function(){wrapAll();load();},10000);
+})();
+</script>
 
 
 <script>
