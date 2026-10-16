@@ -5760,7 +5760,7 @@ function launchApp(){
       '<div class="ni on" id="ni-hm" onclick="go(\'hm\')"><span class="nicon">&#x1F3E0;</span>홈</div>'+
       '<div class="ni" id="ni-ab" onclick="go(\'ab\')"><span class="nicon">&#x1F4E2;</span>공지</div>'+
       '<div class="ni" id="ni-as" onclick="go(\'as\')"><span class="nicon">&#x1F4C5;</span>스케줄</div>'+
-      '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>오배송</div>'+
+      '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>인입</div>'+
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       '<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>'+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
@@ -5781,7 +5781,7 @@ function launchApp(){
       '<div class="ni on" id="ni-hm" onclick="go(\'hm\')"><span class="nicon">&#x1F3E0;</span>홈</div>'+
       '<div class="ni" id="ni-nc" onclick="go(\'nc\')"><span class="nicon">&#x1F4E2;</span>공지</div>'+
       '<div class="ni" id="ni-fs" onclick="go(\'fs\')"><span class="nicon">&#x1F4C5;</span>스케줄</div>'+
-      '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>오배송</div>'+
+      '<div class="ni" id="ni-md" onclick="go(\'md\')"><span class="nicon">&#x1F6A8;</span>인입</div>'+
       '<div class="ni" id="ni-fr" onclick="go(\'fr\')"><span class="nicon">&#x1F33F;</span>신선</div>'+
       (CU.role==='leader'?'<div class="ni" id="ni-tq" onclick="go(\'tq\')"><span class="nicon">&#x1F4CA;</span>팀 수량</div>':'')+
       '<div class="ni" id="ni-rq" onclick="go(\'rq\')"><span class="nicon">&#x1F4DD;</span>각종요청</div>'+
@@ -6228,7 +6228,7 @@ function updateNavDots(){
   var niSl=document.getElementById('ni-sl');
   if(niSl)niSl.innerHTML=ic('&#x1F4CB;')+'변경이력'+(_unreadSchedLog()?'<span class="ndot"></span>':'');
   var niMd=document.getElementById('ni-md');
-  if(niMd)niMd.innerHTML=ic('&#x1F6A8;',_nav.md>0)+'오배송'+numB(_nav.md);
+  if(niMd)niMd.innerHTML=ic('&#x1F6A8;',_nav.md>0)+'인입'+numB(_nav.md);
   var niFr=document.getElementById('ni-fr');
   if(niFr)niFr.innerHTML=ic('&#x1F33F;',_nav.frRemain>0)+'신선'+(_nav.frNew?newL:'')+numB(_nav.frRemain);
   var niPb=document.getElementById('ni-pb');
@@ -18237,7 +18237,7 @@ function mdRenderRequestBadge(){
   var pending = _rqCases.filter(function(r){return r.status==='pending';}).length;
   var niMd = document.getElementById('ni-md');
   if(niMd){
-    niMd.innerHTML = '<span class="nicon">&#x1F6A8;</span>오배송'+(pending>0?'<span class="ndot"></span>':'');
+    niMd.innerHTML = '<span class="nicon">&#x1F6A8;</span>인입'+(pending>0?'<span class="ndot"></span>':'');
   }
 }
 
