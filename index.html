@@ -18526,10 +18526,12 @@ function pgFresh(){
     '<div style="text-align:center;padding:40px;color:#888">&#x23F3; 불러오는 중...</div>';
 }
 
-// ── [v876] 2회전 예상 수량 수동 추가 (관리자) — 서버가 누락한 기사/라우트를 직접 넣음 ──
+// ── [v876→v879] 2회전 예상 수량 수동 추가 (관리자·팀장) — 서버가 누락한 기사/라우트를 직접 넣음 ──
+//   한 건 입력 / 붙여넣기(317A 12 62) / 사진(글자 인식) → 미리보기에서 확인·수정 → 저장
 //   round2_expected 에 chat_id='manual' 로 저장 → 서버 재처리(캠프 chat_id 기준 삭제)에도 지워지지 않음.
 //   같은 라우트에 서버 행이 있어도 앱 표시는 수동 행을 우선.
 function _r2mEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _r2mCan(){return !!(CU&&(CU.role==='admin'||CU.role==='leader'));}
 function _r2mRouteHit(r,R){
   R=String(R||'').toUpperCase().trim(); if(!R) return false;
   if(String(r.route||'').toUpperCase().trim()===R) return true;
@@ -18538,19 +18540,90 @@ function _r2mRouteHit(r,R){
   if(m&&m2&&m[1]===m2[1]&&m[2].indexOf(m2[2])>=0) return true;
   return raw.split(/[,\/]/).indexOf(R)>=0;
 }
-async function r2mResolve(){
-  var R=((document.getElementById('r2m-route')||{}).value||'').toUpperCase().trim();
-  var hint=document.getElementById('r2m-hint'); if(hint) hint.textContent='';
-  if(!/^\d{2,4}[A-Z]{1,2}$/.test(R)) return;
+var _r2mSch=null,_r2mSchAt=0;
+async function _r2mSchedule(){
+  if(_r2mSch&&Date.now()-_r2mSchAt<60000) return _r2mSch;
+  try{ var r=await sbClient.from('weekly_schedules').select('route,route_raw,driver_name,work_date').eq('work_date',kstToday()).limit(3000); _r2mSch=(r&&r.data)||[]; _r2mSchAt=Date.now(); }catch(e){ _r2mSch=_r2mSch||[]; }
+  return _r2mSch;
+}
+async function _r2mNameOf(R){
+  var sch=await _r2mSchedule(); var hit=sch.filter(function(x){return _r2mRouteHit(x,R);});
+  var nm=hit.length?String(hit[0].driver_name||'').replace(/★/g,'').trim():'';
+  try{ if(nm&&typeof splitDriverSuffix==='function') nm=splitDriverSuffix(nm).base||nm; }catch(e){}
+  return nm;
+}
+/* 텍스트 → [{route,fresh,same}] : '317A 12 62' / 표 복사(탭) / 아이디 라우트 신선 당배 / 신선표·당배표 분리형 모두 */
+function r2mParse(text){
+  var RT=/^\d{3,4}[A-Za-z]$/, out=[], idx={};
+  String(text||'').replace(/\r/g,'').split('\n').forEach(function(line){
+    var toks=line.replace(/[|,:;]/g,' ').trim().split(/\s+/).filter(Boolean);
+    var ri=-1; for(var i=0;i<toks.length;i++){ if(RT.test(toks[i])){ri=i;break;} }
+    if(ri<0) return;
+    var R=toks[ri].toUpperCase();
+    var nums=[]; for(var j=ri+1;j<toks.length;j++){ if(RT.test(toks[j])) continue; if(/^\d{1,4}$/.test(toks[j])) nums.push(parseInt(toks[j],10)); }
+    if(idx[R]!==undefined){ var p=out[idx[R]]; if(p.same===0&&nums.length===1){p.same=nums[0];} return; }   // 분리형: 두 번째 = 당배
+    idx[R]=out.length; out.push({route:R,fresh:nums[0]||0,same:nums[1]||0});
+  });
+  return out;
+}
+var _r2mRows=[];
+function _r2mRowsHtml(){
+  if(!_r2mRows.length) return '';
+  var iS='width:100%;box-sizing:border-box;padding:6px 5px;border:1px solid #d6dbe4;border-radius:7px;font-size:13px;font-weight:700;text-align:center';
+  var h='<div style="font-size:12px;font-weight:700;color:#555;margin:12px 0 6px">미리보기 — 확인·수정 후 저장 ('+_r2mRows.length+'건)</div>'+
+    '<div style="display:grid;grid-template-columns:62px 1fr 48px 48px 26px;gap:4px;font-size:11px;color:#888;font-weight:700;padding:0 2px 3px"><span>라우트</span><span>기사</span><span style="color:#2e7d32">신선</span><span style="color:#1565c0">당배</span><span></span></div>';
+  _r2mRows.forEach(function(r,i){
+    h+='<div style="display:grid;grid-template-columns:62px 1fr 48px 48px 26px;gap:4px;margin-bottom:4px;align-items:center">'+
+      '<input value="'+_r2mEsc(r.route)+'" oninput="_r2mRows['+i+'].route=this.value.toUpperCase().trim()" style="'+iS+'">'+
+      '<input value="'+_r2mEsc(r.name)+'" placeholder="기사 이름" oninput="_r2mRows['+i+'].name=this.value.trim()" style="'+iS+(r.name?'':';border-color:#ef5350;background:#fff5f5')+'">'+
+      '<input type="number" inputmode="numeric" value="'+(r.fresh||0)+'" oninput="_r2mRows['+i+'].fresh=parseInt(this.value||0,10)||0" style="'+iS+';color:#2e7d32">'+
+      '<input type="number" inputmode="numeric" value="'+(r.same||0)+'" oninput="_r2mRows['+i+'].same=parseInt(this.value||0,10)||0" style="'+iS+';color:#1565c0">'+
+      '<span onclick="_r2mRows.splice('+i+',1);r2mShowRows()" style="text-align:center;color:#c62828;font-weight:800;cursor:pointer">✕</span></div>';
+  });
+  h+='<button onclick="r2mSaveRows()" id="r2m-saveall" style="width:100%;margin-top:8px;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer">'+_r2mRows.length+'건 모두 저장</button>';
+  return h;
+}
+function r2mShowRows(){ var b=document.getElementById('r2m-rows'); if(b) b.innerHTML=_r2mRowsHtml(); }
+async function r2mLoadRows(list){
+  var st=document.getElementById('r2m-status');
+  if(!list.length){ _r2mRows=[]; r2mShowRows(); if(st){st.style.color='#c62828';st.textContent='⚠️ 라우트(예: 317A)와 숫자를 찾지 못했어요';} return; }
+  for(var i=0;i<list.length;i++){ list[i].name=await _r2mNameOf(list[i].route); }
+  _r2mRows=list; r2mShowRows();
+  var miss=list.filter(function(r){return !r.name;}).length;
+  if(st){ st.style.color=miss?'#e65100':'#2e7d32'; st.textContent='✅ '+list.length+'건 인식'+(miss?(' — 기사 못 찾은 '+miss+'건은 이름을 넣어주세요(빨간 칸)'):'')+'. 숫자가 맞는지 꼭 확인하세요.'; }
+}
+function r2mFromPaste(){ var t=(document.getElementById('r2m-paste')||{}).value||''; r2mLoadRows(r2mParse(t)); }
+var _r2mTessP=null;
+function _r2mTess(){
+  if(window.Tesseract) return Promise.resolve(window.Tesseract);
+  if(_r2mTessP) return _r2mTessP;
+  _r2mTessP=new Promise(function(ok,no){ var s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'; s.onload=function(){ok(window.Tesseract);}; s.onerror=function(){_r2mTessP=null;no(new Error('글자 인식 도구를 불러오지 못했어요 (인터넷 확인)'));}; document.head.appendChild(s); });
+  return _r2mTessP;
+}
+function _r2mPrep(file){   // 사진 → 흑백·확대(작은 글씨 인식률 ↑)
+  return new Promise(function(ok){
+    var img=new Image(), u=URL.createObjectURL(file);
+    img.onload=function(){ try{
+      var sc=Math.min(3,Math.max(1,1800/Math.max(img.width,1))), c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+      var g=c.getContext('2d'); g.drawImage(img,0,0,c.width,c.height); var d=g.getImageData(0,0,c.width,c.height), a=d.data;
+      for(var i=0;i<a.length;i+=4){ var y=0.299*a[i]+0.587*a[i+1]+0.114*a[i+2]; y=y>165?255:(y<110?0:y); a[i]=a[i+1]=a[i+2]=y; }
+      g.putImageData(d,0,0); URL.revokeObjectURL(u); ok(c);
+    }catch(e){ ok(file); } };
+    img.onerror=function(){ ok(file); }; img.src=u;
+  });
+}
+async function r2mFromPhoto(inp){
+  var f=inp&&inp.files&&inp.files[0]; if(!f) return;
+  var st=document.getElementById('r2m-status'); if(st){st.style.color='#1565c0';st.textContent='⏳ 사진 글자 읽는 중… (처음엔 10~20초 걸려요)';}
   try{
-    var r=await sbClient.from('weekly_schedules').select('route,route_raw,driver_name,work_date').eq('work_date',kstToday()).limit(2000);
-    var hit=((r&&r.data)||[]).filter(function(x){return _r2mRouteHit(x,R);});
-    var nm=hit.length?String(hit[0].driver_name||'').replace(/★/g,'').trim():'';
-    try{ if(nm&&typeof splitDriverSuffix==='function') nm=splitDriverSuffix(nm).base||nm; }catch(e){}
-    var inp=document.getElementById('r2m-name');
-    if(nm&&inp){ inp.value=nm; if(hint){hint.style.color='#2e7d32';hint.textContent='✅ 오늘 스케줄: '+R+' → '+nm;} }
-    else if(hint){ hint.style.color='#c62828'; hint.textContent='⚠️ 오늘 스케줄에서 '+R+' 기사를 못 찾았어요 — 이름을 직접 입력하세요'; }
-  }catch(e){}
+    var T=await _r2mTess(); var src=await _r2mPrep(f);
+    var res=await T.recognize(src,'eng',{logger:function(m){ if(st&&m&&m.status==='recognizing text') st.textContent='⏳ 사진 글자 읽는 중… '+Math.round((m.progress||0)*100)+'%'; }});
+    var txt=(res&&res.data&&res.data.text)||'';
+    txt=txt.replace(/\b(\d{3})\s?([A-Da-d8])\b/g,function(m0,a,b){return a+(b==='8'?'B':b.toUpperCase());});   // 317 A → 317A, 3178 → 317B 보정
+    var ta=document.getElementById('r2m-paste'); if(ta) ta.value=txt.trim();
+    await r2mLoadRows(r2mParse(txt));
+  }catch(e){ if(st){st.style.color='#c62828';st.textContent='⚠️ '+(e.message||e);} }
+  inp.value='';
 }
 async function r2mList(){
   var box=document.getElementById('r2m-list'); if(!box) return;
@@ -18564,27 +18637,72 @@ async function r2mList(){
       '<button onclick="r2mDel('+x.id+')" style="border:none;background:#ffebee;color:#c62828;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer">삭제</button></div>';}).join('');
   }catch(e){ box.innerHTML='<div style="font-size:12px;color:#c62828">목록 불러오기 실패</div>'; }
 }
+function r2mMode(m){
+  ['one','paste','photo'].forEach(function(k){ var b=document.getElementById('r2m-p-'+k), t=document.getElementById('r2m-t-'+k);
+    if(b) b.style.display=(k===m)?'block':'none';
+    if(t){ t.style.background=(k===m)?'#1b5e20':'#fff'; t.style.color=(k===m)?'#fff':'#1b5e20'; } });
+  var st=document.getElementById('r2m-status'); if(st) st.textContent='';
+  if(m==='one'){ _r2mRows=[]; r2mShowRows(); }
+}
 function openR2Manual(){
+  if(!_r2mCan()) return;
   var p=document.getElementById('r2m-pop'); if(p) p.remove();
+  _r2mRows=[];
   p=document.createElement('div'); p.id='r2m-pop';
   p.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30010;display:flex;align-items:center;justify-content:center;padding:14px';
   p.onclick=function(e){ if(e.target===p) p.remove(); };
   var inp='width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #c8e6c9;border-radius:9px;font-size:15px;font-weight:700';
-  p.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:400px;max-height:86vh;overflow:auto;padding:16px">'+
+  var tb='flex:1;padding:9px 4px;border:1.5px solid #1b5e20;font-size:12.5px;font-weight:800;cursor:pointer';
+  p.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:420px;max-height:88vh;overflow:auto;padding:16px">'+
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:15px;color:#1b5e20">➕ 2회전 예상 수량 수동 추가</b><span onclick="document.getElementById(\'r2m-pop\').remove()" style="font-size:20px;color:#999;cursor:pointer">✕</span></div>'+
     '<div style="font-size:11.5px;color:#666;background:#f1f8e9;border-radius:8px;padding:8px 10px;line-height:1.55;margin-bottom:10px">공유에서 빠진 기사·라우트를 직접 넣어요. 같은 라우트가 이미 있으면 <b>수동 입력값이 우선</b> 표시됩니다.</div>'+
-    '<div style="font-size:12px;font-weight:700;color:#555;margin:6px 0 4px">라우트</div>'+
-    '<input id="r2m-route" placeholder="예) 607A" autocomplete="off" style="'+inp+';text-transform:uppercase" oninput="clearTimeout(window._r2mT);window._r2mT=setTimeout(r2mResolve,350)">'+
-    '<div id="r2m-hint" style="font-size:11.5px;margin-top:4px;min-height:14px"></div>'+
-    '<div style="font-size:12px;font-weight:700;color:#555;margin:6px 0 4px">기사 이름</div>'+
-    '<input id="r2m-name" placeholder="라우트 넣으면 자동 입력" autocomplete="off" style="'+inp+'">'+
-    '<div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1"><div style="font-size:12px;font-weight:700;color:#2e7d32;margin-bottom:4px">신선</div><input id="r2m-fresh" type="number" inputmode="numeric" min="0" placeholder="0" style="'+inp+'"></div>'+
-    '<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#1565c0;margin-bottom:4px">당배</div><input id="r2m-same" type="number" inputmode="numeric" min="0" placeholder="0" style="'+inp+'"></div></div>'+
-    '<button id="r2m-save" onclick="r2mSave()" style="width:100%;margin-top:12px;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer">저장</button>'+
+    '<div style="display:flex;margin-bottom:10px;border-radius:10px;overflow:hidden">'+
+      '<button id="r2m-t-one" onclick="r2mMode(\'one\')" style="'+tb+';border-radius:10px 0 0 10px">✏️ 한 건</button>'+
+      '<button id="r2m-t-paste" onclick="r2mMode(\'paste\')" style="'+tb+';border-left:none;border-right:none">📋 붙여넣기</button>'+
+      '<button id="r2m-t-photo" onclick="r2mMode(\'photo\')" style="'+tb+';border-radius:0 10px 10px 0">📷 사진</button></div>'+
+    '<div id="r2m-p-one">'+
+      '<div style="font-size:12px;font-weight:700;color:#555;margin:6px 0 4px">라우트</div>'+
+      '<input id="r2m-route" placeholder="예) 607A" autocomplete="off" style="'+inp+';text-transform:uppercase" oninput="clearTimeout(window._r2mT);window._r2mT=setTimeout(r2mResolve,350)">'+
+      '<div id="r2m-hint" style="font-size:11.5px;margin-top:4px;min-height:14px"></div>'+
+      '<div style="font-size:12px;font-weight:700;color:#555;margin:6px 0 4px">기사 이름</div>'+
+      '<input id="r2m-name" placeholder="라우트 넣으면 자동 입력" autocomplete="off" style="'+inp+'">'+
+      '<div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1"><div style="font-size:12px;font-weight:700;color:#2e7d32;margin-bottom:4px">신선</div><input id="r2m-fresh" type="number" inputmode="numeric" min="0" placeholder="0" style="'+inp+'"></div>'+
+      '<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#1565c0;margin-bottom:4px">당배</div><input id="r2m-same" type="number" inputmode="numeric" min="0" placeholder="0" style="'+inp+'"></div></div>'+
+      '<button id="r2m-save" onclick="r2mSave()" style="width:100%;margin-top:12px;padding:12px;background:#1b5e20;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer">저장</button>'+
+    '</div>'+
+    '<div id="r2m-p-paste" style="display:none">'+
+      '<div style="font-size:11.5px;color:#666;margin-bottom:5px">한 줄에 <b>라우트 신선 당배</b> 순서로 붙여넣으세요. 팀즈 표를 그대로 복사해도 돼요.</div>'+
+      '<textarea id="r2m-paste" oninput="clearTimeout(window._r2mPT);window._r2mPT=setTimeout(r2mFromPaste,700)" placeholder="317A\t12\t62&#10;317B\t15\t66&#10;317C\t31\t54" style="width:100%;box-sizing:border-box;height:120px;padding:10px;border:1.5px solid #c8e6c9;border-radius:9px;font-size:14px;font-family:monospace"></textarea>'+
+      '<button onclick="r2mFromPaste()" style="width:100%;margin-top:6px;padding:10px;background:#fff;color:#1b5e20;border:1.5px solid #1b5e20;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">🔎 읽기</button>'+
+    '</div>'+
+    '<div id="r2m-p-photo" style="display:none">'+
+      '<div style="font-size:11.5px;color:#666;margin-bottom:6px">2회전 수량표 <b>캡처/사진</b>을 올리면 글자를 읽어서 아래에 채워요. 사진 인식은 틀릴 수 있으니 <b>숫자를 꼭 확인</b>하세요.</div>'+
+      '<label style="display:block;text-align:center;padding:16px;border:2px dashed #66bb6a;border-radius:12px;color:#1b5e20;font-weight:800;font-size:13.5px;cursor:pointer;background:#f6fbf3">📷 사진 선택 / 촬영<input type="file" accept="image/*" style="display:none" onchange="r2mFromPhoto(this)"></label>'+
+    '</div>'+
+    '<div id="r2m-status" style="font-size:12px;margin-top:8px;line-height:1.5"></div>'+
+    '<div id="r2m-rows"></div>'+
     '<div style="font-size:12px;font-weight:700;color:#555;margin:14px 0 6px">오늘 수동 추가한 건</div><div id="r2m-list"></div>'+
   '</div>';
   document.body.appendChild(p);
-  r2mList();
+  r2mMode('one'); r2mList();
+}
+async function r2mResolve(){
+  var R=((document.getElementById('r2m-route')||{}).value||'').toUpperCase().trim();
+  var hint=document.getElementById('r2m-hint'); if(hint) hint.textContent='';
+  if(!/^\d{2,4}[A-Z]{1,2}$/.test(R)) return;
+  var nm=await _r2mNameOf(R); var inp=document.getElementById('r2m-name');
+  if(nm&&inp){ inp.value=nm; if(hint){hint.style.color='#2e7d32';hint.textContent='✅ 오늘 스케줄: '+R+' → '+nm;} }
+  else if(hint){ hint.style.color='#c62828'; hint.textContent='⚠️ 오늘 스케줄에서 '+R+' 기사를 못 찾았어요 — 이름을 직접 입력하세요'; }
+}
+async function _r2mUpsert(list){   // list: [{route,name,fresh,same}]
+  var names=[]; list.forEach(function(r){ if(names.indexOf(r.name)<0) names.push(r.name); });
+  var lid={}; try{ var d=await sbClient.from('drivers').select('login_id,name').in('name',names); ((d&&d.data)||[]).forEach(function(x){ if(x.login_id) lid[x.name]=String(x.login_id).trim(); }); }catch(e){}
+  var k=new Date(Date.now()+9*3600000).toISOString().slice(0,19)+'+09:00', day=kstToday();
+  var rows=list.map(function(r){ return {shared_date:day,shared_at:k,driver_id:lid[r.name]||r.name,driver_name:r.name,route:r.route,fresh_qty:r.fresh,samedaydel_qty:r.same,qty:r.fresh+r.same,chat_id:'manual'}; });
+  var seen={}; rows=rows.filter(function(r){ var kk=r.driver_id+'|'+r.route; if(seen[kk]) return false; seen[kk]=1; return true; });
+  var res=await sbClient.from('round2_expected').upsert(rows,{onConflict:'shared_date,driver_id,route'});
+  if(res&&res.error) throw new Error(res.error.message);
+  return rows.length;
 }
 var _r2mBusy=false;
 async function r2mSave(){
@@ -18598,21 +18716,29 @@ async function r2mSave(){
   if(f<0||s<0||(f===0&&s===0)){alert('신선 또는 당배 수량을 넣어주세요');return;}
   _r2mBusy=true;
   try{
-    var did='';
-    try{ var d=await sbClient.from('drivers').select('login_id,name').eq('name',nm).limit(1); if(d&&d.data&&d.data[0]) did=String(d.data[0].login_id||'').trim(); }catch(e){}
-    if(!did) did=nm;
-    var k=new Date(Date.now()+9*3600000).toISOString().slice(0,19)+'+09:00';
-    var row={shared_date:kstToday(),shared_at:k,driver_id:did,driver_name:nm,route:R,fresh_qty:f,samedaydel_qty:s,qty:f+s,chat_id:'manual'};
-    var r=await sbClient.from('round2_expected').upsert(row,{onConflict:'shared_date,driver_id,route'});
-    if(r&&r.error) throw new Error(r.error.message);
+    await _r2mUpsert([{route:R,name:nm,fresh:f,same:s}]);
     ['r2m-route','r2m-name','r2m-fresh','r2m-same'].forEach(function(i){var e=document.getElementById(i);if(e)e.value='';});
     var h=document.getElementById('r2m-hint'); if(h){h.style.color='#2e7d32';h.textContent='✅ 저장했어요: '+R+' '+nm+' (신선 '+f+' / 당배 '+s+')';}
-    r2mList();
-    try{ if(typeof loadFreshStatus==='function') setTimeout(loadFreshStatus,300); }catch(e){}
+    r2mList(); try{ if(typeof loadFreshStatus==='function') setTimeout(loadFreshStatus,300); }catch(e){}
   }catch(e){ alert('저장 실패: '+e.message); }
   finally{ _r2mBusy=false; }
 }
+async function r2mSaveRows(){
+  if(_r2mBusy) return;
+  var bad=[]; _r2mRows.forEach(function(r){ if(!/^\d{2,4}[A-Z]{1,2}$/.test(r.route)||!r.name||((r.fresh||0)===0&&(r.same||0)===0)) bad.push(r.route||'(빈칸)'); });
+  if(!_r2mRows.length) return;
+  if(bad.length){ alert('확인이 필요한 줄이 있어요 (라우트/기사/수량):\n'+bad.join(', ')+'\n\n고치거나 ✕로 빼고 다시 저장해주세요.'); return; }
+  _r2mBusy=true; var b=document.getElementById('r2m-saveall'); if(b){b.disabled=true;b.textContent='저장 중…';}
+  try{
+    var n=await _r2mUpsert(_r2mRows.map(function(r){return {route:r.route,name:r.name,fresh:r.fresh||0,same:r.same||0};}));
+    _r2mRows=[]; r2mShowRows(); var ta=document.getElementById('r2m-paste'); if(ta) ta.value='';
+    var st=document.getElementById('r2m-status'); if(st){st.style.color='#2e7d32';st.textContent='✅ '+n+'건 저장했어요';}
+    r2mList(); try{ if(typeof loadFreshStatus==='function') setTimeout(loadFreshStatus,300); }catch(e){}
+  }catch(e){ alert('저장 실패: '+e.message); if(b){b.disabled=false;b.textContent='다시 저장';} }
+  finally{ _r2mBusy=false; }
+}
 async function r2mDel(id){
+  if(!_r2mCan()) return;
   if(!confirm('이 수동 추가 건을 삭제할까요?')) return;
   try{ var r=await sbClient.from('round2_expected').delete().eq('id',id).eq('chat_id','manual'); if(r&&r.error) throw new Error(r.error.message); r2mList(); try{ setTimeout(loadFreshStatus,300); }catch(e){} }
   catch(e){ alert('삭제 실패: '+e.message); }
@@ -18697,7 +18823,7 @@ async function loadFreshStatus(){
     }
     // 2회전 예상 공유는 16:00 이후 자동 숨김
     if(new Date(Date.now()+9*3600000).getUTCHours()>=16) r2Banner='';
-    if(isAdmin) r2Banner='<button onclick="openR2Manual()" style="width:100%;padding:10px;background:#fff;color:#1b5e20;border:1.5px dashed #66bb6a;border-radius:12px;font-size:12.5px;font-weight:800;cursor:pointer;margin-bottom:10px">➕ 2회전 예상 수량 수동 추가 (누락분)</button>'+r2Banner;   // [v876]
+    if(isAdmin||CU.role==='leader') r2Banner='<button onclick="openR2Manual()" style="width:100%;padding:10px;background:#fff;color:#1b5e20;border:1.5px dashed #66bb6a;border-radius:12px;font-size:12.5px;font-weight:800;cursor:pointer;margin-bottom:10px">➕ 2회전 예상 수량 수동 추가 (누락분)</button>'+r2Banner;   // [v876]
 
     // ── 신선 배송 현황 (app_settings.fresh_snapshot) ────────────────
     var fsRes=await sbClient.from('app_settings')
