@@ -20873,4 +20873,57 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
 })();
 </script>
 
+<script>
+/* [v878] 네비 3D 카드 버튼 (C안) — 탭별 색 카드 + 글씨 한 줄 자동 맞춤. 칸 크기는 기존과 동일(카드는 ::before로 덧그림). 끄기: localStorage u3nav_off='1' */
+(function(){
+  try{ if(localStorage.getItem('u3nav_off')==='1') return; }catch(e){}
+  var C={hm:'#ea580c',nc:'#d97706',ab:'#d97706',fs:'#4f46e5',as:'#4f46e5',md:'#dc2626',fr:'#16a34a',tq:'#0891b2',rq:'#7c3aed',pb:'#ca8a04',bp:'#db2777',rl:'#b45309',cfg:'#64748b',st:'#0f766e'};
+  var css='html.u3 #bn.u3c{background:linear-gradient(180deg,#eef0f5,#e3e6ee)!important;border-top:1px solid rgba(15,23,42,.06)}'+
+    'html.u3 #bn.u3c .ni{background:none!important;isolation:isolate;text-shadow:none!important}'+
+    'html.u3 #bn.u3c .ni::before{content:"";position:absolute;inset:3px 1.5px 3px;z-index:-1;border-radius:11px;background:linear-gradient(180deg,#fff,#f5f6fa);box-shadow:0 1px 0 #fff inset,0 3px 6px -3px rgba(15,23,42,.35),0 0 0 1px rgba(15,23,42,.06);transition:all .2s}'+
+    'html.u3 #bn.u3c .ni .nicon{background:none!important;box-shadow:none!important;transition:transform .2s}'+
+    'html.u3 #bn.u3c .ni .u3l{display:block;max-width:100%;white-space:nowrap;overflow:hidden;letter-spacing:-.8px;color:color-mix(in srgb,var(--c) 75%,#111)!important;font-weight:800;text-align:center;line-height:1.2;transition:transform .2s}'+
+    'html.u3 #bn.u3c .ni.on::before{background:linear-gradient(180deg,color-mix(in srgb,var(--c) 72%,#fff),var(--c));box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 6px 12px -4px color-mix(in srgb,var(--c) 75%,transparent);top:1px;bottom:5px}'+
+    'html.u3 #bn.u3c .ni.on .nicon,html.u3 #bn.u3c .ni.on .u3l{transform:translateY(-2px)}'+
+    'html.u3 #bn.u3c .ni.on img.u3n{transform:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.35))}'+
+    'html.u3 #bn.u3c .ni.on .u3l{color:#fff!important;text-shadow:0 1px 2px rgba(0,0,0,.3)!important}'+
+    'html.u3 #bn.u3c .ni:active::before{transform:scale(.95)}';
+  var st=document.createElement('style'); st.id='u3nav-css'; st.textContent=css; document.head.appendChild(st);
+  var busy=false, ft=null;
+  function wrap(){
+    var bn=document.getElementById('bn'); if(!bn) return;
+    busy=true;
+    try{
+      bn.classList.add('u3c');
+      bn.querySelectorAll('.ni').forEach(function(n){
+        var k=(n.id||'').replace('ni-',''); n.style.setProperty('--c',C[k]||'#475569');
+        if(n.querySelector(':scope > .u3l')) return;
+        var t=[];
+        n.childNodes.forEach(function(c){ if(c.nodeType===3&&c.textContent.trim()) t.push(c); else if(c.nodeType===1&&c.tagName==='SPAN'&&!c.className) t.push(c); });
+        if(!t.length) return;
+        var s=document.createElement('span'); s.className='u3l'; s.textContent=t.map(function(x){return x.textContent.trim();}).join('');
+        t[0].parentNode.insertBefore(s,t[0]); t.forEach(function(x){x.remove();});
+      });
+    }catch(e){}
+    busy=false;
+    clearTimeout(ft); ft=setTimeout(fit,60);
+  }
+  function fit(){
+    try{ document.querySelectorAll('#bn .ni .u3l').forEach(function(l){
+      l.style.fontSize=''; if(!l.clientWidth) return;
+      var fs=parseFloat(getComputedStyle(l).fontSize)||10, g=0;
+      while(l.scrollWidth>l.clientWidth+0.5&&fs>7&&g++<12){ fs-=0.5; l.style.fontSize=fs+'px'; }
+    }); }catch(e){}
+  }
+  function start(){
+    if(!document.body){ setTimeout(start,200); return; }
+    wrap();
+    var pend=false;
+    function need(){ var bn=document.getElementById('bn'); if(!bn) return false; if(!bn.classList.contains('u3c')) return true; var ns=bn.querySelectorAll('.ni'); for(var i=0;i<ns.length;i++){ if(!ns[i].querySelector(':scope > .u3l')&&ns[i].textContent.trim()) return true; } return false; }
+    new MutationObserver(function(){ if(busy||pend) return; pend=true; setTimeout(function(){ pend=false; if(need()) wrap(); },30); }).observe(document.body,{childList:true,subtree:true});
+    window.addEventListener('resize',function(){ clearTimeout(ft); ft=setTimeout(fit,120); });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();
+</script>
 </body></html>
