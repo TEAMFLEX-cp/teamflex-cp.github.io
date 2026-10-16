@@ -16822,7 +16822,7 @@ function rqLandingHtml(){
   grid+='<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px">'+
     '<button onclick="rqSwitchTab(\'pretake\')" style="'+_b+';'+_red+'">📥 전취건 반납 확인 요청</button>'+
     '<button onclick="rqSwitchTab(\'lostret\')" style="'+_b+';'+_red+'">🔎 분실건 반납 확인 요청</button>'+
-    '<button onclick="rqSwitchTab(\'retcamp\')" style="'+_b+';'+_red+';grid-column:span 2">🏬 타캠프 반품 반납 확인 요청</button>'+   // [v873]
+    '<button onclick="rqSwitchTab(\'retcamp\')" style="'+_b+';border:2px solid #c4b5fd;background:#f3efff;color:#6d28d9;grid-column:span 2">🏬 타캠프 반품 반납 확인 요청</button>'+   // [v873]
   '</div>';
   grid+='<button onclick="rqSwitchTab(\'pretakewait\')" id="rq-wait-landing-btn" style="'+_b+';border:2px solid #ffcc80;background:#fff6ee;color:#c2531b;margin-top:7px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px">📸 전취건 사진 입력 대기 <span id="rq-wait-badge" style="background:#ef6a2b;color:#fff;border-radius:11px;font-size:11px;font-weight:800;padding:1px 8px;display:none">0</span></button>';
   setTimeout(function(){try{rqWaitCountRefresh();}catch(e){}},60);
@@ -17875,7 +17875,7 @@ function rqRetCampForm(){
   var home=rqGetCamp();
   if(window._rcTo===home) window._rcTo='';
   if(!window._rcWhen) window._rcWhen=_rcNowLocal();
-  var chips='<select id="rq-rc-to" onchange="rqRcPick(this.value)" style="width:100%;padding:11px 12px;border:2px solid '+(window._rcTo?'#e07a6f':'#f1a9a9')+';border-radius:10px;font-size:14px;font-weight:800;color:#c0392b;background:#fff8f7;cursor:pointer">'+
+  var chips='<select id="rq-rc-to" onchange="rqRcPick(this.value)" style="width:100%;padding:11px 12px;border:2px solid '+(window._rcTo?'#8b5cf6':'#c4b5fd')+';border-radius:10px;font-size:14px;font-weight:800;color:#6d28d9;background:#f8f5ff;cursor:pointer">'+
     '<option value=""'+(window._rcTo?'':' selected')+'>반납한 캠프를 선택하세요 ▾</option>';
   _RC_CAMPS.forEach(function(c){
     if(c.v===home) return;
@@ -17888,7 +17888,7 @@ function rqRetCampForm(){
   return '<div class="rq-card">'+
     '<div id="rq-rc-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
-    '<div style="background:#fff5f5;border:1px solid #f1c4c0;border-radius:9px;padding:10px 12px;font-size:12px;color:#5a2a26;line-height:1.6;margin-bottom:12px">다른 캠프에 반품을 반납했을 때, 정상 수량 반납 확인을 요청합니다.<br><span style="color:#888">요청 캠프(원소속): <b>'+rqEsc(_rcLbl(home))+'</b> — 상단에서 선택한 캠프 팀즈방으로 전송</span></div>'+
+    '<div style="background:#f6f2ff;border:1px solid #d8ccfb;border-radius:9px;padding:10px 12px;font-size:12px;color:#4c1d95;line-height:1.6;margin-bottom:12px">다른 캠프에 반품을 반납했을 때, 정상 수량 반납 확인을 요청합니다.<br><span style="color:#888">요청 캠프(원소속): <b>'+rqEsc(_rcLbl(home))+'</b> — 상단에서 선택한 캠프 팀즈방으로 전송</span></div>'+
     '<label class="rq-label">🏬 반납한 캠프 <span class="rq-req">필수</span></label>'+
     '<div style="margin-bottom:12px">'+chips+'</div>'+
     '<label class="rq-label">🕒 반납 일시</label>'+
