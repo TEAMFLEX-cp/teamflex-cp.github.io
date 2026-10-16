@@ -17861,7 +17861,7 @@ function _rcFmt(s){var m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(
 function rqRetCampPreviewText(){
   var home=_rcLbl(rqGetCamp());var to=window._rcTo||'';var tl=to?_rcLbl(to):'(반납 캠프 선택)';
   var when=_rcFmt(window._rcWhen||_rcNowLocal());
-  return '■ 타캠프 반품 반납 확인 요청 ['+tl+']\n\n반납일시: '+when+'\n반납캠프: '+tl+' (원소속: '+home+')\n\n타캠프 반품 반납 완료하였습니다.\n정상 수량 반납 되었는지 확인 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');
+  return '■ 타캠프 반품 반납 확인 요청 ['+home+']\n\n반납일시: '+when+'\n반납캠프: '+tl+' (원소속: '+home+')\n\n타캠프 반품 반납 완료하였습니다.\n정상 수량 반납 되었는지 확인 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');
 }
 function rqRetCampForm(){
   if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
@@ -17875,21 +17875,22 @@ function rqRetCampForm(){
   var home=rqGetCamp();
   if(window._rcTo===home) window._rcTo='';
   if(!window._rcWhen) window._rcWhen=_rcNowLocal();
-  var chips='';
+  var chips='<select id="rq-rc-to" onchange="rqRcPick(this.value)" style="width:100%;padding:11px 12px;border:2px solid '+(window._rcTo?'#e07a6f':'#f1a9a9')+';border-radius:10px;font-size:14px;font-weight:800;color:#c0392b;background:#fff8f7;cursor:pointer">'+
+    '<option value=""'+(window._rcTo?'':' selected')+'>반납한 캠프를 선택하세요 ▾</option>';
   _RC_CAMPS.forEach(function(c){
     if(c.v===home) return;
-    var on=(window._rcTo===c.v);
-    chips+='<button onclick="rqRcPick(\''+c.v+'\')" style="flex:1;padding:12px 4px;border-radius:10px;font-size:13.5px;font-weight:800;cursor:pointer;border:2px solid '+(on?'#c0392b':'#f1a9a9')+';background:'+(on?'#e07a6f':'#fff0f0')+';color:'+(on?'#fff':'#c0392b')+'">'+c.l+'</button>';
+    chips+='<option value="'+c.v+'"'+(window._rcTo===c.v?' selected':'')+'>'+c.l+'</option>';
   });
+  chips+='</select>';
   var ok=!!window._rcTo;
   var btnClass=ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):'';
   var btnTxt=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
   return '<div class="rq-card">'+
     '<div id="rq-rc-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
-    '<div style="background:#fff5f5;border:1px solid #f1c4c0;border-radius:9px;padding:10px 12px;font-size:12px;color:#5a2a26;line-height:1.6;margin-bottom:12px">다른 캠프에 반품을 반납했을 때, <b>반납한 캠프 팀즈방</b>에 정상 수량 반납 확인을 요청합니다.<br><span style="color:#888">원소속: <b>'+rqEsc(_rcLbl(home))+'</b> (상단 캠프 선택 기준)</span></div>'+
+    '<div style="background:#fff5f5;border:1px solid #f1c4c0;border-radius:9px;padding:10px 12px;font-size:12px;color:#5a2a26;line-height:1.6;margin-bottom:12px">다른 캠프에 반품을 반납했을 때, 정상 수량 반납 확인을 요청합니다.<br><span style="color:#888">요청 캠프(원소속): <b>'+rqEsc(_rcLbl(home))+'</b> — 상단에서 선택한 캠프 팀즈방으로 전송</span></div>'+
     '<label class="rq-label">🏬 반납한 캠프 <span class="rq-req">필수</span></label>'+
-    '<div style="display:flex;gap:7px;margin-bottom:12px">'+chips+'</div>'+
+    '<div style="margin-bottom:12px">'+chips+'</div>'+
     '<label class="rq-label">🕒 반납 일시</label>'+
     '<input class="rq-inp" id="rq-rc-when" type="datetime-local" value="'+rqEsc(window._rcWhen)+'" oninput="window._rcWhen=this.value;rqRcUpd()" style="margin-bottom:12px">'+
     '<label class="rq-label" style="margin-bottom:4px">&#x1F4AC; 팀즈 전송 미리보기</label>'+
@@ -17903,14 +17904,10 @@ function rqRcUpd(){ var p=document.getElementById('rq-rc-preview'); if(p) p.text
 async function rqSendRetCamp(){
   var to=window._rcTo||'';
   if(!to){alert('반납한 캠프를 선택해주세요.');return;}
-  if(to===rqGetCamp()){alert('원소속 캠프와 반납 캠프가 같아요. 반납한 캠프를 다시 선택해주세요.');return;}
+  if(to===rqGetCamp()){alert('요청 캠프와 반납 캠프가 같아요. 반납한 캠프를 다시 선택해주세요.');return;}
   var text=rqRetCampPreviewText();
-  var _ok=await rqSubmit({type:'retcamp', text:text, photos:[], okId:'rq-rc-ok', camp:to});
+  var _ok=await rqSubmit({type:'retcamp', text:text, photos:[], okId:'rq-rc-ok'});   // 요청 캠프(상단 선택) 팀즈방으로 전송
   if(!_ok) return;
-  try{ if(typeof _rqAutoApprove!=='undefined'&&_rqAutoApprove){ /* rqSendToTeams가 teams_camp를 원소속으로 덮으므로 반납캠프로 보정 */
-    var r=await sbClient.from('requests').select('id').eq('type','retcamp').eq('requester_name',CU.name).order('created_at',{ascending:false}).limit(1);
-    if(r&&r.data&&r.data[0]) await sbClient.from('requests').update({teams_camp:to}).eq('id',r.data[0].id);
-  } }catch(e){}
   window._rcTo=''; window._rcWhen='';
   var el=document.getElementById('rq-body'); if(el){ el.innerHTML=rqRetCampForm(); var ok=document.getElementById('rq-rc-ok'); if(ok){ok.style.display='block';setTimeout(function(){ok.style.display='none';},4000);} }
 }
