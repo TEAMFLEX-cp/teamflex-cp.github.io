@@ -21148,4 +21148,41 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   setInterval(function(){ if(window.CU&&CU.role==='admin'&&(document.getElementById('md-mode-bar')||document.getElementById('md-kw-cats'))){ if(!_mdCatMode){ mdLoadCatMode().then(function(){paint(true);}); } else paint(false); } },700);
 })();
 </script>
+<script>
+/* [v882] 인입(오배송·수기회수) 바로바로 반영 — 서버가 새 건을 넣으면 실시간(가능 시) + 20초 간격 확인으로 목록/홈 갱신
+   (기존: 인입 탭은 들어갈 때만 새로고침, 홈 수기회수 카드는 60초 간격 → '한 타이밍 늦게' 보였음) */
+(function(){
+  var sig='', busy=false, deb=null;
+  function modalOpen(){ var m=document.getElementById('md-detail-modal'); return !!(m&&m.style.display!=='none'&&m.offsetParent!==null); }
+  function typing(){ var a=document.activeElement; return !!(a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.type!=='button'))); }
+  async function check(force){
+    if(busy||!window.sbClient||!window.CU||document.visibilityState==='hidden') return;
+    busy=true;
+    try{
+      var r=await sbClient.from('misdelivery_cases').select('id,status').order('id',{ascending:false}).limit(40);
+      var s=JSON.stringify(((r&&r.data)||[]).map(function(x){return x.id+':'+x.status;}));
+      var changed=(s!==sig); var first=!sig; sig=s;
+      if(changed&&!first||force){
+        try{ if(typeof sgLoad==='function') sgLoad(); }catch(e){}
+        try{ if(typeof CUR_TAB!=='undefined'&&CUR_TAB==='md'&&!modalOpen()&&!typing()&&typeof mdLoadCases==='function'){ var y=window.scrollY; await mdLoadCases(); try{window.scrollTo(0,y);}catch(e){} } }catch(e){}
+        try{ if(typeof updateNavDots==='function') updateNavDots(); }catch(e){}
+      }
+    }catch(e){}
+    busy=false;
+  }
+  function kick(){ clearTimeout(deb); deb=setTimeout(function(){ check(true); },1500); }
+  function rt(){
+    try{
+      if(!window.sbClient||!sbClient.channel) return;
+      sbClient.channel('md-live-v882')
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'misdelivery_cases'},kick)
+        .on('postgres_changes',{event:'UPDATE',schema:'public',table:'misdelivery_cases'},kick)
+        .subscribe();
+    }catch(e){}
+  }
+  function start(){ if(!window.sbClient||!window.CU){ setTimeout(start,3000); return; } rt(); check(false); setInterval(function(){ check(false); },20000); }
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') check(false); });
+  if(document.readyState==='complete') setTimeout(start,4000); else window.addEventListener('load',function(){ setTimeout(start,4000); });
+})();
+</script>
 </body></html>
