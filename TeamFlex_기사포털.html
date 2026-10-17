@@ -12824,6 +12824,7 @@ async function mdSendGroupReply(gi){
   try{
     var {data:cfg}=await sbClient.from('misdelivery_settings').select('reply_mode').eq('id',1).single();
     var mode=(cfg&&cfg.reply_mode)||'approval';
+    try{ if(typeof mdModeFor==='function') mode=await mdModeFor(g.rows[chosen[0]].latest,mode); }catch(_me){}   // [v880] 유형별 답글 모드
     var isProxy=(CU.role==='admin'||CU.role==='leader');
     var apprSt=(mode==='auto'||isProxy)?'approved':'pending';
     var newStatus=(mode==='auto'||isProxy)?'approved':'replied';
@@ -12865,6 +12866,7 @@ async function mdSendReply(caseId){
   if(!txt&&_hasPh){txt='📷 사진 첨부';}
   var {data:cfg}=await sbClient.from('misdelivery_settings').select('reply_mode').eq('id',1).single();
   var mode=(cfg&&cfg.reply_mode)||'approval';
+  try{ if(typeof mdModeFor==='function') mode=await mdModeFor(_mdCases.find(function(x){return x.id===caseId;}),mode); }catch(_me){}   // [v880] 유형별 답글 모드
   var btn=ta.nextElementSibling;
   if(btn){btn.disabled=true;btn.textContent='전송 중...';}
   try{
@@ -15892,7 +15894,32 @@ async function emvInit(){
   var root=document.getElementById('emv-root'); if(!root)return; EMV_D=null;
   try{ var q=await sbClient.from('app_settings').select('value').eq('key','early_month_volume').maybeSingle();
        if(q&&q.data&&q.data.value){ EMV_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+  try{ await emvLoadSchedGroups(); }catch(e){}   // [v880] 스케줄 라우트 기준 묶음
   EMV_VIEW='all'; emvRender();
+}
+/* [v880] 월초 물량 표를 '우리 스케줄' 라우트 묶음(route_raw: 206BC, 803B/805B …) 기준으로 묶어서 표시 */
+var EMV_SG=null;
+function _emvRawLegs(raw){ var s=String(raw||'').replace(/\(.*?\)/g,'').replace(/\s+/g,''); if(!s) return []; var out=[]; s.split(/[\/,+]/).forEach(function(p){ wfExpandRoute(p).forEach(function(x){ if(/^\d{3,4}_[A-Z]$/.test(x)&&out.indexOf(x)<0) out.push(x); }); }); return out; }
+async function emvLoadSchedGroups(){
+  EMV_SG=null; if(!EMV_D||!EMV_D.dates||!EMV_D.dates.length) return;
+  var d0=emvFullDate(EMV_D.dates[0]), d1=emvFullDate(EMV_D.dates[EMV_D.dates.length-1]); if(!d0||!d1) return;
+  async function q(a,b){ var r=await sbClient.from('weekly_schedules').select('route_raw,driver_name,work_date').gte('work_date',a).lte('work_date',b).limit(5000); return (r&&r.data)||[]; }
+  var rows=await q(d0,d1);
+  if(!rows.length){ var t=new Date(Date.now()+9*3600e3); var b=t.toISOString().slice(0,10); t.setUTCDate(t.getUTCDate()-13); rows=await q(t.toISOString().slice(0,10),b); }   // 그 기간 스케줄이 아직 없으면 최근 2주 기준
+  if(!rows.length) return;
+  var cnt={}; rows.forEach(function(r){ var legs=_emvRawLegs(r.route_raw); if(!legs.length) return; var k=legs.join('+'); cnt[k]=(cnt[k]||0)+1; });
+  var keys=Object.keys(cnt).sort(function(a,b){ return (cnt[b]-cnt[a])||(b.split('+').length-a.split('+').length); });
+  var map={}; keys.forEach(function(k){ var legs=k.split('+'); if(legs.some(function(l){return map[l];})) return; legs.forEach(function(l){ map[l]=k; }); });
+  EMV_SG={map:map};
+}
+function _emvSchedRegroup(rs){
+  if(!EMV_SG||!EMV_SG.map) return rs;
+  function num(x){ var m=String(x).match(/(\d+)_?([A-Z])?/); return m?(+m[1]*100+(m[2]?m[2].charCodeAt(0):0)):0; }
+  var groups={}, order=[];
+  rs.forEach(function(r){ var k=EMV_SG.map[r.route]||('x:'+r.route); if(!groups[k]){groups[k]=[];order.push(k);} groups[k].push(r); });
+  order.sort(function(a,b){ var xa=a.indexOf('x:')===0, xb=b.indexOf('x:')===0; if(xa!==xb) return xa?1:-1; return num(groups[a][0].route)-num(groups[b][0].route); });
+  var out=[]; order.forEach(function(k,gi){ var legs=(k.indexOf('x:')===0)?[]:k.split('+'); groups[k].sort(function(a,b){ var ia=legs.indexOf(a.route), ib=legs.indexOf(b.route); if(ia<0) ia=99; if(ib<0) ib=99; return (ia-ib)||(num(a.route)-num(b.route)); }).forEach(function(r){ var x=Object.assign({},r); x.g='s'+gi; out.push(x); }); });
+  return out;
 }
 function emvShow(v){ EMV_VIEW=v; emvRender(); }
 function emvRender(){
@@ -15905,7 +15932,7 @@ function emvRender(){
   if(EMV_VIEW!=='mine'){ setTimeout(function(){ var b=document.getElementById('emv-bsc'), ti=document.getElementById('emv-tsc-in'); if(b&&ti){ var tbl=b.querySelector('table'); ti.style.width=((tbl?tbl.scrollWidth:b.scrollWidth))+'px'; } },60); }
 }
 function emvAllHtml(){
-  var ds=EMV_D.dates||[], rs=EMV_D.routes||[];
+  var ds=EMV_D.dates||[], rs=_emvSchedRegroup(EMV_D.routes||[]);
   var mn=Infinity,mx=-Infinity; rs.forEach(function(r){(r.q||[]).forEach(function(v){if(v<mn)mn=v;if(v>mx)mx=v;});});
   var h='<div style="font-size:14px;color:#37404c;font-weight:700;margin:2px 2px 8px;">'+wfEsc(EMV_D.title||'월초 예상 물량')+' · 라우트·일자별</div>';
   h+='<div onclick="emvShow(\'mine\')" class="emv-shine" style="background:#274b8f;color:#fff;border:2px solid #ffcf5a;border-radius:10px;padding:12px;text-align:center;font-size:13.5px;font-weight:800;margin-bottom:10px;cursor:pointer;">📅 내 스케줄의 수량 확인하기</div>';
@@ -15913,12 +15940,13 @@ function emvAllHtml(){
   ds.forEach(function(d){th+='<th style="border:1px solid #e4e8ee;background:#274b8f;color:#fff;padding:7px 9px;font-weight:700;">'+wfEsc(d)+'</th>';});
   th+='</tr></thead><tbody>';
   var tot=ds.map(function(){return 0;});
-  var gsum=null, gbase=null;
-  function _flush(){ if(gsum){ th+='<tr><td style="position:sticky;left:0;background:#ffe0a0;border:1px solid #e6bd5f;padding:6px 10px;font-weight:800;color:#7a4a00;z-index:1;">소계</td>'; gsum.forEach(function(v){ th+='<td style="background:#ffedc2;border:1px solid #e6bd5f;text-align:center;padding:6px 9px;font-weight:800;color:#7a4a00;">'+v.toLocaleString()+'</td>'; }); th+='</tr>'; } }
+  var gsum=null, gbase=null, gn=0;
+  function _flush(){ if(gsum&&gn>1){ th+='<tr><td style="position:sticky;left:0;background:#ffe0a0;border:1px solid #e6bd5f;padding:6px 10px;font-weight:800;color:#7a4a00;z-index:1;">소계</td>'; gsum.forEach(function(v){ th+='<td style="background:#ffedc2;border:1px solid #e6bd5f;text-align:center;padding:6px 9px;font-weight:800;color:#7a4a00;">'+v.toLocaleString()+'</td>'; }); th+='</tr>'; } }
   rs.forEach(function(r){
     var base=(r.g!=null?('g'+r.g):String(r.route||'').replace(/[_\-].*$/,''));
-    if(gbase!==null && base!==gbase){ _flush(); gsum=null; }
+    if(gbase!==null && base!==gbase){ _flush(); gsum=null; gn=0; if(true){ th+='<tr><td colspan="'+(ds.length+1)+'" style="height:3px;padding:0;background:#e9edf2;border:none"></td></tr>'; } }
     if(!gsum){ gsum=ds.map(function(){return 0;}); }
+    gn++;
     th+='<tr><td style="position:sticky;left:0;background:#fff;border:1px solid #eef0f4;padding:6px 10px;font-weight:700;color:#37404c;z-index:1;">'+wfEsc(r.route)+'</td>';
     (r.q||[]).forEach(function(v,i){var c=emvHeat(v,mn,mx);tot[i]+=(v||0);gsum[i]+=(v||0);th+='<td style="border:1px solid #eef0f4;text-align:center;padding:6px 9px;background:'+c[0]+';color:'+c[1]+';font-weight:700;">'+(v||0).toLocaleString()+'</td>';}); th+='</tr>';
     gbase=base;
@@ -20443,12 +20471,15 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   var REASONS=['고객 부재','상품 없음','고객 거부','주소 불명'];
   window.sgPick=function(id,kind,reason){
     var ta=document.getElementById('md-ta-'+id);if(!ta)return;
+    var tb=document.getElementById('sg-tara-'+id), tr=document.getElementById('sg-tr-'+id);
+    if(kind==='tara'){ if(tr)tr.style.display='flex'; if(tb){tb.style.background='#475569';tb.style.color='#fff';tb.style.borderColor='#475569';} var box0=document.getElementById('sg-why-'+id);if(box0)box0.style.display='none'; var rr=((document.getElementById('sg-trr-'+id)||{}).value||'').toUpperCase().trim(); ta.value='↪️ 타라우트 — 당사 담당 라우트가 아닙니다.'+(rr?' (실제 라우트: '+rr+')':'')+'\n확인 부탁드립니다.'; return; }   // [v880]
+    if(tr)tr.style.display='none'; if(tb){tb.style.background='#fff';tb.style.color='#475569';tb.style.borderColor='#cbd5e1';}
     if(kind==='ok')ta.value='✅ 회수 완료';
     else{var why=reason;if(reason==='직접 입력'){why=prompt('미회수 사유를 입력하세요','')||'';if(!why)return;}ta.value='❌ 미회수 — 사유: '+why;}
     var box=document.getElementById('sg-why-'+id);if(box)box.style.display=(kind==='ok')?'none':'flex';
     try{ta.focus();}catch(e){}
   };
-  window.sgShowWhy=function(id){var box=document.getElementById('sg-why-'+id);if(box)box.style.display='flex';var ta=document.getElementById('md-ta-'+id);if(ta&&!/^❌/.test(ta.value))ta.value='❌ 미회수 — 사유: ';};
+  window.sgShowWhy=function(id){var _tr=document.getElementById('sg-tr-'+id);if(_tr)_tr.style.display='none';var _tb=document.getElementById('sg-tara-'+id);if(_tb){_tb.style.background='#fff';_tb.style.color='#475569';_tb.style.borderColor='#cbd5e1';}var box=document.getElementById('sg-why-'+id);if(box)box.style.display='flex';var ta=document.getElementById('md-ta-'+id);if(ta&&!/^❌/.test(ta.value))ta.value='❌ 미회수 — 사유: ';};
   function wrapDetail(){
     try{var f=window.mdOpenDetail;if(typeof f!=='function'||f._sg)return;
       var g=function(caseId){var r=f.apply(this,arguments);
@@ -20462,11 +20493,14 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     var ta=document.getElementById('md-ta-'+id);if(!ta||document.getElementById('sg-q-'+id))return;
     var d=document.createElement('div');d.id='sg-q-'+id;
     d.innerHTML='<div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:10px;padding:9px 10px;margin-bottom:8px">'+
-      '<div style="font-size:12px;font-weight:800;color:#6d28d9;margin-bottom:6px">🔁 수기회수 · '+esc(rt(c))+' — 결과 선택 (사진 필수)</div>'+
+      '<div style="font-size:12px;font-weight:800;color:#6d28d9;margin-bottom:6px">🔁 수기회수 · '+esc(rt(c))+' — 결과 선택 (회수·미회수는 사진 필수)</div>'+
       '<div style="display:flex;gap:6px">'+
         '<button type="button" onclick="sgPick('+id+',\'ok\')" style="flex:1;padding:10px 4px;background:#16a34a;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:900;cursor:pointer">✅ 회수 완료</button>'+
         '<button type="button" onclick="sgShowWhy('+id+')" style="flex:1;padding:10px 4px;background:#fff;color:#c62828;border:2px solid #ef9a9a;border-radius:9px;font-size:13px;font-weight:900;cursor:pointer">❌ 미회수</button>'+
+        '<button type="button" id="sg-tara-'+id+'" onclick="sgPick('+id+',\'tara\')" style="flex:1;padding:10px 4px;background:#fff;color:#475569;border:2px solid #cbd5e1;border-radius:9px;font-size:13px;font-weight:900;cursor:pointer">↪️ 타라우트</button>'+
       '</div>'+
+      '<div style="font-size:10.5px;color:#7c3aed;margin-top:6px">우리 라우트가 아니면 ↪️ 타라우트 (사진 없이 전송 가능)</div>'+
+      '<div id="sg-tr-'+id+'" style="display:none;gap:6px;align-items:center;margin-top:8px"><span style="font-size:11.5px;color:#475569;font-weight:700;white-space:nowrap">실제 라우트</span><input id="sg-trr-'+id+'" placeholder="모르면 비워두세요 (예: 512C)" oninput="sgPick('+id+',\'tara\')" style="flex:1;min-width:0;padding:7px 9px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:700;text-transform:uppercase"></div>'+
       '<div id="sg-why-'+id+'" style="display:none;flex-wrap:wrap;gap:5px;margin-top:7px">'+
         REASONS.concat(['직접 입력']).map(function(w){return '<span onclick="sgPick('+id+',\'no\',\''+w+'\')" style="cursor:pointer;font-size:11.5px;border:1px solid #d5dbe6;border-radius:14px;padding:4px 9px;background:#fff">'+w+'</span>';}).join('')+
       '</div></div>';
@@ -20478,7 +20512,8 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
         try{var c=(window._mdCases||[]).find(function(x){return x.id===caseId;});
           if(c&&cat(c)==='수기회수'){
             var ta=document.getElementById('md-ta-'+caseId);var v=ta?String(ta.value||'').trim():'';
-            if(!/^(✅ 회수 완료|❌ 미회수)/.test(v)){alert('⚠️ [✅ 회수 완료] 또는 [❌ 미회수]를 먼저 눌러주세요.');return;}
+            if(/^↪️ 타라우트/.test(v)) return f.apply(this,arguments);   // [v880] 타라우트: 사진 없이 전송
+            if(!/^(✅ 회수 완료|❌ 미회수)/.test(v)){alert('⚠️ [✅ 회수 완료] / [❌ 미회수] / [↪️ 타라우트] 중 하나를 먼저 눌러주세요.');return;}
             if(/^❌ 미회수/.test(v)&&!/사유:\s*\S/.test(v)){alert('⚠️ 미회수 사유를 선택해주세요.');return;}
             var ph=(window._mdReplyPhotos&&_mdReplyPhotos[caseId])||[];
             if(!ph.length){alert('⚠️ 사진을 1장 이상 첨부해주세요. (📷 촬영 / 🖼️ 사진첩)');return;}
@@ -21050,6 +21085,64 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     window.addEventListener('resize',function(){ clearTimeout(ft); ft=setTimeout(fit,120); });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();
+</script>
+<script>
+/* [v880] 인입 유형별 Teams 답글 모드 (자동/승인) — app_settings.md_reply_mode_cats {유형:'auto'|'approval'}
+   전체 토글(misdelivery_settings.reply_mode)은 '전체 일괄' — 누르면 모든 유형이 같이 바뀜. 유형값이 없으면 전체값을 따름. */
+(function(){
+  var CATS=['오배송','미반납','오회수','수기회수','기타'];
+  var KC={'오배송':'#c62828','미반납':'#00838f','오회수':'#4527a0','수기회수':'#7c3aed','기타':'#546e7a'};
+  window._mdCatMode=window._mdCatMode||null; var _loadedAt=0;
+  function pj(v){try{return typeof v==='string'?JSON.parse(v):v;}catch(e){return null;}}
+  window.mdLoadCatMode=async function(force){
+    if(_mdCatMode&&!force&&Date.now()-_loadedAt<20000) return _mdCatMode;
+    try{var r=await sbClient.from('app_settings').select('value').eq('key','md_reply_mode_cats').maybeSingle();_mdCatMode=pj(r&&r.data&&r.data.value)||{};_loadedAt=Date.now();}catch(e){_mdCatMode=_mdCatMode||{};}
+    return _mdCatMode;
+  };
+  async function save(){try{await sbClient.from('app_settings').upsert({key:'md_reply_mode_cats',value:JSON.stringify(_mdCatMode||{})},{onConflict:'key'});_loadedAt=Date.now();}catch(e){alert('저장 실패: '+(e.message||e));}}
+  window.mdCaseCat=function(c){ if(!c) return '오배송'; try{ if(typeof mdCat==='function'){var k=mdCat(c); if(k) return k;} }catch(e){}
+    return c.category||(c.issue_content&&c.issue_content.indexOf('미반납')>=0?'미반납':c.issue_content&&c.issue_content.indexOf('오회수')>=0?'오회수':'오배송'); };
+  window.mdModeFor=async function(c,globalMode){ var m=await mdLoadCatMode(); var k=mdCaseCat(c); var v=m&&m[k]; return (v==='auto'||v==='approval')?v:(globalMode||'approval'); };
+  function eff(k){ var v=_mdCatMode&&_mdCatMode[k]; return (v==='auto'||v==='approval')?v:(typeof _mdCurrentMode!=='undefined'?_mdCurrentMode:'approval'); }
+  window.mdCatToggle=async function(k){ await mdLoadCatMode(true); _mdCatMode[k]=(eff(k)==='auto')?'approval':'auto'; await save(); paint(true); try{showToast(k+' → '+(_mdCatMode[k]==='auto'?'🟢 자동 (기사 답변 바로 팀즈 게시)':'🔴 승인 (승인 후 게시)'),true);}catch(e){} };
+  window.mdCatSet=async function(k,v){ await mdLoadCatMode(true); if(eff(k)===v) return; _mdCatMode[k]=v; await save(); paint(true); };
+  // 전체 토글 → 모든 유형 일괄
+  (function(){ var f=window.mdSetMode; if(typeof f!=='function'||f._cm) return;
+    var g=async function(mode){ var r=await f.apply(this,arguments); try{ await mdLoadCatMode(true); CATS.forEach(function(k){_mdCatMode[k]=mode;}); await save(); paint(true); }catch(e){} return r; };
+    g._cm=1; window.mdSetMode=g; try{mdSetMode=g;}catch(e){} })();
+  function barHtml(){
+    return '<div style="display:flex;align-items:center;margin-bottom:7px"><span style="font-size:12px;font-weight:800;color:#37474f">🗂 유형별 답글 모드</span><span style="margin-left:auto;font-size:10.5px;color:#9e9e9e">눌러서 자동↔승인</span></div>'+
+      '<div style="display:flex;gap:5px">'+CATS.map(function(k){var a=eff(k)==='auto',c=KC[k];
+        return '<div onclick="mdCatToggle(\''+k+'\')" style="flex:1;min-width:0;border-radius:10px;padding:6px 2px;text-align:center;cursor:pointer;border:1.5px solid '+(a?'#86efac':'#fdba74')+';background:'+(a?'#f0fdf4':'#fff7ed')+'">'+
+          '<div style="font-size:11px;font-weight:800;color:'+c+';white-space:nowrap">'+k+'</div><div style="font-size:10.5px;font-weight:800;margin-top:2px;color:'+(a?'#15803d':'#c2410c')+'">'+(a?'🟢 자동':'🔴 승인')+'</div></div>';}).join('')+'</div>'+
+      '<div style="font-size:10.5px;color:#888;margin-top:7px;line-height:1.5">🟢 자동: 기사 답변이 바로 팀즈에 올라가요 · 🔴 승인: 관리자/팀장 승인 후 올라가요</div>';
+  }
+  function segHtml(k){ var a=eff(k)==='auto';
+    return '<span style="font-size:11px;color:#666;font-weight:700">답글 모드</span><div style="display:flex;background:#eceff1;border-radius:8px;padding:2px">'+
+      '<span onclick="mdCatSet(\''+k+'\',\'auto\')" style="cursor:pointer;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:800;'+(a?'background:#16a34a;color:#fff':'color:#78909c')+'">🟢 자동</span>'+
+      '<span onclick="mdCatSet(\''+k+'\',\'approval\')" style="cursor:pointer;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:800;'+(!a?'background:#ea580c;color:#fff':'color:#78909c')+'">🔴 승인</span></div>'+
+      (a?'<span style="font-size:10.5px;color:#15803d">기사 답변 즉시 팀즈 게시</span>':'<span style="font-size:10.5px;color:#c2410c">승인 후 게시</span>'); }
+  function paint(force){
+    try{
+      if(!window.CU||CU.role!=='admin') return;
+      var bar=document.getElementById('md-mode-bar');
+      if(bar){
+        var box=document.getElementById('md-mode-cats');
+        if(!box){ box=document.createElement('div'); box.id='md-mode-cats'; box.style.cssText='background:#fff;border-radius:14px;padding:10px 10px 11px;margin:-4px 0 12px;box-shadow:0 1px 4px rgba(0,0,0,.08)'; bar.parentNode.insertBefore(box,bar.nextSibling); force=true; }
+        if(force) box.innerHTML=barHtml();
+        var lb=bar.querySelector('.md-mode-label'); if(lb&&lb.textContent.indexOf('일괄')<0) lb.innerHTML='⚙️ Teams 답글 모드 <span style="font-size:10.5px;color:#9e9e9e;font-weight:600">(전체 일괄)</span>';
+      }
+      document.querySelectorAll('#md-kw-cats > div').forEach(function(card){
+        var t=card.firstChild; var k=(t&&t.childNodes[0]&&t.childNodes[0].textContent||'').trim(); if(CATS.indexOf(k)<0) return;
+        var seg=card.querySelector('.mdc-seg');
+        if(!seg){ seg=document.createElement('div'); seg.className='mdc-seg'; seg.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-2px 0 9px;white-space:nowrap'; t.parentNode.insertBefore(seg,t.nextSibling); force=true; }
+        if(force) seg.innerHTML=segHtml(k);
+      });
+    }catch(e){}
+  }
+  window.mdCatPaint=paint;
+  setInterval(function(){ if(window.CU&&CU.role==='admin'&&(document.getElementById('md-mode-bar')||document.getElementById('md-kw-cats'))){ if(!_mdCatMode){ mdLoadCatMode().then(function(){paint(true);}); } else paint(false); } },700);
 })();
 </script>
 </body></html>
