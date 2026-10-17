@@ -15907,7 +15907,10 @@ async function emvLoadSchedGroups(){
   var rows=await q(d0,d1);
   if(!rows.length){ var t=new Date(Date.now()+9*3600e3); var b=t.toISOString().slice(0,10); t.setUTCDate(t.getUTCDate()-13); rows=await q(t.toISOString().slice(0,10),b); }   // 그 기간 스케줄이 아직 없으면 최근 2주 기준
   if(!rows.length) return;
-  var cnt={}; rows.forEach(function(r){ var legs=_emvRawLegs(r.route_raw); if(!legs.length) return; var k=legs.join('+'); cnt[k]=(cnt[k]||0)+1; });
+  // 같은 기사·같은 날 맡은 라우트를 한 묶음으로 (route_raw가 206C / 206D 처럼 줄이 나뉘어 있어도 합침)
+  var day={}; rows.forEach(function(r){ var legs=_emvRawLegs(r.route_raw); if(!legs.length) return; var dk=String(r.driver_name||'').replace(/★/g,'').trim()+'|'+r.work_date; var a=day[dk]||(day[dk]=[]); legs.forEach(function(l){ if(a.indexOf(l)<0) a.push(l); }); });
+  function _rn(x){ var m=String(x).match(/(\d+)_([A-Z])/); return m?(+m[1]*100+m[2].charCodeAt(0)):0; }
+  var cnt={}; Object.keys(day).forEach(function(dk){ var legs=day[dk].slice().sort(function(x,y){return _rn(x)-_rn(y);}); var k=legs.join('+'); cnt[k]=(cnt[k]||0)+1; });
   var keys=Object.keys(cnt).sort(function(a,b){ return (cnt[b]-cnt[a])||(b.split('+').length-a.split('+').length); });
   var map={}; keys.forEach(function(k){ var legs=k.split('+'); if(legs.some(function(l){return map[l];})) return; legs.forEach(function(l){ map[l]=k; }); });
   EMV_SG={map:map};
