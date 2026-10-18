@@ -21185,4 +21185,28 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   if(document.readyState==='complete') setTimeout(start,4000); else window.addEventListener('load',function(){ setTimeout(start,4000); });
 })();
 </script>
+<script>
+/* [v883] 인입 답변 연타 방지 — 사진 올리는 동안 '답변 전송'·'확인 후 처리완료'를 또 누르면 무시
+   (10/18 김성국 수기회수: 사진 업로드가 느린 사이 버튼을 여러 번 눌러 답변 4개가 1초 안에 저장 → 팀즈 2번 게시, 사진은 게시 안 되는 쪽에 붙음) */
+(function(){
+  var busy=false, NAMES=['mdSendReply','mdSelfComplete','mdSendGroupReply'];
+  function setBtns(dis){ try{ var m=document.getElementById('md-detail-modal'); if(!m) return; m.querySelectorAll('button').forEach(function(b){ if(/전송|처리완료/.test(b.textContent||'')){ if(dis){ if(!b.disabled){ b.dataset.lk='1'; b.disabled=true; b.style.opacity='.55'; } } else if(b.dataset.lk==='1'){ b.disabled=false; b.style.opacity=''; delete b.dataset.lk; } } }); }catch(e){} }
+  function wrap(name){
+    var f=window[name]; if(typeof f!=='function'||f._lk) return;
+    var g=async function(){
+      if(window.__mdInLock) return f.apply(this,arguments);           // 바깥 잠금 안에서 다시 불린 경우(다른 감싸기) → 통과
+      if(busy){ try{ showToast('⏳ 전송 중이에요. 잠시만 기다려 주세요',false); }catch(e){} return; }
+      busy=true; setBtns(true);
+      var p;
+      try{ window.__mdInLock=true; p=f.apply(this,arguments); }finally{ window.__mdInLock=false; }
+      try{ return await p; }
+      finally{ setTimeout(function(){ busy=false; setBtns(false); },1500); }
+    };
+    for(var k in f){ try{ g[k]=f[k]; }catch(e){} }
+    g._lk=1; window[name]=g;
+  }
+  function all(){ NAMES.forEach(wrap); }
+  setTimeout(all,5000); setInterval(all,10000);
+})();
+</script>
 </body></html>
