@@ -3876,7 +3876,7 @@ loadAdminCfgFromSB().then(function(){
   return Promise.all([syncFromSupabase(), loadFeatureControls(), loadSchedSettings()]);
 }).then(function(){
   console.log('Supabase 동기화 완료');
-  _reRenderCurTab(true);
+  _reRenderCurTab(typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm');   // [v884] 홈일 때만 강제, 다른 화면은 작업 중이면 그대로 둠
   try{ if(typeof refreshNavBadges==='function')refreshNavBadges(); }catch(e){}
   try{ if(!window._navIv)window._navIv=setInterval(function(){try{refreshNavBadges();}catch(e){}},60000); }catch(e){}
 }).catch(function(e){console.warn('동기화 실패',e);_reRenderCurTab();});
@@ -3958,8 +3958,14 @@ function doManualRefresh(){
 if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('controllerchange',function(){
     // [로고멈춤 방지] 세션당 최대 1회만 재로드 — reload 후에도 유지되는 sessionStorage로 무한 새로고침 루프 차단.
-    try{ if(sessionStorage.getItem('tf_sw_reloaded'))return; sessionStorage.setItem('tf_sw_reloaded','1'); }catch(_e){}
-    window.location.reload();
+    try{ if(sessionStorage.getItem('tf_sw_reloaded'))return; }catch(_e){}
+    // [v884] 바로 새로고침하지 않음 → 앱을 벗어날 때(화면 꺼짐/다른 앱) 또는 홈에서 1분 동안 아무것도 안 만질 때만 조용히 새로고침
+    window._swPending=true;
+    function _doReload(){ if(!window._swPending)return; window._swPending=false; try{ sessionStorage.setItem('tf_sw_reloaded','1'); }catch(_e){} window.location.reload(); }
+    if(document.hidden){ _doReload(); return; }
+    document.addEventListener('visibilitychange',function(){ if(document.hidden) _doReload(); });
+    var _last=Date.now(); ['touchstart','mousedown','keydown','scroll'].forEach(function(ev){ document.addEventListener(ev,function(){ _last=Date.now(); },{passive:true,capture:true}); });
+    var _iv=setInterval(function(){ if(!window._swPending){clearInterval(_iv);return;} var idle=Date.now()-_last; if(typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm'&&idle>60000&&!(typeof _isUserBusy==='function'&&_isUserBusy())){ clearInterval(_iv); _doReload(); } },5000);
   });
   navigator.serviceWorker.ready.then(function(reg){
     reg.update().catch(function(){});
@@ -20907,7 +20913,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     mc.insertBefore(card,mc.firstChild);
   }
   /* ── 처리할 일 → 가로 타일 + 아래 시트 ── */
-  var TK=[[/반품 재할당/,'u3-o','package','반품 재할당'],[/수기회수/,'u3-p','open_mailbox_with_raised_flag','수기회수'],[/미스캔 공유/,'u3-r','warning','미스캔 공유'],[/미스캔/,'u3-r','warning',''],[/주간\s*수량/,'u3-g','bar_chart','주간 수량'],[/소분/,'u3-b','stopwatch','소분 종료'],[/표 사진|사진 확인/,'u3-b','camera_with_flash','표 사진 확인'],[/담당자 확인/,'u3-b','hourglass_not_done','담당자 확인'],[/오배송/,'u3-r','police_car_light','오배송']];
+  var TK=[[/장기미회수/,'u3-y','package','장기미회수'],[/반품 재할당/,'u3-o','package','반품 재할당'],[/수기회수/,'u3-p','open_mailbox_with_raised_flag','수기회수'],[/미스캔 공유/,'u3-r','warning','미스캔 공유'],[/미스캔/,'u3-r','warning',''],[/주간\s*수량/,'u3-g','bar_chart','주간 수량'],[/소분/,'u3-b','stopwatch','소분 종료'],[/표 사진|사진 확인/,'u3-b','camera_with_flash','표 사진 확인'],[/담당자 확인/,'u3-b','hourglass_not_done','담당자 확인'],[/오배송/,'u3-r','police_car_light','오배송']];
   var seq=0,MAP={};
   function sgKey(){return 'u3_sg_'+((window.CU&&CU.name)||'x')+'_'+kToday();}
   function sgSig(c){return txt(c).replace(/\s/g,'').slice(0,300);}
@@ -20927,7 +20933,10 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     return {title:title,meta:meta,num:num,lb:lb,unit:unit,camp:cm?cm[1]+'캠프':''};
   }
   /* ── 인입건 · 프백 소명 · 분실 차감 (본인 것 / 관리자는 전체) ── */
-  var DATA={md:0,pb:0,loss:0},dsig='';
+  var DATA={md:0,pb:0,loss:0},IDS={md:[],pb:[],loss:[]},dsig='';
+  function synKey(){return 'u3_syn_'+((window.CU&&CU.name)||'x');}
+  function synSeen(){try{var v=JSON.parse(localStorage.getItem(synKey())||'{}');return (v&&typeof v==='object')?v:{};}catch(e){return {};}}
+  function synMark(k){try{var v=synSeen();var a=v[k]||[];(IDS[k]||[]).forEach(function(i){i=String(i);if(a.indexOf(i)<0)a.push(i);});v[k]=a.slice(-500);localStorage.setItem(synKey(),JSON.stringify(v));}catch(e){}}   // [v884] 본 건 기억
   function adm(){return !!(window.CU&&CU.role==='admin');}
   function nn(x){try{return norm_name_js(x||'');}catch(e){return String(x||'').replace(/\s/g,'');}}
   function pPer(){try{return pbPeriod();}catch(e){return kToday().slice(0,7);}}
@@ -20938,29 +20947,31 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   async function loadSyn(){
     try{
       if(!window.sbClient||!window.CU||(window._isSusp&&_isSusp()))return;
-      var me=CU.name,D={md:0,pb:0,loss:0};
+      var me=CU.name,D={md:0,pb:0,loss:0},I2={md:[],pb:[],loss:[]};
       try{var q=sbClient.from('misdelivery_cases').select('id,status,category,created_at,occurred_at,driver_name').eq('status','pending').limit(1000);if(!adm())q=q.eq('driver_name',me);
-        var r=await q;(r&&r.data||[]).forEach(function(x){if(x.category==='수기회수')return;try{if(typeof _mdNoAction==='function'&&_mdNoAction(x))return;}catch(e){}D.md++;});}catch(e){}
-      try{if(adm()||getFeatureCtrl('pback','active')){var pr=await sbClient.from('pback_somyeong').select('driver_name,status').eq('period',pPer()).eq('status',adm()?'answered':'pending');
-        var mn=nn(me);(pr&&pr.data||[]).forEach(function(x){if(adm()||nn(x.driver_name)===mn)D.pb++;});}}catch(e){}
+        var r=await q;(r&&r.data||[]).forEach(function(x){if(x.category==='수기회수')return;try{if(typeof _mdNoAction==='function'&&_mdNoAction(x))return;}catch(e){}D.md++;I2.md.push('c'+x.id);});}catch(e){}
+      try{if(adm()||getFeatureCtrl('pback','active')){var pr=await sbClient.from('pback_somyeong').select('id,driver_name,status').eq('period',pPer()).eq('status',adm()?'answered':'pending');
+        var mn=nn(me);(pr&&pr.data||[]).forEach(function(x){if(adm()||nn(x.driver_name)===mn){D.pb++;I2.pb.push('p'+x.id+':'+x.status);}});}}catch(e){}
       try{var lr=await sbClient.from('app_settings').select('value').eq('key','loss_deduction_log').maybeSingle();var v=lr&&lr.data&&lr.data.value;if(typeof v==='string')v=JSON.parse(v);
-        var mn2=nn(me);((v&&v.records)||[]).forEach(function(x){if(x.status==='nofault'||x.confirmed===true||x.missing_final)return;if(adm()||nn(x.driver_name)===mn2)D.loss++;});}catch(e){}
-      var sg=JSON.stringify(D);DATA=D;if(sg!==dsig){dsig=sg;sched();}
+        var mn2=nn(me);((v&&v.records)||[]).forEach(function(x){if(x.status==='nofault'||x.confirmed===true||x.missing_final)return;if(adm()||nn(x.driver_name)===mn2){D.loss++;I2.loss.push('w'+(x.wb||x.date+x.driver_name));}});}catch(e){}
+      IDS=I2;var sg=JSON.stringify(D)+JSON.stringify(I2);DATA=D;if(sg!==dsig){dsig=sg;sched();}
     }catch(e){}
   }
   window.u3LoadSyn=loadSyn;
   function syncSyn(tiles){
     var idx=0;
+    var SS=synSeen();
     SYN().forEach(function(d){var n=DATA[d.k]||0;var t=tiles.querySelector('[data-k="syn-'+d.k+'"]');
-      if(!n){if(t)t.remove();return;}
-      if(!t){t=document.createElement('div');t.className='u3tile '+d.cls;t.dataset.k='syn-'+d.k;t.addEventListener('click',d.fn);}
+      var seenA=SS[d.k]||[];var fresh=(IDS[d.k]||[]).some(function(i){return seenA.indexOf(String(i))<0;});   // [v884] 새 건이 있을 때만 표시
+      if(!n||!fresh){if(t)t.remove();return;}
+      if(!t){t=document.createElement('div');t.className='u3tile '+d.cls;t.dataset.k='syn-'+d.k;t.addEventListener('click',(function(d){return function(){synMark(d.k);d.fn();setTimeout(sched,50);};})(d));}
       if(t.dataset.n!==String(n)){t.innerHTML='<span class="dt"></span>'+ico(d.ic)+'<div class="lb">'+esc(d.lb)+'</div><div class="nm">'+n+'<small>건</small></div>';t.dataset.n=String(n);}
       if(tiles.children[idx]!==t)tiles.insertBefore(t,tiles.children[idx]||null);idx++;});
   }
-  function dKey(){return 'u3_dis_'+((window.CU&&CU.name)||'x')+'_'+kToday();}
+  function dKey(){return 'u3_dis_'+((window.CU&&CU.name)||'x');}   // [v884] 날짜 빼고 내용 기준(새 내용일 때만 다시 뜸)
   function cSig(c){return (c.className.indexOf('m1c')>=0?'m1|':'')+txt(c).replace(/\s/g,'').replace(/더블클릭하면삭제됨|눌러서확인›?/g,'').slice(0,400);}
   function dList(){try{var v=JSON.parse(localStorage.getItem(dKey())||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
-  function dAdd(sg){try{var d=dList();if(d.indexOf(sg)<0)d.push(sg);localStorage.setItem(dKey(),JSON.stringify(d.slice(-80)));}catch(e){}}
+  function dAdd(sg){try{var d=dList();if(d.indexOf(sg)<0)d.push(sg);localStorage.setItem(dKey(),JSON.stringify(d.slice(-200)));}catch(e){}}
   function decoTasks(mc){
     var hero=mc.querySelector(':scope > .u3hero');
     var wrap=mc.querySelector(':scope > .u3tw');
@@ -21008,16 +21019,16 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       try{localStorage.setItem(sgKey(),sgSig(c));}catch(e){}c.classList.add('u3seen');sched();
       try{c.click();}catch(e){}return;}
     var s=document.getElementById('u3sheet');if(!s){s=document.createElement('div');s.id='u3sheet';document.body.appendChild(s);}
-    var canDis=!!c.getAttribute('ondblclick');
+    var canDis=true, hasDbl=!!c.getAttribute('ondblclick');   // [v884] 모든 타일 '확인했어요' 가능
     s.className='on '+hit[1];
     s.innerHTML='<div class="bd"></div><div class="pn"><div class="gr"></div><div class="hd">'+ico(hit[2])+'<div><div class="t">'+esc(f.title||f.lb)+'</div><div class="m">'+esc(f.meta)+'</div></div>'+(f.num?'<div class="n">'+esc(f.num)+'<small>'+f.unit+'</small></div>':'')+'</div>'+
       '<div class="bx"></div><div class="bt">'+(canDis?'<button class="cl">닫기</button><button class="ok">확인했어요 ✓</button>':'<button class="ok">닫기</button>')+'</div>'+
-      (canDis?'<div class="hint">확인하면 오늘 홈에서 사라져요 (새 건이 오면 다시 떠요)</div>':'')+'</div>';
+      (canDis?'<div class="hint">확인하면 홈에서 사라져요 (새 내용이 오면 다시 떠요)</div>':'')+'</div>';
     var cl=c.cloneNode(true);cl.classList.remove('u3gone');cl.removeAttribute('onclick');cl.removeAttribute('ondblclick');cl.removeAttribute('data-u3k');
     s.querySelector('.bx').appendChild(cl);
     s.querySelector('.bd').onclick=closeSheet;
     var cb=s.querySelector('.cl');if(cb)cb.onclick=closeSheet;
-    s.querySelector('.ok').onclick=function(){if(canDis){dAdd(cSig(c));c.classList.add('u3seen');try{c.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));}catch(e){}sched();}closeSheet();};
+    s.querySelector('.ok').onclick=function(){if(canDis){dAdd(cSig(c));c.classList.add('u3seen');if(hasDbl){try{c.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));}catch(e){}}sched();}closeSheet();};
   }
   var busy=false,qd=false;
   function sched(){if(qd)return;qd=true;setTimeout(function(){qd=false;deco();},30);}
@@ -21032,7 +21043,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     try{new MutationObserver(function(){decoNav();}).observe(bn,{childList:true,subtree:true});}catch(e){}
     try{var ah=document.querySelector('.ah');if(ah)new MutationObserver(function(){decoHead();}).observe(ah,{childList:true,subtree:true});}catch(e){}
     try{new MutationObserver(sched).observe(document.body,{attributes:true,attributeFilter:['class']});}catch(e){}
-    deco();loadSyn();setInterval(function(){if(document.visibilityState!=='hidden')loadSyn();},60000);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')loadSyn();});}
+    deco();loadSyn();setInterval(function(){if(document.visibilityState!=='hidden')loadSyn();},30000);document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')loadSyn();});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
@@ -21164,6 +21175,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       var changed=(s!==sig); var first=!sig; sig=s;
       if(changed&&!first||force){
         try{ if(typeof sgLoad==='function') sgLoad(); }catch(e){}
+        try{ if(window.u3LoadSyn) u3LoadSyn(); }catch(e){}   // [v884] 홈 인입 타일도 즉시
         try{ if(typeof CUR_TAB!=='undefined'&&CUR_TAB==='md'&&!modalOpen()&&!typing()&&typeof mdLoadCases==='function'){ var y=window.scrollY; await mdLoadCases(); try{window.scrollTo(0,y);}catch(e){} } }catch(e){}
         try{ if(typeof updateNavDots==='function') updateNavDots(); }catch(e){}
       }
@@ -21207,6 +21219,108 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   }
   function all(){ NAMES.forEach(wrap); }
   setTimeout(all,5000); setInterval(all,10000);
+})();
+</script>
+<script>
+/* [v884] 장기미회수 반품 공유 — 서버가 '<장기미회수 반품 공유>' 글을 모아 app_settings.longret_today 에 저장(그날만, 00시 지나면 새 날짜)
+   홈에 카드 → 3D 타일 → 아래 시트(운송장 누르면 주소). '확인했어요'로 숨김(새 건 오면 다시). 회수/미회수 답변 없음(정보 공유용) */
+(function(){
+  var L={v:null,t:0,camps:null,cday:''};
+  function esc(t){return String(t==null?'':t).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+  function today(){return new Date(Date.now()+9*3600e3).toISOString().slice(0,10);}
+  function me(){return String((window.CU&&CU.name)||'').trim();}
+  function isAll(){var r=(window.CU&&CU.role)||'';return r==='admin'||r==='leader';}
+  function dkey(){return 'lr_dis_'+(me()||'x');}
+  function dis(){try{var v=JSON.parse(localStorage.getItem(dkey())||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
+  window.lrDismiss=function(id){try{var d=dis();if(d.indexOf(id)<0)d.push(id);localStorage.setItem(dkey(),JSON.stringify(d.slice(-100)));}catch(e){}refresh();};
+  window.lrAddr=function(tr){try{var nx=tr.nextElementSibling;if(nx&&nx.classList.contains('lra')){nx.remove();return;}var a=tr.getAttribute('data-addr')||'(주소 없음)';var r=document.createElement('tr');r.className='lra';r.innerHTML='<td colspan="2" style="background:#fff7ed;color:#7c2d12;font-size:12.5px;font-weight:700;padding:7px 8px;line-height:1.5">📍 '+esc(a)+'</td>';tr.parentNode.insertBefore(r,nx);}catch(e){}};
+  var CSS='<style>.m1c{cursor:pointer;user-select:none;-webkit-user-select:none;color:#fff;border-radius:16px;padding:10px 13px 7px;margin:0 0 10px}.m1c.lrc{background:linear-gradient(135deg,#78350f,#d97706);box-shadow:0 4px 14px rgba(217,119,6,.25)}'+
+    '.m1c .h{display:flex;font-size:12px;font-weight:800;opacity:.95}.m1c .h span:last-child{margin-left:auto;font-weight:600;opacity:.85}.m1c .foot{text-align:right;font-size:10px;opacity:.7;margin-top:2px}'+
+    '.lrt{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;color:#14284b;border-radius:10px;overflow:hidden;margin-top:8px}.lrt th,.lrt td{border-bottom:1px solid #edf1f6;padding:7px 8px;text-align:left}.lrt th{background:#f6f8fc;font-size:11px}'+
+    '.lrt tr.lrw{cursor:pointer}.lrt tr.lrw td:first-child{font-family:monospace;font-weight:800;color:#1d4ed8;text-decoration:underline;text-underline-offset:3px}</style>';
+  async function myCamps(){
+    if(isAll()) return null;   // 관리자·팀장: 전체
+    if(L.cday===today()&&L.camps) return L.camps;
+    var set={};
+    try{
+      var nm=me(); try{ if(typeof splitDriverSuffix==='function') nm=splitDriverSuffix(nm).base||nm; }catch(e){}
+      try{ if(typeof _rrLoadNow==='function') await _rrLoadNow(); }catch(e){}
+      var r=await sbClient.from('weekly_schedules').select('route,work_date,driver_name').eq('work_date',today()).like('driver_name',nm+'%').limit(20);
+      ((r&&r.data)||[]).forEach(function(x){var pl='';try{pl=(typeof _rrPlaceAt==='function')?_rrPlaceAt(x.route,x.work_date):'';}catch(e){}var m=String(pl||'').match(/(\d)\s*캠프/);if(m)set[m[1]]=1;});
+    }catch(e){}
+    L.camps=Object.keys(set).length?set:null; L.cday=today();   // 못 찾으면 전체 표시(정보 공유가 목적)
+    return L.camps;
+  }
+  function cardHtml(camp,c,d){
+    var items=(c&&c.items)||[]; if(!items.length) return '';
+    var last=items[items.length-1]||{};
+    var id='lr:'+camp+':'+today()+':'+items.length+':'+(last.mid||'')+':'+(last.wb||'');
+    if(d.indexOf(id)>=0) return '';
+    var rows=items.map(function(x){return '<tr class="lrw" onclick="event.stopPropagation();lrAddr(this)" data-addr="'+esc(x.addr||'')+'"><td>'+esc(x.wb||'')+'</td><td>'+esc(x.at||'')+'</td></tr>';}).join('');
+    return '<div class="m1c lrc" ondblclick="lrDismiss(\''+esc(id)+'\')"><div class="h"><span>📦 '+esc(camp)+'캠프 장기미회수 반품</span><span>'+esc(last.at||'')+' 공유</span></div>'+
+      '<div style="font-size:12.5px;margin-top:6px">총 <b class="tot2">'+items.length+'건</b> · 운송장을 누르면 주소가 보여요</div>'+
+      '<table class="lrt"><tr><th>운송장</th><th>공유 시각</th></tr>'+rows+'</table><div class="foot">더블 클릭하면 삭제됨</div></div>';
+  }
+  var _html='';
+  async function build(){
+    var v=L.v; if(!v||v.date!==today()||!v.camps){ _html=''; return; }
+    var mc=await myCamps(); var d=dis(); var h='';
+    Object.keys(v.camps).sort().forEach(function(k){ if(mc&&!mc[k]) return; h+=cardHtml(k,v.camps[k],d); });
+    _html=h?CSS+h:'';
+  }
+  window.lrHomeHTML=function(){return _html;};
+  function refresh(){build().then(function(){var el=document.getElementById('lr-home-slot');if(el&&el.innerHTML!==_html)el.innerHTML=_html;});}
+  window.lrRefresh=refresh;
+  async function load(){
+    try{
+      if(!window.sbClient||!window.CU) return;
+      var r=await sbClient.from('app_settings').select('value').eq('key','longret_today').maybeSingle();
+      var v=r&&r.data&&r.data.value; if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}
+      var sg=JSON.stringify(v||{}); var ch=(sg!==L.sg); L.sg=sg; L.v=v;
+      if(ch) refresh();
+    }catch(e){}
+  }
+  window.lrLoad=load;
+  function wrapHome(){
+    try{var f=window.pgHome;if(typeof f!=='function'||f._lr)return;
+      var g=function(){var r=f.apply(this,arguments);try{if(typeof r==='string')r='<div id="lr-home-slot">'+_html+'</div>'+r;}catch(e){}return r;};
+      for(var k in f){try{g[k]=f[k];}catch(e){}}g._lr=1;window.pgHome=g;try{pgHome=g;}catch(e){}
+      try{ if(typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm'&&!document.getElementById('lr-home-slot')){var mc=document.getElementById('mc');if(mc)mc.insertAdjacentHTML('afterbegin','<div id="lr-home-slot">'+_html+'</div>');} }catch(e){}
+    }catch(e){}
+  }
+  function start(){ wrapHome(); load(); setInterval(function(){ wrapHome(); if(document.visibilityState!=='hidden') load(); },60000);
+    document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') load(); }); }
+  if(document.readyState==='complete') setTimeout(start,3500); else window.addEventListener('load',function(){ setTimeout(start,3500); });
+})();
+</script>
+<script>
+/* [v884] 홈 '확인했어요' 기록을 서버에도 저장 → 폰·PC·시크릿 창 어디서 봐도 한 번 확인하면 사라짐
+   (기존엔 그 기기 브라우저에만 저장돼서 다른 기기·시크릿 창에선 다시 떴음) */
+(function(){
+  var PFX=/^(u3_dis_|u3_al_|u3_sg_|m1_dismiss_|u3_syn_|lr_dis_)/;
+  var loaded=false, tmr=null, nm='';
+  function myKeys(){ var o={}; try{ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(PFX.test(k)&&k.indexOf(nm)>=0) o[k]=localStorage.getItem(k); } }catch(e){} return o; }
+  function save(){ clearTimeout(tmr); tmr=setTimeout(function(){ try{ if(!window.sbClient||!nm) return; sbClient.from('app_settings').upsert({key:'u3seen_'+nm,value:JSON.stringify({keys:myKeys(),ts:Date.now()})},{onConflict:'key'}).then(function(){},function(){}); }catch(e){} },1500); }
+  var _set=Storage.prototype.setItem;
+  try{ Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===window.localStorage&&loaded&&nm&&PFX.test(String(k))&&String(k).indexOf(nm)>=0) save(); }catch(e){} }; }catch(e){}
+  function merge(a,b){ try{ var x=JSON.parse(a), y=JSON.parse(b); if(Array.isArray(x)&&Array.isArray(y)){ var u=x.slice(); y.forEach(function(s){ if(u.indexOf(s)<0) u.push(s); }); return JSON.stringify(u.slice(-300)); } if(x&&y&&typeof x==='object'&&typeof y==='object'){ var o={}; Object.keys(x).concat(Object.keys(y)).forEach(function(k){ var p=x[k]||[], q=y[k]||[]; if(Array.isArray(p)&&Array.isArray(q)){ var u2=p.slice(); q.forEach(function(s){ if(u2.indexOf(s)<0) u2.push(s); }); o[k]=u2.slice(-500); } else o[k]=(y[k]!==undefined?y[k]:x[k]); }); return JSON.stringify(o); } }catch(e){} return b; }
+  async function pull(){
+    try{
+      if(!window.sbClient||!window.CU||!CU.name) return false;
+      nm=String(CU.name);
+      var r=await sbClient.from('app_settings').select('value').eq('key','u3seen_'+nm).maybeSingle();
+      var v=r&&r.data&&r.data.value; if(typeof v==='string'){ try{ v=JSON.parse(v); }catch(e){ v=null; } }
+      var ks=(v&&v.keys)||{}, ch=false;
+      Object.keys(ks).forEach(function(k){ if(!PFX.test(k)) return; var cur=null; try{ cur=localStorage.getItem(k); }catch(e){} var nv=(cur==null)?ks[k]:merge(cur,ks[k]); if(nv!==cur){ try{ _set.call(localStorage,k,nv); ch=true; }catch(e){} } });
+      loaded=true;
+      if(Object.keys(myKeys()).length>Object.keys(ks).length) save();   // 이 기기에만 있던 기록도 서버로
+      if(ch){ try{ if(typeof CUR_TAB!=='undefined'&&CUR_TAB==='hm'&&!(typeof _isUserBusy==='function'&&_isUserBusy())){ var mc=document.getElementById('mc'); if(mc&&typeof pgHome==='function') mc.innerHTML=pgHome(); } }catch(e){} try{ if(window.u3LoadSyn) u3LoadSyn(); if(window.m1Refresh) m1Refresh(); if(window.lrRefresh) lrRefresh(); }catch(e){} }
+      return true;
+    }catch(e){ return false; }
+  }
+  window.u3SeenPull=pull;
+  (function tick(){ if(window.CU&&window.sbClient&&CU.name){ pull(); } else setTimeout(tick,700); })();
+  document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible'&&window.CU) pull(); });
 })();
 </script>
 </body></html>
