@@ -6962,7 +6962,7 @@ function _rpHomeRiskList(){
   var d=_rpHomeData; if(!d||!d.routes||!d.routes.length)return [];
   var desc=(d.weeks||[]).slice().sort(_rpWkAsc).reverse(); var last4=desc.slice(0,4);
   var out=[];
-  d.routes.forEach(function(r){ var t=_rpTier(r.cells||{},last4);
+  d.routes.forEach(function(r){ if(!_rpHas(r,desc[0]))return; var t=_rpTier(r.cells||{},last4);
     if(!t.k)return;   // 홈 공유: 관리(2등급2회+)·경고(3등급1회)·위험(3등급2회+) 전부 포함
     out.push({route:r.route,wave:r.wave,k:t.k,c2:t.c2,c3:t.c3}); });
   out.sort(function(a,b){return _RP_TIER[a.k].o-_RP_TIER[b.k].o||b.c3-a.c3||b.c2-a.c2||rpRouteNum(a.route)-rpRouteNum(b.route);});
@@ -15605,6 +15605,7 @@ function rpGSolid(g){var n=parseInt(g,10);if(isNaN(n))return'#d0d0d0';if(n<=1)re
 function rpRColor(v){if(v==null)return['#f6f6f6','#aaa'];if(v>=99)return['#e8f3ec','#2d6040'];if(v>=96)return['#FFF2CC','#806000'];if(v>=90)return['#FBDDC9','#b4530f'];return['#FFC7CE','#9C0006'];}
 function rpChip(txt,col){return '<span style="display:inline-block;background:'+col[0]+';color:'+col[1]+';border-radius:6px;padding:2px 6px;font-size:11.5px;font-weight:800;min-width:30px">'+txt+'</span>';}
 function rpRouteNum(rt){var m=String(rt||'').match(/(\d+)/);return m?parseInt(m[1],10):999999;}
+function _rpHas(r,wk){var c=(r&&r.cells&&r.cells[wk]);return !!c&&(c.pg!=null||c.pr!=null||c.rg!=null||c.rr!=null);}
 function _rpWkAsc(a,b){return (rpWkNum(a)||0)-(rpWkNum(b)||0);}
 // 저장형식(구/신) 정규화 → {weeks, map:{route:{wave,camp,cells:{WK:{pg,pr,rg,rr}}}}}
 function _rpNorm(p){
@@ -15674,6 +15675,10 @@ async function _rpDo(file){var st=document.getElementById('rp-upl-status');
     var cur=null;try{var cr=await sbClient.from('app_settings').select('value').eq('key','route_perf_data').maybeSingle();if(cr&&cr.data&&cr.data.value)cur=typeof cr.data.value==='string'?JSON.parse(cr.data.value):cr.data.value;}catch(e){}
     var A=_rpNorm(cur), B=_rpNorm(d);
     var map=A.map;
+    // [v885] 새 엑셀에 들어있는 주차는 새 엑셀이 '정답' — 기존 누적본의 같은 주차 칸은 전부 지우고 새 값만 사용
+    //  (라우트 변경 후 본사가 과거 주차를 새 라우트명으로 다시 내려주거나, 수행률 보존으로 등급이 바뀐 경우 반영)
+    var _bw={};B.weeks.forEach(function(w){_bw[w]=1;});
+    Object.keys(map).forEach(function(rt){var cs=map[rt].cells||{};Object.keys(cs).forEach(function(wk){if(_bw[wk])delete cs[wk];});if(!Object.keys(cs).length)delete map[rt];});
     Object.keys(B.map).forEach(function(rt){ var e=map[rt]||{wave:B.map[rt].wave,camp:B.map[rt].camp,cells:{}}; if(B.map[rt].wave)e.wave=B.map[rt].wave; if(B.map[rt].camp)e.camp=B.map[rt].camp; var bc=B.map[rt].cells; Object.keys(bc).forEach(function(wk){e.cells[wk]=bc[wk];}); map[rt]=e; });
     var wset={};A.weeks.forEach(function(w){wset[w]=1;});B.weeks.forEach(function(w){wset[w]=1;});
     var weeks=Object.keys(wset).sort(_rpWkAsc);
@@ -15748,7 +15753,8 @@ function rpRender(){
   function cellOf(r,wk){return (r.cells&&r.cells[wk])||{};}
   // ── 위험/경고/주의 분류 ──
   var risky=[],normal=[];
-  routes.forEach(function(r){var t=_rpTier(r.cells||{},last4); if(t.k)risky.push({r:r,t:t}); else normal.push(r);});
+  // [v885] 최신 주차에 없는 라우트(라우트 변경으로 없어진 옛 이름)는 위험 판정 제외
+  routes.forEach(function(r){var t=_rpHas(r,desc[0])?_rpTier(r.cells||{},last4):{k:''}; if(t.k)risky.push({r:r,t:t}); else normal.push(r);});
   risky.sort(function(a,b){return _RP_TIER[a.t.k].o-_RP_TIER[b.t.k].o || b.t.c3-a.t.c3 || b.t.c2-a.t.c2 || rpRouteNum(a.r.route)-rpRouteNum(b.r.route);});
   normal.sort(function(a,z){var na=rpRouteNum(a.route),nz=rpRouteNum(z.route);return na!==nz?na-nz:(String(a.route)<String(z.route)?-1:1);});
   // ── 요약 (선택 주차) ──
@@ -15805,10 +15811,10 @@ function rpRender(){
   h+='<div style="position:sticky;top:0;z-index:30;background:#f4f6f8;padding:6px 0 0;margin-top:6px">'+nav+hdrRow+'</div>';
   // ── 전체 라우트 리스트 (위험 상단 → 나머지 오름차순) — 헤더와 동일 칸 너비 ──
   // 리스트는 전체 라우트를 '자연 순서(번호순)'로 모두 유지 (상단 위험카드는 별도 강조).
-  var listOrder=routes.slice().sort(function(a,z){var na=rpRouteNum(a.route),nz=rpRouteNum(z.route);return na!==nz?na-nz:(String(a.route)<String(z.route)?-1:1);});
+  var listOrder=routes.filter(function(r){return _rpHas(r,sel);}).sort(function(a,z){var na=rpRouteNum(a.route),nz=rpRouteNum(z.route);return na!==nz?na-nz:(String(a.route)<String(z.route)?-1:1);});
   var rowsH='<div style="border:1px solid #cfe0dc;border-top:none;border-radius:0 0 10px 10px;background:#fff;overflow:hidden">';
   listOrder.forEach(function(r){
-    var c=cellOf(r,sel); var t=_rpTier(r.cells||{},last4);
+    var c=cellOf(r,sel); var t=_rpHas(r,desc[0])?_rpTier(r.cells||{},last4):{k:''};
     var pg=c.pg,pr=c.pr,rg=c.rg,rr=c.rr;
     var wv=rpWave(r.wave); var wvc=(wv==='야간')?['#e8eaf6','#3949ab']:['#fff3e0','#e65100'];
     var ti=t.k?_RP_TIER[t.k]:null;
