@@ -166,6 +166,20 @@ function _rrMergeGroup(g,wk){try{var R=_rrR0();if(!R||!R.applied||!R.map||!g||!g
   var g2={};Object.keys(g).forEach(function(k){g2[k]=g[k];});g2.rt=out;return g2;}catch(e){return g;}}
 function _rrToday(){try{if(typeof todStr==='function')return String(todStr());}catch(e){}var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 function _rrHdrMark(dt){try{var R=_rrR0();if(R&&String(dt)===String(R.from))return '<div class="rr-hm">🔁 번호 변경일</div>';}catch(e){}return '';}
+/* [v887] 라우트 개편 연동 — 옛 번호로 된 지난 자료(수행률·SLA·가중요인)를 새 번호로 이어 붙이기
+   - 한 묶음(주차/월/블록)의 라우트에 '옛 번호에만 있는 번호'(104·111~115·209·301·302·304·311·312)가 있고 '새 번호에만 있는 번호'가 없으면 그 묶음은 옛 번호 자료로 판단
+   - 316·211·206처럼 옛/새에 모두 쓰인 번호도 묶음 단위로 판단하므로 섞이지 않음 */
+function _rrSets(){var R=_rrR0();if(!R||!R.map)return null;var ks={},vs={};Object.keys(R.map).forEach(function(k){if(R.map[k]!==k){ks[k]=1;vs[R.map[k]]=1;}});var oo={},no={};Object.keys(ks).forEach(function(k){if(!vs[k])oo[k]=1;});Object.keys(vs).forEach(function(v){if(!ks[v])no[v]=1;});return {R:R,oldOnly:oo,newOnly:no};}
+function _rrIsOldSet(names){var S=_rrSets();if(!S)return false;var o=0,n=0;(names||[]).forEach(function(x){var p=_rrPfx(x);if(S.oldOnly[p])o++;else if(S.newOnly[p])n++;});return o>0&&n===0;}
+function _rrToNew(name){var R=_rrR0();if(!R||!R.map)return name;return String(name).replace(/\d{3}/,function(p){return R.map[p]||p;});}
+function _rrOldName(name){var rv=_rrRev();var p=_rrPfx(name);if(!p||!rv[p]||rv[p]===p)return '';return String(name).replace(p,rv[p]);}
+function _rrOldHint(name){var o=_rrOldName(name);return o?'<span style="margin-left:5px;font-size:9.5px;font-weight:700;color:#8a96a3;background:#f1f3f6;border-radius:5px;padding:1px 5px;white-space:nowrap">구 '+_rrEsc(o)+'</span>':'';}
+function _slaReorg(d){try{if(!d||!d.months||!_rrR0())return d;Object.keys(d.months).forEach(function(k){var M=d.months[k];if(!M||M.rr||!M.routes)return;if(_rrIsOldSet(M.routes.map(function(r){return r[0];}))){M.routes=M.routes.map(function(r){var a=r.slice();a[0]=_rrToNew(r[0]);return a;});M.rr=1;}});}catch(e){}return d;}
+function _wfReorg(d){try{if(!d||!d.blocks||!_rrR0())return d;d.blocks.forEach(function(b){if(!b||b.rr||!b.routes)return;if(_rrIsOldSet(b.routes.map(function(r){return r.route;}))){b.routes.forEach(function(r){var o=r.route;r.route=_rrToNew(o);if(r.route!==o)r.o=o;});b.rr=1;}});}catch(e){}return d;}
+function _rpReorgMap(map,weeks){try{if(!_rrR0())return;(weeks||[]).forEach(function(wk){var names=Object.keys(map).filter(function(rt){var c=map[rt].cells[wk];return c&&(c.pg!=null||c.pr!=null||c.rg!=null||c.rr!=null);});
+    if(!_rrIsOldSet(names))return;var mv=[];names.forEach(function(rt){var c=map[rt].cells[wk];mv.push({rt:rt,c:c,nn:_rrToNew(rt),wave:map[rt].wave,camp:map[rt].camp});delete map[rt].cells[wk];});
+    mv.forEach(function(x){var c=Object.assign({},x.c);if(x.nn!==x.rt)c.o=x.rt;var e=map[x.nn];if(!e){e=map[x.nn]={wave:x.wave,camp:x.camp,cells:{}};}e.cells[wk]=c;});});
+  Object.keys(map).forEach(function(rt){if(!Object.keys(map[rt].cells||{}).length)delete map[rt];});}catch(e){}}
 </script>
 <script>/* [조장 명단 연동] v818 — app_settings.leader_registry (앱·스케줄·정산 공용 기록). 기록이 없는 사람은 기존 화면 그대로 */
 var _LRG=null;
@@ -6992,7 +7006,7 @@ var _wfHomeData;
 function _wfHomeEnsure(){
   if(_wfHomeData!==undefined)return; _wfHomeData=null; if(!sbClient)return;
   sbClient.from('app_settings').select('value').eq('key','weight_factor_data').maybeSingle().then(function(q){
-    try{ if(q&&q.data&&q.data.value){ _wfHomeData=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+    try{ if(q&&q.data&&q.data.value){ _wfHomeData=_wfReorg(typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value); } }catch(e){}
     try{ if(CUR_TAB==='hm'&&!window._ctScreenOpen){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();} }catch(e){}
   }).catch(function(){});
 }
@@ -7004,7 +7018,7 @@ var _slaHomeData;
 function _slaHomeEnsure(){
   if(_slaHomeData!==undefined)return; _slaHomeData=null; if(!sbClient)return;
   sbClient.from('app_settings').select('value').eq('key','sla_data').maybeSingle().then(function(q){
-    try{ if(q&&q.data&&q.data.value){ _slaHomeData=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+    try{ if(q&&q.data&&q.data.value){ _slaHomeData=_slaReorg(typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value); } }catch(e){}
     try{ if(CUR_TAB==='hm'&&!window._ctScreenOpen){var mc=document.getElementById('mc');if(mc)mc.innerHTML=pgHome();} }catch(e){}
   }).catch(function(){});
 }
@@ -15513,10 +15527,12 @@ function _parseSLA(rows,fname){
 }
 function slaImport(file){if(!file)return;var st=document.getElementById('sla-upl-status');if(st)st.textContent='엑셀 모듈 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='❌ 엑셀 모듈 로드 실패';return;}_slaDo(file);});}
 async function _slaDo(file){var st=document.getElementById('sla-upl-status');
-  try{if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var months=_parseSLA(rows,file.name);
+  try{try{if(typeof _rrLoadNow==='function')await _rrLoadNow();}catch(e){}if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var months=_parseSLA(rows,file.name);
+    try{if(months)months=_slaReorg({months:months}).months;}catch(e){}   // [v887] 옛 번호 파일이면 새 번호로
     if(!months||!Object.keys(months).length){if(st)st.textContent='❌ SLA 데이터를 못 찾았어요. 본사 SLA 엑셀(Vendor/Route Score)인지 확인하세요.';return;}
     var cr=await sbClient.from('app_settings').select('value').eq('key','sla_data').maybeSingle();
     var cur=(cr&&cr.data&&cr.data.value)?(typeof cr.data.value==='string'?JSON.parse(cr.data.value):cr.data.value):null;
+    try{cur=_slaReorg(cur);}catch(e){}
     var mm=(cur&&cur.months&&typeof cur.months==='object')?cur.months:{};
     Object.keys(months).forEach(function(k){mm[k]=months[k];});
     var payload={updated:_uplStamp(),months:mm};
@@ -15583,7 +15599,8 @@ function _parseWF(rows){
 }
 function wfImport(file){if(!file)return;var st=document.getElementById('wf-upl-status');if(st)st.textContent='엑셀 모듈 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='❌ 엑셀 모듈 로드 실패';return;}_wfDo(file);});}
 async function _wfDo(file){var st=document.getElementById('wf-upl-status');
-  try{if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var blocks=_parseWF(rows);
+  try{try{if(typeof _rrLoadNow==='function')await _rrLoadNow();}catch(e){}if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var blocks=_parseWF(rows);
+    try{blocks=_wfReorg({blocks:blocks}).blocks;}catch(e){}   // [v887] 옛 번호 블록이면 새 번호로
     if(!blocks.length||!blocks[0].routes.length){if(st)st.textContent='❌ 데이터를 못 찾았어요. (Wave/Route 헤더 확인)';return;}
     var payload={updated:_uplStamp(),blocks:blocks};
     await _uplSaveBackup('weight_factor_data','weight_factor_data_backup',payload);
@@ -15616,12 +15633,13 @@ function _rpNorm(p){
     var cells=r.cells;
     if(!cells){ cells={}; weeks.forEach(function(wk,i){ cells[wk]={pg:(r.pg||[])[i]!=null?r.pg[i]:null,pr:(r.pr||[])[i]!=null?r.pr[i]:null,rg:(r.rg||[])[i]!=null?r.rg[i]:null,rr:(r.rr||[])[i]!=null?r.rr[i]:null}; }); }
     // [2026-10-02] 비주차 칸(WKWave 등) 제거 + 소수 수행률(1=100%, 0.99=99%) 보정
-    var cc={};Object.keys(cells).forEach(function(wk){if(!_isWk(wk))return;var c=cells[wk]||{};cc[wk]={pg:c.pg,pr:_pct(c.pr),rg:c.rg,rr:_pct(c.rr)};});
+    var cc={};Object.keys(cells).forEach(function(wk){if(!_isWk(wk))return;var c=cells[wk]||{};cc[wk]={pg:c.pg,pr:_pct(c.pr),rg:c.rg,rr:_pct(c.rr)};if(c.o)cc[wk].o=c.o;});
     map[r.route]={wave:r.wave,camp:r.camp,cells:cc};
   });
   // 수행률·회수률 숫자가 하나도 없는 주차(잘못 읽힌 칸)는 제외
   var has={};Object.keys(map).forEach(function(rt){var cs=map[rt].cells;Object.keys(cs).forEach(function(wk){var c=cs[wk];if(typeof c.pr==='number'||typeof c.rr==='number')has[wk]=1;});});
   Object.keys(map).forEach(function(rt){var cs=map[rt].cells;Object.keys(cs).forEach(function(wk){if(!has[wk])delete cs[wk];});});
+  _rpReorgMap(map,weeks.filter(function(w){return _isWk(w)&&has[w];}));   // [v887] 옛 번호 주차 → 새 번호로
   return {weeks:weeks.filter(function(w){return _isWk(w)&&has[w];}),map:map};
 }
 function _parseRP(rows){
@@ -15669,7 +15687,7 @@ function _parseRP(rows){
 }
 function rpImport(file){if(!file)return;var st=document.getElementById('rp-upl-status');if(st)st.textContent='엑셀 모듈 준비 중…';hcLoadXLSX(function(ok){if(!ok){if(st)st.textContent='❌ 엑셀 모듈 로드 실패';return;}_rpDo(file);});}
 async function _rpDo(file){var st=document.getElementById('rp-upl-status');
-  try{if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var d=_parseRP(rows);
+  try{try{if(typeof _rrLoadNow==='function')await _rrLoadNow();}catch(e){}if(st)st.textContent='읽는 중…';var rows=_uplRows(await file.arrayBuffer());var d=_parseRP(rows);
     if(!d||!d.routes.length){if(st)st.textContent='❌ 데이터를 못 찾았어요. (Wave/Route 헤더 확인)';return;}
     // 기존 누적본 로드 → 주차 병합(겹치는 주차는 새 값으로 갱신, 지난 주차는 보존)
     var cur=null;try{var cr=await sbClient.from('app_settings').select('value').eq('key','route_perf_data').maybeSingle();if(cr&&cr.data&&cr.data.value)cur=typeof cr.data.value==='string'?JSON.parse(cr.data.value):cr.data.value;}catch(e){}
@@ -15713,6 +15731,7 @@ function pgRpPage(){
 }
 async function rpInit(){
   var root=document.getElementById('rp-root'); if(!root)return; RP_D=null;
+  try{if(typeof _rrLoadNow==='function')await _rrLoadNow();}catch(e){}
   try{ var q=await sbClient.from('app_settings').select('value').eq('key','route_perf_data').maybeSingle();
        if(q&&q.data&&q.data.value){ RP_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
   // 구(舊)형식(주차 배열) → 신형식(cells) 정규화 (기존 업로드분도 정상 표시)
@@ -15819,7 +15838,7 @@ function rpRender(){
     var wv=rpWave(r.wave); var wvc=(wv==='야간')?['#e8eaf6','#3949ab']:['#fff3e0','#e65100'];
     var ti=t.k?_RP_TIER[t.k]:null;
     var badge=ti?('<span style="flex:0 0 auto;margin-left:6px;font-size:9.5px;font-weight:900;color:#fff;background:'+ti.cl+';border-radius:6px;padding:2px 7px;box-shadow:0 1px 4px '+ti.bd+';animation:rpBlink 1s infinite">'+ti.t+'</span>'):'';
-    var cells='<div style="flex:1;min-width:0;padding:9px 8px;font-weight:800;color:#0b3d38;display:flex;align-items:center">'+rpEsc(r.route)+badge+'</div>'
+    var cells='<div style="flex:1;min-width:0;padding:9px 8px;font-weight:800;color:#0b3d38;display:flex;align-items:center;flex-wrap:wrap">'+rpEsc(r.route)+(c.o?'<span style="margin-left:5px;font-size:9.5px;font-weight:700;color:#8a96a3;background:#f1f3f6;border-radius:5px;padding:1px 5px;white-space:nowrap">구 '+rpEsc(c.o)+'</span>':'')+badge+'</div>'
       +_cell(CW.gu,'<span style="background:'+wvc[0]+';color:'+wvc[1]+';border-radius:5px;padding:1px 5px;font-size:10px;font-weight:800">'+wv+'</span>')
       +_cell(CW.pg,(pg==null?'<span style="color:#ccc">-</span>':rpChip(pg,rpGColor(pg))))
       +_cell(CW.pr,(pr==null?'-':pr+'%'),'font-weight:800;color:'+(pr!=null&&pr<90?'#c62828':'#37473c'))
@@ -15847,6 +15866,7 @@ async function slaInit(){
   var root=document.getElementById('sla-root'); if(!root)return; SLA_D=null;
   try{ var q=await sbClient.from('app_settings').select('value').eq('key','sla_data').maybeSingle();
        if(q&&q.data&&q.data.value){ SLA_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+  try{if(typeof _rrLoadNow==='function')await _rrLoadNow();}catch(e){}SLA_D=_slaReorg(SLA_D);   // [v887]
   SLA_VIEW='month'; SLA_SEL=slaLatest(); slaRender();
 }
 function slaShow(v){ if(v==='avg'){SLA_VIEW='avg';} else {SLA_VIEW='month'; SLA_SEL=+v;} slaRender(); }
@@ -15879,19 +15899,19 @@ function slaTable(rows,avgTot){
   }
   var th=pin+'<div style="overflow-x:auto;border:1px solid #e6e9ee;border-radius:10px;background:#fff;"><table style="border-collapse:collapse;font-size:11.5px;white-space:nowrap;"><thead><tr><th style="position:sticky;left:0;z-index:2;background:#eef0f7;border:1px solid #e4e8ee;padding:6px 9px;color:#5a6b7a;">라우트</th><th style="background:#3a2d8f;color:#fff;border:1px solid #e4e8ee;padding:6px 10px;">Total</th>'+cols.map(function(c){return '<th style="background:#eef0f7;color:#5a6b7a;border:1px solid #e4e8ee;padding:6px 10px;">'+c+'</th>';}).join('')+'</tr></thead><tbody>';
   rows.forEach(function(r){var c=slaTot(r[1]||0);var isb=bad(r);var badge=isb?'<span class="sla-dn" title="평균 이하">&#x2193;</span>':'';
-    th+='<tr><td style="position:sticky;left:0;z-index:1;background:#fff;border:1px solid #eef0f4;padding:5px 9px;font-weight:'+(isb?'900':'700')+';color:'+(isb?'#1565ff':'#37404c')+';">'+wfEsc(r[0])+badge+'</td><td class="'+(isb?'sla-totbad':'')+'" style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+c[0]+';color:'+c[1]+';font-weight:800;">'+(r[1]||0).toFixed(1)+'</td>'+[r[2],r[3],r[4],r[5]].map(function(v,i){var mc=slaMc(v,[15,15,50,20][i]);return '<td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+mc[0]+';color:'+mc[1]+';font-weight:700;">'+(v||0).toFixed(1)+'</td>';}).join('')+'</tr>';});
+    th+='<tr><td style="position:sticky;left:0;z-index:1;background:#fff;border:1px solid #eef0f4;padding:5px 9px;font-weight:'+(isb?'900':'700')+';color:'+(isb?'#1565ff':'#37404c')+';">'+wfEsc(r[0])+(window._SLA_HINT?_rrOldHint(r[0]):'')+badge+'</td><td class="'+(isb?'sla-totbad':'')+'" style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+c[0]+';color:'+c[1]+';font-weight:800;">'+(r[1]||0).toFixed(1)+'</td>'+[r[2],r[3],r[4],r[5]].map(function(v,i){var mc=slaMc(v,[15,15,50,20][i]);return '<td style="border:1px solid #eef0f4;text-align:center;padding:5px 10px;background:'+mc[0]+';color:'+mc[1]+';font-weight:700;">'+(v||0).toFixed(1)+'</td>';}).join('')+'</tr>';});
   return th+'</tbody></table></div><div style="font-size:10.5px;color:#a7b0ba;margin:6px 2px;">← 좌우로 밀어서 나머지 지표 · 평균점수 이하는 상단 고정·빨간 표시</div>';
 }
 function slaMonthView(){
   var M=SLA_D.months[String(SLA_SEL)]; if(!M)return '';
-  var rows=slaRsort(M.routes||[]); var a=(M.avg&&M.avg.length)?M.avg:slaAvg(rows);
+  var rows=slaRsort(M.routes||[]); var a=(M.avg&&M.avg.length)?M.avg:slaAvg(rows);window._SLA_HINT=!!M.rr;
   return '<div style="font-size:12.5px;font-weight:800;color:#3a2d8f;margin:2px 2px 8px;">'+wfEsc(M.label||(SLA_SEL+'월'))+' SLA <span style="font-size:11px;color:#9aa5b0;font-weight:600;">'+wfEsc(M.range||'')+'</span></div>'+slaCards(a,(M.label||(SLA_SEL+'월'))+' 팀 평균 Total')+slaTable(rows,(a&&a.length)?a[0]:null);
 }
 function slaAvgView(){
   var av=slaAvail(); var map={};
   av.forEach(function(m){(SLA_D.months[String(m)].routes||[]).forEach(function(r){if(!map[r[0]])map[r[0]]=[0,0,0,0,0,0];for(var i=0;i<5;i++)map[r[0]][i]+=(r[1+i]||0);map[r[0]][5]++;});});
   var rows=Object.keys(map).map(function(k){var a=map[k];return [k,Math.round(a[0]/a[5]*10)/10,Math.round(a[1]/a[5]*10)/10,Math.round(a[2]/a[5]*10)/10,Math.round(a[3]/a[5]*10)/10,Math.round(a[4]/a[5]*10)/10];});
-  rows=slaRsort(rows); var A=slaAvg(rows);
+  rows=slaRsort(rows); var A=slaAvg(rows);window._SLA_HINT=true;
   return '<div style="font-size:12.5px;font-weight:800;color:#3a2d8f;margin:2px 2px 8px;">전체 평균 · '+av.length+'개월 누적</div>'+slaCards(A,'전체 평균 Total')+slaTable(rows,(A&&A.length)?A[0]:null);
 }
 
@@ -15997,6 +16017,7 @@ async function wfInit(){
   WF_D=null;
   try{ var q=await sbClient.from('app_settings').select('value').eq('key','weight_factor_data').maybeSingle();
        if(q&&q.data&&q.data.value){ WF_D=typeof q.data.value==='string'?JSON.parse(q.data.value):q.data.value; } }catch(e){}
+  try{if(typeof _rrLoadNow==='function')await _rrLoadNow();}catch(e){}WF_D=_wfReorg(WF_D);   // [v887]
   WF_VIEW='sum'; WF_FILT='all'; wfRender();
 }
 function wfRender(){
@@ -16017,7 +16038,7 @@ function wfSumHtml(){
   var list=_base.sort(_wfNum);
   var _missTop=rs.filter(_wfMiss).sort(_wfNum);
   function _wfCells(r){var miss=_wfMiss(r);var badge=miss?'<span style="margin-left:6px;font-size:9.5px;font-weight:900;color:#fff;background:#c62828;border-radius:6px;padding:2px 7px;box-shadow:0 1px 4px #ffcdd2;animation:rpBlink 1s infinite">미해당</span>':'';
-    return '<div style="flex:1;font-weight:800;color:#37473c;display:flex;align-items:center;">'+wfEsc(r.route||'')+badge+'</div>'+
+    return '<div style="flex:1;font-weight:800;color:#37473c;display:flex;align-items:center;flex-wrap:wrap">'+wfEsc(r.route||'')+(r.o?'<span style="margin-left:5px;font-size:9.5px;font-weight:700;color:#8a96a3;background:#f1f3f6;border-radius:5px;padding:1px 5px;white-space:nowrap">구 '+wfEsc(r.o)+'</span>':'')+badge+'</div>'+
       '<div style="width:92px;text-align:center;">'+(r.f1==null?'-':wfChip(r.f1.toFixed(2),wfG1(r.f1)))+'<div style="font-size:10px;margin-top:1px;">'+wfStat(r.f1s)+'</div></div>'+
       '<div style="width:92px;text-align:center;">'+(r.f2==null?'-':wfChip(r.f2.toFixed(2),wfG2(r.f2)))+'<div style="font-size:10px;margin-top:1px;">'+wfStat(r.f2s)+'</div></div>';}
   var h='<div style="padding:2px 2px 10px;">';
