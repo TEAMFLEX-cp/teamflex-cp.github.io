@@ -20142,6 +20142,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       if(!window.sbClient||!window.CU)return;
       var keys=['teams_notice_feed','teams_notice_hidden',dkey()];if(isAdm())keys.push('teams_notice_cfg');
       sbClient.from('app_settings').select('key,value').in('key',keys).then(function(r){
+        window._tnReady=1;try{setTimeout(function(){window.u3Deco&&u3Deco();},0);}catch(e){}
         if(!r||r.error||!r.data)return;
         var m={};r.data.forEach(function(x){m[x.key]=x.value;});
         var f=pj(m.teams_notice_feed,[]);TN.feed=Array.isArray(f)?f:[];try{TN.feed.sort(function(a,b){return (Number(b.id)||0)-(Number(a.id)||0);});}catch(e){}
@@ -20149,12 +20150,14 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
         if(isAdm()){var c=pj(m.teams_notice_cfg,null);TN.cfg=(c&&typeof c==='object')?c:null;}
         var sig=JSON.stringify([TN.feed.map(function(x){return x.chat+':'+x.id;}),TN.hidden,TN.cfg&&TN.cfg.enabled,dismissed().length]);
         if(sig!==TN.sig){TN.sig=sig;refreshSlots();}
-      }).catch(function(){});
+      }).catch(function(){window._tnReady=1;});
     }catch(e){}
   };
   function start(){wrap();tnLoad();if(!TN.timer)TN.timer=setInterval(function(){if(document.visibilityState!=='hidden')tnLoad();},60000);}
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')tnLoad();});
-  if(document.readyState==='complete')setTimeout(start,1500);else window.addEventListener('load',function(){setTimeout(start,1500);});
+  /* [v886] 로그인 되자마자 시작(기존 1.5초 고정 대기 제거) */
+  var _wl=function(fn,ms,dep){var t0=Date.now();setTimeout(function tk(){if((window.CU&&window.sbClient&&(!dep||dep()))||Date.now()-t0>6000)fn();else setTimeout(tk,150);},ms);}
+  if(document.readyState==='complete')_wl(start,200);else window.addEventListener('load',function(){_wl(start,200);});
   setTimeout(function(){wrap();tnLoad();},8000);
 
   /* ── 관리자: 키워드 설정 + 자동 공지 기록 ── */
@@ -20305,7 +20308,9 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       return h?CSS+h:'';
     }catch(e){return '';}
   };
-  function refresh(){var el=document.getElementById('m1-home-slot');if(el)el.innerHTML=m1HomeHTML();}
+  function refresh(){var el=document.getElementById('m1-home-slot');
+    try{if(!el&&window.CUR_TAB==='hm'&&!window._ctScreenOpen&&window.pgHome&&window.pgHome._m1){var mc=document.getElementById('mc');var h=m1HomeHTML();if(mc&&h){el=document.createElement('div');el.id='m1-home-slot';var tn=document.getElementById('tn-home-slot');mc.insertBefore(el,(tn&&tn.parentNode===mc)?tn:mc.firstChild);}}}catch(e){}   // [v886] 홈이 먼저 그려졌으면 칸 끼워넣기
+    if(el)el.innerHTML=m1HomeHTML();}
   window.m1Refresh=refresh;
   function setReviewSt(mid,st){
     var rv=M.rv;if(!rv)return Promise.resolve();
@@ -20341,6 +20346,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       M.v=v;M.rv=rv;
       if(sig!==M.sig){M.sig=sig;refresh();}
     }catch(e){}
+    if(window.CU&&!window._m1Ready){window._m1Ready=1;try{setTimeout(function(){window.u3Deco&&u3Deco();},0);}catch(e){}}
   }
   window.m1Load=load;
   function wrap(){
@@ -20354,7 +20360,10 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   }
   function start(){wrap();load();if(!M.timer)M.timer=setInterval(function(){wrap();if(document.visibilityState!=='hidden')load();},60000);}
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')load();});
-  if(document.readyState==='complete')setTimeout(start,2500);else window.addEventListener('load',function(){setTimeout(start,2500);});
+  /* [v886] 팀즈공지 모듈이 홈을 감싼 직후 바로 시작(기존 2.5초 고정 대기 제거, 감싸는 순서는 그대로) */
+  var _wl=function(fn,ms,dep){var t0=Date.now();setTimeout(function tk(){if((window.CU&&window.sbClient&&(!dep||dep()))||Date.now()-t0>6000)fn();else setTimeout(tk,150);},ms);}
+  var _dep=function(){return window.pgHome&&window.pgHome._tn;};
+  if(document.readyState==='complete')_wl(start,200,_dep);else window.addEventListener('load',function(){_wl(start,200,_dep);});
   setTimeout(function(){wrap();load();},9000);
 })();
 </script>
@@ -20939,7 +20948,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     return {title:title,meta:meta,num:num,lb:lb,unit:unit,camp:cm?cm[1]+'캠프':''};
   }
   /* ── 인입건 · 프백 소명 · 분실 차감 (본인 것 / 관리자는 전체) ── */
-  var DATA={md:0,pb:0,loss:0},IDS={md:[],pb:[],loss:[]},dsig='';
+  var DATA={md:0,pb:0,loss:0},IDS={md:[],pb:[],loss:[]},dsig='',synDone=false,gOpen=false,gT0=0,gTm=null;
   function synKey(){return 'u3_syn_'+((window.CU&&CU.name)||'x');}
   function synSeen(){try{var v=JSON.parse(localStorage.getItem(synKey())||'{}');return (v&&typeof v==='object')?v:{};}catch(e){return {};}}
   function synMark(k){try{var v=synSeen();var a=v[k]||[];(IDS[k]||[]).forEach(function(i){i=String(i);if(a.indexOf(i)<0)a.push(i);});v[k]=a.slice(-500);localStorage.setItem(synKey(),JSON.stringify(v));}catch(e){}}   // [v884] 본 건 기억
@@ -20952,15 +20961,16 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     {k:'loss',cls:'u3-y',ic:'money_bag',lb:adm()?'분실차감 미확인':'분실 차감',fn:function(){go('pb');setTimeout(function(){try{pbGoSub('loss');}catch(e){}},60);}}];}
   async function loadSyn(){
     try{
-      if(!window.sbClient||!window.CU||(window._isSusp&&_isSusp()))return;
+      if(!window.sbClient||!window.CU)return;
+      if(window._isSusp&&_isSusp()){synDone=true;return;}
       var me=CU.name,D={md:0,pb:0,loss:0},I2={md:[],pb:[],loss:[]};
-      try{var q=sbClient.from('misdelivery_cases').select('id,status,category,created_at,occurred_at,driver_name').eq('status','pending').limit(1000);if(!adm())q=q.eq('driver_name',me);
-        var r=await q;(r&&r.data||[]).forEach(function(x){if(x.category==='수기회수')return;try{if(typeof _mdNoAction==='function'&&_mdNoAction(x))return;}catch(e){}D.md++;I2.md.push('c'+x.id);});}catch(e){}
-      try{if(adm()||getFeatureCtrl('pback','active')){var pr=await sbClient.from('pback_somyeong').select('id,driver_name,status').eq('period',pPer()).eq('status',adm()?'answered':'pending');
-        var mn=nn(me);(pr&&pr.data||[]).forEach(function(x){if(adm()||nn(x.driver_name)===mn){D.pb++;I2.pb.push('p'+x.id+':'+x.status);}});}}catch(e){}
-      try{var lr=await sbClient.from('app_settings').select('value').eq('key','loss_deduction_log').maybeSingle();var v=lr&&lr.data&&lr.data.value;if(typeof v==='string')v=JSON.parse(v);
-        var mn2=nn(me);((v&&v.records)||[]).forEach(function(x){if(x.status==='nofault'||x.confirmed===true||x.missing_final)return;if(adm()||nn(x.driver_name)===mn2){D.loss++;I2.loss.push('w'+(x.wb||x.date+x.driver_name));}});}catch(e){}
-      IDS=I2;var sg=JSON.stringify(D)+JSON.stringify(I2);DATA=D;if(sg!==dsig){dsig=sg;sched();}
+      await Promise.all([(async function(){try{var q=sbClient.from('misdelivery_cases').select('id,status,category,created_at,occurred_at,driver_name').eq('status','pending').limit(1000);if(!adm())q=q.eq('driver_name',me);
+        var r=await q;(r&&r.data||[]).forEach(function(x){if(x.category==='수기회수')return;try{if(typeof _mdNoAction==='function'&&_mdNoAction(x))return;}catch(e){}D.md++;I2.md.push('c'+x.id);});}catch(e){}})(),
+      (async function(){try{if(adm()||getFeatureCtrl('pback','active')){var pr=await sbClient.from('pback_somyeong').select('id,driver_name,status').eq('period',pPer()).eq('status',adm()?'answered':'pending');
+        var mn=nn(me);(pr&&pr.data||[]).forEach(function(x){if(adm()||nn(x.driver_name)===mn){D.pb++;I2.pb.push('p'+x.id+':'+x.status);}});}}catch(e){}})(),
+      (async function(){try{var lr=await sbClient.from('app_settings').select('value').eq('key','loss_deduction_log').maybeSingle();var v=lr&&lr.data&&lr.data.value;if(typeof v==='string')v=JSON.parse(v);
+        var mn2=nn(me);((v&&v.records)||[]).forEach(function(x){if(x.status==='nofault'||x.confirmed===true||x.missing_final)return;if(adm()||nn(x.driver_name)===mn2){D.loss++;I2.loss.push('w'+(x.wb||x.date+x.driver_name));}});}catch(e){}})()]);   // [v886] 세 가지를 동시에 조회
+      IDS=I2;var sg=JSON.stringify(D)+JSON.stringify(I2);DATA=D;synDone=true;if(sg!==dsig){dsig=sg;}sched();
     }catch(e){}
   }
   window.u3LoadSyn=loadSyn;
@@ -21000,6 +21010,11 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       t.addEventListener('click',(function(c,hit,f){return function(){openTile(c,hit,f);};})(c,hit,f));
       tiles.appendChild(t);
     }
+    // [v886] 처음 켤 때: 인입·팀즈공지·미스캔·장기미회수 자료가 모두 도착하면 한 번에 표시(최대 3.5초 대기)
+    if(!gOpen){if(!gT0&&window.CU)gT0=Date.now();
+      var rdy=synDone&&window._tnReady&&window._m1Ready&&window._lrReady;
+      if(!rdy&&gT0&&Date.now()-gT0<3500){wrap.style.display='none';if(!gTm)gTm=setTimeout(function(){gTm=null;sched();},3600-(Date.now()-gT0));return;}
+      if(gT0){gOpen=true;wrap.classList.add('u3in');}}
     var n=tiles.children.length;wrap.style.display=n?'':'none';
     var em=wrap.querySelector('.u3tl em');if(em)em.textContent=n?String(n):'';
   }
@@ -21044,8 +21059,10 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     try{var mc=document.getElementById('mc');if(mc&&document.body.classList.contains('htab')){decoTop(mc);decoWx();decoTasks(mc);decoAlerts(mc);}decoNav();decoHead();}catch(e){}
     busy=false;}
   window.u3Deco=deco;
+  try{var _gs=document.createElement('style');_gs.textContent='@keyframes u3fin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}.u3tw.u3in{animation:u3fin .35s ease-out}';document.head.appendChild(_gs);}catch(e){}
   function start(){var mc=document.getElementById('mc'),bn=document.getElementById('bn');
-    try{new MutationObserver(sched).observe(mc,{childList:true,subtree:true,characterData:true});}catch(e){}
+    // [v886] 홈이 통째로 다시 그려지면(동기화 완료 등) 다음 화면 그리기 전에 바로 다시 꾸밈 → 타일이 깜빡 사라졌다 나타나는 것 방지
+    try{new MutationObserver(function(){var m=document.getElementById('mc');if(m&&document.body.classList.contains('htab')&&!m.querySelector(':scope > .u3tw')&&m.children.length){deco();}else sched();}).observe(mc,{childList:true,subtree:true,characterData:true});}catch(e){}
     try{new MutationObserver(function(){decoNav();}).observe(bn,{childList:true,subtree:true});}catch(e){}
     try{var ah=document.querySelector('.ah');if(ah)new MutationObserver(function(){decoHead();}).observe(ah,{childList:true,subtree:true});}catch(e){}
     try{new MutationObserver(sched).observe(document.body,{attributes:true,attributeFilter:['class']});}catch(e){}
@@ -21275,7 +21292,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     _html=h?CSS+h:'';
   }
   window.lrHomeHTML=function(){return _html;};
-  function refresh(){build().then(function(){var el=document.getElementById('lr-home-slot');if(el&&el.innerHTML!==_html)el.innerHTML=_html;});}
+  function refresh(){return build().then(function(){var el=document.getElementById('lr-home-slot');if(el&&el.innerHTML!==_html)el.innerHTML=_html;});}
   window.lrRefresh=refresh;
   async function load(){
     try{
@@ -21283,8 +21300,9 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       var r=await sbClient.from('app_settings').select('value').eq('key','longret_today').maybeSingle();
       var v=r&&r.data&&r.data.value; if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}
       var sg=JSON.stringify(v||{}); var ch=(sg!==L.sg); L.sg=sg; L.v=v;
-      if(ch) refresh();
+      if(ch) await refresh();
     }catch(e){}
+    if(window.CU&&!window._lrReady){window._lrReady=1;try{setTimeout(function(){window.u3Deco&&u3Deco();},0);}catch(e){}}
   }
   window.lrLoad=load;
   function wrapHome(){
@@ -21296,7 +21314,10 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   }
   function start(){ wrapHome(); load(); setInterval(function(){ wrapHome(); if(document.visibilityState!=='hidden') load(); },60000);
     document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') load(); }); }
-  if(document.readyState==='complete') setTimeout(start,3500); else window.addEventListener('load',function(){ setTimeout(start,3500); });
+  /* [v886] 미스캔 모듈 다음에 바로 시작(기존 3.5초 고정 대기 제거, 감싸는 순서는 그대로) */
+  var _wl=function(fn,ms,dep){var t0=Date.now();setTimeout(function tk(){if((window.CU&&window.sbClient&&(!dep||dep()))||Date.now()-t0>6000)fn();else setTimeout(tk,150);},ms);}
+  var _dep=function(){return window.pgHome&&window.pgHome._m1;};
+  if(document.readyState==='complete') _wl(start,200,_dep); else window.addEventListener('load',function(){ _wl(start,200,_dep); });
 })();
 </script>
 <script>
