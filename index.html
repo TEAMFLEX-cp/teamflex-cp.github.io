@@ -5984,7 +5984,7 @@ function checkDailyPopup(){
   if(localStorage.getItem(key)===today)return;
   // Get today's routes
   var curWk=findCurWeek();
-  var myWks=DW[CU.name]||{};
+  var myWks=_myDW();   // [v888]
   var todDates=myWks[curWk]||{};
   var tr=todDates[today]||'';
   var popup=document.getElementById('daily-popup');
@@ -6814,9 +6814,7 @@ function pgHome(){
         var g=wk.g[gi];
         for(var ri=0;ri<g.rt.length;ri++){
           var rt=g.rt[ri];
-          if(rt.d&&rt.d[ds]===CU.name){
-            result=result?(result+','+rt.r):rt.r;
-          }
+          _rtMine(rt,ds).forEach(function(x){if((','+result+',').indexOf(','+x+',')<0)result=result?(result+','+x):x;});   // [v888] 이름 꼬리표(AC/BD)·분할 라우트도 내 근무로
         }
       }
       if(result)break;
@@ -6835,7 +6833,7 @@ function pgHome(){
       for(var gi=0;gi<wk.g.length;gi++){
         var g=wk.g[gi];
         for(var ri=0;ri<g.rt.length;ri++){
-          if(g.rt[ri].d&&g.rt[ri].d[ds]===CU.name)return true;
+          if(_rtMine(g.rt[ri],ds).length)return true;   // [v888]
         }
       }
     }
@@ -8132,7 +8130,7 @@ function pgMySched(){
   if(!MY_WK)MY_WK=findCurWeek();
   var keys=getWeekKeys();
   var idx=keys.indexOf(MY_WK);
-  var myWks=DW[CU.name]||{};
+  var myWks=_myDW();   // [v888]
   var wk=AW[MY_WK];
   var today=todStr();
   var myDates=myWks[MY_WK]||{};
@@ -8167,6 +8165,12 @@ function pgMySched(){
 // ── FULL SCHEDULE (route-based) ───────────────────────────────────────
 // 전체 스케줄 가로 스크롤 동기화 — 한 조를 밀면 다른 조도 같이 이동
 // JS에서 이름 normalize (suffix 제거) — pgFullSched 보다 먼저 정의
+/* [v888] '근무인데 휴무로 보임' 해결 — 내 이름 비교 시 꼬리표(박문도AC·박종헌BD) 무시 + 분할 라우트(share) 파트너도 내 근무로 */
+function _meName(n){try{if(!n||!window.CU||!CU.name)return false;if(n===CU.name)return true;var a=norm_name_js(String(n)),b=norm_name_js(String(CU.name));return !!a&&a===b;}catch(e){return false;}}
+function _rtMine(rt,ds){var out=[];try{if(!rt)return out;var sh=rt.sh&&rt.sh[ds];
+  if(sh&&sh.length){sh.forEach(function(p){if(p&&_meName(p.d)&&out.indexOf(p.r||rt.r)<0)out.push(p.r||rt.r);});if(out.length)return out;}
+  if(rt.d&&_meName(rt.d[ds]))out.push(rt.r);}catch(e){}return out;}
+function _myDW(){var o={};try{if(!window.CU)return o;Object.keys(DW||{}).forEach(function(dn){if(!_meName(dn))return;var W=DW[dn]||{};Object.keys(W).forEach(function(wk){o[wk]=o[wk]||{};var D=W[wk]||{};Object.keys(D).forEach(function(d){var v=D[d];if(!v)return;if(!o[wk][d])o[wk][d]=v;else String(v).split(',').forEach(function(x){if((','+o[wk][d]+',').indexOf(','+x+',')<0)o[wk][d]+=','+x;});});});});}catch(e){}return o;}
 function norm_name_js(name){
   if(!name)return'';
   var m=name.match(/^(.+?)\s*[A-Z]{1,4}$/);
@@ -20932,7 +20936,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     var card=document.createElement('div');card.className='u3hero';
     if(hero){
       var box=hero.querySelector(':scope > div:last-child > div');var tr=[];
-      if(box){var sp=box.querySelectorAll('span');for(var i=0;i<sp.length;i++){var t=txt(sp[i]);if(t&&/^[0-9A-Za-z\/,\- ]+$/.test(t))tr.push(t);}}
+      if(box){var sp=box.querySelectorAll('span');for(var i=0;i<sp.length;i++){var t=txt(sp[i]);if(t&&/^[0-9A-Za-z\/,\-() ]+$/.test(t))tr.push(t);}}
       var off=!tr.length;
       card.innerHTML='<div class="u3date"><span class="lv"></span>'+kDate()+'<span>날씨 누르면 내일 날씨</span></div><div class="u3hrow">'+ico(off?'party_popper':'tftruck')+'<div class="u3hl"><div class="k">오늘 내 라우트</div>'+
         '<div class="rt">'+(off?'<i>오늘은 휴무 🎊</i>':tr.map(function(r){return '<b>'+esc(r)+'</b>';}).join(''))+'</div></div></div>';
@@ -21277,7 +21281,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   function dkey(){return 'lr_dis_'+(me()||'x');}
   function dis(){try{var v=JSON.parse(localStorage.getItem(dkey())||'[]');return Array.isArray(v)?v:[];}catch(e){return [];}}
   window.lrDismiss=function(id){try{var d=dis();if(d.indexOf(id)<0)d.push(id);localStorage.setItem(dkey(),JSON.stringify(d.slice(-100)));}catch(e){}refresh();};
-  window.lrAddr=function(tr){try{var nx=tr.nextElementSibling;if(nx&&nx.classList.contains('lra')){nx.remove();return;}var a=tr.getAttribute('data-addr')||'(주소 없음)';var r=document.createElement('tr');r.className='lra';r.innerHTML='<td colspan="2" style="background:#fff7ed;color:#7c2d12;font-size:12.5px;font-weight:700;padding:7px 8px;line-height:1.5">📍 '+esc(a)+'</td>';tr.parentNode.insertBefore(r,nx);}catch(e){}};
+  window.lrAddr=function(tr){try{var nx=tr.nextElementSibling;if(nx&&nx.classList.contains('lra')){nx.remove();return;}var a=tr.getAttribute('data-addr')||'(주소 없음)';var r=document.createElement('tr');r.className='lra';r.innerHTML='<td colspan="3" style="background:#fff7ed;color:#7c2d12;font-size:12.5px;font-weight:700;padding:7px 8px;line-height:1.5">📍 '+esc(a)+'</td>';tr.parentNode.insertBefore(r,nx);}catch(e){}};
   var CSS='<style>.m1c{cursor:pointer;user-select:none;-webkit-user-select:none;color:#fff;border-radius:16px;padding:10px 13px 7px;margin:0 0 10px}.m1c.lrc{background:linear-gradient(135deg,#78350f,#d97706);box-shadow:0 4px 14px rgba(217,119,6,.25)}'+
     '.m1c .h{display:flex;font-size:12px;font-weight:800;opacity:.95}.m1c .h span:last-child{margin-left:auto;font-weight:600;opacity:.85}.m1c .foot{text-align:right;font-size:10px;opacity:.7;margin-top:2px}'+
     '.lrt{width:100%;border-collapse:collapse;font-size:12.5px;background:#fff;color:#14284b;border-radius:10px;overflow:hidden;margin-top:8px}.lrt th,.lrt td{border-bottom:1px solid #edf1f6;padding:7px 8px;text-align:left}.lrt th{background:#f6f8fc;font-size:11px}'+
@@ -21295,21 +21299,43 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     L.camps=Object.keys(set).length?set:null; L.cday=today();   // 못 찾으면 전체 표시(정보 공유가 목적)
     return L.camps;
   }
-  function cardHtml(camp,c,d){
-    var items=(c&&c.items)||[]; if(!items.length) return '';
+  /* [v888] 기사: 오늘 내가 맡은 라우트의 건만 보임(그날 스케줄 기준 · 이름 꼬리표·분할 라우트 반영). 관리자·팀장: 전체 */
+  function _rn(r){return String(r||'').toUpperCase().replace(/[^0-9A-Z]/g,'');}
+  function _bn(n){n=String(n||'').trim();try{if(typeof splitDriverSuffix==='function')return splitDriverSuffix(n).base||n;}catch(e){}return n;}
+  async function myRoutes(){
+    if(isAll()) return null;
+    if(L.rday===today()&&L.routes) return L.routes;
+    var set={},ok=false;
+    try{
+      var nm=_bn(me());
+      var r=await sbClient.from('weekly_schedules').select('route,driver_name,share').eq('work_date',today()).limit(1000);
+      if(r&&!r.error){ok=true;((r.data)||[]).forEach(function(x){set.__all=set.__all||{};set.__all[_rn(x.route)]=1;var sh=x.share;try{if(typeof sh==='string')sh=JSON.parse(sh);}catch(e){sh=null;}
+        if(sh&&sh.length){sh.forEach(function(s){if(s&&_bn(s.driver)===nm)(s.routes&&s.routes.length?s.routes:[x.route]).forEach(function(rt){set[_rn(rt)]=1;});});}
+        else if(_bn(x.driver_name)===nm)set[_rn(x.route)]=1;});}
+    }catch(e){}
+    if(ok){L.routes=set;L.rday=today();}
+    return set;
+  }
+  function cardHtml(camp,c,d,mine){
+    var items=(c&&c.items)||[];
+    if(mine) items=items.filter(function(x){if(!x||!x.route)return false;var k=_rn(x.route);if(mine[k])return true;
+      // 쿠팡이 오늘 스케줄에 없는 라우트로 적은 경우(예: 605B) → 같은 번호(605) 근무자에게
+      if(!(mine.__all&&mine.__all[k])){var p=k.slice(0,3);return Object.keys(mine).some(function(m){return m!=='__all'&&m.slice(0,3)===p;});}
+      return false;});   // [v888] 내 라우트 건만
+    if(!items.length) return '';
     var last=items[items.length-1]||{};
     var id='lr:'+camp+':'+today()+':'+items.length+':'+(last.mid||'')+':'+(last.wb||'');
     if(d.indexOf(id)>=0) return '';
-    var rows=items.map(function(x){return '<tr class="lrw" onclick="event.stopPropagation();lrAddr(this)" data-addr="'+esc(x.addr||'')+'"><td>'+esc(x.wb||'')+'</td><td>'+esc(x.at||'')+'</td></tr>';}).join('');
+    var rows=items.map(function(x){return '<tr class="lrw" onclick="event.stopPropagation();lrAddr(this)" data-addr="'+esc(x.addr||'')+'"><td>'+esc(x.wb||'')+'</td><td style="font-weight:800;color:#7c2d12">'+esc(x.route||'-')+'</td><td>'+esc(x.at||'')+'</td></tr>';}).join('');
     return '<div class="m1c lrc" ondblclick="lrDismiss(\''+esc(id)+'\')"><div class="h"><span>📦 '+esc(camp)+'캠프 장기미회수 반품</span><span>'+esc(last.at||'')+' 공유</span></div>'+
       '<div style="font-size:12.5px;margin-top:6px">총 <b class="tot2">'+items.length+'건</b> · 운송장을 누르면 주소가 보여요</div>'+
-      '<table class="lrt"><tr><th>운송장</th><th>공유 시각</th></tr>'+rows+'</table><div class="foot">더블 클릭하면 삭제됨</div></div>';
+      '<table class="lrt"><tr><th>운송장</th><th>라우트</th><th>공유 시각</th></tr>'+rows+'</table><div class="foot">더블 클릭하면 삭제됨</div></div>';
   }
   var _html='';
   async function build(){
     var v=L.v; if(!v||v.date!==today()||!v.camps){ _html=''; return; }
-    var mc=await myCamps(); var d=dis(); var h='';
-    Object.keys(v.camps).sort().forEach(function(k){ if(mc&&!mc[k]) return; h+=cardHtml(k,v.camps[k],d); });
+    var mine=await myRoutes(); var d=dis(); var h='';
+    Object.keys(v.camps).sort().forEach(function(k){ h+=cardHtml(k,v.camps[k],d,mine); });
     _html=h?CSS+h:'';
   }
   window.lrHomeHTML=function(){return _html;};
