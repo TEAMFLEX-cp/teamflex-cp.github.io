@@ -6470,7 +6470,7 @@ async function _annFetchBrief(){
   try{ await _annLoadMyReads(); }catch(e){}
   window._brfMd=0; window._brfPb=0;
   var _nm=(CU&&CU.name)||'';
-  try{ var mr=await sbClient.from('misdelivery_cases').select('id,waybill_no,created_at,occurred_at,status,category').eq('driver_name',_nm).eq('status','pending'); if(mr&&!mr.error&&mr.data){ var _sw={},_mc=0; mr.data.forEach(function(x){ if(typeof _mdNoAction==='function'&&_mdNoAction(x))return; /* 3일 경과 미조치 = 오배송 탭에서 '액션 불필요' 처리됨 → 홈 팝업 카운트도 동일하게 제외(유령 팝업 방지) */ var k=(x.waybill_no&&String(x.waybill_no).trim())?('w'+String(x.waybill_no).trim()):('i'+x.id); if(!_sw[k]){_sw[k]=1;_mc++;} }); window._brfMd=_mc; } }catch(e){}
+  try{ var mr=await sbClient.from('misdelivery_cases').select('id,waybill_no,created_at,occurred_at,status,category').eq('driver_name',_nm).eq('status','pending'); if(mr&&!mr.error&&mr.data){ var _sw={},_mc=0; mr.data.forEach(function(x){ if(typeof _mdNoAction==='function'&&_mdNoAction(x))return; if(typeof _mdSgOld==='function'&&_mdSgOld(x))return; /* 3일 경과 미조치 = 오배송 탭에서 '액션 불필요' 처리됨 → 홈 팝업 카운트도 동일하게 제외(유령 팝업 방지) */ var k=(x.waybill_no&&String(x.waybill_no).trim())?('w'+String(x.waybill_no).trim()):('i'+x.id); if(!_sw[k]){_sw[k]=1;_mc++;} }); window._brfMd=_mc; } }catch(e){}
   try{ var pr=await sbClient.from('pback_somyeong').select('driver_name').eq('period',pbPeriod()).eq('status','pending'); if(pr&&!pr.error&&pr.data){ var _pnn=norm_name_js(_nm||''); window._brfPb=pr.data.filter(function(x){return norm_name_js(x.driver_name||'')===_pnn;}).length; } }catch(e){}
 }
 function _brfBanners(){
@@ -12498,6 +12498,8 @@ function mdOpenCountList(kind){
   ov.innerHTML='<div style="background:#f6f8fb;border-radius:16px;width:100%;max-width:440px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#fff;border-bottom:1px solid #edf0f4"><div style="font-size:16px;font-weight:900;color:'+col+'">'+ttl+' '+L.length+'건</div><button onclick="mdCloseCountList()" style="border:none;background:#f1f3f6;border-radius:9px;width:32px;height:32px;font-size:16px;cursor:pointer">✕</button></div><div style="font-size:11.5px;color:#8a97a8;padding:8px 16px 2px">'+sub+'</div><div style="padding:8px 12px 12px;overflow-y:auto">'+rows+'</div></div>';
   document.body.appendChild(ov);
 }
+function _mdSgOld(c){try{if(!c||c.category!=='수기회수')return false;var d=kstDateStr(c.created_at||c.occurred_at);return !!d&&d<kstToday();}catch(e){return false;}}
+window._mdSgOld=_mdSgOld;
 function _mdNoAction(c){
   if(!c||(c.status!=='pending'&&c.status!=='rejected'))return false;
   var _t=new Date(c.created_at||c.occurred_at).getTime();
@@ -12518,6 +12520,7 @@ function mdRenderList(cases){
   if(_mdDateFilter==='today'){
     var todayStr=kstToday();
     cases=(cases||[]).filter(function(c){
+      if(_mdSgOld(c))return false;   // [v892] 수기회수는 그날만 (지난 날짜는 '전체'에서만 보임)
       return kstDateStr(c.created_at)===todayStr
           || ((c.status==='pending' || c.status==='rejected' || c.status==='replied') && !_mdNoAction(c));
     });
