@@ -12486,7 +12486,7 @@ function mdOpenCountList(kind){
   var now=Date.now();
   var rows=L.map(function(c){
     var t=new Date(c.created_at||c.occurred_at).getTime();var dd=isNaN(t)?'':Math.max(0,3-Math.floor((now-t)/86400000));
-    var chip=kind==='pending'?'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:'+(dd<=1?'#fff3e0':'#ffebee')+';color:'+(dd<=1?'#e65100':'#c62828')+'">D-'+dd+'일</span>':(kind==='noaction'?'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:#fff3e0;color:#e65100">'+Math.floor((now-t)/86400000)+'일 경과</span>':'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:#e3f2fd;color:#1565c0">승인요청</span>');
+    var chip=(kind==='pending'&&c.category==='수기회수')?'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:#f3e8ff;color:#6d28d9">당일 확인</span>':kind==='pending'?'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:'+(dd<=1?'#fff3e0':'#ffebee')+';color:'+(dd<=1?'#e65100':'#c62828')+'">D-'+dd+'일</span>':(kind==='noaction'?'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:#fff3e0;color:#e65100">'+Math.floor((now-t)/86400000)+'일 경과</span>':'<span style="font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;background:#e3f2fd;color:#1565c0">승인요청</span>');
     var d=new Date(t);var ds=isNaN(t)?'':((d.getMonth()+1)+'.'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2));
     var cat=c.category||'';var rt=c.route?(' · '+c.route):'';
     var rs=c._reshare?'<span style="font-size:10px;font-weight:800;color:#c62828;margin-left:4px">재요청</span>':'';
@@ -12816,7 +12816,7 @@ function mdMibaenaepGroupCard(drvName,groupCases,isAdmin,isLeader){
   var driverTag=(isAdmin||isLeader)?'<span class="md-driver-tag">'+mdEsc(drvName)+'</span>':'';
   var dateStr=mdEsc(kstDateStr(groupCases[0].occurred_at||groupCases[0].created_at));
   var _mbUrg=null;groupCases.forEach(function(_g){if(_g.status==='pending'||_g.status==='rejected'){var _t=new Date(_g.created_at||_g.occurred_at).getTime();if(!isNaN(_t)&&(_mbUrg===null||_t<_mbUrg))_mbUrg=_t;}});
-  var mbDd=(_mbUrg!==null)?mdDdBadgeHtml(_mbUrg):'';
+  var mbDd=(_mbUrg!==null)?mdDdBadgeHtml(_mbUrg,groupCases.every(function(_g){return _g.category==='수기회수';})):'';   // [v893] 수기회수는 '당일 확인'
   var waybillTags=groupCases.map(function(c){
     return '<span onclick="event.stopPropagation();mdOpenDetail('+c.id+')" style="display:inline-flex;align-items:center;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:6px;font-size:11px;padding:3px 10px;cursor:pointer;font-weight:600;margin:2px">'+mdWbShort(c.waybill_no)+'</span>';
   }).join('');
@@ -12836,7 +12836,7 @@ function mdMibaenaepGroupCard(drvName,groupCases,isAdmin,isLeader){
     '<div style="margin-top:8px;display:flex;flex-wrap:wrap">'+waybillTags+'</div>'+
   '</div>';
 }
-function mdDdBadgeHtml(_ct){if(isNaN(_ct))return '';var _dl=3-Math.floor((Date.now()-_ct)/86400000);if(_dl<0)return '';var _dtc=_dl>=2?'#2e7d32':(_dl===1?'#e65100':'#fff'),_dbg=_dl>=2?'#e8f5e9':(_dl===1?'#fff3e0':'#e53935'),_dbd=_dl>=2?'#a5d6a7':(_dl===1?'#ffcc80':'#e53935');return '<span style="font-size:11px;font-weight:800;color:'+_dtc+';background:'+_dbg+';border:1px solid '+_dbd+';padding:2px 7px;border-radius:7px;flex-shrink:0;white-space:nowrap">D-'+_dl+'일</span>';}
+function mdDdBadgeHtml(_ct,_sg){if(_sg)return '<span style="font-size:11px;font-weight:800;color:#6d28d9;background:#f3e8ff;border:1px solid #d8b4fe;padding:2px 7px;border-radius:7px;flex-shrink:0;white-space:nowrap">당일 확인</span>';if(isNaN(_ct))return '';var _dl=3-Math.floor((Date.now()-_ct)/86400000);if(_dl<0)return '';var _dtc=_dl>=2?'#2e7d32':(_dl===1?'#e65100':'#fff'),_dbg=_dl>=2?'#e8f5e9':(_dl===1?'#fff3e0':'#e53935'),_dbd=_dl>=2?'#a5d6a7':(_dl===1?'#ffcc80':'#e53935');return '<span style="font-size:11px;font-weight:800;color:'+_dtc+';background:'+_dbg+';border:1px solid '+_dbd+';padding:2px 7px;border-radius:7px;flex-shrink:0;white-space:nowrap">D-'+_dl+'일</span>';}
 function _mdPushedBadge(cid,isAdmin,isLeader){
   if(!(isAdmin||isLeader))return '';
   if(!window._pushDedupe)return '';
@@ -12854,7 +12854,7 @@ function mdCardHtml(c,isAdmin,isLeader){
   var drvName=mdEsc(c.driver_name||c.driver_id||'미지정');
   var _ts=c.created_at||c.occurred_at, dtStr='';
   if(_ts){var _d=new Date(_ts);if(!isNaN(_d.getTime())){var _k=new Date(_d.getTime()+(_d.getTimezoneOffset()*60000)+9*3600000);dtStr=(_k.getMonth()+1)+'.'+_k.getDate()+' · '+_k.getHours()+':'+('0'+_k.getMinutes()).slice(-2);}}
-  var ddBadge=(c.status==='pending'||c.status==='rejected')?mdDdBadgeHtml(new Date(c.created_at||c.occurred_at).getTime()):'';
+  var ddBadge=(c.status==='pending'||c.status==='rejected')?mdDdBadgeHtml(new Date(c.created_at||c.occurred_at).getTime(),c.category==='수기회수'):'';
   // [가로 한 줄 카드] 승인요청(replied)=파랑 빛 스윕+배지 반짝+테두리 발광
   var isAppr=(c.status==='replied');
   var apprCard=isAppr?';position:relative;overflow:hidden;border-left:4px solid #1976d2;background:linear-gradient(90deg,#bcd6f6,#eef4fd);animation:apprGlowB 1.7s ease-in-out infinite':'';
