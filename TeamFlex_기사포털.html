@@ -17267,17 +17267,10 @@ function rqRouteForm(){
   }
 
   var rowsHtml = '';
-  _rqRouteRows.forEach(function(r,i){
-    rowsHtml += '<div class="rq-route-row" id="rq-rt-row-'+i+'">'+
-      '<input class="rq-rt-id" type="text" placeholder="기사 ID" value="'+rqEsc(r.id||'')+'" oninput="_rqRouteRows['+i+'].id=this.value;rqUpdateRoutePreview()">'+
-      '<div class="rq-rt-inner">'+
-        '<input class="rq-rt-route" type="text" placeholder="라우트 (예:115B01)" value="'+rqEsc(r.route||'')+'" oninput="_rqRouteRows['+i+'].route=this.value;rqUpdateRoutePreview()">'+
-        '<button class="rq-route-del" onclick="rqRouteDelRow('+i+')">&#x1F5D1;</button>'+
-      '</div>'+
-    '</div>';
-  });
+  _rqRouteRows.forEach(function(r,i){ rowsHtml += _rqRtRowHtml(i,r); });
+  rowsHtml += _rqDrvDatalist();
 
-  var validRows = _rqRouteRows.filter(function(r){return r.id&&r.route;});
+  var validRows = _rqRouteRows.filter(_rqRtValid);
   var orderSel = window._rqOrderSel||'1,2차';
   var previewText = rqRoutePreviewText();
   var ok = validRows.length>0;
@@ -17295,7 +17288,7 @@ function rqRouteForm(){
     adminBox+
     _gateAdmin+
     savedHtml+
-    '<label class="rq-label">&#x1F465; 기사 ID / 라우트 <span class="rq-req">필수 (최소 1행)</span></label>'+
+    '<label class="rq-label">&#x1F465; 기사명 → 아이디 자동 / 라우트 <span class="rq-req">필수 (최소 1행)</span></label>'+
     '<div id="rq-rt-rows">'+rowsHtml+'</div>'+
     '<button class="rq-add-row" onclick="rqRouteAddRow()">+ 행 추가</button>'+
     '<label class="rq-label">&#x1F697; 차수 <span class="rq-req">필수</span></label>'+
@@ -17312,19 +17305,44 @@ function rqRouteForm(){
   '</div>';
 }
 
+/* [v889] 라우트 변경 요청 — 기사명 입력 → 쿠팡 아이디(로그인 아이디) 자동. 6캠프는 '아이디 / 기사명 / 라우트'로 공유 */
+function _rqIs6(camp){return /6\s*캠프|일산6/.test(String(camp||''));}
+function _rqNameKey(n){n=String(n||'').replace(/\s+/g,'');try{return norm_name_js(n)||n;}catch(e){return n;}}
+function _rqIdOk(v){v=String(v||'').replace(/@df$/i,'').trim();return (v&&/^[A-Za-z0-9_.\-]+$/.test(v))?v:'';}
+function _rqDrvList(){var out=[];try{var db=getDB();Object.keys(db||{}).forEach(function(k){var d=db[k]||{};var nm=String(d.name||k).trim();try{nm=norm_name_js(nm)||nm;}catch(e){}if(!nm||/관리자/.test(nm)||(d.role==='admin'))return;if(d.status&&d.status!=='approved')return;
+  var id=_rqIdOk(d.id)||_rqIdOk(d.coupang_id);try{if(!id&&window._driverExt&&_driverExt[nm])id=_rqIdOk(_driverExt[nm].cpid);}catch(e){}out.push({name:nm,id:id});});}catch(e){}
+  out.sort(function(a,b){return a.name<b.name?-1:1;});return out;}
+function _rqDrvIdOf(name){var k=_rqNameKey(name);if(!k)return '';var hit='';_rqDrvList().forEach(function(d){if(!hit&&d.id&&(d.name===String(name).trim()||_rqNameKey(d.name)===k))hit=d.id;});return hit;}
+function _rqDrvNameOf(id){var v=_rqIdOk(id).toLowerCase();if(!v)return '';var hit='';_rqDrvList().forEach(function(d){if(!hit&&d.id&&d.id.toLowerCase()===v)hit=d.name;});return hit;}
+function _rqRtValid(r){if(!r||!r.id||!r.route)return false;if(_rqIs6(rqGetCamp())&&!(r.name||_rqDrvNameOf(r.id)))return false;return true;}
+function _rqDrvDatalist(){var o=_rqDrvList().map(function(d){return '<option value="'+rqEsc(d.name)+'">'+rqEsc(d.id||'')+'</option>';}).join('');return '<datalist id="rq-drv-dl">'+o+'</datalist>';}
+function _rqRtRowHtml(i,r){r=r||{};
+  return '<div class="rq-route-row" id="rq-rt-row-'+i+'" style="flex-wrap:wrap">'+
+    '<input class="rq-rt-id rq-rt-name" type="text" list="rq-drv-dl" placeholder="기사명" value="'+rqEsc(r.name||'')+'" oninput="rqRtName('+i+',this.value)" style="width:78px">'+
+    '<input class="rq-rt-id rq-rt-cid" type="text" placeholder="아이디(자동)" value="'+rqEsc(r.id||'')+'" oninput="rqRtId('+i+',this.value)" style="width:96px;background:'+(r.id?'#f3f6ff':'#fff')+'">'+
+    '<div class="rq-rt-inner">'+
+      '<input class="rq-rt-route" type="text" placeholder="라우트 (예:609B01)" value="'+rqEsc(r.route||'')+'" oninput="_rqRouteRows['+i+'].route=this.value;rqUpdateRoutePreview()">'+
+      '<button class="rq-route-del" onclick="rqRouteDelRow('+i+')">&#x1F5D1;</button>'+
+    '</div>'+
+    '<div class="rq-rt-hint" id="rq-rt-hint-'+i+'" style="flex-basis:100%;font-size:10.5px;color:#c62828;margin:2px 2px 0;'+((r.name&&!r.id)?'':'display:none')+'">'+((r.name&&!r.id)?'등록된 아이디가 없어요 — 아이디를 직접 입력해 주세요':'')+'</div>'+
+  '</div>';}
+function rqRtName(i,v){var r=_rqRouteRows[i];if(!r)return;r.name=String(v||'').trim();var id=_rqDrvIdOf(r.name);
+  var row=document.getElementById('rq-rt-row-'+i);var ci=row&&row.querySelector('.rq-rt-cid');var hint=document.getElementById('rq-rt-hint-'+i);
+  if(id){r.id=id;r._auto=1;if(ci){ci.value=id;ci.style.background='#f3f6ff';}if(hint)hint.style.display='none';}
+  else{if(r._auto){r.id='';if(ci){ci.value='';ci.style.background='#fff';}}r._auto=0;
+    if(hint){var ex=_rqDrvList().some(function(d){return d.name===r.name||_rqNameKey(d.name)===_rqNameKey(r.name);});hint.textContent='등록된 아이디가 없어요 — 아이디를 직접 입력해 주세요';hint.style.display=(r.name&&ex&&!r.id)?'':'none';}}
+  rqUpdateRoutePreview();}
+function rqRtId(i,v){var r=_rqRouteRows[i];if(!r)return;r.id=String(v||'').trim();r._auto=0;
+  if(!r.name){var nm=_rqDrvNameOf(r.id);if(nm){r.name=nm;var row=document.getElementById('rq-rt-row-'+i);var ni=row&&row.querySelector('.rq-rt-name');if(ni)ni.value=nm;}}
+  rqUpdateRoutePreview();}
 function rqRouteAddRow(){
-  _rqRouteRows.push({id:'',route:''});
+  _rqRouteRows.push({name:'',id:'',route:''});
   var container = document.getElementById('rq-rt-rows');
   if(!container) return;
   var i = _rqRouteRows.length-1;
-  var div = document.createElement('div');
-  div.className='rq-route-row'; div.id='rq-rt-row-'+i;
-  div.innerHTML = '<input class="rq-rt-id" type="text" placeholder="기사 ID" oninput="_rqRouteRows['+i+'].id=this.value;rqUpdateRoutePreview()">'+
-    '<div class="rq-rt-inner">'+
-    '<input class="rq-rt-route" type="text" placeholder="라우트 (예:115B01)" oninput="_rqRouteRows['+i+'].route=this.value;rqUpdateRoutePreview()">'+
-    '<button class="rq-route-del" onclick="rqRouteDelRow('+i+')">&#x1F5D1;</button>'+
-    '</div>';
-  container.appendChild(div);
+  var tmp=document.createElement('div'); tmp.innerHTML=_rqRtRowHtml(i,_rqRouteRows[i]);
+  var dl=document.getElementById('rq-drv-dl');
+  if(dl) container.insertBefore(tmp.firstChild,dl); else container.appendChild(tmp.firstChild);
 }
 
 function rqRouteDelRow(i){
@@ -17342,15 +17360,16 @@ function rqSetOrder(el,val){
 
 function rqRoutePreviewText(){
   var order = window._rqOrderSel||'1,2차';
-  var valid = _rqRouteRows.filter(function(r){return r.id||r.route;});
-  var lines = valid.map(function(r){return (r.id||'?')+' '+(r.route||'?');}).join('\n');
-  var camp=rqGetCamp(); return '■ 라우트 변경 요청 ['+camp+']\n\n'+(lines||'(입력없음)')+'\n\n'+order+' 부탁드립니다.\n\n요청자: '+CU.name;
+  var valid = _rqRouteRows.filter(_rqRtValid);   // [v889] 다 채운 줄만 공유
+  var camp=rqGetCamp(); var c6=_rqIs6(camp);
+  // [v889] 6캠프: 아이디 / 기사명 / 라우트,  그 외(3·8캠프): 기존처럼 아이디 라우트
+  var lines = valid.map(function(r){return c6?((r.id||'?')+' / '+(r.name||_rqDrvNameOf(r.id)||'?')+' / '+(r.route||'?')):((r.id||'?')+' '+(r.route||'?'));}).join('\n'); return '■ 라우트 변경 요청 ['+camp+']\n\n'+(lines||'(입력없음)')+'\n\n'+order+' 부탁드립니다.\n\n요청자: '+CU.name;
 }
 
 function rqUpdateRoutePreview(){
   var el = document.getElementById('rq-rt-preview');
   if(el) el.textContent = rqRoutePreviewText();
-  var validRows = _rqRouteRows.filter(function(r){return r.id&&r.route;});
+  var validRows = _rqRouteRows.filter(_rqRtValid);
   var btn = document.getElementById('rq-rt-btn');
   if(btn){
     btn.disabled = validRows.length===0;
@@ -17360,8 +17379,10 @@ function rqUpdateRoutePreview(){
 }
 
 async function rqSendRoute(){
-  var valid = _rqRouteRows.filter(function(r){return r.id&&r.route;});
-  if(valid.length===0){alert('기사 ID와 라우트를 1개 이상 입력해주세요.');return;}
+  var valid = _rqRouteRows.filter(_rqRtValid);
+  if(valid.length===0){alert(_rqIs6(rqGetCamp())?'기사명(아이디)과 라우트를 1개 이상 입력해주세요.':'기사 ID와 라우트를 1개 이상 입력해주세요.');return;}
+  var _bad=_rqRouteRows.filter(function(r){return (r.id||r.route||r.name)&&!_rqRtValid(r);});
+  if(_bad.length&&!confirm('입력이 덜 된 줄 '+_bad.length+'개는 빼고 보낼까요?'))return;
   var text = rqRoutePreviewText();
   var _g=_rqRouteGate||{mode:'off'}; var _schd=null;
   if(_g.mode==='time' && _inGate()){ alert(_fmtAmPm(_g.start)+'~'+_fmtAmPm(_g.end)+' 사이에는 신청할 수 없습니다. '+_fmtAmPm(_g.end)+' 이후 신청해주세요. (한국시간)'); return; }
@@ -17369,13 +17390,13 @@ async function rqSendRoute(){
   var _ok=await rqSubmit({type:'route', text:text, photos:[], okId:'rq-rt-ok', scheduledAt:_schd});
   if(!_ok) return;
   // 입력란 초기화 (저장된 프리셋은 유지)
-  _rqRouteRows = [{id:'',route:''}];
+  _rqRouteRows = [{name:'',id:'',route:''}];
   window._rqOrderSel = '1,2차';
   rqRenderBody();
 }
 
 function rqSaveRoutePreset(){
-  var valid = _rqRouteRows.filter(function(r){return r.id&&r.route;});
+  var valid = _rqRouteRows.filter(_rqRtValid);
   if(valid.length===0){alert('저장할 내용이 없습니다.');return;}
   var name = prompt('프리셋 이름:','설정 '+(new Date().toLocaleDateString()));
   if(!name) return;
