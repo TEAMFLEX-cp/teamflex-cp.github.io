@@ -1243,7 +1243,51 @@ var SB_URL='https://czpinyfirgvkhdfnvkls.supabase.co';
 var SB_KEY='sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 var sbClient=null;
 // 모든 Supabase 요청에 12초 상한 — 서버가 느리거나 응답이 없어도 무한 대기(앱 멈춤) 방지.
+/* [v891] 개인정보 보호: 관리자가 아니면 기사 정보(driver_ext) 전체를 받지 않고 '본인 사본(drvext_이름)'만 받음.
+   본인 정보 저장도 전체를 덮지 않고 '본인 수정본(drvext_patch_이름)'으로 보냄 → 서버가 합침 */
+function _dxAdm(){try{return !!(window.CU&&CU.role==='admin');}catch(e){return false;}}
+function _dxMe(){try{return (window.CU&&CU.name)?String(CU.name).trim():'';}catch(e){return '';}}
+function _dxGate(input,init,base){
+  try{
+    var url=String((input&&input.url)||input||'');
+    if(url.indexOf('/rest/v1/app_settings')<0)return null;
+    var method=String((init&&init.method)||(input&&input.method)||'GET').toUpperCase();
+    var adm=_dxAdm();
+    if(method==='GET'&&/[?&]key=eq\.driver_ext(&|$)/.test(url)){
+      if(adm)return null;
+      var me=_dxMe();
+      if(!me)return Promise.resolve(new Response('[]',{status:200,headers:{'Content-Type':'application/json'}}));
+      var u2=url.replace(/([?&]key=eq\.)driver_ext(?=&|$)/,'$1'+encodeURIComponent('drvext_'+me));
+      return base(u2,init).then(function(r){return r.text().then(function(t){var j=null;try{j=JSON.parse(t);}catch(e){j=null;}
+        var tf=function(row){if(!row||typeof row!=='object')return row;var v=row.value;try{if(typeof v==='string')v=JSON.parse(v);}catch(e){v=null;}var o={};if(v&&typeof v==='object')o[me]=v;var x=Object.assign({},row);x.value=JSON.stringify(o);return x;};
+        var out=Array.isArray(j)?j.map(tf):(j&&typeof j==='object'?tf(j):j);
+        var hh=new Headers();try{r.headers.forEach(function(v,k){if(!/content-(length|encoding)/i.test(k))hh.set(k,v);});}catch(e){}if(!hh.get('content-type'))hh.set('content-type','application/json');return new Response(JSON.stringify(out),{status:r.status,statusText:r.statusText,headers:hh});});});
+    }
+    if((method==='POST'||method==='PATCH')&&init&&typeof init.body==='string'&&init.body.indexOf('driver_ext')>=0){
+      var b=null;try{b=JSON.parse(init.body);}catch(e){b=null;}
+      var arr=Array.isArray(b)?b:(b?[b]:[]);var hit=arr.filter(function(x){return x&&x.key==='driver_ext';})[0];
+      if(!hit)return null;
+      var m=hit.value;try{if(typeof m==='string')m=JSON.parse(m);}catch(e){m=null;}
+      if(adm){ // 관리자 저장 → 저장 성공 후 기사별 사본도 바로 갱신
+        return base(input,init).then(function(r){try{if(r&&r.ok&&m&&typeof m==='object'){var rows=Object.keys(m).filter(function(n){return m[n]&&typeof m[n]==='object';}).map(function(n){return {key:'drvext_'+n,value:JSON.stringify(m[n])};});
+          if(rows.length){var i2=Object.assign({},init,{method:'POST',body:JSON.stringify(rows)});var u3=url.indexOf('on_conflict')>=0?url:(url+(url.indexOf('?')>=0?'&':'?')+'on_conflict=key');base(u3,i2).catch(function(){});}}}catch(e){}return r;});
+      }
+      var me2=_dxMe();if(!me2&&m&&typeof m==='object'){var ks=Object.keys(m);if(ks.length===1)me2=ks[0];}
+      var rec=(m&&me2)?m[me2]:null;
+      if(!me2||!rec||typeof rec!=='object')return Promise.resolve(new Response(null,{status:204}));
+      var body=JSON.stringify([{key:'drvext_patch_'+me2,value:JSON.stringify(rec)},{key:'drvext_'+me2,value:JSON.stringify(rec)}]);
+      var u4=url.indexOf('on_conflict')>=0?url:(url+(url.indexOf('?')>=0?'&':'?')+'on_conflict=key');
+      return base(u4,Object.assign({},init,{method:'POST',body:body}));
+    }
+  }catch(e){}
+  return null;
+}
 function _sbFetch(input,init){
+  init=init||{};
+  var _g=_dxGate(input,init,function(a,b){return _sbFetch0(a,b);});if(_g)return _g;
+  return _sbFetch0(input,init);
+}
+function _sbFetch0(input,init){
   init=init||{};
   if(init.signal)return fetch(input,init);
   var ctrl;
@@ -1309,7 +1353,10 @@ async function syncFromSupabase(){
   if(!sbClient)return;
   try{
     // 1. 기사 정보 동기화
-    var res=await sbClient.from('drivers').select('*');
+    // [v891] 관리자가 아니면 다른 기사 비번은 받지 않음 (본인 비번만 따로)
+    var _isAdmS=!!(window.CU&&CU.role==='admin');
+    var res=_isAdmS?await sbClient.from('drivers').select('*'):await sbClient.from('drivers').select('driver_id,name,login_id,role,status,phone,synced_at,notif_ok,home_ok,birth_date,car_type,fuel_type');
+    if(!_isAdmS&&res&&res.data&&window.CU&&CU.name){try{var _mine=await _sbDrvRows(CU.name,'password,synced_at');var _bp=_pwPick(_mine);res.data.forEach(function(d){if(d.name===CU.name&&_bp)d.password=_bp.password;});}catch(_pe){}}
     if(res.data&&res.data.length>0){
       _sbSynced=true;   // 실제 기사데이터 로드 성공 → 이후 saveDB 클라우드 반영 허용
       var db=getDB();
@@ -1327,7 +1374,7 @@ async function syncFromSupabase(){
         db[d.name].name=d.name;
         db[d.name].role=d.role||'driver';
         db[d.name].status=d.status||'inactive';
-        db[d.name].password=d.password||'1234';
+        if(_isAdmS||(window.CU&&d.name===CU.name)){if(d.password!==undefined||_isAdmS)db[d.name].password=d.password||'1234';}else{delete db[d.name].password;delete db[d.name].newpw;}
         db[d.name].phone=d.phone||'';
         if(d.car_no)db[d.name].car_no=d.car_no;
         if(d.coupang_id)db[d.name].coupang_id=d.coupang_id;
@@ -2246,7 +2293,7 @@ function ctRpCount(){var n=document.getElementById('ctrp-n');if(n)n.textContent=
 function ctRpClear(){var p=document.getElementById('ctrp-pop');if(!p)return;p.querySelectorAll('input[type=checkbox]').forEach(function(c){c.checked=false;c.parentNode.classList.remove('on');});ctRpCount();}
 function ctRpOk(){var t=_ctPickT||{};var sel=ctRpSel();var inp=document.getElementById(t.inp);if(inp)inp.value=sel.join(',');var bk=document.getElementById(t.bk);if(bk&&sel.length>1)bk.checked=true;var p=document.getElementById('ctrp-pop');if(p)p.remove();if(typeof t.ref==='number')ctBulkRefresh(t.ref);else if(t.ref==='dh')dhFeeRefresh();else if(t.ref==='xls')ctXlsEdFee();}
 function _ctChips(route){var rs=ctRtExpand(route);return rs.length?rs.map(function(r){return '<span class="ctchip">'+r+'</span>';}).join(''):'<span class="ctchip0">눌러서 선택</span>';}
-function ctBulkRefresh(i){var r=document.getElementById('cb-route-'+i);if(!r)return;var bk=document.getElementById('cb-bk-'+i);var c=document.getElementById('cb-rtc-'+i);var f=document.getElementById('cb-fee-'+i);var p=document.getElementById('cb-price-'+i);var isB=!!(bk&&bk.checked);if(c)c.innerHTML=_ctChips(r.value);if(p){p.style.display=isB?'none':'';var a=ctAutoPrice(r.value);p.placeholder=a?('비우면 '+a):'단가';}if(f)f.innerHTML=(isB||!(p&&p.value))?ctFeePreview(r.value,isB):'';}
+function ctBulkRefresh(i){var r=document.getElementById('cb-route-'+i);if(!r)return;var bk=document.getElementById('cb-bk-'+i);var c=document.getElementById('cb-rtc-'+i);var f=document.getElementById('cb-fee-'+i);var p=document.getElementById('cb-price-'+i);var isB=!!(bk&&bk.checked);if(c)c.innerHTML=_ctChips(r.value);if(p){p.style.display=isB?'none':'';var a=ctAutoPrice(r.value);p.placeholder=a?('비우면 '+a):'단가';if(!isB&&a&&(!p.value||p.dataset.auto==='1')){p.value=a;p.dataset.auto='1';}}if(f)f.innerHTML=(isB||!(p&&p.value))?ctFeePreview(r.value,isB):'';}
 function dhFeeRefresh(){var r=document.getElementById('dhct-route');if(!r)return;var bk=document.getElementById('dhct-bk');var f=document.getElementById('dhct-fee');var p=document.getElementById('dhct-price');var isB=!!(bk&&bk.checked);if(p){var a=ctAutoPrice(r.value);p.placeholder=a?('비우면 자동 '+a+'원'):'단가';p.disabled=isB;p.style.opacity=isB?'.45':'';}if(f)f.innerHTML=(isB||!(p&&p.value))?ctFeePreview(r.value,isB):'';}
 window.ctRtExpand=ctRtExpand;window.ctRtCalc=ctRtCalc;window.ctAutoPrice=ctAutoPrice;window.ctRoutePick=ctRoutePick;window.ctRpOk=ctRpOk;window.ctRpClear=ctRpClear;window.ctRpCount=ctRpCount;window.ctBulkRefresh=ctBulkRefresh;window.dhFeeRefresh=dhFeeRefresh;window.ctXlsParse=ctXlsParse;
 // ── [2026-10-03] 계약서 제4조 기타(자동차등록번호·화물운송자격번호) 미기재 → 홈 알림 ──
@@ -2338,13 +2385,13 @@ function openCtBulkInfo(names,type,mode){
     var cstart=/^\d{4}-\d{2}-\d{2}$/.test(ext.cstart||'')?ext.cstart:'';
     return '<tr><td class="cbnm">'+nm+'<span class="cbrl">'+rl+'</span></td>'+
       '<td><input type="hidden" id="cb-route-'+i+'" value="'+esc(route)+'"><div class="ctrtbox" onclick="ctRoutePick(\'cb-route-'+i+'\',\'cb-bk-'+i+'\','+i+')"><span id="cb-rtc-'+i+'">'+_ctChips(route)+'</span><span class="ctrtadd">＋</span></div></td>'+
-      '<td><input id="cb-price-'+i+'" value="'+esc(price)+'" inputmode="numeric" placeholder="단가" oninput="ctBulkRefresh('+i+')"><div id="cb-fee-'+i+'" class="ctfee"></div></td>'+
+      '<td><input id="cb-price-'+i+'" value="'+esc(price)+'" inputmode="numeric" placeholder="단가" oninput="this.dataset.auto=\'\';ctBulkRefresh('+i+')"><div id="cb-fee-'+i+'" class="ctfee"></div></td>'+
       '<td style="text-align:center"><input type="checkbox" id="cb-bk-'+i+'"'+(ext.backup?' checked':'')+' onchange="ctBulkRefresh('+i+')" style="width:18px;height:18px"></td>'+
       '<td><input id="cb-start-'+i+'" type="date" min="2020-01-01" max="2099-12-31" value="'+cstart+'" oninput="ctBulkEnd('+i+')"></td>'+
       '<td><input id="cb-end-'+i+'" type="date" min="2020-01-01" max="2099-12-31" value="'+(/^\d{4}-\d{2}-\d{2}$/.test(ext.cend||'')?ext.cend:'')+'" data-manual="'+(/^\d{4}-\d{2}-\d{2}$/.test(ext.cend||'')?'1':'')+'" oninput="this.setAttribute(&quot;data-manual&quot;,&quot;1&quot;)" style="width:100%;box-sizing:border-box"></td></tr>';
   }).join('');
   var label={wc:'위·수탁 계약서',badge_new:'배넘버 신규',badge_renew:'배넘버 재허가'}[type]||type;
-  var title=(mode==='change'?'📝 '+label+' 변경':(mode==='renew'?'🔄 '+label+' 갱신':'📤 '+label+' 발송'))+' — 계약 정보 입력';
+  var title=(mode==='edit'?'💰 '+label+' 담당구역·단가':(mode==='change'?'📝 '+label+' 변경':(mode==='renew'?'🔄 '+label+' 갱신':'📤 '+label+' 발송')))+' — 계약 정보 입력';
   var old=document.getElementById('ctbulk-pop');if(old)old.remove();
   var pop=document.createElement('div');pop.id='ctbulk-pop';pop.style.cssText='position:fixed;inset:0;z-index:10500;display:flex;flex-direction:column;justify-content:flex-end';
   pop.innerHTML='<div onclick="var p=document.getElementById(\'ctbulk-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div>'+
@@ -2355,7 +2402,7 @@ function openCtBulkInfo(names,type,mode){
     '<div style="overflow:auto;padding:0 12px;flex:1"><table class="ctbulk"><thead><tr><th style="text-align:left">이름</th><th>담당구역 (눌러서 여러 개)</th><th>단가</th><th>백업</th><th>작성일자</th><th>만료일</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
     '<div style="padding:10px 14px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #eef2f6">'+
       '<div style="display:flex;gap:8px;margin-bottom:9px"><button onclick="ctBulkCopyFirst()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📋 첫 행 → 전체</button><button onclick="ctBulkSameStart()" style="flex:1;border:1.4px solid #cfe0d8;background:#f2fbf6;color:#0b6b4a;border-radius:9px;padding:8px;font-size:11px;font-weight:800">📅 시작·종료일 전체 동일</button></div>'+
-      '<button onclick="ctBulkInfoConfirm()" style="width:100%;padding:14px;background:linear-gradient(135deg,#12a374,#0b6b4a);color:#fff;border:none;border-radius:12px;font-weight:900;font-size:15px">'+(mode==='change'?('📝 '+names.length+'명 변경 요청 보내기'):(mode==='renew'?('🔄 '+names.length+'명 갱신 요청 보내기'):('📤 '+names.length+'명에게 발송')))+'</button>'+
+      '<button onclick="ctBulkInfoConfirm()" style="width:100%;padding:14px;background:linear-gradient(135deg,#12a374,#0b6b4a);color:#fff;border:none;border-radius:12px;font-weight:900;font-size:15px">'+(mode==='edit'?'💾 저장':(mode==='change'?('📝 '+names.length+'명 변경 요청 보내기'):(mode==='renew'?('🔄 '+names.length+'명 갱신 요청 보내기'):('📤 '+names.length+'명에게 저장 후 발송'))))+'</button>'+
     '</div></div>';
   document.body.appendChild(pop);
   names.forEach(function(_n,i){ctBulkEnd(i);ctBulkRefresh(i);});
@@ -2363,8 +2410,13 @@ function openCtBulkInfo(names,type,mode){
 function ctBulkEnd(i){var _ce=_ctCfgEnd();if(_ce){var _e=document.getElementById('cb-end-'+i);if(_e&&!(_e.dataset&&_e.dataset.manual==='1')){_e.value=_ce;}return;}var s=document.getElementById('cb-start-'+i);var e=document.getElementById('cb-end-'+i);if(!s||!e)return;if(e.dataset&&e.dataset.manual==='1')return;var v=s.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){e.value='';return;}var d=new Date(v);if(isNaN(d.getTime())){e.value='';return;}d.setFullYear(d.getFullYear()+1);d.setDate(d.getDate()-1);e.value=d.toISOString().slice(0,10);}
 function ctBulkCopyFirst(){var r=document.getElementById('cb-route-0');var p=document.getElementById('cb-price-0');if(!r)return;for(var i=1;i<_ctBulkNames.length;i++){var ri=document.getElementById('cb-route-'+i);var pi=document.getElementById('cb-price-'+i);if(ri)ri.value=r.value;if(pi&&p)pi.value=p.value;ctBulkRefresh(i);}}
 function ctBulkSameStart(){var s=document.getElementById('cb-start-0');var e0=document.getElementById('cb-end-0');for(var i=1;i<_ctBulkNames.length;i++){var si=document.getElementById('cb-start-'+i);var ei=document.getElementById('cb-end-'+i);if(si&&s&&s.value)si.value=s.value;if(ei){if(e0&&e0.value){ei.value=e0.value;ei.setAttribute('data-manual','1');}else{ei.removeAttribute('data-manual');ctBulkEnd(i);}}else{ctBulkEnd(i);}}}
+/* [v891] 미작성자 한 명 '공유'/'구역·단가': 계약 정보 입력 창을 먼저 띄움(담당구역 넣으면 단가 자동) */
+async function ctRowInfo(name,mode){try{if(typeof _driverExt==='undefined'||_driverExt===null){await _loadDriverExt();}}catch(e){}try{if(typeof ctCfgLoad==='function')await ctCfgLoad();}catch(e){}openCtBulkInfo([name],'wc',mode);}
+window.ctRowInfo=ctRowInfo;
 async function ctBulkInfoConfirm(){
   var names=_ctBulkNames.slice();var type=_ctBulkType;var mode=_ctBulkMode;if(!names.length)return;
+  if(type==='wc'){var _noR=names.filter(function(nm,i){return !((((document.getElementById('cb-route-'+i)||{}).value)||'').trim());});
+    if(_noR.length){alert('담당구역을 먼저 넣어 주세요.\n(단가는 담당구역을 넣으면 자동으로 들어가요)\n\n'+_noR.join(', '));return;}}   // [v891]
   if(!_driverExt)_driverExt={};var db=getDB();var dbDirty=false;
   names.forEach(function(nm,i){
     var route=(((document.getElementById('cb-route-'+i)||{}).value)||'').trim();
@@ -2384,6 +2436,7 @@ async function ctBulkInfoConfirm(){
     await sbClient.from('app_settings').upsert({key:'driver_ext',value:JSON.stringify(m)},{onConflict:'key'});
   }catch(e){console.warn('일괄 계약정보 저장 실패',e);}}
   var p=document.getElementById('ctbulk-pop');if(p)p.remove();
+  if(mode==='edit'){try{showToast('💾 '+names.join(', ')+' 계약 정보 저장',true);}catch(_){}try{openContractAdmin(true);}catch(_){}return;}   // [v891] 저장만
   if(mode==='renew'||mode==='change'){await ctRenew(names,type,mode);}else{await ctShareNow(names,type);}
 }
 window.openCtBulkInfo=openCtBulkInfo;window.ctBulkEnd=ctBulkEnd;window.ctBulkCopyFirst=ctBulkCopyFirst;window.ctBulkSameStart=ctBulkSameStart;window.ctBulkInfoConfirm=ctBulkInfoConfirm;
@@ -2756,8 +2809,8 @@ function ctRow(d,done){
     (done
       ? ((ctApprovedOf(esc,'wc')?'<span style="font-size:11px;font-weight:800;color:#1b8a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:6px 11px;border-radius:14px">✅ 승인완료</span><button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button>':'<button onclick="CT_preview(\''+esc+'\',\'wc\',\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #90caf9;background:#e3f2fd;color:#1565c0;font-weight:700">📄 보기</button><button onclick="ctApprove(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">✅ 승인</button><button onclick="ctReject(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #ef9a9a;background:#fff;color:#c62828;font-weight:700">↩ 반려</button>')+'<button onclick="ctDeleteDoc(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 9px;border-radius:14px;border:1px solid #e0a0a0;background:#fff5f5;color:#b33;font-weight:700">🗑 삭제</button>')
       : ((shared
-          ? '<button onclick="CT_startWrite(\'wc\',\''+esc+'\',null,\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #cbb6ef;background:#f3ecff;color:#5a2fb0;font-weight:700">✍️ 대신작성</button>'
-          : '<button onclick="ctShareNow(\''+esc+'\',\'wc\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#5a2fb0;color:#fff;font-weight:800">📤 공유</button>')+
+          ? '<button onclick="ctRowInfo(\''+esc+'\',\'edit\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #9ad3b6;background:#ecfaf2;color:#0b6b4a;font-weight:800">💰 구역·단가</button><button onclick="CT_startWrite(\'wc\',\''+esc+'\',null,\'admin\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:1px solid #cbb6ef;background:#f3ecff;color:#5a2fb0;font-weight:700">✍️ 대신작성</button>'
+          : '<button onclick="ctRowInfo(\''+esc+'\',\'share\')" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#5a2fb0;color:#fff;font-weight:800">📤 공유</button>')+
         '<button onclick="ctSet(this.getAttribute(\'data-n\'),true)" data-n="'+d.name+'" style="font-size:11px;padding:6px 11px;border-radius:14px;border:none;background:#1b8a3f;color:#fff;font-weight:800">작성완료</button>'))+
     '</div>';
 }
