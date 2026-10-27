@@ -12850,7 +12850,7 @@ function mdCardHtml(c,isAdmin,isLeader){
   var badgeCls={pending:'mb-red',rejected:'mb-blue',replied:'mb-orange',approved:'mb-green'}[c.status]||'mb-red';
   var badgeTxt={pending:'미답변',rejected:'재요청',replied:'승인요청',approved:'처리완료'}[c.status]||'미답변';
   var cat=c.category||(c.issue_content&&c.issue_content.indexOf('미반납')>=0?'미반납':c.issue_content&&c.issue_content.indexOf('오회수')>=0?'오회수':'오배송');
-  var catSty={'오배송':'background:#ffebee;color:#c62828','미반납':'background:#e0f7fa;color:#00838f','오회수':'background:#ede7f6;color:#4527a0','수기회수':'background:#ede9fe;color:#6d28d9','기타':'background:#eceff1;color:#546e7a'}[cat]||'background:#ffebee;color:#c62828';
+  var catSty={'오배송':'background:#ffebee;color:#c62828','미반납':'background:#e0f7fa;color:#00838f','오회수':'background:#ede7f6;color:#4527a0','수기회수':'background:#ede9fe;color:#6d28d9','기타':'background:#eceff1;color:#546e7a'}[cat]||(typeof _mdCatColor==='function'?('background:'+_mdCatColor(cat)+'1a;color:'+_mdCatColor(cat)):'background:#ffebee;color:#c62828');
   var drvName=mdEsc(c.driver_name||c.driver_id||'미지정');
   var _ts=c.created_at||c.occurred_at, dtStr='';
   if(_ts){var _d=new Date(_ts);if(!isNaN(_d.getTime())){var _k=new Date(_d.getTime()+(_d.getTimezoneOffset()*60000)+9*3600000);dtStr=(_k.getMonth()+1)+'.'+_k.getDate()+' · '+_k.getHours()+':'+('0'+_k.getMinutes()).slice(-2);}}
@@ -13961,6 +13961,14 @@ async function deleteMonitorChat(idx){
 var _mdCatKw={'오배송':['배송 주소 상이','회수 필요'],'미반납':['미반납'],'오회수':['오회수'],'수기회수':['수기회수','수기 회수'],'기타':[]};
 var _frKw=['2회전 예상','2차 예상'];
 var _kwColor={'오배송':'#c62828','미반납':'#00838f','오회수':'#4527a0','수기회수':'#7c3aed','기타':'#546e7a'};
+/* [v894] 인입 구분(카테고리) 직접 추가 — 색은 기존 구분과 겹치지 않게 자동 배정 (설정: misdelivery_category_keywords.__colors) */
+var _MD_BASE_CATS=['오배송','미반납','오회수','수기회수','기타'];
+var _MD_PAL=['#b45309','#be185d','#1d4ed8','#4d7c0f','#0f766e','#a16207','#9d174d','#0369a1','#7c2d12','#3f6212'];
+function _mdCustomCats(){var o=[];try{Object.keys(_mdCatKw||{}).forEach(function(k){if(k.indexOf('__')===0)return;if(_MD_BASE_CATS.indexOf(k)>=0)return;if(Array.isArray(_mdCatKw[k]))o.push(k);});}catch(e){}return o;}
+window._mdCustomCats=_mdCustomCats;
+function _mdCatColor(k){if(_kwColor[k])return _kwColor[k];try{var c=_mdCatKw&&_mdCatKw.__colors&&_mdCatKw.__colors[k];if(c)return c;}catch(e){}var h=0;String(k||'').split('').forEach(function(ch){h=(h*31+ch.charCodeAt(0))>>>0;});return _MD_PAL[h%_MD_PAL.length];}
+window._mdCatColor=_mdCatColor;
+setTimeout(function(){try{_loadMdKw();}catch(e){}},2500);
 
 async function _loadMdKw(){
   if(!sbClient)return;
@@ -13983,13 +13991,14 @@ async function _saveFrKw(){
 function _renderMdKwCats(){
   var el=document.getElementById('md-kw-cats');if(!el)return;
   var html='';
-  var cats=['오배송','미반납','오회수','수기회수','기타'];
+  var _cu=_mdCustomCats();
+  var cats=['오배송','미반납','오회수','수기회수'].concat(_cu).concat(['기타']);
   cats.forEach(function(cat){
-    var color=_kwColor[cat]||'#546e7a';
+    var color=_mdCatColor(cat);var _isCu=_cu.indexOf(cat)>=0;var _ce=String(cat).replace(/'/g,'');
     if(!_mdCatKw[cat])_mdCatKw[cat]=[];
     var kws=_mdCatKw[cat];
     html+='<div style="margin-bottom:12px;padding:12px;background:#fafafa;border-radius:10px;border:1.5px solid #eee">'+
-      '<div style="font-size:12px;font-weight:800;color:'+color+';margin-bottom:8px">'+cat+
+      '<div style="font-size:12px;font-weight:800;color:'+color+';margin-bottom:8px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">'+cat+(_isCu?'<span style="font-size:10px;font-weight:700;color:#fff;background:'+color+';border-radius:6px;padding:1px 6px">추가 구분</span><button onclick="deleteMdCat(\''+_ce+'\')" style="margin-left:auto;background:#fff;border:1px solid #e0e0e0;color:#9e9e9e;border-radius:6px;font-size:10.5px;padding:2px 7px;cursor:pointer">구분 삭제</button>':'')+
       (cat==='기타'?'<span style="font-size:10px;font-weight:400;color:#9e9e9e;margin-left:6px">(@df ID 포함 시 자동분류)</span>':cat==='수기회수'?'<span style="font-size:10px;font-weight:400;color:#9e9e9e;margin-left:6px">(기사 ID 없음 → 글 속 라우트 605 / D04 → 605D 당일 근무자에게 전달)</span>':'')+'</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">'+
       kws.map(function(kw,i){
@@ -13999,6 +14008,11 @@ function _renderMdKwCats(){
       '<div style="display:flex;gap:5px"><input id="kwinp-'+cat+'" type="text" placeholder="키워드 추가" style="flex:1;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px" onkeydown="if(event.key===\'Enter\')addMdKw(\''+cat+'\')">'+
       '<button onclick="addMdKw(\''+cat+'\')" style="padding:5px 10px;background:'+color+';color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap">추가</button></div></div>';
   });
+  html+='<div style="margin-bottom:6px;padding:12px;background:#fff;border-radius:10px;border:1.5px dashed #b0bec5">'+
+    '<div style="font-size:12px;font-weight:800;color:#37474f;margin-bottom:4px">＋ 새 구분 추가</div>'+
+    '<div style="font-size:10.5px;color:#90a4ae;margin-bottom:8px;line-height:1.5">예) 내용물 있는 프백 회수 — 만든 뒤 아래에 키워드를 넣으면, 그 키워드가 들어간 글은 이 구분으로 들어와요. 색은 다른 구분과 겹치지 않게 자동으로 정해져요.</div>'+
+    '<div style="display:flex;gap:5px"><input id="kwinp-newcat" type="text" maxlength="20" placeholder="구분 이름" style="flex:1;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px" onkeydown="if(event.key===\'Enter\')addMdCat()">'+
+    '<button onclick="addMdCat()" style="padding:5px 10px;background:#37474f;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap">구분 만들기</button></div></div>';
   el.innerHTML=html;
 }
 async function openMdKwPopup(){
@@ -14016,6 +14030,24 @@ async function addMdKw(cat){
   _mdCatKw[cat].push(kw);inp.value='';
   await _saveMdKw();_renderMdKwCats();showToast('✅ 키워드 추가: '+kw,true);
 }
+async function addMdCat(){
+  var inp=document.getElementById('kwinp-newcat');if(!inp)return;
+  var nm=String(inp.value||'').replace(/['"<>\\]/g,'').replace(/\s+/g,' ').trim();
+  if(!nm){showToast('구분 이름을 입력하세요',false);return;}
+  if(nm.indexOf('__')===0||_MD_BASE_CATS.indexOf(nm)>=0||(_mdCatKw[nm]&&Array.isArray(_mdCatKw[nm]))){showToast('이미 있는 구분이에요',false);return;}
+  await _loadMdKw();
+  if(!_mdCatKw.__colors||typeof _mdCatKw.__colors!=='object')_mdCatKw.__colors={};
+  var used={};Object.keys(_kwColor).forEach(function(k){used[_kwColor[k].toLowerCase()]=1;});Object.keys(_mdCatKw.__colors).forEach(function(k){used[String(_mdCatKw.__colors[k]).toLowerCase()]=1;});
+  var col=_MD_PAL.filter(function(c){return !used[c.toLowerCase()];})[0]||_MD_PAL[_mdCustomCats().length%_MD_PAL.length];
+  _mdCatKw[nm]=[nm];_mdCatKw.__colors[nm]=col;inp.value='';
+  await _saveMdKw();_renderMdKwCats();showToast('✅ 새 구분: '+nm+' (키워드 "'+nm+'" 자동 추가)',true);
+}
+async function deleteMdCat(nm){
+  if(!confirm('"'+nm+'" 구분을 삭제할까요?\n(이미 들어온 인입 건은 그대로 남아요)'))return;
+  await _loadMdKw();delete _mdCatKw[nm];if(_mdCatKw.__colors)delete _mdCatKw.__colors[nm];
+  await _saveMdKw();_renderMdKwCats();showToast('🗑 구분 삭제: '+nm,true);
+}
+window.addMdCat=addMdCat;window.deleteMdCat=deleteMdCat;
 async function deleteMdKw(cat,idx){
   var kw=_mdCatKw[cat][idx];_mdCatKw[cat].splice(idx,1);
   await _saveMdKw();_renderMdKwCats();showToast('🗑 키워드 삭제: '+kw,true);
@@ -21293,8 +21325,11 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
 /* [v880] 인입 유형별 Teams 답글 모드 (자동/승인) — app_settings.md_reply_mode_cats {유형:'auto'|'approval'}
    전체 토글(misdelivery_settings.reply_mode)은 '전체 일괄' — 누르면 모든 유형이 같이 바뀜. 유형값이 없으면 전체값을 따름. */
 (function(){
-  var CATS=['오배송','미반납','오회수','수기회수','기타'];
-  var KC={'오배송':'#c62828','미반납':'#00838f','오회수':'#4527a0','수기회수':'#7c3aed','기타':'#546e7a'};
+  var CATS0=['오배송','미반납','오회수','수기회수','기타'];
+  var CATS={forEach:function(f){CF().forEach(f);},map:function(f){return CF().map(f);},indexOf:function(k){return CF().indexOf(k);}};
+  function CF(){var cu=[];try{cu=(window._mdCustomCats&&_mdCustomCats())||[];}catch(e){}return CATS0.slice(0,4).concat(cu).concat(['기타']);}   // [v894] 추가 구분 포함
+  var KC0={'오배송':'#c62828','미반납':'#00838f','오회수':'#4527a0','수기회수':'#7c3aed','기타':'#546e7a'};
+  var KC=new Proxy(KC0,{get:function(o,k){return o[k]||((window._mdCatColor&&_mdCatColor(k))||'#546e7a');}});
   window._mdCatMode=window._mdCatMode||null; var _loadedAt=0;
   function pj(v){try{return typeof v==='string'?JSON.parse(v):v;}catch(e){return null;}}
   window.mdLoadCatMode=async function(force){
@@ -21315,8 +21350,8 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     g._cm=1; window.mdSetMode=g; try{mdSetMode=g;}catch(e){} })();
   function barHtml(){
     return '<div style="display:flex;align-items:center;margin-bottom:7px"><span style="font-size:12px;font-weight:800;color:#37474f">🗂 유형별 답글 모드</span><span style="margin-left:auto;font-size:10.5px;color:#9e9e9e">눌러서 자동↔승인</span></div>'+
-      '<div style="display:flex;gap:5px">'+CATS.map(function(k){var a=eff(k)==='auto',c=KC[k];
-        return '<div onclick="mdCatToggle(\''+k+'\')" style="flex:1;min-width:0;border-radius:10px;padding:6px 2px;text-align:center;cursor:pointer;border:1.5px solid '+(a?'#86efac':'#fdba74')+';background:'+(a?'#f0fdf4':'#fff7ed')+'">'+
+      '<div style="display:flex;gap:5px;flex-wrap:wrap">'+CATS.map(function(k){var a=eff(k)==='auto',c=KC[k];
+        return '<div onclick="mdCatToggle(\''+k+'\')" style="flex:1 1 58px;min-width:0;border-radius:10px;padding:6px 2px;text-align:center;cursor:pointer;border:1.5px solid '+(a?'#86efac':'#fdba74')+';background:'+(a?'#f0fdf4':'#fff7ed')+'">'+
           '<div style="font-size:11px;font-weight:800;color:'+c+';white-space:nowrap">'+k+'</div><div style="font-size:10.5px;font-weight:800;margin-top:2px;color:'+(a?'#15803d':'#c2410c')+'">'+(a?'🟢 자동':'🔴 승인')+'</div></div>';}).join('')+'</div>'+
       '<div style="font-size:10.5px;color:#888;margin-top:7px;line-height:1.5">🟢 자동: 기사 답변이 바로 팀즈에 올라가요 · 🔴 승인: 관리자/팀장 승인 후 올라가요</div>';
   }
@@ -21332,6 +21367,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       if(bar){
         var box=document.getElementById('md-mode-cats');
         if(!box){ box=document.createElement('div'); box.id='md-mode-cats'; box.style.cssText='background:#fff;border-radius:14px;padding:10px 10px 11px;margin:-4px 0 12px;box-shadow:0 1px 4px rgba(0,0,0,.08)'; bar.parentNode.insertBefore(box,bar.nextSibling); force=true; }
+        var _sig=CF().join('|'); if(box.dataset.sig!==_sig){ box.dataset.sig=_sig; force=true; }
         if(force) box.innerHTML=barHtml();
         var lb=bar.querySelector('.md-mode-label'); if(lb&&lb.textContent.indexOf('일괄')<0) lb.innerHTML='⚙️ Teams 답글 모드 <span style="font-size:10.5px;color:#9e9e9e;font-weight:600">(전체 일괄)</span>';
       }
