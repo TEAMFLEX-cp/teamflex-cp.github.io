@@ -1316,6 +1316,10 @@ async function syncFromSupabase(){
       // 로컬에 남아있는 쓰레기(숫자이름/라우트ID) 자동 정리
       Object.keys(db).forEach(function(_k){ if(/^[0-9]+$/.test(_k)||isJunkDriver(db[_k])) delete db[_k]; });
       var pendingFromSB=[];
+      // [v890] 같은 이름 줄 여러 개 → 바뀐 비번(1234 아님) 우선 · 승인 상태 우선으로 한 줄만 반영
+      (function(){var g={};res.data.forEach(function(d){(g[d.name]=g[d.name]||[]).push(d);});
+        Object.keys(g).forEach(function(n){if(g[n].length<2)return;var b=_pwPick(g[n]);
+          g[n].forEach(function(x){x.password=b.password;});});})();
       res.data.forEach(function(d){
         if(isJunkDriver(d)) return;            // 라우트/순번 쓰레기 행은 무시
         if(!db[d.name])db[d.name]={};
@@ -1345,6 +1349,7 @@ async function syncFromSupabase(){
       var _cfgAid=(typeof getCfg==='function'&&getCfg().adminId)||ROOT_ADMIN.id;
       Object.keys(db).forEach(function(k){ if(!_remote[k]&&k!==ROOT_ADMIN.id&&k!==_cfgAid){ delete db[k]; } });
       localStorage.setItem('tfdb6',JSON.stringify(db));
+      try{_seedDrvPushSnap(db);}catch(_se){}   // [v890] 방금 받은 값은 '이미 저장됨' → 첫 저장 때 전체를 다시 올리지 않음
       // reqs(승인대기 목록)를 Supabase pending 기준으로 재구성 (삭제·승인·거절 반영)
       var _pend={};res.data.forEach(function(d){if(d.status==='pending'&&!isJunkDriver(d))_pend[String(d.name)]=true;});
       var reqs=getReqs().filter(function(r){return _pend[r.name];});
@@ -1585,6 +1590,16 @@ async function syncFromSupabase(){
 }
 
 // ── Supabase에 기사 상태 저장 (웹앱 → Supabase → PC) ────────────────
+/* [v890] 기사 비번 보호 — 같은 이름 줄이 여러 개여도(정산 프로그램 push 등) 바뀐 비번(1234 아닌 것) 우선, 저장은 이름 기준으로 모든 줄에 */
+function _pwPick(rows){rows=(rows||[]).filter(function(x){return x;});if(!rows.length)return null;
+  rows=rows.slice().sort(function(a,b){return String(b.synced_at||'')<String(a.synced_at||'')?-1:1;});
+  var c=rows.filter(function(x){return x.password&&x.password!=='1234';});return (c[0]||rows[0]);}
+async function _sbDrvRows(name,cols){try{var r=await sbClient.from('drivers').select(cols||'status,password,role,phone,synced_at').eq('name',name);return (r&&r.data)||[];}catch(e){return [];}}
+async function _sbDrvBest(name){var rows=await _sbDrvRows(name);var b=_pwPick(rows);if(!b)return null;
+  var o={};['status','role','phone'].forEach(function(k){o[k]=b[k];});o.password=b.password;
+  if(rows.some(function(x){return x.status==='approved';}))o.status='approved';return o;}
+async function _sbSetPw(name,pw){var r=await sbClient.from('drivers').update({password:pw,synced_at:new Date().toISOString()}).eq('name',name).select('driver_id');
+  if(r&&r.error)throw new Error(r.error.message||'저장 실패');if(!r||!r.data||!r.data.length)throw new Error('서버에서 기사를 찾지 못했어요');return r.data.length;}
 function sbSaveDriver(d){
   if(!sbClient||!d||!d.name)return;
   if(isJunkDriver(d))return;   // 라우트/순번 쓰레기 행은 클라우드로 올리지 않음
@@ -1804,7 +1819,13 @@ function saveDB(db){
   // Supabase에는 '실제로 바뀐 기사'만 저장 (매번 전체 업로드 방지 → 성능·네트워크 대폭 절감)
   if(sbClient && _sbSynced){
     Object.values(db).forEach(function(d){
-      try{ var js=JSON.stringify(d); if(_drvPushSnap[d.name]!==js){ _drvPushSnap[d.name]=js; sbSaveDriver(d); } }catch(e){ sbSaveDriver(d); }
+      try{ var js=JSON.stringify(d); var prev=_drvPushSnap[d.name]; if(prev!==js){ _drvPushSnap[d.name]=js;
+        if(prev){ // [v890] 이미 서버에 있는 기사: 바뀐 칸만 이름 기준으로 저장(다른 기기의 옛 비번이 덮어쓰지 못하게)
+          var po={};try{po=JSON.parse(prev)||{};}catch(_e){po={};}
+          var patch={};['role','status','phone','password'].forEach(function(k){if((d[k]||'')!==(po[k]||'')&&d[k]!==undefined)patch[k]=d[k];});
+          if(Object.keys(patch).length&&!isJunkDriver(d)){patch.synced_at=new Date().toISOString();sbClient.from('drivers').update(patch).eq('name',d.name).then(function(){}).catch(function(e){console.warn('drv patch',e);});}
+        } else sbSaveDriver(d);
+      } }catch(e){ sbSaveDriver(d); }
     });
   }
 }
@@ -5127,7 +5148,7 @@ function doLogin(){
     (async function(){
       try{
         if(sbClient){
-          var sr=await sbClient.from('drivers').select('status,password,role,phone').eq('name',name).single();
+          var sr={data:await _sbDrvBest(name)};   // [v890] 같은 이름 줄 여러 개여도 확인 가능
           if(sr.data&&sr.data.status==='approved'){
             var _db=getDB();
             if(_db[name]){_db[name].status='approved';if(sr.data.password)_db[name].password=sr.data.password;if(sr.data.role)_db[name].role=sr.data.role;if(sr.data.phone)_db[name].phone=sr.data.phone;saveDB(_db);}
@@ -5181,7 +5202,8 @@ function doLogin(){
     document.getElementById('btnLogin').disabled=true;
     (async function(){
       try{
-        var sr=await sbClient.from('drivers').select('password,role,phone').eq('name',name).single();
+        var _rows=await _sbDrvRows(name);var _hit=_rows.filter(function(x){return x.password&&x.password===pw;})[0];
+        var sr={data:_hit||null};   // [v890] 여러 줄 중 하나라도 맞으면 로그인
         if(sr.data&&sr.data.password&&sr.data.password===pw){
           // Supabase 비밀번호 일치 → 로컬 갱신 후 로그인
           var _db=getDB();
@@ -9475,7 +9497,7 @@ async function okDriver(name){
   var newpw='1234';
   if(sbClient){
     try{
-      var pr=await sbClient.from('drivers').select('password').eq('name',name).single();
+      var pr={data:await _sbDrvBest(name)};   // [v890]
       if(pr.data&&pr.data.password)newpw=pr.data.password;
     }catch(e){console.warn('okDriver pw fetch err',e);}
   }
@@ -9742,7 +9764,33 @@ function dhUnkick(name){
   if(sbClient)sbClient.from('drivers').update({status:'approved',synced_at:new Date().toISOString()}).eq('name',name).then(function(){_syncDrvLoginIdFromExt(name);}).catch(function(){});
   var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();
 }
-function dhResetPw(name){if(typeof resetDriverPw==='function'){resetDriverPw(name);setTimeout(function(){var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();},60);}else{alert('PW 초기화 기능 없음');}}
+/* [v890] PW 버튼: 현재 비번 보여주고 → 초기화할지 물어봄 (관리자 전용) */
+async function dhResetPw(name){
+  if(!(CU&&CU.role==='admin')){alert('관리자만 볼 수 있습니다.');return;}
+  var old=document.getElementById('dh-pw-pop');if(old)old.remove();
+  var pop=document.createElement('div');pop.id='dh-pw-pop';
+  pop.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:18px';
+  pop.innerHTML='<div style="background:#fff;border-radius:16px;max-width:330px;width:100%;padding:18px 16px 14px;box-shadow:0 12px 40px rgba(0,0,0,.25)">'+
+    '<div style="font-size:15px;font-weight:900;color:#1a237e;margin-bottom:10px">🔑 '+_rrEsc(name)+' 비밀번호</div>'+
+    '<div id="dh-pw-val" style="background:#f3f6ff;border:1.5px solid #c5cae9;border-radius:10px;padding:12px;text-align:center;font-size:20px;font-weight:900;letter-spacing:1px;color:#283593">불러오는 중…</div>'+
+    '<div id="dh-pw-sub" style="font-size:11px;color:#8090a0;text-align:center;margin:6px 0 12px"></div>'+
+    '<div style="display:flex;gap:8px"><button id="dh-pw-close" style="flex:1;padding:11px;border:none;border-radius:10px;background:#eceff1;font-weight:800;color:#455a64">닫기</button>'+
+    '<button id="dh-pw-reset" style="flex:1.4;padding:11px;border:none;border-radius:10px;background:#c62828;color:#fff;font-weight:800">1234로 초기화</button></div></div>';
+  document.body.appendChild(pop);
+  var close=function(){pop.remove();};
+  pop.addEventListener('click',function(e){if(e.target===pop)close();});
+  document.getElementById('dh-pw-close').onclick=close;
+  var pw='';
+  try{var b=await _sbDrvBest(name);pw=(b&&b.password)||'';}catch(e){}
+  if(!pw){var db=getDB();pw=(db[name]&&db[name].password)||'';}
+  var v=document.getElementById('dh-pw-val'),sb=document.getElementById('dh-pw-sub');
+  if(v)v.textContent=pw||'(없음)';
+  if(sb)sb.textContent=(pw==='1234')?'기본 비밀번호(1234) 상태예요':'기사가 바꾼 비밀번호예요';
+  document.getElementById('dh-pw-reset').onclick=async function(){
+    if(!confirm(name+' 기사의 비밀번호를 1234로 초기화할까요?'))return;
+    var ok=await resetDriverPw(name,true);if(ok){close();var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh')mc.innerHTML=pgDriverHub();}
+  };
+}
 /* ── 상세 모달 ── */
 function _dhMaskField(key,val,e){
   val=String(val==null?'':val);if(!val)return val;
@@ -10435,7 +10483,7 @@ async function approveDriverPerm(name){
   var existingRole=db[name]&&db[name].role?db[name].role:'driver';
   if(sbClient){
     try{
-      var pr=await sbClient.from('drivers').select('password,role').eq('name',name).single();
+      var pr={data:await _sbDrvBest(name)};   // [v890]
       if(pr.data&&pr.data.password)newpw=pr.data.password;
       if(pr.data&&pr.data.role)existingRole=pr.data.role; // Supabase role 보존
     }catch(e){}
@@ -10832,17 +10880,31 @@ function submitPwChange(){
     cfg.adminPw=n1;saveCfg(cfg);
     closePwModal();alert('비밀번호가 변경되었습니다.');return;
   }
-  var db=getDB();var drv=db[CU.name];
-  if(!drv||drv.password!==cur){document.getElementById('pw-err').textContent='현재 비밀번호가 틀립니다.';return;}
   if(n1.length<4){document.getElementById('pw-err').textContent='비밀번호는 4자리 이상이어야 합니다.';return;}
   if(n1!==n2){document.getElementById('pw-err').textContent='비밀번호가 일치하지 않습니다.';return;}
-  drv.password=n1;saveDB(db);closePwModal();alert('비밀번호가 변경되었습니다.');
+  // [v890] 서버에 먼저 저장하고(이름 기준 · 모든 줄), 성공했을 때만 '변경 완료'
+  (async function(){
+    var errEl=document.getElementById('pw-err');
+    if(!sbClient){errEl.textContent='서버에 연결되지 않았어요. 잠시 후 다시 해주세요.';return;}
+    errEl.textContent='⏳ 저장 중...';
+    try{
+      var rows=await _sbDrvRows(CU.name);
+      var db=getDB();var drv=db[CU.name];
+      var okCur=(drv&&drv.password===cur)||rows.some(function(x){return x.password===cur;});
+      if(!okCur){errEl.textContent='현재 비밀번호가 틀립니다.';return;}
+      await _sbSetPw(CU.name,n1);
+      db=getDB();if(db[CU.name]){db[CU.name].password=n1;localStorage.setItem('tfdb6',JSON.stringify(db));try{_drvPushSnap[CU.name]=JSON.stringify(db[CU.name]);}catch(_e){}}
+      try{var al=JSON.parse(localStorage.getItem('tf_autologin')||'null');if(al&&al.name===CU.name){saveAutoLogin(CU.name,n1);}}catch(_e){}
+      errEl.textContent='';closePwModal();alert('비밀번호가 변경되었습니다.');
+    }catch(e){errEl.textContent='❌ 저장 실패: '+((e&&e.message)||e)+' — 다시 시도해 주세요.';}
+  })();
 }
-function resetDriverPw(name){
-  if(!confirm(name+' 기사의 비밀번호를 1234로 초기화하시겠습니까?'))return;
+async function resetDriverPw(name,noConfirm){
+  if(!noConfirm&&!confirm(name+' 기사의 비밀번호를 1234로 초기화하시겠습니까?'))return false;
+  try{ if(sbClient) await _sbSetPw(name,'1234'); }catch(e){ alert('❌ 초기화 실패: '+((e&&e.message)||e)); return false; }
   var db=getDB();
-  if(db[name]){db[name].password='1234';saveDB(db);}
-  alert(name+' 기사 비밀번호가 1234로 초기화되었습니다.');
+  if(db[name]){db[name].password='1234';localStorage.setItem('tfdb6',JSON.stringify(db));try{_drvPushSnap[name]=JSON.stringify(db[name]);}catch(_e){}}
+  alert(name+' 기사 비밀번호가 1234로 초기화되었습니다.');return true;
 }
 
 // (중복 함수 제거됨 — 위 섹션의 canDeleteAnn/canEditAnn/deleteAnn/openAnnEdit/closeAnnEdit/submitAnnEdit/setRole 사용)
@@ -11432,7 +11494,8 @@ window.pushSubBadge=pushSubBadge;
 function _statusBadges(name){
   var h='';
   try{var _pb=(typeof pushSubBadge==='function')?pushSubBadge(name):'';if(_pb)h+=_pb+' ';}catch(e){}
-  try{if(typeof ctDone==='function'&&ctDone(name)){var ap=(typeof ctApprovedOf==='function'&&ctApprovedOf(name,'wc'));h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:'+(ap?'#e7f6ec':'#e3f2fd')+';color:'+(ap?'#1b7a3f':'#1565c0')+';border:1px solid '+(ap?'#a8e0bd':'#bcdcff')+'">📄 '+(ap?'계약완료':'계약작성')+'</span> ';}}catch(e){}
+  try{if(typeof _ctApproved!=='undefined'&&_ctApproved===null&&!window._ctApLoading&&typeof loadCtApproved==='function'){window._ctApLoading=1;loadCtApproved().then(function(){window._ctApLoading=0;try{var mc=document.getElementById('mc');if(mc&&CUR_TAB==='dh'&&typeof pgDriverHub==='function')mc.innerHTML=pgDriverHub();else if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(_e){}}).catch(function(){window._ctApLoading=0;});}}catch(_e){}   // [v890] 최종승인 기록을 아직 안 불러왔으면 불러와서 다시 그림
+  try{if(typeof ctDone==='function'&&ctDone(name)&&!(typeof _ctApproved!=='undefined'&&_ctApproved===null)){var ap=(typeof ctApprovedOf==='function'&&ctApprovedOf(name,'wc'));h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:'+(ap?'#e7f6ec':'#e3f2fd')+';color:'+(ap?'#1b7a3f':'#1565c0')+';border:1px solid '+(ap?'#a8e0bd':'#bcdcff')+'">📄 '+(ap?'계약완료':'승인대기')+'</span> ';}}catch(e){}
   try{if(_badgeLoaded&&typeof hcNorm==='function'&&_hcDoneSet[hcNorm(name)]){h+='<span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:9px;background:#eaf6de;color:#3b6d11;border:1px solid #c7e39a">💪 건강체크</span> ';}}catch(e){}
   try{if(inspComplete(name)){h+='<span class="tfgold" style="font-size:9px;font-weight:900;padding:2px 8px;border-radius:9px;background:#e7f6ec;color:#1b7a3f">🔧 점검-완료</span> ';}else if(inspWarn(name)){h+='<span style="font-size:9px;font-weight:900;padding:2px 7px;border-radius:9px;background:#c62828;color:#fff;display:inline-flex;align-items:center;gap:3px">⚠ <span style="color:#ffe600;animation:tfblink .8s steps(1,end) infinite">점검-경고</span></span> ';}}catch(e){}
   return h;
@@ -17314,7 +17377,7 @@ function _rqDrvList(){var out=[];try{var db=getDB();Object.keys(db||{}).forEach(
   out.sort(function(a,b){return a.name<b.name?-1:1;});return out;}
 function _rqDrvIdOf(name){var k=_rqNameKey(name);if(!k)return '';var hit='';_rqDrvList().forEach(function(d){if(!hit&&d.id&&(d.name===String(name).trim()||_rqNameKey(d.name)===k))hit=d.id;});return hit;}
 function _rqDrvNameOf(id){var v=_rqIdOk(id).toLowerCase();if(!v)return '';var hit='';_rqDrvList().forEach(function(d){if(!hit&&d.id&&d.id.toLowerCase()===v)hit=d.name;});return hit;}
-function _rqRtValid(r){if(!r||!r.id||!r.route)return false;if(_rqIs6(rqGetCamp())&&!(r.name||_rqDrvNameOf(r.id)))return false;return true;}
+function _rqRtValid(r){if(!r||!r.route)return false;if(_rqIs6(rqGetCamp()))return !!(r.name||_rqDrvNameOf(r.id));return !!r.id;}
 function _rqDrvDatalist(){var o=_rqDrvList().map(function(d){return '<option value="'+rqEsc(d.name)+'">'+rqEsc(d.id||'')+'</option>';}).join('');return '<datalist id="rq-drv-dl">'+o+'</datalist>';}
 function _rqRtRowHtml(i,r){r=r||{};
   return '<div class="rq-route-row" id="rq-rt-row-'+i+'" style="flex-wrap:wrap">'+
@@ -17362,8 +17425,8 @@ function rqRoutePreviewText(){
   var order = window._rqOrderSel||'1,2차';
   var valid = _rqRouteRows.filter(_rqRtValid);   // [v889] 다 채운 줄만 공유
   var camp=rqGetCamp(); var c6=_rqIs6(camp);
-  // [v889] 6캠프: 아이디 / 기사명 / 라우트,  그 외(3·8캠프): 기존처럼 아이디 라우트
-  var lines = valid.map(function(r){return c6?((r.id||'?')+' / '+(r.name||_rqDrvNameOf(r.id)||'?')+' / '+(r.route||'?')):((r.id||'?')+' '+(r.route||'?'));}).join('\n'); return '■ 라우트 변경 요청 ['+camp+']\n\n'+(lines||'(입력없음)')+'\n\n'+order+' 부탁드립니다.\n\n요청자: '+CU.name;
+  // [v890] 6캠프: 이름 / 라우트,  그 외(3·8캠프): 기존처럼 아이디 라우트
+  var lines = valid.map(function(r){return c6?((r.name||_rqDrvNameOf(r.id)||'?')+' / '+(r.route||'?')):((r.id||'?')+' '+(r.route||'?'));}).join('\n');   /* [v890] 6캠프: 이름 / 라우트 (아이디 빼기) */ return '■ 라우트 변경 요청 ['+camp+']\n\n'+(lines||'(입력없음)')+'\n\n'+order+' 부탁드립니다.\n\n요청자: '+CU.name;
 }
 
 function rqUpdateRoutePreview(){
@@ -17380,7 +17443,7 @@ function rqUpdateRoutePreview(){
 
 async function rqSendRoute(){
   var valid = _rqRouteRows.filter(_rqRtValid);
-  if(valid.length===0){alert(_rqIs6(rqGetCamp())?'기사명(아이디)과 라우트를 1개 이상 입력해주세요.':'기사 ID와 라우트를 1개 이상 입력해주세요.');return;}
+  if(valid.length===0){alert(_rqIs6(rqGetCamp())?'기사명과 라우트를 1개 이상 입력해주세요.':'기사 ID와 라우트를 1개 이상 입력해주세요.');return;}
   var _bad=_rqRouteRows.filter(function(r){return (r.id||r.route||r.name)&&!_rqRtValid(r);});
   if(_bad.length&&!confirm('입력이 덜 된 줄 '+_bad.length+'개는 빼고 보낼까요?'))return;
   var text = rqRoutePreviewText();
