@@ -12266,7 +12266,24 @@ function mdiAddr(a){return String(a||'').replace(/\s*Route\s*[:：][\s\S]*$/i,''
 function mdiWb(c){var a=String(c.waybill_no||'').split(/[\n,]+/).map(function(x){return x.trim();}).filter(Boolean);if(!a.length)return '-';
   var om=(String(c.issue_content||'').match(/주문번호\s*[:：]\s*(\d{8,})/)||[])[1]||'';
   return a.map(function(w){return '<div class="mdi-wb">'+mdEsc(w)+(om&&w===om?' <span class="mdi-tag">주문번호</span>':'')+'</div>';}).join('');}
-function mdiIssue(t){var s=mdiClean(t);if(!s)return '-';
+/* [v895] 장기미회수 안내글(쌍점 없는 형식) 줄 구분 + 라우트/주소 추출 */
+function mdiLr(t){var s=mdiClean(t);if(!/반송장번호|워크맨/.test(s))return null;
+  var r={};var m;
+  m=s.match(/인입일\s*[-–:：]?\s*(\d{2,4}\.\s*\d{1,2}\.\s*\d{1,2}\.?\s*(?:\([^)]*\))?)/);if(m)r.date=m[1].trim();
+  m=s.match(/반송장번호\s*[:：]?\s*(\d{9,})/);if(m)r.wb=m[1];
+  m=s.match(/반송장번호\s*[:：]?\s*\d{9,}\s*([\s\S]*?)\s*워크맨/);if(m&&m[1].trim()){var ad=m[1].trim();var pm=ad.match(/^([\s\S]*?)\s*(\([^()]*\))\s*$/);if(pm){r.addr=pm[1].trim();r.addr2=pm[2];}else r.addr=ad;}
+  m=s.match(/워크맨\s*([\s\S]*?)\s*(?=📌|$)/);if(m&&m[1].trim()){var wk=m[1].trim();var im=wk.match(/^([\s\S]*?)\s*\(([^()]*@[^()]*)\)\s*$/);if(im){r.wk=im[1].trim();r.wkid=im[2];}else r.wk=wk;}
+  m=s.match(/📌\s*([\s\S]*)$/);if(m)r.note=m[1].trim();
+  m=s.match(/소속\s*(\d{3}-?[A-Z]\d{2})/);if(m)r.route=m[1];
+  if(!r.wb&&!r.wk)return null;return r;}
+function mdiLrHtml(r){var g='<span style="color:#6b7280">';function kv(k,v){return '<div class="mdi-l kv"><span class="mdi-lk">'+k+'</span><span>'+v+'</span></div>';}
+  var h='';if(r.date)h+=kv('인입일',mdEsc(r.date));if(r.wb)h+=kv('반송장',mdEsc(r.wb));
+  if(r.addr)h+=kv('주소',mdEsc(r.addr)+(r.addr2?'<br>'+g+mdEsc(r.addr2)+'</span>':''));
+  if(r.wk)h+=kv('워크맨',mdEsc(r.wk)+(r.wkid?'<br>'+g+mdEsc(r.wkid)+'</span>':''));
+  if(r.note){var n=mdEsc(r.note);if(r.route)n=n.replace(mdEsc(r.route),'<b>'+mdEsc(r.route)+'</b>');n=n.replace(/(니다\.)\s+/g,'$1<br>');
+    h+='<div class="mdi-l"><div style="background:#fff7ed;border-radius:8px;padding:6px 8px;color:#7c2d12;font-size:13px">📌 '+n+'</div></div>';}
+  return h;}
+function mdiIssue(t){var _lr=mdiLr(t);if(_lr)return mdiLrHtml(_lr);var s=mdiClean(t);if(!s)return '-';
   s=s.replace(/\s*(인입유형|배송시간|운송장|주문번호|주소|Route|회수시간|반품유형|요청사항)\s*[:：]\s*/g,'\n$1\u0001').replace(/\s*(ㄴ)/g,'\nㄴ').replace(/[ \t]{2,}/g,' ');
   var lines=s.split('\n').map(function(x){return x.trim();}).filter(Boolean);
   return lines.map(function(l){var k=l.split('\u0001');if(k.length===2)return '<div class="mdi-l kv"><span class="mdi-lk">'+mdEsc(k[0])+'</span><span>'+mdEsc(k[1].trim())+'</span></div>';return '<div class="mdi-l'+(/^ㄴ/.test(l)?' mdi-n':'')+'">'+mdEsc(l)+'</div>';}).join('');}
@@ -13682,8 +13699,11 @@ function mdOpenDetail(caseId){
       '<div class="mdi-box">'+
         '<div class="mdi-k">1. 배송기사</div><div class="mdi-v" style="color:#1a237e;font-weight:800">'+mdEsc(drvName)+'</div>'+
         '<div class="mdi-k">2. 운송장</div><div class="mdi-v">'+mdiWb(c)+((c.waybill_no&&String(c.waybill_no).trim())?'<button class="md-copy1" data-wb="'+encodeURIComponent(c.waybill_no)+'" onclick="mdCopyWb(this)" title="송장번호 복사" style="margin-top:4px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 복사</button>':'')+'</div>'+
-        '<div class="mdi-k">3. 라우트</div><div class="mdi-v">'+mdEsc(c.route||'-')+'</div>'+
-        '<div class="mdi-k">4. 주소</div><div class="mdi-v">'+mdEsc(mdiAddr(c.address)||'-')+'</div>'+
+        (function(){var _lr=(!c.route||!mdiAddr(c.address))?mdiLr(c.issue_content):null;   // [v895] 비어있으면 안내글에서 채움(화면 표시만)
+          var _rt=c.route?mdEsc(c.route):(_lr&&_lr.route?mdEsc(_lr.route)+'<span style="background:#fff;border-radius:6px;padding:0 5px;font-size:10.5px;font-weight:800;color:#16a34a;margin-left:4px">자동</span>':'-');
+          var _ad=mdiAddr(c.address)?mdEsc(mdiAddr(c.address)):(_lr&&_lr.addr?mdEsc(_lr.addr)+'<span style="background:#fff;border-radius:6px;padding:0 5px;font-size:10.5px;font-weight:800;color:#16a34a;margin-left:4px">자동</span>':'-');
+          return '<div class="mdi-k">3. 라우트</div><div class="mdi-v">'+_rt+'</div>'+
+        '<div class="mdi-k">4. 주소</div><div class="mdi-v">'+_ad+'</div>';})()+
         '<div class="mdi-k">5. 발생일</div><div class="mdi-v">'+mdEsc(dateStr)+'</div>'+
         '<div class="mdi-k">6. 인입내용</div><div class="mdi-v">'+mdiIssue(c.issue_content)+(mdWbFromText(c.issue_content)?'<button class="md-copy1" data-copy="'+encodeURIComponent(mdWbFromText(c.issue_content))+'" onclick="mdCopyRaw(this)" title="송장번호만 복사" style="margin-top:6px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 송장복사</button>':'')+'</div>'+
       '</div>'+
