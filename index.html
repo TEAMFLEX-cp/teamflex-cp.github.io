@@ -1462,7 +1462,8 @@ async function syncFromSupabase(){
     // 이번 주 일요일(week_start) 계산 (일=0, 월=1, ..., 토=6)
     var thisSunday=new Date(today);thisSunday.setDate(today.getDate()-today.getDay());
     var future=new Date(thisSunday);future.setDate(thisSunday.getDate()+365); // 이번 주 일요일 기준 365일(1년) 후까지
-    var cutStr=kstDateStr(thisSunday); // 이번 주 일요일부터(KST)
+    var _pastSun=new Date(thisSunday);_pastSun.setDate(thisSunday.getDate()-56);   // [v897] 지난 8주도 서버값으로 (옛 내장 스케줄이 보이던 문제)
+    var cutStr=kstDateStr(_pastSun); // 8주 전 일요일부터(KST)
     var futStr=kstDateStr(future);   // +365일까지(KST)
     // Supabase 기본 limit 우회 → 10000행씩 페이지네이션 (Max Rows=100,000)
     var allRows=[]; var _off=0; var _batch=10000;
@@ -1552,6 +1553,7 @@ async function syncFromSupabase(){
       // Supabase 동기화된 주차에 대한 로컬 override는 더 이상 필요 없음
       // (PC 수정값이 Supabase → AW에 반영됐는데 override가 구버전을 덮어쓰는 문제 방지)
       var syncedWeeks=Object.keys(weekMap);
+      try{window._SWL=window._SWL||{};syncedWeeks.forEach(function(w){window._SWL[w]=1;});}catch(_e){}
       if(syncedWeeks.length>0){
         var ovr2=getSchedOvr();var ovrChg=false;
         Object.keys(ovr2).forEach(function(k){
@@ -8292,7 +8294,10 @@ function moveSchedWeek(delta){
   document.getElementById('mc').innerHTML=pgFullSched();
   requestAnimationFrame(initSchedScrollSync);
   // 해당 주차 데이터가 없거나 share 정보가 필요한 경우 Supabase에서 자동 로드
-  setTimeout(function(){if(sbClient&&(!AW[SCHED_WK]||!AW[SCHED_WK].g))schedRefresh();},200);
+  setTimeout(function(){if(sbClient&&(!AW[SCHED_WK]||!AW[SCHED_WK].g)){schedRefresh();return;}
+    /* [v897] 이번 접속에서 서버로 안 받은 주차(8주보다 더 지난 주 등)는 서버에 있으면 자동으로 받아옴 */
+    try{window._SWL=window._SWL||{};var _w=SCHED_WK;if(sbClient&&!window._SWL[_w]){window._SWL[_w]=1;sbClient.from('weekly_schedules').select('id',{count:'exact',head:true}).eq('week_start',_w).then(function(r){if(r&&r.count>0&&SCHED_WK===_w)schedRefresh();});}}catch(_e){}
+  },200);
 }
 /* ══════ [관리자] 스케줄 리스트 엑셀 다운로드 (메타어드민용) — export_excel과 동일 포맷 ══════ */
 var _SX_NIGHT=['808C','808D'];
