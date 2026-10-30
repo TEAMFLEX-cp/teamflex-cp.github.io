@@ -12308,7 +12308,86 @@ function mdiLrHtml(r){var g='<span style="color:#6b7280">';function kv(k,v){retu
   if(r.note){var n=mdEsc(r.note);if(r.route)n=n.replace(mdEsc(r.route),'<b>'+mdEsc(r.route)+'</b>');n=n.replace(/(니다\.)\s+/g,'$1<br>');
     h+='<div class="mdi-l"><div style="background:#fff7ed;border-radius:8px;padding:6px 8px;color:#7c2d12;font-size:13px">📌 '+n+'</div></div>';}
   return h;}
-function mdiIssue(t,hide){mdiIssue._x=null;var _lr=mdiLr(t);if(_lr)return mdiLrHtml(_lr);var s=mdiClean(t);if(!s)return '-';hide=hide||{};
+/* [v904] 인입 글 공통 정리기 — 어떤 형식이든 ①항목(인입유형·배송시간·라우트·처리이력 등) ②워크맨 ③인입 상세 ④요청 사항으로 나눔 */
+function mdiParse(t,hide){
+  hide=hide||{};
+  var s=mdiClean(t);if(!s)return null;
+  s=s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\[\[|\]\]/g,'').replace(/[“”"]/g,'').replace(/\r/g,'');
+  var kvs=[],photos=[],wk=null,detail=[],req=[],seen={};
+  function addKv(k,v){v=String(v||'').replace(/\s+/g,' ').trim();if(!v||v==='-')return;
+    if(k==='Route'||k==='라우트'){var rm=v.match(/^(\d{3})\s*[\/\-]?\s*([A-Za-z]\d{2})/);if(rm)v=rm[1]+rm[2].toUpperCase();k='라우트';}
+    if(/^반송장/.test(k))k='반송장';else if(/^운송장/.test(k))k='운송장';if(/주소/.test(k))k='주소';
+    if(hide[k])return;if(seen[k]){if(/^(운송장|반송장)$/.test(k)){for(var i=0;i<kvs.length;i++)if(kvs[i][0]===k&&kvs[i][1].indexOf(v)<0)kvs[i][1]+=', '+v;}return;}seen[k]=1;kvs.push([k,v]);}
+  /* 1) 특수 형식 */
+  if(/^장기미반납\s*\|/.test(s)){s.split(/\s*\|\s*/).forEach(function(p,i){if(i===0){addKv('인입유형',p);return;}var m=p.match(/^([^:：]{1,8})\s*[:：]\s*(.*)$/);if(m)addKv(m[1].trim(),m[2]);});return {kvs:kvs,photos:photos,wk:wk,detail:detail,req:req};}
+  var sg=s.match(/^(\S*\s?회수\s*요청)\s*·\s*(JIDOKA-\d+)(?:\s*·\s*상품\s*[:：]\s*([^ㄴ]*))?([\s\S]*)$/);
+  if(sg){addKv('인입유형',sg[1]);addKv('요청번호',sg[2]);if(sg[3])addKv('상품',sg[3]);s=sg[4]||'';}
+  /* 2) 워크맨(기사) */
+  var W=[
+    /(?:워크맨\s*[:：]?|(?:작업자|회수자|회수\s*기사\s*ID|F)\s*[:：])\s*(?:([가-힣][가-힣*X]{0,3}[A-Z]?)\s*(?:\((?:팀플|팀플렉스)\))?\s*)?\(?\s*([A-Za-z0-9._]{3,})(@df)?\s*\)?/,
+    /([가-힣][가-힣*X]{1,3}[A-Z]?)\s*(?:\((?:팀플|팀플렉스)\))?\s*\(\s*([A-Za-z0-9._]+)(@df)\s*\)/,
+    /\(?\s*()([A-Za-z0-9._]{3,})(@df)\s*\)?/
+  ];
+  for(var wi=0;wi<W.length&&!wk;wi++){var wm=s.match(W[wi]);if(wm&&wm[2]&&(wm[3]||wi===0)&&!/^\d+$/.test(wm[2])){wk={name:(wm[1]||'').trim(),id:wm[2]+(wm[3]||'')};s=s.replace(wm[0],' ');}}
+  s=s.replace(/C\s*:\s*[^()]{0,12}\(isn_\d+_flex\)/g,' ').replace(/(상세|기타)\s*:\s*-\s*/g,' ').replace(/기타\s*:\s*\[[^\]]*\]/g,' ').replace(/ㅁ\s*팀플렉스\s*/g,' ').replace(/좋아요 반응 \d+개\.?/g,' ');
+  /* 3) 사진 안내 */
+  [/오른쪽\s*:\s*정상배송지\s*왼쪽\s*:\s*오배송지/,/배송\s*완료\s*시\s*사진/,/오배송\s*사진/].forEach(function(re){var m=s.match(re);if(m){photos.push('📷 '+m[0].replace(/\s+/g,' '));s=s.replace(m[0],'\n');}});
+  /* 4) 줄 나누기: 글머리표·키 앞 */
+  var KEYS='반송장번호|상세|인입유형|배송시간|운송장번호|운송장\\s*번호|운송장|주문번호|수취인\\s*주소|배송\\s*주소|주소|Route|라우트|회수\\s*완료\\s*시간|회수완료시간|회수완료|회수시간|회수자|발생일|발생시점\\s*및\\s*장소|발생위치\\(자세히\\)|접수내용\\([^)]*\\)|요청사항\\([^)]*\\)|요청사항|반품유형|오회수\\s*상품명|오회수\\s*포장상태|로켓번호\\s*주문번호|회수\\s*송장번호|쿠팡\\s*유관\\s*주문번호|인입\\s*기준일|회수\\s*기준일|인입일|인입내용';
+  s=s.replace(/\s*(■|◼|◾|※|ㅁ\s|ㄴ)\s*/g,'\n').replace(new RegExp('\\s*('+KEYS+')\\s*[:：]\\s*','g'),'\n$1\u0001')
+     .replace(/\s*(배송시간|운송장(?:번호)?|주문번호|라우트|Route)\s{2,}(?=\d)/g,'\n$1\u0001').replace(/\s*(반송장번호|운송장(?:번호)?|주문번호)\s+(?=\d{8,})/g,'\n$1\u0001').replace(/\s*(수취인\s*주소|주소)\s+(?=서울|경기|인천)/g,'\n$1\u0001').replace(/📌/g,'\n').replace(/\s([1-9])\.\s(?=[가-힣])/g,'\n$1. ').replace(/(인입일|인입\s*기준일|회수\s*기준일)\s*-?\s*(?=\d)/g,'\n$1\u0001');
+  var lines=s.split('\n').map(function(x){return x.trim();}).filter(Boolean),free=[];
+  lines.forEach(function(l){var k=l.split('\u0001');if(k.length<2){free.push(l);return;}var key=k[0].replace(/\s+/g,' ').trim(),v=k.slice(1).join(' ').trim(),rest='';
+    var m;
+    if(/^(Route|라우트)$/.test(key)&&(m=v.match(/^(\d{3}\s*[\/\-]?\s*[A-Za-z]\d{2})\s*(.*)$/))){v=m[1];rest=m[2];}
+    else if(/시간|발생일|기준일|인입일|회수완료/.test(key)&&(m=v.match(/^(\d{2,4}[.\-]\s?\d{1,2}[.\-]\s?\d{1,2}\.?(?:\s*\([^)]*\))?(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?(?:\.\d+)?)\s*(.*)$/))){v=m[1].replace(/\.\d{3}$/,'');rest=m[2];}
+    else if(/운송장|주문번호|송장번호|반송장/.test(key)&&(m=v.match(/^([\d,\s]{8,}?)\s*([^\d,\s][\s\S]*)?$/))){v=m[1];rest=m[2]||'';}
+    else if(/주소/.test(key)&&(m=v.match(/^([^()]*\([^)]*\))\s*(.*)$/))){v=m[1];rest=m[2];}
+    else if(key==='상세'&&(m=v.match(/^(\S+)\s*(.*)$/))){v=m[1];rest=m[2];}
+    else if(key==='회수자'){if(!wk){var im=v.match(/([A-Za-z0-9._]+@df)/);if(im){wk={name:'',id:im[1]};v='';}}}
+    if(/^요청사항/.test(key)){req.push(v);v='';}
+    else if(key==='인입내용'){detail.push(v);v='';}
+    else if(/^(접수내용|발생위치)/.test(key)){detail.push(v);v='';}
+    if(v)addKv(key==='상세'?'처리 상세':key.replace(/\(.*\)$/,''),v);
+    if(rest)free.push(rest);});
+  /* 5) 남은 글: 맨 앞 운송장·라우트·처리이력·주소 → 항목으로 */
+  var first=true;
+  free=free.map(function(l){var m;
+    l=l.replace(/^운송장\s*/,'');
+    if((m=l.match(/^((?:\d{12,14}[\s,\/]*)+)/))){addKv('운송장',m[1].replace(/[\s,\/]+$/,'').replace(/\s+/g,', '));l=l.slice(m[0].length);}
+    if((m=l.match(/(^|\s)(\d{3})\s*[\/\-]\s*([A-Z]\d{2})(?=\s|$|[^0-9A-Za-z])/))){if(!seen['라우트'])addKv('라우트',m[2]+m[3]);if(!/[가-힣]/.test(l.charAt(l.indexOf(m[0])+m[0].length)||'')&&!/소속\s*$/.test(l.slice(0,l.indexOf(m[0])+m[1].length)))l=l.replace(m[0],' ');}
+    if((m=l.match(/(픽업스캔\(할당\)\s*시도|픽업스캔|배송완료|배송중단|회수완료)\s*(?:\/\s*일산\d+\s*)?(\d{4}[.\-]\d{2}[.\-]\d{2}\s+\d{1,2}:\d{2}(?::\d{2})?)(?:\.\d+)?/))){addKv('처리 이력',m[1]+' · '+m[2]);l=l.replace(m[0],' ');}
+    if((m=l.match(/(\d{4}[.\-]\d{2}[.\-]\d{2}\s+\d{1,2}:\d{2}(?::\d{2})?)\.\d+/))){addKv('처리 이력',m[1]);l=l.replace(m[0],' ');}
+    var ai=l.search(/(서울특별시|서울|경기도|경기|인천광역시|인천)\s/);
+    if(ai>=0){var win=l.slice(ai,ai+110);var cut=win.search(/\s\d{4}[.\-]\d{2}[.\-]\d{2}|\s\d{3}\s*\/\s*[A-Z]\d{2}/);if(cut>0)win=win.slice(0,cut);
+      var ae=-1,lp=win.lastIndexOf(')');if(lp>0&&win.indexOf('(')>=0)ae=lp+1;else{var hm=win.match(/^.*?\d+호/);if(hm)ae=hm[0].length;}
+      if(ae>0){var ad=l.substr(ai,ae);if(!hide['주소'])addKv('주소',ad);l=l.slice(0,ai)+' '+l.slice(ai+ae);}}
+    l=l.replace(/^[\s@]*[가-힣\s]{0,10}(팀장|담당자)님[,\s]*/,'').replace(/@?팀플렉스\s*담당자님,?/g,'');
+    return l.replace(/\s{2,}/g,' ').replace(/^[\/\-·.,:\s]+/,'').trim();}).filter(function(x){return x&&!/^[.\/\-·,]+$/.test(x);});
+  /* 6) 첫 줄이 짧은 제목이면 인입유형 */
+  if(!seen['인입유형']&&free.length&&free[0].length<=32&&!/(니다|세요|어요|아요|해요|네요|까요|드려요|습니다|됩니다)[.!?~]*$/.test(free[0])&&/\n/.test(mdiClean(t))&&mdiClean(t).split('\n')[0].trim().indexOf(free[0].slice(0,6))>=0){addKv('인입유형',free.shift());}
+  /* 7) 문장 단위로 상세 / 요청 */
+  var REQ=/(부탁|요청\s?드|요청합니다|바랍니다|주세요|주시길|주시기|해주시|협조|확인\s*요청|문의\s?드|하시면\s*됩니다|반납\s*꼭|참고\s*부탁)/;
+  var prev=null;free.forEach(function(l){
+    l.replace(/((?:니다|세요|어요|아요|해요|네요|까요|드려요|할께요|할게요|습니다|됩니다)[.!?~]*)\s+/g,'$1\n').split('\n').forEach(function(x){x=x.trim();if(!x||x==='.')return;var to=(/^\d\.\s/.test(x)&&prev)?prev:(REQ.test(x)?req:detail);to.push(x);prev=to;});});
+  if(!kvs.length&&!photos.length&&!wk&&!detail.length&&!req.length)return null;
+  return {kvs:kvs,photos:photos,wk:wk,detail:detail,req:req};
+}
+
+function mdiIssue(t,hide){hide=hide||{};mdiIssue._x=null;
+  var P=null;try{P=mdiParse(t,hide);}catch(e){P=null;}
+  if(P){
+    function kvH(k,v){return '<div class="mdi-l kv"><span class="mdi-lk">'+mdEsc(k)+'</span><span>'+(k==='라우트'?'<b>'+mdEsc(v)+'</b>':mdEsc(v))+'</span></div>';}
+    var wkv=P.wk?((P.wk.name?mdEsc(P.wk.name)+' ':'')+'<span style="white-space:nowrap;color:#6b7280">('+mdEsc(P.wk.id)+')</span>'):'';
+    mdiIssue._x={wk:wkv,detail:P.detail,req:P.req};
+    var top=P.kvs.map(function(x){return kvH(x[0],x[1]);}).join('')+P.photos.map(function(x){return '<div class="mdi-l" style="color:#6b7280;font-size:12.5px">'+mdEsc(x)+'</div>';}).join('');
+    if(hide.__rows)return top||'<span style="color:#9e9e9e;font-size:12.5px">아래 내용 참고</span>';
+    function box(tl,arr,bg,fg){return arr.length?'<div class="mdi-l"><div class="mdi-lk" style="margin-bottom:3px">'+tl+'</div><div style="background:'+bg+';border-radius:8px;padding:7px 9px;color:'+fg+';white-space:pre-line">'+arr.map(mdEsc).join('\n')+'</div></div>':'';}
+    return top+(wkv?'<div class="mdi-l kv"><span class="mdi-lk">워크맨</span><span>'+wkv+'</span></div>':'')+box('📝 인입 상세',P.detail,'#fff','#1a1a1a')+box('📌 요청 사항',P.req,'#fff7ed','#7c2d12');
+  }
+  return mdiIssueOld(t,hide);
+}
+function mdiIssueOld(t,hide){mdiIssue._x=null;var _lr=mdiLr(t);if(_lr)return mdiLrHtml(_lr);var s=mdiClean(t);if(!s)return '-';hide=hide||{};
   s=s.replace(/\s*(인입유형|배송시간|운송장|주문번호|주소|Route|회수시간|반품유형|요청사항)\s*[:：]\s*/g,'\n$1\u0001').replace(/\s*(ㄴ)/g,'\nㄴ').replace(/[ \t]{2,}/g,' ');
   /* [v899] 일반 인입 정리: Route 값 뒤 본문 줄바꿈 · '배송완료시 사진' · 워크맨 줄 따로 */
   s=s.replace(/(Route\u0001\s*\d{3}\s*\/\s*[A-Za-z]\d{2})\s+/,'$1\n').replace(/(배송시간\u0001\s*\d{4}[.\-]\d{1,2}[.\-]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\s+/,'$1\n')
@@ -13747,13 +13826,13 @@ function mdOpenDetail(caseId){
       '<div class="mdi-box">'+
         '<div class="mdi-k">1. 배송기사</div><div class="mdi-v" style="color:#1a237e;font-weight:800">'+mdEsc(drvName)+'</div>'+
         '<div class="mdi-k">2. 운송장</div><div class="mdi-v">'+mdiWb(c)+((c.waybill_no&&String(c.waybill_no).trim())?'<button class="md-copy1" data-wb="'+encodeURIComponent(c.waybill_no)+'" onclick="mdCopyWb(this)" title="송장번호 복사" style="margin-top:4px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 복사</button>':'')+'</div>'+
-        (function(){var _lr=(!c.route||!mdiAddr(c.address))?mdiLr(c.issue_content):null;   // [v895] 비어있으면 안내글에서 채움(화면 표시만)
+        (function(){var _lr=(!c.route||!mdiAddr(c.address))?mdiLr(c.issue_content):null;if(!c.route||!mdiAddr(c.address)){try{var _pp=mdiParse(c.issue_content,{});if(_pp){_lr=_lr||{};for(var _qi=0;_qi<_pp.kvs.length;_qi++){if(_pp.kvs[_qi][0]==='라우트'&&!_lr.route)_lr.route=_pp.kvs[_qi][1];if(_pp.kvs[_qi][0]==='주소'&&!_lr.addr)_lr.addr=_pp.kvs[_qi][1];}}}catch(_pe){}}   /* [v904] 어떤 형식이든 라우트·주소 자동 */   // [v895] 비어있으면 안내글에서 채움(화면 표시만)
           var _rt=c.route?mdEsc(c.route):(_lr&&_lr.route?mdEsc(_lr.route)+'<span style="background:#fff;border-radius:6px;padding:0 5px;font-size:10.5px;font-weight:800;color:#16a34a;margin-left:4px">자동</span>':'-');
           var _ad=mdiAddr(c.address)?mdEsc(mdiAddr(c.address)):(_lr&&_lr.addr?mdEsc(_lr.addr)+'<span style="background:#fff;border-radius:6px;padding:0 5px;font-size:10.5px;font-weight:800;color:#16a34a;margin-left:4px">자동</span>':'-');
           return '<div class="mdi-k">3. 라우트</div><div class="mdi-v">'+_rt+'</div>'+
         '<div class="mdi-k">4. 주소</div><div class="mdi-v">'+_ad+'</div>';})()+
         '<div class="mdi-k">5. 발생일</div><div class="mdi-v">'+mdEsc(dateStr)+'</div>'+
-        '<div class="mdi-k">6. 인입내용</div><div class="mdi-v">'+mdiIssue(c.issue_content,{'운송장':!!c.waybill_no,'주문번호':!!c.waybill_no,'주소':!!mdiAddr(c.address),__rows:1})+(mdWbFromText(c.issue_content)?'<button class="md-copy1" data-copy="'+encodeURIComponent(mdWbFromText(c.issue_content))+'" onclick="mdCopyRaw(this)" title="송장번호만 복사" style="margin-top:6px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 송장복사</button>':'')+'</div>'+
+        '<div class="mdi-k">6. 인입내용</div><div class="mdi-v">'+mdiIssue(c.issue_content,{'운송장':!!c.waybill_no,'주문번호':!!c.waybill_no,'주소':!!(mdiAddr(c.address)||((mdiLr(c.issue_content)||{}).addr)),__rows:1})+(mdWbFromText(c.issue_content)?'<button class="md-copy1" data-copy="'+encodeURIComponent(mdWbFromText(c.issue_content))+'" onclick="mdCopyRaw(this)" title="송장번호만 복사" style="margin-top:6px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 송장복사</button>':'')+'</div>'+
         (function(){var x=mdiIssue._x,h='',no=7;if(!x)return '';   /* [v901] 7. 인입 상세 · 8. 요청 사항 — 라우트·인입내용처럼 칸으로 길게 */
           if(x.wk)h+='<div class="mdi-k">'+(no++)+'. 워크맨</div><div class="mdi-v">'+x.wk+'</div>';
           if(x.detail&&x.detail.length)h+='<div style="grid-column:1/-1;margin-top:2px"><div style="color:#1565c0;font-weight:900;font-size:13px;margin-bottom:5px">[ 인입 상세 ]</div><div style="white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere;background:#fff;border:1.5px solid #90caf9;border-left:5px solid #1e88e5;border-radius:10px;padding:9px 12px;color:#0d2b4e;font-weight:600">'+x.detail.map(mdEsc).join('\n')+'</div></div>';   /* [v903] 칸 전체 너비 */
