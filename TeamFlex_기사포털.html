@@ -12308,7 +12308,7 @@ function mdiLrHtml(r){var g='<span style="color:#6b7280">';function kv(k,v){retu
   if(r.note){var n=mdEsc(r.note);if(r.route)n=n.replace(mdEsc(r.route),'<b>'+mdEsc(r.route)+'</b>');n=n.replace(/(니다\.)\s+/g,'$1<br>');
     h+='<div class="mdi-l"><div style="background:#fff7ed;border-radius:8px;padding:6px 8px;color:#7c2d12;font-size:13px">📌 '+n+'</div></div>';}
   return h;}
-function mdiIssue(t,hide){var _lr=mdiLr(t);if(_lr)return mdiLrHtml(_lr);var s=mdiClean(t);if(!s)return '-';hide=hide||{};
+function mdiIssue(t,hide){mdiIssue._x=null;var _lr=mdiLr(t);if(_lr)return mdiLrHtml(_lr);var s=mdiClean(t);if(!s)return '-';hide=hide||{};
   s=s.replace(/\s*(인입유형|배송시간|운송장|주문번호|주소|Route|회수시간|반품유형|요청사항)\s*[:：]\s*/g,'\n$1\u0001').replace(/\s*(ㄴ)/g,'\nㄴ').replace(/[ \t]{2,}/g,' ');
   /* [v899] 일반 인입 정리: Route 값 뒤 본문 줄바꿈 · '배송완료시 사진' · 워크맨 줄 따로 */
   s=s.replace(/(Route\u0001\s*\d{3}\s*\/\s*[A-Za-z]\d{2})\s+/,'$1\n').replace(/(배송시간\u0001\s*\d{4}[.\-]\d{1,2}[.\-]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\s+/,'$1\n')
@@ -12326,12 +12326,14 @@ function mdiIssue(t,hide){var _lr=mdiLr(t);if(_lr)return mdiLrHtml(_lr);var s=md
       return '<div class="mdi-l'+(/^ㄴ/.test(l)?' mdi-n':'')+'">'+mdEsc(l)+'</div>';}).join('');
   }
   /* [v900] 워크맨 있는 일반 인입: 항목 → 📷 → 워크맨 → 인입 상세 내용 → 요청사항 */
-  var kvs=[],photo=[],wk='',detail=[],req=[],afterWk=false;
+  var kvs=[],photo=[],wk='',wkv='',detail=[],req=[],afterWk=false;
   lines.forEach(function(l){var k=l.split('\u0001');
-    if(k.length===2){if(k[0]==='워크맨'){wk=kvHtml('워크맨',k[1].trim());afterWk=true;return;}if(k[0]==='요청사항'){req.push(k[1].trim());return;}if(!hide[k[0]])kvs.push(kvHtml(k[0],k[1].trim()));return;}
+    if(k.length===2){if(k[0]==='워크맨'){wk=kvHtml('워크맨',k[1].trim());var _im=k[1].trim().match(/^(.*?)\s*\(([^()]*@[^()]*)\)\s*$/);wkv=_im?(mdEsc(_im[1])+' <span style="white-space:nowrap;color:#6b7280">('+mdEsc(_im[2])+')</span>'):mdEsc(k[1].trim());afterWk=true;return;}if(k[0]==='요청사항'){req.push(k[1].trim());return;}if(!hide[k[0]])kvs.push(kvHtml(k[0],k[1].trim()));return;}
     if(/^📷/.test(l)){photo.push('<div class="mdi-l" style="color:#6b7280;font-size:12.5px">'+mdEsc(l)+'</div>');return;}
     (afterWk?req:detail).push(l);});
   function box(t,arr,bg,fg){return arr.length?'<div class="mdi-l"><div class="mdi-lk" style="margin-bottom:3px">'+t+'</div><div style="background:'+bg+';border-radius:8px;padding:7px 9px;color:'+fg+';white-space:pre-line">'+arr.map(mdEsc).join('\n')+'</div></div>':'';}
+  mdiIssue._x={detail:detail,req:req,wk:wkv};
+  if(hide.__rows)return kvs.join('')+photo.join('');   /* [v901] 워크맨·상세·요청은 아래 칸으로 */   /* [v901] 상세·요청은 아래 7·8번 칸으로 */
   return kvs.join('')+photo.join('')+wk+box('📝 인입 상세 내용',detail,'#fff','#1a1a1a')+box('📌 요청사항',req,'#fff7ed','#7c2d12');}
 (function(){try{var st=document.createElement('style');st.textContent='.mdi-box{display:grid;grid-template-columns:78px minmax(0,1fr);column-gap:10px;row-gap:9px;align-items:start;background:#e8f0fe;border-radius:14px;padding:14px 14px;margin-bottom:14px;font-size:13.5px;line-height:1.55;user-select:text;-webkit-user-select:text;cursor:text}'+
  '.mdi-k{color:#5c6bc0;font-weight:800;white-space:nowrap;padding-top:1px}.mdi-v{color:#1a1a1a;min-width:0;word-break:keep-all;overflow-wrap:anywhere}'+
@@ -13751,7 +13753,12 @@ function mdOpenDetail(caseId){
           return '<div class="mdi-k">3. 라우트</div><div class="mdi-v">'+_rt+'</div>'+
         '<div class="mdi-k">4. 주소</div><div class="mdi-v">'+_ad+'</div>';})()+
         '<div class="mdi-k">5. 발생일</div><div class="mdi-v">'+mdEsc(dateStr)+'</div>'+
-        '<div class="mdi-k">6. 인입내용</div><div class="mdi-v">'+mdiIssue(c.issue_content,{'운송장':!!c.waybill_no,'주문번호':!!c.waybill_no,'주소':!!mdiAddr(c.address)})+(mdWbFromText(c.issue_content)?'<button class="md-copy1" data-copy="'+encodeURIComponent(mdWbFromText(c.issue_content))+'" onclick="mdCopyRaw(this)" title="송장번호만 복사" style="margin-top:6px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 송장복사</button>':'')+'</div>'+
+        '<div class="mdi-k">6. 인입내용</div><div class="mdi-v">'+mdiIssue(c.issue_content,{'운송장':!!c.waybill_no,'주문번호':!!c.waybill_no,'주소':!!mdiAddr(c.address),__rows:1})+(mdWbFromText(c.issue_content)?'<button class="md-copy1" data-copy="'+encodeURIComponent(mdWbFromText(c.issue_content))+'" onclick="mdCopyRaw(this)" title="송장번호만 복사" style="margin-top:6px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 송장복사</button>':'')+'</div>'+
+        (function(){var x=mdiIssue._x,h='',no=7;if(!x)return '';   /* [v901] 7. 인입 상세 · 8. 요청 사항 — 라우트·인입내용처럼 칸으로 길게 */
+          if(x.wk)h+='<div class="mdi-k">'+(no++)+'. 워크맨</div><div class="mdi-v">'+x.wk+'</div>';
+          if(x.detail&&x.detail.length)h+='<div class="mdi-k">'+(no++)+'. 인입 상세</div><div class="mdi-v" style="white-space:pre-line">'+x.detail.map(mdEsc).join('\n')+'</div>';
+          if(x.req&&x.req.length)h+='<div class="mdi-k">'+(no++)+'. 요청 사항</div><div class="mdi-v" style="white-space:pre-line;color:#9a3412;font-weight:600">'+x.req.map(mdEsc).join('\n')+'</div>';
+          return h;})()+
       '</div>'+
       photoHtml+
       replyHtml+
