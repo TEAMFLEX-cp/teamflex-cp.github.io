@@ -2488,7 +2488,7 @@ function ctGateOn(){ return !!(_featureControls&&_featureControls.contract&&_fea
 function ctRestricted(){
   if(!ctGateOn())return false;
   if(!(CU&&(CU.role==='driver'||CU.role==='leader'||CU.role==='sub')))return false;
-  if(typeof _ctApproved==='undefined'||_ctApproved===null||!_ctApOk){ if(typeof loadCtApproved==='function'&&!window._ctApLoading){window._ctApLoading=true;loadCtApproved().then(function(){window._ctApLoading=false;try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}});} return false; }
+  if(typeof _ctApproved==='undefined'||_ctApproved===null||!_ctApOk){ if(typeof loadCtApproved==='function'&&!window._ctApLoading&&(typeof _ctApproved==='undefined'||_ctApproved===null)){window._ctApLoading=true;loadCtApproved().then(function(){window._ctApLoading=false;try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}});} return false; }
   if(typeof ctApprovedOf==='function'&&ctApprovedOf(CU.name,'wc'))return false;
   try{var _b=(typeof splitDriverSuffix==='function')?splitDriverSuffix(CU.name):null;var _bn=_b&&(_b.base||_b.name);if(_bn&&_bn!==CU.name&&ctApprovedOf(_bn,'wc'))return false;}catch(_e){}   /* [v898] 이름 뒤 꼬리(BD 등) 붙은 계정도 인정 */
   return true;
@@ -2700,10 +2700,14 @@ async function loadCtApproved(){
     if(r&&!r.error&&r.data&&r.data.value){
       _ctApproved=(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value)||{};_ctApOk=true;
       try{if(window.CU&&CU.name&&CU.role!=='admin'){if(ctApprovedOf(CU.name,'wc'))localStorage.setItem(_ctApLocalKey(),'1');else localStorage.removeItem(_ctApLocalKey());}}catch(_e){}
-    }else{ setTimeout(function(){try{loadCtApproved().then(function(){try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}});}catch(e){}},5000); }
-  }catch(e){ setTimeout(function(){try{loadCtApproved();}catch(_e){}},5000); }
+    }else _ctApRetry();
+  }catch(e){ _ctApRetry(); }
+  if(_ctApproved===null)_ctApproved={};   /* [v908] 못 읽어도 '빈 목록(확인 전)'으로 둬서 다시 그리기 반복(깜빡임) 방지 — 잠금은 _ctApOk 기준 */
   return _ctApproved;
 }
+/* [v908] 실패 시 재시도는 한 줄로만(30초 간격, 최대 10번), 성공했을 때만 화면 다시 그림 */
+var _ctApRetryN=0,_ctApRetryT=null;
+function _ctApRetry(){if(_ctApRetryT||_ctApRetryN>=10)return;_ctApRetryN++;_ctApRetryT=setTimeout(function(){_ctApRetryT=null;loadCtApproved().then(function(){if(_ctApOk){_ctApRetryN=0;try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}}});},30000);}
 /* [v898] 승인 저장은 항상 서버 최신값에 덧붙여 저장 (다른 기기의 승인을 덮어써 지우지 않게) */
 async function _ctApMerge(name,type,val){
   var r=await sbClient.from('app_settings').select('value').eq('key','contract_approved').maybeSingle();
