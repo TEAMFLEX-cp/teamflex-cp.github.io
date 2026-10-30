@@ -2488,8 +2488,10 @@ function ctGateOn(){ return !!(_featureControls&&_featureControls.contract&&_fea
 function ctRestricted(){
   if(!ctGateOn())return false;
   if(!(CU&&(CU.role==='driver'||CU.role==='leader'||CU.role==='sub')))return false;
-  if(typeof _ctApproved==='undefined'||_ctApproved===null){ if(typeof loadCtApproved==='function'){loadCtApproved().then(function(){try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}});} return false; }
-  return !(typeof ctApprovedOf==='function'&&ctApprovedOf(CU.name,'wc'));
+  if(typeof _ctApproved==='undefined'||_ctApproved===null||!_ctApOk){ if(typeof loadCtApproved==='function'&&!window._ctApLoading){window._ctApLoading=true;loadCtApproved().then(function(){window._ctApLoading=false;try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}});} return false; }
+  if(typeof ctApprovedOf==='function'&&ctApprovedOf(CU.name,'wc'))return false;
+  try{var _b=(typeof splitDriverSuffix==='function')?splitDriverSuffix(CU.name):null;var _bn=_b&&(_b.base||_b.name);if(_bn&&_bn!==CU.name&&ctApprovedOf(_bn,'wc'))return false;}catch(_e){}   /* [v898] 이름 뒤 꼬리(BD 등) 붙은 계정도 인정 */
+  return true;
 }
 async function ensurePushSubscribed(interactive){
   try{
@@ -2689,11 +2691,29 @@ function ctBadgeSection(type,label,drs){
   return h;
 }
 var _ctApproved=null;
+/* [v898] 승인목록을 못 읽으면(통신 오류·지연) '빈 목록'으로 보지 않음 → 작성·승인된 기사가 잠기던 문제 */
+var _ctApOk=false;
+function _ctApLocalKey(){try{return 'tf_ct_ok_'+String((window.CU&&CU.name)||'');}catch(e){return 'tf_ct_ok_';}}
 async function loadCtApproved(){
-  if(!sbClient)return (_ctApproved=_ctApproved||{});
+  if(!sbClient)return _ctApproved;
   try{var r=await sbClient.from('app_settings').select('value').eq('key','contract_approved').maybeSingle();
-    _ctApproved=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{};}catch(e){_ctApproved=_ctApproved||{};}
+    if(r&&!r.error&&r.data&&r.data.value){
+      _ctApproved=(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value)||{};_ctApOk=true;
+      try{if(window.CU&&CU.name&&CU.role!=='admin'){if(ctApprovedOf(CU.name,'wc'))localStorage.setItem(_ctApLocalKey(),'1');else localStorage.removeItem(_ctApLocalKey());}}catch(_e){}
+    }else{ setTimeout(function(){try{loadCtApproved().then(function(){try{if(typeof _reRenderCurTab==='function')_reRenderCurTab();}catch(e){}});}catch(e){}},5000); }
+  }catch(e){ setTimeout(function(){try{loadCtApproved();}catch(_e){}},5000); }
   return _ctApproved;
+}
+/* [v898] 승인 저장은 항상 서버 최신값에 덧붙여 저장 (다른 기기의 승인을 덮어써 지우지 않게) */
+async function _ctApMerge(name,type,val){
+  var r=await sbClient.from('app_settings').select('value').eq('key','contract_approved').maybeSingle();
+  if(r&&r.error)throw r.error;
+  var ap=(r&&r.data&&r.data.value)?(typeof r.data.value==='string'?JSON.parse(r.data.value):r.data.value):{};
+  if(!ap[name])ap[name]={};
+  if(val)ap[name][type]=val;else delete ap[name][type];
+  var u=await sbClient.from('app_settings').upsert({key:'contract_approved',value:JSON.stringify(ap)},{onConflict:'key'});
+  if(u&&u.error)throw u.error;
+  _ctApproved=ap;_ctApOk=true;return ap;
 }
 function ctApprovedOf(name,type){return !!(_ctApproved&&_ctApproved[name]&&_ctApproved[name][type]);}
 async function ctApprove(name,type){
@@ -2701,7 +2721,7 @@ async function ctApprove(name,type){
   if(_ctApproved===null)await loadCtApproved();
   if(!_ctApproved)_ctApproved={};if(!_ctApproved[name])_ctApproved[name]={};
   _ctApproved[name][type]={ok:true,at:new Date().toISOString(),by:(window.CU&&CU.name)||''};
-  try{if(sbClient)await sbClient.from('app_settings').upsert({key:'contract_approved',value:JSON.stringify(_ctApproved)},{onConflict:'key'});}catch(e){console.warn('승인 저장 실패',e);}
+  try{if(sbClient)await _ctApMerge(name,type,_ctApproved[name][type]);}catch(e){console.warn('승인 저장 실패',e);alert('승인 저장 실패 — 다시 눌러주세요');return;}
   try{if(typeof ctaComplete==='function')await ctaComplete(name,type);}catch(e){}
   try{showToast('✅ '+name+' 최종 승인 완료',true);}catch(_){}
   if(typeof openContractAdmin==='function')openContractAdmin(true);
@@ -2721,7 +2741,7 @@ async function ctDeleteDoc(name,type){
     if(ca[name]&&ca[name][type]){delete ca[name][type];_ctAssign=ca;await sbClient.from('app_settings').upsert({key:'contract_assign',value:JSON.stringify(ca)},{onConflict:'key'});}
     if(type==='wc'){try{await _ctStatusMerge(name,null);}catch(e){}}
     if(_ctApproved===null&&typeof loadCtApproved==='function'){try{await loadCtApproved();}catch(e){}}
-    if(_ctApproved&&_ctApproved[name]&&_ctApproved[name][type]){delete _ctApproved[name][type];await sbClient.from('app_settings').upsert({key:'contract_approved',value:JSON.stringify(_ctApproved)},{onConflict:'key'});}
+    await _ctApMerge(name,type,null);
     try{showToast('🗑 '+name+' '+lbl+' 삭제 — 미작성으로 되돌림',true);}catch(_){}
   }catch(e){alert('삭제 실패: '+((e&&e.message)||e));}
   if(typeof openContractAdmin==='function')openContractAdmin(true);
