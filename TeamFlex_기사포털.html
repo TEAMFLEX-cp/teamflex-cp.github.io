@@ -9960,6 +9960,7 @@ async function dhResetPw(name){
   try{var b=await _sbDrvBest(name);pw=(b&&b.password)||'';}catch(e){}
   if(!pw){var db=getDB();pw=(db[name]&&db[name].password)||'';}
   var v=document.getElementById('dh-pw-val'),sb=document.getElementById('dh-pw-sub');
+  if(/^FP#/.test(pw)){if(v)v.textContent='🔒 지문 전용';if(sb)sb.textContent='비밀번호 로그인 꺼짐 · 지문 초기화하면 원래 비밀번호로 돌아와요';var _rb=document.getElementById('dh-pw-reset');if(_rb)_rb.style.display='none';return;}   /* [v911] */
   if(v)v.textContent=pw||'(없음)';
   if(sb)sb.textContent=(pw==='1234')?'기본 비밀번호(1234) 상태예요':'기사가 바꾼 비밀번호예요';
   document.getElementById('dh-pw-reset').onclick=async function(){
@@ -22113,7 +22114,8 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     if(FP._g)return;FP._g=1;
     try{var cp=window.CT_preview;if(typeof cp==='function')window.CT_preview=function(n,t,m){if(m==='driver'&&FP.needGate()){var a=arguments,s=this;FP.gate('계약서',function(){cp.apply(s,a);});return;}return cp.apply(this,arguments);};}catch(e){}
     try{if(typeof window.dhMyInfo==='function')window.dhMyInfo=FP.guard('내 정보',window.dhMyInfo);}catch(e){}
-    try{if(typeof window.openPwModal==='function')window.openPwModal=FP.guard('비밀번호 변경',window.openPwModal);}catch(e){}
+    try{var opm=window.openPwModal;if(typeof opm==='function')window.openPwModal=function(){if(CU&&!CU._master&&FP.isFp(CU.name)){modal('<div style="text-align:center;font-size:34px">🔒</div><div style="text-align:center;font-weight:900;font-size:16px;margin:4px 0">지문 전용 계정이에요</div><div style="font-size:12.5px;color:#5a6b7c;text-align:center;line-height:1.6">이 계정은 비밀번호를 쓰지 않고 지문으로만 들어와요.<br>지문을 못 쓰게 되면 관리자에게 <b>지문 초기화</b>를 요청하세요.</div><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');return;}return opm.apply(this,arguments);};}catch(e){}
+    try{var rdp=window.resetDriverPw;if(typeof rdp==='function')window.resetDriverPw=async function(name){try{var st=await FP.status(name);if(st&&st.fp){alert(name+' 기사는 지문 전용 계정이에요.\n비밀번호 초기화 대신 기사정보 상세 → 🔐 보안 → [지문 초기화]를 사용하세요.\n(지문 초기화하면 원래 비밀번호로 돌아와요)');return false;}}catch(_){}return rdp.apply(this,arguments);};}catch(e){}
     try{var de=window.dhMyEditStart;if(typeof de==='function')window.dhMyEditStart=function(name){
       if(CU&&CU._master){_dhRender(name,true,'self');return;}
       if(CU&&FP.isFp(CU.name)){if(FP.needGate())FP.gate('내 정보 수정',function(){_dhRender(name,true,'self');});else _dhRender(name,true,'self');return;}
