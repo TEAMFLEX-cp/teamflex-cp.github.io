@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="ko"><head>
+<!DOCTYPE html><html lang="ko"><head><script>/* [v909] 같은 화면을 다시 그릴 때 내용이 그대로면 건너뜀(깜빡임·초기화 방지) */window._tfSetMc=function(mc,html){try{if(mc&&mc._tfH===html&&mc.firstChild&&mc.firstChild===mc._tfN)return false;}catch(e){}mc.innerHTML=html;try{mc._tfH=html;mc._tfN=mc.firstChild;}catch(e){}return true;};</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -72,7 +72,7 @@ function _sgLeadObj(wk,n){try{var m=_sgMeta(wk);var L=m&&m.leaders&&m.leaders[n]
 function _sgIsTJ(wk,n){try{var m=_sgMeta(wk);var L=m&&m.leaders&&m.leaders[n];return !!(L&&L.role==='팀장');}catch(e){return false;}}
 function _sgOrder(wk,arr){try{var m=_sgMeta(wk);if(!m||!m.order||!m.order.length||!arr)return arr;var idx={};m.order.forEach(function(k,i){idx[k]=i;});return arr.map(function(g,i){return {g:g,i:i};}).sort(function(a,b){var ia=idx[a.g.l.join('|')],ib=idx[b.g.l.join('|')];ia=(ia==null?9000+a.i:ia);ib=(ib==null?9000+b.i:ib);return ia-ib;}).map(function(x){return x.g;});}catch(e){return arr;}}
 function _sgSecHead(wk,lk,prev){var m=_sgMeta(wk);var g=m&&m.groups&&m.groups[lk];if(!g||!g.section)return {h:'',sec:prev};var sec=g.section;if(sec===prev)return {h:'',sec:prev};var ic=sec.indexOf('아파트')>=0?'🏢':'📍';return {h:(prev?'<div class="sg-gap"></div>':'')+'<div class="sg-sec">'+ic+' '+_sgEsc(sec)+'</div>',sec:sec};}
-function _sgLoad(){try{if(!window.sbClient)return;sbClient.from('app_settings').select('value').eq('key','sched_groups_meta').maybeSingle().then(function(r){var v=r&&r.data&&r.data.value;try{if(typeof v==='string')v=JSON.parse(v);}catch(e){v=null;}if(!v||typeof v!=='object')return;var ch=JSON.stringify(v)!==JSON.stringify(_SGM);_SGM=v;if(ch&&(window.CUR_TAB==='fs'||window.CUR_TAB==='as')&&!window.EDIT_MODE&&typeof pgFullSched==='function'){try{var mc=document.getElementById('mc');if(mc){var st=mc.scrollTop;mc.innerHTML=pgFullSched();requestAnimationFrame(function(){try{initSchedScrollSync();}catch(e){}mc.scrollTop=st;});}}catch(e){}}}).catch(function(){});}catch(e){}}
+function _sgLoad(){try{if(!window.sbClient)return;sbClient.from('app_settings').select('value').eq('key','sched_groups_meta').maybeSingle().then(function(r){var v=r&&r.data&&r.data.value;try{if(typeof v==='string')v=JSON.parse(v);}catch(e){v=null;}if(!v||typeof v!=='object')return;var ch=JSON.stringify(v)!==JSON.stringify(_SGM);_SGM=v;if(ch&&(window.CUR_TAB==='fs'||window.CUR_TAB==='as')&&!window.EDIT_MODE&&typeof pgFullSched==='function'){try{var mc=document.getElementById('mc');if(mc){var st=mc.scrollTop;if(!window._tfSetMc(mc,pgFullSched()))return;requestAnimationFrame(function(){try{initSchedScrollSync();}catch(e){}mc.scrollTop=st;});}}catch(e){}}}).catch(function(){});}catch(e){}}
 setTimeout(_sgLoad,2500);setTimeout(_sgLoad,8000);setInterval(function(){if(document.visibilityState!=='hidden')_sgLoad();},300000);
 </script>
 <style>.sg-sec{font-weight:900;font-size:14px;color:#1e2a5a;background:linear-gradient(90deg,#fff3c4,rgba(255,255,255,0));border-left:5px solid #f0b400;border-radius:8px;padding:6px 12px;margin:6px 0 8px}.sg-gap{height:16px}</style>
@@ -80,7 +80,7 @@ setTimeout(_sgLoad,2500);setTimeout(_sgLoad,8000);setInterval(function(){if(docu
 var _RRG=null;
 function _rrEsc(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function _rrParse(v){try{if(typeof v==='string')v=JSON.parse(v);}catch(e){v=null;}return (v&&typeof v==='object'&&v.reorgs&&v.reorgs.length)?v:null;}
-function _rrLoad(){try{if(!window.sbClient)return;sbClient.from('app_settings').select('value').eq('key','route_reorg').maybeSingle().then(function(r){var v=_rrParse(r&&r.data&&r.data.value);if(!v)return;var ch=JSON.stringify(v)!==JSON.stringify(_RRG);_RRG=v;if(ch&&(window.CUR_TAB==='fs'||window.CUR_TAB==='as')&&!window.EDIT_MODE&&typeof pgFullSched==='function'){try{var mc=document.getElementById('mc');if(mc){var st=mc.scrollTop;mc.innerHTML=pgFullSched();requestAnimationFrame(function(){try{initSchedScrollSync();}catch(e){}mc.scrollTop=st;});}}catch(e){}}}).catch(function(){});}catch(e){}}
+function _rrLoad(){try{if(!window.sbClient)return;sbClient.from('app_settings').select('value').eq('key','route_reorg').maybeSingle().then(function(r){var v=_rrParse(r&&r.data&&r.data.value);if(!v)return;var ch=JSON.stringify(v)!==JSON.stringify(_RRG);_RRG=v;if(ch&&(window.CUR_TAB==='fs'||window.CUR_TAB==='as')&&!window.EDIT_MODE&&typeof pgFullSched==='function'){try{var mc=document.getElementById('mc');if(mc){var st=mc.scrollTop;if(!window._tfSetMc(mc,pgFullSched()))return;requestAnimationFrame(function(){try{initSchedScrollSync();}catch(e){}mc.scrollTop=st;});}}catch(e){}}}).catch(function(){});}catch(e){}}
 setTimeout(_rrLoad,2600);setTimeout(_rrLoad,8200);setInterval(function(){if(document.visibilityState!=='hidden')_rrLoad();},300000);
 function _rrPfx(l){var m=String(l||'').match(/\d{3}/);return m?m[0]:'';}
 function _rrMapLabel(l,map){return String(l||'').replace(/\d{3}/g,function(n){return (map&&map[n])||n;});}
@@ -208,7 +208,7 @@ function _lrAdds(groups,wk){var res={};try{if(!_LRG||!groups)return res;var ref=
 /* 구분선에 보여줄 팀장·조장 (주 기준: 지난 주=그 주 마지막 날, 이번 주=오늘, 다음 주=그 주 첫날) */
 function _lrGroupLeaders(g,wk,adds){try{if(!_LRG)return g.l;var ref=_lrRef(wk),out=[];(g.l||[]).forEach(function(ln){var b=_lrBase(ln);var r=_lrRoleAt(b,ref);if(r===null){out.push(ln);return;}if(r)out.push(b+' '+r);});((adds||{})[(g.l||[]).join('|')]||[]).forEach(function(x){if(out.indexOf(x)<0)out.push(x);});
   out.sort(function(a,b){return (a.indexOf('팀장')>=0?0:1)-(b.indexOf('팀장')>=0?0:1);});return out;}catch(e){return g.l;}}
-function _lrLoad(){try{if(!window.sbClient)return;sbClient.from('app_settings').select('value').eq('key','leader_registry').maybeSingle().then(function(r){var v=_lrParse(r&&r.data&&r.data.value);if(!v)return;var ch=JSON.stringify(v)!==JSON.stringify(_LRG);_LRG=v;try{if(window.CU&&CU.role==='admin')_lrEnsureColors(JSON.parse(JSON.stringify(v)));}catch(_e){}if(ch&&(window.CUR_TAB==='fs'||window.CUR_TAB==='as')&&!window.EDIT_MODE&&typeof pgFullSched==='function'){try{var mc=document.getElementById('mc');if(mc){var st=mc.scrollTop;mc.innerHTML=pgFullSched();requestAnimationFrame(function(){try{initSchedScrollSync();}catch(e){}mc.scrollTop=st;});}}catch(e){}}}).catch(function(){});}catch(e){}}
+function _lrLoad(){try{if(!window.sbClient)return;sbClient.from('app_settings').select('value').eq('key','leader_registry').maybeSingle().then(function(r){var v=_lrParse(r&&r.data&&r.data.value);if(!v)return;var ch=JSON.stringify(v)!==JSON.stringify(_LRG);_LRG=v;try{if(window.CU&&CU.role==='admin')_lrEnsureColors(JSON.parse(JSON.stringify(v)));}catch(_e){}if(ch&&(window.CUR_TAB==='fs'||window.CUR_TAB==='as')&&!window.EDIT_MODE&&typeof pgFullSched==='function'){try{var mc=document.getElementById('mc');if(mc){var st=mc.scrollTop;if(!window._tfSetMc(mc,pgFullSched()))return;requestAnimationFrame(function(){try{initSchedScrollSync();}catch(e){}mc.scrollTop=st;});}}catch(e){}}}).catch(function(){});}catch(e){}}
 setTimeout(_lrLoad,2400);setTimeout(_lrLoad,8000);setInterval(function(){if(document.visibilityState!=='hidden')_lrLoad();},120000);
 /* 직급 변경 기록 남기기 (r: '팀장' | '조장' | '' ) */
 async function _lrPush(nm,r,by){if(!window.sbClient)return false;var q=await sbClient.from('app_settings').select('value').eq('key','leader_registry').maybeSingle();var v=_lrParse(q&&q.data&&q.data.value)||{version:1,log:[]};var t=_rrToday();var cur=_lrRoleAtIn(v,nm,t);if(cur===r){_LRG=v;return true;}
@@ -3628,7 +3628,7 @@ function _nextPopup(){
   _popupShowing=true;
   var p=_popupQueue.shift();
   var ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.id='tf-alert-ov';ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
   ov.innerHTML='<div style="background:#0D2440;border:2px solid #1B6FD8;border-radius:20px;padding:28px 22px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.6)">'
     +'<div style="font-size:44px;margin-bottom:10px">'+p.icon+'</div>'
     +'<div style="font-size:18px;font-weight:900;color:#5BC4FF;margin-bottom:8px">'+p.title+'</div>'
@@ -3639,7 +3639,7 @@ function _nextPopup(){
   function closePopup(runConfirm){
     if(!ov.parentNode)return;
     ov.remove();_popupShowing=false;
-    history.back();
+    window._tfPopSkip=Date.now();history.back();   /* [v909] 팝업만 닫고 화면 이동은 안 함 */
     if(runConfirm&&p.onConfirm)p.onConfirm();
     setTimeout(_nextPopup,200);
   }
@@ -3960,6 +3960,12 @@ function _reRenderCurTab(force){
   //   앱 복귀/자동동기화로 인한 자동 재렌더를 건너뛴다 → 입력·선택·촬영 상태 보존 (랜딩으로 튐 방지)
   if(m[1]==='rq' && typeof _rqTab!=='undefined' && _rqTab){ return; }
   // ★ 스케줄 탭 '편집 중'이면 go()가 EDIT_MODE를 꺼버리므로, 편집모드 유지한 채 스케줄만 재렌더
+  /* [v909] 스케줄은 자동 갱신 때 go()로 새로 열지 않고 내용만(바뀐 경우에만) 다시 그림 */
+  if((m[1]==='fs'||m[1]==='as') && !EDIT_MODE && !force && (m[1]===CUR_TAB)){
+    var _mcS=document.getElementById('mc');var _st1=_mcS?_mcS.scrollTop:0;
+    if(_mcS&&window._tfSetMc(_mcS,pgFullSched())){requestAnimationFrame(function(){var _x=document.getElementById('mc');if(_x)_x.scrollTop=_st1;try{initSchedScrollSync();}catch(e){}});}
+    return;
+  }
   if((m[1]==='fs'||m[1]==='as') && EDIT_MODE){
     var _mcE=document.getElementById('mc');var _st0=_mcE?_mcE.scrollTop:0;
     if(_mcE){_mcE.innerHTML=pgFullSched();requestAnimationFrame(function(){var _x=document.getElementById('mc');if(_x)_x.scrollTop=_st0;try{initSchedScrollSync();}catch(e){}});}
@@ -4998,6 +5004,9 @@ function _qsBkCalc(){
 
 // ── 안드로이드 뒤로가기 (popstate) 핸들러 ────────────────────────────
 window.addEventListener('popstate',function(e){
+  /* [v909] 알림 팝업 닫기용 뒤로가기는 화면 이동 없이 무시 (팝업 닫으면 홈으로 튀던 문제) */
+  if(window._tfPopSkip&&Date.now()-window._tfPopSkip<3000){window._tfPopSkip=0;return;}
+  if(document.getElementById('tf-alert-ov'))return;
   // 백업공유 오버레이 열려있으면 iframe으로 back 전달
   var _bpov=document.getElementById('bpshare-ov');
   if(_bpov){ try{var _if=_bpov.querySelector('iframe'); if(_if&&_if.contentWindow)_if.contentWindow.postMessage('bp-back-request','*');}catch(_e){} window.history.pushState({tab:CUR_TAB,ts:Date.now()},'');return; }
@@ -5932,7 +5941,7 @@ function launchApp(){
   checkUnreadAnns(false, _startupPopupStep2);
   // Supabase Realtime 구독 시작
   setTimeout(startRealtime, 1000);
-  setTimeout(mdStartRealtime, 1200);
+  try{ if(typeof mdStartRealtime==='function') setTimeout(mdStartRealtime, 1200); }catch(_e){}   /* [v909] 없는 함수 호출로 시작 작업이 중간에 멈추던 오류 수정 */
   // 기능 활성화/알림 제어 설정 로드 + 5분 주기 폴링 (Realtime 미지원 환경 fallback)
   loadFeatureControls();
   try{ _loadQtyPerm(); }catch(e){}
@@ -8815,7 +8824,7 @@ function pgFullSched(){
   var wk=AW[SCHED_WK];var ovr=getSchedOvr();var today=todStr();
   // ★ 공유 변경로그 캐시가 아직 없으면(기사 등 변경이력 탭 미방문) 백그라운드 로드 후 재렌더 → New 배지가 모든 역할에 표시됨
   if(_sharedSchedLogCache===null && typeof _loadSharedSchedLog==='function'){
-    try{_loadSharedSchedLog().then(function(){var mc=document.getElementById('mc');if(mc&&(CUR_TAB==='fs'||CUR_TAB==='as')){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);}});}catch(e){}
+    try{_loadSharedSchedLog().then(function(){var mc=document.getElementById('mc');if(mc&&(CUR_TAB==='fs'||CUR_TAB==='as')){var _st=mc.scrollTop;if(!window._tfSetMc(mc,pgFullSched()))return;requestAnimationFrame(function(){try{initSchedScrollSync();}catch(e){}mc.scrollTop=_st;});}});}catch(e){}
   }
   if(_RA===null&&sbClient){_RA={};try{_raLoad().then(function(){var mc=document.getElementById('mc');if(mc&&(CUR_TAB==='fs'||CUR_TAB==='as')){mc.innerHTML=pgFullSched();requestAnimationFrame(initSchedScrollSync);}});}catch(_e){}}
   var _newKeys=_schedNewKeySet();   // 변경분 New 표시용 (건드린 라우트·근무일 안 지남)
@@ -12946,7 +12955,7 @@ function mdRenderList(cases){
       var items=grp.items;
       items.sort(function(a,b){return new Date(b._t||0)-new Date(a._t||0);}); // 최신 처리시각 먼저
       var groupId=grp.gid;
-      var isOpen=(di===0); // 가장 최신 그룹만 기본 열림
+      var isOpen=(window._mdDoneOpen&&(groupId in window._mdDoneOpen))?window._mdDoneOpen[groupId]:(di===0); // [v909] 직접 열고 닫은 상태는 다시 그려도 유지 (기본: 최신 그룹만 열림)
       html+=
         '<div style="margin-bottom:6px;background:#f9fbe7;border-radius:10px;overflow:hidden;border:1px solid #e6ee9c">'+
           '<div onclick="mdToggleDoneGroup(\''+groupId+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;cursor:pointer;user-select:none">'+
@@ -12984,6 +12993,7 @@ function mdRenderList(cases){
                 '<div onclick="mdOpenDetail('+c.id+')" style="flex:1;cursor:pointer;min-width:0">'+
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
                     '<span style="font-size:9px;font-weight:800;color:#fff;background:#00838f;padding:1px 6px;border-radius:6px">인입</span>'+
+                    (function(){try{var _ct=c.category||(c.issue_content&&c.issue_content.indexOf('미반납')>=0?'미반납':c.issue_content&&c.issue_content.indexOf('오회수')>=0?'오회수':'오배송');var _cs={'오배송':'background:#ffebee;color:#c62828','미반납':'background:#e0f7fa;color:#00838f','오회수':'background:#ede7f6;color:#4527a0','수기회수':'background:#ede9fe;color:#6d28d9','기타':'background:#eceff1;color:#546e7a'}[_ct]||(typeof _mdCatColor==='function'?('background:'+_mdCatColor(_ct)+'1a;color:'+_mdCatColor(_ct)):'background:#ffebee;color:#c62828');return '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:7px;'+_cs+'">'+mdEsc(_ct)+'</span>';}catch(_e){return '';}})()+   /* [v909] 어떤 인입건인지 종류 뱃지 */
                     (c._noAction?'<span style="font-size:10px;font-weight:800;color:#455a64;background:#eceff1;border:1px solid #cfd8dc;padding:1px 7px;border-radius:7px">⛔ 미응답 완료</span>':'')+
                     (canDelete?'<span style="font-size:11px;font-weight:700;color:#558b2f">'+mdEsc(c.driver_name||c.driver_id||'-')+'</span>':'')+''+
                     '<span style="font-size:11px;color:#aaa">'+mdWbShort(c.waybill_no)+'</span>'+
@@ -13008,6 +13018,7 @@ function mdToggleDoneGroup(groupId){
   if(!box)return;
   var open=box.style.display!=='none';
   box.style.display=open?'none':'block';
+  try{window._mdDoneOpen=window._mdDoneOpen||{};window._mdDoneOpen[groupId]=!open;}catch(_e){}
   if(arrow)arrow.textContent=open?'▼':'▲';
 }
 // ── 케이스 카드 HTML ──────────────────────────────────────────────────
