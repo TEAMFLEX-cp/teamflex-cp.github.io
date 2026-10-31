@@ -4145,7 +4145,8 @@ function openCfgSubMenu(){
         '<button onclick="closeCfgSubMenu();pushStatusAdmin()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e7f0ff;border:2px solid #b8ccff;border-radius:14px;font-size:15px;font-weight:700;color:#1546b0;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F514;</span><div style="flex:1;min-width:0"><div>구독 관리</div><div style="font-size:11px;font-weight:400;color:#5b83c9;margin-top:2px">실시간 구독자·미구독자 확인</div></div>'+
         '</button>'+
-        '<button onclick="closeCfgSubMenu();go(\'sv\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e8f7ee;border:2px solid #a5d6bb;border-radius:14px;font-size:15px;font-weight:700;color:#1f7a4d;cursor:pointer;text-align:left;box-sizing:border-box">'+
+        '<button onclick="closeCfgSubMenu();tfFp.openAdmin()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#eef6ff;border:2px solid #bbdefb;border-radius:14px;font-size:15px;font-weight:700;color:#0d47a1;cursor:pointer;text-align:left;box-sizing:border-box">'+'<span style="font-size:24px;flex-shrink:0">&#x1F510;</span>'+'<div style="flex:1;min-width:0"><div>보안 · 마스터키</div><div style="font-size:11px;font-weight:400;color:#64b5f6;margin-top:2px">지문 승인 대기 · 마스터키 · 보안 기록</div></div>'+'</button>'+
+         '<button onclick="closeCfgSubMenu();go(\'sv\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e8f7ee;border:2px solid #a5d6bb;border-radius:14px;font-size:15px;font-weight:700;color:#1f7a4d;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1FA7A;</span><div style="flex:1;min-width:0"><div>서버 감시</div><div style="font-size:11px;font-weight:400;color:#4caf82;margin-top:2px">폴러 상태·서버화면·푸시 알림</div></div>'+
         '</button>'+
         '<button onclick="closeCfgSubMenu();go(\'cfg\')" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f8f9ff;border:2px solid #e8eaf6;border-radius:14px;font-size:15px;font-weight:700;color:#283593;cursor:pointer;text-align:left;box-sizing:border-box">'+
@@ -4245,7 +4246,8 @@ function openUserSubMenu(){
           '<span style="font-size:24px;flex-shrink:0">&#x1F4B0;</span>'+
           '<div style="flex:1;min-width:0"><div>정산</div><div style="font-size:11px;font-weight:400;color:#64b5f6;margin-top:2px">배송비 정산 내역</div></div>'+
         '</button>'+
-        '<button onclick="closeUserSubMenu();openPwModal()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f8f9ff;border:2px solid #e8eaf6;border-radius:14px;font-size:15px;font-weight:700;color:#283593;cursor:pointer;text-align:left;box-sizing:border-box">'+
+        '<button onclick="closeUserSubMenu();tfFp.openMy()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#eef6ff;border:2px solid #bbdefb;border-radius:14px;font-size:15px;font-weight:700;color:#0d47a1;cursor:pointer;text-align:left;box-sizing:border-box">'+'<span style="font-size:24px;flex-shrink:0">&#x1F510;</span>'+'<div style="flex:1;min-width:0"><div>보안 · 지문</div><div style="font-size:11px;font-weight:400;color:#64b5f6;margin-top:2px">지문 등록 · 지문 전용 로그인</div></div>'+'</button>'+
+         '<button onclick="closeUserSubMenu();openPwModal()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#f8f9ff;border:2px solid #e8eaf6;border-radius:14px;font-size:15px;font-weight:700;color:#283593;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F512;</span>'+
           '<div style="flex:1;min-width:0"><div>비밀번호 변경</div><div style="font-size:11px;font-weight:400;color:#9fa8da;margin-top:2px">현재 비밀번호 확인 후 변경</div></div>'+
         '</button>'+
@@ -5227,6 +5229,8 @@ function doLogin(){
     localStorage.setItem('tf_autologin',JSON.stringify({name:'__admin__',adminId:name,pw:pw}));
     launchApp();setTimeout(showNotifSetupBanner,800);return;
   }
+  /* [v910] 지문 전용 계정이면 비밀번호 로그인 막음 (서버 tf-auth 확인) */
+  if(window.tfFp&&window._tfFpOk!==name){var _le=document.getElementById('lerr');if(_le)_le.textContent='⏳ 확인 중...';tfFp.status(name).then(function(st){if(_le)_le.textContent='';if(st&&st.fp){tfFp.showFpLogin(name);if(_le)_le.textContent='🔒 지문 전용 계정이에요. 비밀번호로는 로그인할 수 없어요.';return;}window._tfFpOk=name;try{doLogin();}finally{window._tfFpOk=null;}});return;}
   var db=getDB();var drv=db[name];
   if(!drv){document.getElementById('lerr').textContent='등록되지 않은 이름입니다.';return;}
   if(drv.status==='blocked'||drv.status==='kicked'){document.getElementById('lerr').textContent='강퇴된 계정입니다. 관리자에게 문의하세요.';return;}
@@ -5692,7 +5696,9 @@ function tryAutoLogin(){
     }
     var db=getDB();
     var drv=db[s.name];
-    if(!drv||drv.status!=='approved'||drv.password!==s.pw)return false;
+    if(s.fp){ if(!drv||drv.status!=='approved')return false; }   /* [v910] 지문 자동로그인 */
+    else if(!drv||drv.status!=='approved'||drv.password!==s.pw)return false;
+    try{setTimeout(function(){if(window.tfFp)tfFp.checkAfterAuto(s);},4000);}catch(_e){}
     CU={id:drv.id,name:drv.name,role:drv.role||'driver'};
     localStorage.setItem('tf_push_name',CU.name);localStorage.setItem('tf_push_role',CU.role);
     launchApp();
@@ -6392,6 +6398,7 @@ async function refreshNavBadges(){
 var _navHistory=[];
 var _lastBackMs=0;
 function go(tab){
+  if(tab==='st'&&window.tfFp&&tfFp.needGate()){tfFp.gate('정산',function(){go('st');});return;}   /* [v910] 정산은 지문 재확인 */
   if(tab!=='rl'&&typeof ghKill==='function'){try{ghKill();}catch(e){}}
   if(tab!=='hm'&&typeof _stopWxEffect==='function'){try{_stopWxEffect();}catch(e){}}
   // 설정 서브메뉴 시트가 열려있으면 닫기
@@ -10036,7 +10043,7 @@ function _dhRender(name,edit,mode){
   var pop=document.getElementById('dh-detail');if(pop)pop.remove();
   pop=document.createElement('div');pop.id='dh-detail';pop.style.cssText='position:fixed;inset:0;background:rgba(12,40,70,.5);z-index:10600;display:flex;align-items:flex-end;justify-content:center';
   pop.innerHTML='<div style="background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column">'
-    +'<div style="overflow-y:auto;flex:1;padding:16px 15px 12px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+ttl+'</div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+sub+'</div>'+body+'<div id="dh-photos">'+_dhPhotoBoxes(name)+'</div>'
+    +'<div style="overflow-y:auto;flex:1;padding:16px 15px 12px"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 12px"></div><div style="font-size:16px;font-weight:900;color:#123a6b;text-align:center">'+ttl+'</div><div style="font-size:11px;color:#8090a0;text-align:center;margin-bottom:12px">'+sub+'</div>'+body+((isAdm&&!edit)?'<div id="dh-fpsec"></div>':'')+'<div id="dh-photos">'+_dhPhotoBoxes(name)+'</div>'
     +((!edit&&isAdm)?('<div style="margin-top:10px"><button onclick="dhToggleBlind(\''+name+'\')" style="width:100%;padding:11px;background:'+(bl?'#37474f':'#eef2f6')+';color:'+(bl?'#fff':'#5a6b7c')+';border:none;border-radius:11px;font-weight:800">'+(bl?'🙈 블라인드 (연락처 숨김)':'👁 공개 중 (탭하여 블라인드)')+'</button></div>'):'')
     +((!edit&&isAdm)?('<div style="margin-top:8px"><button onclick="dhContractSetup(\''+name+'\',false)" style="width:100%;padding:11px;background:#eef4ff;color:#2f5fc8;border:1.5px solid #cfe0f5;border-radius:11px;font-weight:800">📝 계약 정보 (라우트·단가·계약일)</button></div>'):'')
     +'</div>'
@@ -10044,6 +10051,7 @@ function _dhRender(name,edit,mode){
   +'</div>';
   pop.addEventListener('click',function(ev){if(ev.target===pop&&!edit)pop.remove();});
   document.body.appendChild(pop);
+  try{if(isAdm&&!edit&&window.tfFp)tfFp.dhSection(name);}catch(_fe){}   /* [v910] 지문 보안 칸 */
 }
 function dhMyInfo(){
   if(!CU||!CU.name){alert('로그인 정보가 없습니다.');return;}
@@ -21835,5 +21843,286 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   (function tick(){ if(window.CU&&window.sbClient&&CU.name){ pull(); } else setTimeout(tick,700); })();
   document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible'&&window.CU) pull(); });
 })();
+</script>
+<script>
+/* [v910] 지문 로그인(패스키) — 지문은 폰 안에만, 서버(tf-auth)는 공개키로 확인만 */
+(function(){
+  var FP={};window.tfFp=FP;
+  var GATE_MS=5*60*1000;
+  FP.lastOk=0;FP.cache={};
+  function url(){return window.TF_AUTH_URL||((typeof SB_URL!=='undefined'?SB_URL:'')+'/functions/v1/tf-auth');}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  FP.esc=esc;
+  async function api(a,o,ms){
+    var ctl=null,to=null;try{ctl=new AbortController();to=setTimeout(function(){try{ctl.abort();}catch(e){}},ms||9000);}catch(e){}
+    var h={'Content-Type':'application/json'};try{if(typeof SB_KEY!=='undefined'&&SB_KEY){h.apikey=SB_KEY;}}catch(e){}
+    try{
+      var r=await fetch(url(),{method:'POST',headers:h,body:JSON.stringify(Object.assign({a:a},o||{})),signal:ctl?ctl.signal:undefined});
+      var j={};try{j=await r.json();}catch(e){j={err:'json'};}
+      j._st=r.status;return j;
+    }catch(e){return {err:'net',_st:0,msg:String(e&&e.message||e)};}
+    finally{if(to)clearTimeout(to);}
+  }
+  FP.api=api;
+  function b64u(buf){var a=new Uint8Array(buf),s='';for(var i=0;i<a.length;i++)s+=String.fromCharCode(a[i]);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+  function ub64(s){s=String(s).replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';var b=atob(s),a=new Uint8Array(b.length);for(var i=0;i<b.length;i++)a[i]=b.charCodeAt(i);return a.buffer;}
+  function toCreate(o){var p=JSON.parse(JSON.stringify(o));p.challenge=ub64(p.challenge);p.user.id=ub64(p.user.id);(p.excludeCredentials||[]).forEach(function(c){c.id=ub64(c.id);});return p;}
+  function toGet(o){var p=JSON.parse(JSON.stringify(o));p.challenge=ub64(p.challenge);(p.allowCredentials||[]).forEach(function(c){c.id=ub64(c.id);});return p;}
+  function credJSON(c){var r=c.response,o={id:c.id,rawId:b64u(c.rawId),type:c.type,clientExtensionResults:(c.getClientExtensionResults?c.getClientExtensionResults():{}),authenticatorAttachment:c.authenticatorAttachment||undefined,response:{clientDataJSON:b64u(r.clientDataJSON)}};
+    if(r.attestationObject){o.response.attestationObject=b64u(r.attestationObject);try{o.response.transports=r.getTransports?r.getTransports():[];}catch(e){}}
+    else{o.response.authenticatorData=b64u(r.authenticatorData);o.response.signature=b64u(r.signature);if(r.userHandle)o.response.userHandle=b64u(r.userHandle);}
+    return o;}
+  FP.supported=function(){return !!(window.PublicKeyCredential&&navigator.credentials&&navigator.credentials.create);};
+  FP.devName=function(){var u=navigator.userAgent||'';var m=u.match(/Android[^;]*;\s*([^;)]+?)(?:\sBuild|\))/);if(m)return m[1].trim().slice(0,40);if(/iPhone/.test(u))return 'iPhone';if(/iPad/.test(u))return 'iPad';if(/Windows/.test(u))return 'Windows PC';if(/Mac/.test(u))return 'Mac';return '휴대폰';};
+  function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+  function lsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(e){}}
+  FP.tokOf=function(n){return lsGet('tf_fp_tok_'+n);};
+  FP.isFp=function(n){if(!n)return false;if(FP.tokOf(n))return true;var c=FP.cache[n];return !!(c&&c.fp);};
+  function errMsg(j){var e=j&&j.err;return ({net:'서버에 연결하지 못했어요. 인터넷을 확인하고 다시 시도해주세요.',pw:'비밀번호가 맞지 않아요.',need_approval:'관리자 승인이 필요해요.',max_dev:'등록할 수 있는 폰 수(3대)를 넘었어요. 관리자에게 문의하세요.',expired:'시간이 지났어요. 다시 시도해주세요.',verify:'지문 확인에 실패했어요.',unknown_device:'이 폰은 이 계정에 등록되지 않았어요.',no_fp:'지문이 등록되지 않은 계정이에요.',too_many:'요청이 너무 많아요. 잠시 후 다시 해주세요.',bad_master:'마스터키가 맞지 않아요.'+((j&&j.left!=null)?' (남은 횟수 '+j.left+')':''),locked:'마스터키를 여러 번 틀려서 30분 동안 잠겼어요.',no_master:'마스터키가 아직 설정되지 않았어요. 관리자 설정에서 먼저 설정하세요.',short:'8자 이상으로 정해주세요.',admin:'관리자 확인이 만료됐어요. 다시 마스터키를 입력하세요.',server:'서버 오류가 났어요.'})[e]||('처리하지 못했어요 ('+(e||'?')+')');}
+  FP.errMsg=errMsg;
+  // 서버 확인 실패 시 참고 목록 (app_settings.tf_fp_names)
+  async function mirrorHas(n){try{if(!window.sbClient)return null;var r=await sbClient.from('app_settings').select('value').eq('key','tf_fp_names').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);if(typeof v==='string')v=JSON.parse(v);return !!(v&&v.names&&v.names.indexOf(n)>=0);}catch(e){return null;}}
+  FP.status=async function(n){
+    n=String(n||'').trim();if(!n)return {fp:false};
+    var j=await api('status',{name:n},5000);
+    if(j&&!j.err){FP.cache[n]={fp:!!j.fp,n:j.n||0,pend:j.pend||0,at:Date.now()};return FP.cache[n];}
+    var m=await mirrorHas(n);var o={fp:!!m,off:true};if(m!==null)FP.cache[n]=o;return o;
+  };
+  FP.register=async function(n,opt){
+    opt=opt||{};if(!FP.supported())return {err:'unsupported'};
+    var s=await api('regStart',{name:n,pw:opt.pw||'',reqTok:opt.reqTok||'',device:FP.devName()});
+    if(s.err)return s;
+    var c;try{c=await navigator.credentials.create({publicKey:toCreate(s.options)});}catch(e){return {err:'cancel',msg:String(e&&e.message||e)};}
+    var f=await api('regFinish',{name:n,cid:s.cid,resp:credJSON(c),pw:opt.pw||'',reqTok:opt.reqTok||'',device:FP.devName()});
+    if(f.ok){lsSet('tf_fp_tok_'+n,f.tok);lsSet('tf_fp_req_'+n,null);FP.cache[n]={fp:true,at:Date.now()};FP.lastOk=Date.now();}
+    return f;
+  };
+  FP.auth=async function(n,why){
+    if(!FP.supported())return {err:'unsupported'};
+    var s=await api('authStart',{name:n});if(s.err)return s;
+    var c;try{c=await navigator.credentials.get({publicKey:toGet(s.options)});}catch(e){return {err:'cancel',msg:String(e&&e.message||e)};}
+    var f=await api('authFinish',{name:n,cid:s.cid,resp:credJSON(c),why:why||''});
+    if(f.ok){lsSet('tf_fp_tok_'+n,f.tok);FP.lastOk=Date.now();}
+    return f;
+  };
+  // ── 공통 모달 ──
+  function modal(html,id){id=id||'tf-fp-mod';var o=document.getElementById(id);if(o)o.remove();o=document.createElement('div');o.id=id;o.style.cssText='position:fixed;inset:0;z-index:2147482000;background:rgba(10,25,45,.55);display:flex;align-items:center;justify-content:center;padding:18px';o.innerHTML='<div style="background:#fff;border-radius:18px;width:100%;max-width:380px;max-height:88vh;overflow-y:auto;padding:18px 16px;box-shadow:0 14px 40px rgba(0,0,0,.3);font-family:inherit">'+html+'</div>';o.addEventListener('click',function(e){if(e.target===o)o.remove();});document.body.appendChild(o);return o;}
+  FP.modal=modal;FP.close=function(id){var o=document.getElementById(id||'tf-fp-mod');if(o)o.remove();};
+  var BTN='display:block;width:100%;border:0;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer;margin-top:8px;';
+  var B1=BTN+'background:linear-gradient(135deg,#1565c0,#1e88e5);color:#fff;',B2=BTN+'background:#eef2f6;color:#455a64;',B3=BTN+'background:#ffebee;color:#c62828;border:1.5px solid #ef9a9a;',B4=BTN+'background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;';
+  var INP='width:100%;box-sizing:border-box;border:1.5px solid #d5dbe4;border-radius:11px;padding:12px;font-size:15px;margin-top:8px';
+  FP.css={B1:B1,B2:B2,B3:B3,B4:B4,INP:INP};
+  function toast(m,ok){try{showToast(m,ok!==false);}catch(e){}}
+  // ── 로그인 화면 ──
+  function lsBox(){return document.querySelector('#ls .lbox');}
+  function ensureLoginUI(){
+    var box=lsBox();if(!box||document.getElementById('tf-fp-ls'))return;
+    var d=document.createElement('div');d.id='tf-fp-ls';d.style.display='none';
+    var b=document.getElementById('btnLogin');if(b&&b.parentNode)b.parentNode.insertBefore(d,b.nextSibling);else box.appendChild(d);
+    var m=document.createElement('div');m.id='tf-fp-mlink';m.style.cssText='text-align:center;margin-top:12px';
+    m.innerHTML='<span onclick="tfFp.masterLoginUI()" style="font-size:12px;color:#8a97a8;text-decoration:underline;cursor:pointer">🗝 관리자 마스터키 접속</span>';
+    box.appendChild(m);
+    var u=document.getElementById('uid');var t=null;
+    if(u)u.addEventListener('input',function(){clearTimeout(t);var v=u.value.trim();if(!v){showFpLogin(null);return;}t=setTimeout(function(){FP.status(v).then(function(st){if(u.value.trim()===v)showFpLogin(st.fp?v:null);});},700);});
+  }
+  function showFpLogin(n){
+    var d=document.getElementById('tf-fp-ls');if(!d)return;
+    var pw=document.getElementById('upw'),pwg=pw&&pw.closest('.fg'),bl=document.getElementById('btnLogin');
+    if(!n){d.style.display='none';d.innerHTML='';if(pwg)pwg.style.display='';if(bl)bl.style.display='';return;}
+    if(pwg)pwg.style.display='none';if(bl)bl.style.display='none';
+    var mine=!!FP.tokOf(n);var rq=null;try{rq=JSON.parse(lsGet('tf_fp_req_'+n)||'null');}catch(e){}
+    d.style.display='';
+    d.innerHTML='<div style="background:#eef6ff;border:1.5px solid #bbdefb;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#0d47a1;line-height:1.55;margin-top:4px">🔒 <b>지문 전용 계정</b>이에요. 비밀번호로는 로그인할 수 없어요.</div>'+
+      '<button style="'+B1+'font-size:17px;padding:15px" onclick="tfFp.loginFp()">👆 지문으로 로그인</button>'+
+      (mine?'':(rq?'<button style="'+B2+'" onclick="tfFp.reqWait(\''+esc(n).replace(/'/g,"\\'")+'\')">⏳ 이 폰 추가 승인 확인</button>':'<button style="'+B2+'" onclick="tfFp.reqNew()">📱 이 폰 추가 승인 요청</button><div style="font-size:11px;color:#8a97a8;text-align:center;margin-top:4px">다른 폰에 이미 지문이 등록돼 있어요. 이 폰을 쓰려면 관리자 승인이 필요해요.</div>'));
+  }
+  FP.showFpLogin=showFpLogin;
+  function curName(){var u=document.getElementById('uid');return u?u.value.trim():'';}
+  FP.loginFp=async function(){
+    var n=curName();if(!n)return;var e=document.getElementById('lerr');if(e)e.textContent='👆 지문을 확인해주세요...';
+    var r=await FP.auth(n,'login');
+    if(!r.ok){if(e)e.textContent=r.err==='cancel'?'지문 확인이 취소됐어요. (이 폰이 등록되지 않았다면 [이 폰 추가 승인 요청]을 눌러주세요)':errMsg(r);return;}
+    if(e)e.textContent='';finishLogin(n,r.tok);
+  };
+  function finishLogin(n,tok){
+    var db=getDB();var drv=db[n];
+    if(!drv||drv.status!=='approved'){var e=document.getElementById('lerr');if(e)e.textContent='계정 정보를 불러오는 중이에요. 잠시 후 다시 눌러주세요.';try{if(window.sbClient&&typeof syncFromSupabase==='function')syncFromSupabase();}catch(_){}return;}
+    CU={id:drv.id,name:drv.name,role:drv.role||'driver'};
+    localStorage.setItem('tf_push_name',CU.name);localStorage.setItem('tf_push_role',CU.role);
+    localStorage.setItem('tf_autologin',JSON.stringify({name:n,fp:1,tok:tok}));
+    try{launchApp();}catch(_e){}
+    try{requestNotifAndSW();}catch(_e){}
+  }
+  FP.reqNew=async function(){
+    var n=curName();if(!n)return;var e=document.getElementById('lerr');
+    var r=await api('reqCreate',{name:n,device:FP.devName()});
+    if(!r.ok){if(e)e.textContent=errMsg(r);return;}
+    lsSet('tf_fp_req_'+n,JSON.stringify({id:r.reqId,tok:r.reqTok,at:Date.now()}));
+    try{if(typeof sendPushToAll==='function')sendPushToAll('📱 새 기기 승인 요청',n+' 기사님이 새 폰('+FP.devName()+') 추가 승인을 요청했어요.',null,'관리자');}catch(_){}
+    FP.reqWait(n);
+  };
+  FP.reqWait=async function(n){
+    var rq=null;try{rq=JSON.parse(lsGet('tf_fp_req_'+n)||'null');}catch(e){}if(!rq){showFpLogin(n);return;}
+    var j=await api('reqStatus',{reqId:rq.id,reqTok:rq.tok});
+    if(j.status==='approved'){
+      modal('<div style="text-align:center;font-size:34px">✅</div><div style="text-align:center;font-weight:900;font-size:16px;margin:4px 0">관리자가 승인했어요</div><div style="font-size:13px;color:#5a6b7c;text-align:center">이 폰의 지문을 등록하면 바로 들어갈 수 있어요.</div><button style="'+B1+'" onclick="tfFp.regApproved(\''+esc(n).replace(/'/g,"\\'")+'\')">👆 이 폰 지문 등록</button><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');
+      return;}
+    if(j.status==='rejected'||j.status==='none'||j.status==='used'){lsSet('tf_fp_req_'+n,null);toast(j.status==='rejected'?'관리자가 요청을 거절했어요.':'요청이 만료됐어요. 다시 요청해주세요.',false);showFpLogin(n);return;}
+    modal('<div style="text-align:center;font-size:34px">⏳</div><div style="text-align:center;font-weight:900;font-size:16px;color:#1565c0;margin:4px 0">관리자 승인 기다리는 중</div><div style="font-size:12.5px;color:#5a6b7c;text-align:center;line-height:1.6">'+esc(FP.devName())+' · 요청 '+new Date(rq.at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+'<br>승인되면 아래 버튼을 눌러주세요.</div><button style="'+B1+'" onclick="tfFp.reqWait(\''+esc(n).replace(/'/g,"\\'")+'\')">🔄 승인 확인</button><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');
+  };
+  FP.regApproved=async function(n){
+    var rq=null;try{rq=JSON.parse(lsGet('tf_fp_req_'+n)||'null');}catch(e){}if(!rq)return;
+    var r=await FP.register(n,{reqTok:rq.tok});
+    if(!r.ok){alert(r.err==='cancel'?'지문 등록이 취소됐어요.':errMsg(r));return;}
+    FP.close();finishLogin(n,r.tok);
+  };
+  // ── 자동로그인 중 확인: 초기화됐거나, 비번 자동로그인인데 지문 전용 계정이 됐으면 로그아웃 ──
+  FP.checkAfterAuto=async function(s){
+    try{
+      if(!s||!s.name||s.name==='__admin__')return;
+      if(s.fp){var j=await api('tokCheck',{tok:s.tok},8000);if(j&&j._st===200&&j.ok===false)forceOut('지문 등록이 초기화됐어요. 다시 로그인해주세요.');return;}
+      var st=await FP.status(s.name);
+      if(st.fp&&!st.off&&!FP.tokOf(s.name))forceOut('이 계정은 지문 전용으로 바뀌었어요.\n이 폰을 쓰려면 로그인 화면에서 [이 폰 추가 승인 요청]을 눌러주세요.');
+    }catch(e){}
+  };
+  function forceOut(msg){try{alert(msg);}catch(e){}try{doLogout();}catch(e){}try{var u=document.getElementById('uid');if(u&&CU===null){}}catch(e){}}
+  // ── 민감 화면 다시 확인 ──
+  FP.needGate=function(){try{if(!CU||CU.role==='admin'||CU._master)return false;if(!FP.isFp(CU.name))return false;return (Date.now()-FP.lastOk)>GATE_MS;}catch(e){return false;}};
+  FP.gate=function(label,cb){
+    var n=CU&&CU.name;
+    modal('<div style="text-align:center;font-size:38px">🔒</div><div style="text-align:center;font-weight:900;font-size:16px;margin:4px 0">'+esc(label)+'은(는) 지문 확인 후 열려요</div><div style="font-size:12.5px;color:#5a6b7c;text-align:center">개인정보 보호를 위해 한 번 더 확인해요. 확인 후 5분 동안은 다시 묻지 않아요.</div><div id="tf-fp-gerr" style="color:#c62828;font-size:12px;text-align:center;min-height:16px;margin-top:6px"></div><button id="tf-fp-gbtn" style="'+B1+'">👆 지문 확인</button><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');
+    document.getElementById('tf-fp-gbtn').onclick=async function(){var r=await FP.auth(n,'gate');if(r.ok){FP.close();try{cb();}catch(e){}}else{var g=document.getElementById('tf-fp-gerr');if(g)g.textContent=r.err==='cancel'?'취소됐어요.':errMsg(r);}};
+  };
+  FP.guard=function(label,fn){return function(){var self=this,args=arguments;if(FP.needGate()){FP.gate(label,function(){fn.apply(self,args);});return;}return fn.apply(self,args);};};
+  // ── 기사: 설정 → 보안·지문 ──
+  FP.openMy=async function(){
+    if(!CU)return;var n=CU.name;
+    modal('<div style="font-weight:900;font-size:16px">🔐 보안 · 지문</div><div style="font-size:12px;color:#8a97a8;margin-top:4px">불러오는 중...</div>');
+    var st=await FP.status(n);var mine=!!FP.tokOf(n);var h='<div style="display:flex;align-items:center"><div style="font-weight:900;font-size:16px;flex:1">🔐 보안 · 지문</div>'+(st.fp?'<span style="font-size:11px;font-weight:800;border-radius:8px;padding:2px 8px;background:#e8f5e9;color:#2e7d32">지문 전용</span>':'<span style="font-size:11px;font-weight:800;border-radius:8px;padding:2px 8px;background:#fff3e0;color:#e65100">미등록</span>')+'</div>';
+    if(st.off)h+='<div style="font-size:12px;color:#c62828;margin-top:8px">서버 확인이 잠시 안 돼요. 잠시 후 다시 열어주세요.</div>';
+    else if(!st.fp){
+      if(!FP.supported())h+='<div style="font-size:12.5px;color:#c62828;margin-top:8px">이 폰/브라우저는 지문 로그인을 지원하지 않아요. (크롬 최신 버전에서 다시 시도해주세요)</div>';
+      else h+='<div style="font-size:12.5px;color:#5a6b7c;line-height:1.6;margin-top:8px">지문을 등록하면 <b>비밀번호로는 접속할 수 없고</b>, 이 폰의 지문으로만 들어올 수 있어요.<br>첫 번째 폰은 승인 없이 바로 등록돼요. 본인 확인을 위해 지금 비밀번호를 입력해주세요.</div><input id="tf-fp-pw" type="password" placeholder="지금 비밀번호" style="'+INP+'"><div id="tf-fp-rerr" style="color:#c62828;font-size:12px;min-height:16px;margin-top:6px"></div><button style="'+B1+'" onclick="tfFp.regFirst()">👆 지문 등록하기</button>';
+    }else{
+      h+='<div style="font-size:12.5px;color:#5a6b7c;line-height:1.6;margin-top:8px">'+(mine?'✅ <b>이 폰</b>('+esc(FP.devName())+')에 지문이 등록돼 있어요.':'이 폰은 등록되지 않았어요.')+'<br>등록된 폰: '+(st.n||0)+'대'+(st.pend?(' · 승인 대기 '+st.pend+'건'):'')+'<br>📱 다른 폰을 더 쓰려면 그 폰 로그인 화면에서 <b>관리자 승인</b>을 받아야 해요.<br>폰을 바꾸거나 지문을 못 쓰면 관리자에게 <b>지문 초기화</b>를 요청하세요.</div>';
+    }
+    h+='<div style="background:#f6f8fb;border-radius:12px;padding:10px 12px;margin-top:12px;font-size:12px;color:#5a6b7c;line-height:1.6"><b style="color:#14213d">🔒 지문으로 한 번 더 확인하는 화면</b><br>💰 정산 · 📄 계약서 · 🔑 비밀번호 변경 · 👤 내 정보</div><div style="font-size:11px;color:#9aa5b4;margin-top:8px;line-height:1.5">지문은 폰 안에만 저장돼요. 서버에는 지문이 아니라 "이 폰이 맞다"를 확인하는 공개키만 저장됩니다.</div><button style="'+B2+'" onclick="tfFp.close()">닫기</button>';
+    modal(h);
+  };
+  FP.regFirst=async function(){
+    var n=CU&&CU.name;var pw=(document.getElementById('tf-fp-pw')||{}).value||'';var er=document.getElementById('tf-fp-rerr');
+    if(!pw){if(er)er.textContent='비밀번호를 입력해주세요.';return;}
+    if(er)er.textContent='👆 지문을 확인해주세요...';
+    var r=await FP.register(n,{pw:pw});
+    if(!r.ok){if(er)er.textContent=r.err==='cancel'?'지문 등록이 취소됐어요.':(r.err==='unsupported'?'이 폰은 지문 로그인을 지원하지 않아요.':errMsg(r));return;}
+    try{localStorage.setItem('tf_autologin',JSON.stringify({name:n,fp:1,tok:r.tok}));}catch(e){}
+    FP.close();toast('✅ 지문 등록 완료 — 이제 지문으로만 접속돼요',true);FP.openMy();
+  };
+  // ── 마스터키 접속 (로그인 화면) ──
+  FP.masterLoginUI=function(){
+    var db={};try{db=getDB();}catch(e){}
+    var names=Object.keys(db).filter(function(k){var d=db[k];return d&&d.status==='approved'&&d.role!=='admin';}).sort(function(a,b){return a.localeCompare(b,'ko');});
+    modal('<div style="font-weight:900;font-size:16px">🗝 관리자 마스터키 접속</div><div style="font-size:12px;color:#5a6b7c;margin-top:4px;line-height:1.55">들어갈 기사 계정을 고르고 마스터키를 입력하세요. 접속 기록이 남아요.</div><select id="tf-mk-n" style="'+INP+'">'+names.map(function(k){return '<option>'+esc(k)+'</option>';}).join('')+'</select><input id="tf-mk-k" type="password" placeholder="마스터키" style="'+INP+'"><div id="tf-mk-e" style="color:#c62828;font-size:12px;min-height:16px;margin-top:6px"></div><button style="'+B1+'" onclick="tfFp.masterLogin()">접속</button><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');
+  };
+  FP.masterLogin=async function(){
+    var n=document.getElementById('tf-mk-n').value,k=document.getElementById('tf-mk-k').value,e=document.getElementById('tf-mk-e');
+    if(!k){e.textContent='마스터키를 입력하세요.';return;}e.textContent='확인 중...';
+    var r=await api('masterLogin',{name:n,master:k,by:'login'});
+    if(!r.ok){e.textContent=errMsg(r);return;}
+    var drv=getDB()[n];if(!drv){e.textContent='계정 정보를 찾을 수 없어요.';return;}
+    FP.close();
+    CU={id:drv.id,name:drv.name,role:drv.role||'driver',_master:true};
+    window._tfMasterSess=n;
+    // 관리자 폰이 기사 알림을 받지 않도록: 이 접속 동안 알림 구독·SW 사용자 전달 끔
+    try{window.subscribePush=function(){return Promise.resolve(false);};}catch(_){}
+    try{window._swPostMessage=function(){};}catch(_){}
+    try{launchApp();}catch(_e){}
+    FP.masterBanner();
+  };
+  FP.masterBanner=function(){
+    if(!window._tfMasterSess)return;var b=document.getElementById('tf-mk-ban');if(b)b.remove();
+    b=document.createElement('div');b.id='tf-mk-ban';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147481000;background:#c62828;color:#fff;font-size:12px;font-weight:800;padding:6px 10px;text-align:center';
+    b.innerHTML='🗝 마스터키 접속 중 — '+esc(window._tfMasterSess)+' 계정 (관리자) · 기록됨 <span onclick="tfFp.masterExit()" style="text-decoration:underline;margin-left:6px;cursor:pointer">나가기</span>';
+    document.body.appendChild(b);
+  };
+  FP.masterExit=function(){try{doLogout();}catch(e){}location.reload();};
+  // ── 관리자 ──
+  function admTok(){try{var o=JSON.parse(lsGet('tf_fp_adm')||'null');if(o&&o.e>Date.now())return o.t;}catch(e){}return null;}
+  FP.admTok=admTok;
+  FP.adminUnlock=function(after){
+    modal('<div style="font-weight:900;font-size:16px">🔓 보안 관리 열기</div><div style="font-size:12px;color:#5a6b7c;margin-top:4px;line-height:1.55">지문 승인·초기화는 마스터키로 한 번 확인해요. (12시간 유지)</div><input id="tf-au-k" type="password" placeholder="마스터키" style="'+INP+'"><div id="tf-au-e" style="color:#c62828;font-size:12px;min-height:16px;margin-top:6px"></div><button id="tf-au-b" style="'+B1+'">확인</button><button style="'+B2+'" onclick="tfFp.openAdmin()">마스터키 설정/변경</button><button style="'+B2+'" onclick="tfFp.close()">닫기</button>','tf-fp-mod2');
+    document.getElementById('tf-au-b').onclick=async function(){var k=document.getElementById('tf-au-k').value,e=document.getElementById('tf-au-e');e.textContent='확인 중...';var r=await api('adminLogin',{master:k});if(!r.ok){e.textContent=errMsg(r);return;}lsSet('tf_fp_adm',JSON.stringify({t:r.adminTok,e:Date.now()+11.5*3600e3}));FP.close('tf-fp-mod2');if(after)after();};
+  };
+  async function adm(a,o){var t=admTok();if(!t)return {err:'admin'};var r=await api(a,Object.assign({adminTok:t},o||{}));if(r.err==='admin')lsSet('tf_fp_adm',null);return r;}
+  FP.adm=adm;
+  function fmtT(t){if(!t)return '-';var d=new Date(t);if(isNaN(d))return '-';return (d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+  FP.dhSection=async function(name){
+    var el=document.getElementById('dh-fpsec');if(!el)return;
+    var box=function(inner,warn){el.innerHTML='<div style="margin-top:12px;border:2px solid '+(warn?'#ffb74d':'#c5cae9')+';border-radius:14px;padding:12px;background:#f7f8ff"><div style="font-weight:900;font-size:14px;color:#14213d;margin-bottom:4px">🔐 보안 (지문)</div>'+inner+'</div>';};
+    if(!admTok()){var st=await FP.status(name);box('<div style="font-size:12.5px;color:#5a6b7c">'+(st.off?'서버 확인 불가':(st.fp?('지문 전용 · 등록 폰 '+st.n+'대'+(st.pend?(' · <b style="color:#e65100">승인 요청 '+st.pend+'건</b>'):'')):'지문 미등록 (비밀번호 로그인)'))+'</div><button style="'+B2+'" onclick="tfFp.adminUnlock(function(){tfFp.dhSection(\''+esc(name).replace(/'/g,"\\'")+'\')})">🔓 승인·초기화 하려면 마스터키 확인</button>',st.pend>0);return;}
+    el.innerHTML='<div style="font-size:12px;color:#8a97a8;margin-top:10px">🔐 보안 정보 불러오는 중...</div>';
+    var r=await adm('adminList',{name:name});
+    if(r.err){box('<div style="font-size:12px;color:#c62828">'+esc(errMsg(r))+'</div>');return;}
+    var N=esc(name).replace(/'/g,"\\'");
+    var h='<div style="font-size:11.5px;font-weight:800;margin-bottom:2px">'+(r.creds.length?'<span style="background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:1px 7px">지문 전용</span>':'<span style="background:#fff3e0;color:#e65100;border-radius:8px;padding:1px 7px">비밀번호 로그인</span>')+'</div>';
+    r.creds.forEach(function(c,i){h+='<div style="display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #e6eaf0;border-radius:11px;margin-top:6px;background:#fff"><span style="font-size:20px">📱</span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800">'+esc(c.device||'휴대폰')+(i===0?' <span style="font-size:10px;color:#8a97a8">첫 폰</span>':'')+'</div><div style="font-size:11px;color:#6b7a90">등록 '+fmtT(c.created_at)+' · 최근 사용 '+fmtT(c.last_used)+'</div></div><span onclick="tfFp.delDev(\''+N+'\',\''+esc(c.id)+'\')" style="font-size:11px;color:#c62828;cursor:pointer">삭제</span></div>';});
+    (r.reqs||[]).filter(function(q){return q.status==='pending';}).forEach(function(q){h+='<div style="padding:9px;border:2px solid #ffb74d;background:#fff8ee;border-radius:11px;margin-top:6px"><div style="font-size:13px;font-weight:800">📱 '+esc(q.device||'휴대폰')+' <span style="font-size:10.5px;background:#fff3e0;color:#e65100;border-radius:7px;padding:1px 6px">승인 요청</span></div><div style="font-size:11px;color:#6b7a90">요청 '+fmtT(q.created_at)+'</div><div style="display:flex;gap:8px"><button style="'+B4+'flex:1;padding:10px" onclick="tfFp.decide(\''+N+'\',\''+esc(q.id)+'\',1)">✅ 승인</button><button style="'+B2+'flex:1;padding:10px" onclick="tfFp.decide(\''+N+'\',\''+esc(q.id)+'\',0)">거절</button></div></div>';});
+    if(r.creds.length)h+='<button style="'+B3+'" onclick="tfFp.reset(\''+N+'\')">🗑 지문 초기화</button>';
+    else h+='<div style="font-size:11.5px;color:#6b7a90;margin-top:6px">기사가 설정 → 🔐 보안·지문에서 첫 폰을 직접 등록해요 (승인 필요 없음).</div>';
+    box(h,(r.reqs||[]).some(function(q){return q.status==='pending';}));
+  };
+  FP.decide=async function(name,id,ok){var r=await adm('adminDecide',{reqId:id,ok:!!ok});if(r.err){alert(errMsg(r));return;}toast(ok?'✅ 승인했어요 — 기사 폰에서 지문 등록하면 끝':'거절했어요',!!ok);try{if(typeof sendPushToAll==='function')sendPushToAll(ok?'✅ 새 폰 승인 완료':'❌ 새 폰 승인 거절',ok?'새 폰 추가가 승인됐어요. 그 폰 로그인 화면에서 [승인 확인] 후 지문을 등록하세요.':'새 폰 추가 요청이 거절됐어요. 관리자에게 문의하세요.',null,name);}catch(_){}FP.dhSection(name);if(document.getElementById('tf-adm-sec'))FP.openAdmin();};
+  FP.reset=async function(name){if(!confirm(name+' 기사의 지문 등록을 모두 지울까요?\n지운 뒤에는 비밀번호로 다시 로그인할 수 있게 됩니다.'))return;var r=await adm('adminReset',{name:name});if(r.err){alert(errMsg(r));return;}toast('🗑 지문 초기화 완료 ('+r.removed+'대)',true);FP.dhSection(name);};
+  FP.delDev=async function(name,id){if(!confirm('이 폰의 지문 등록을 지울까요?'))return;var r=await adm('adminDelDev',{name:name,id:id});if(r.err){alert(errMsg(r));return;}toast('삭제했어요',true);FP.dhSection(name);};
+  // 관리자 설정: 마스터키 + 보안 현황
+  FP.openAdmin=async function(){
+    FP.close('tf-fp-mod2');
+    modal('<div style="font-weight:900;font-size:16px">🔐 보안 · 마스터키</div><div style="font-size:12px;color:#8a97a8;margin-top:4px">불러오는 중...</div>');
+    var mi=await api('masterInfo',{});
+    var h='<div id="tf-adm-sec"></div><div style="font-weight:900;font-size:16px">🔐 보안 · 마스터키</div>';
+    if(mi.err==='net'){modal(h+'<div style="font-size:12.5px;color:#c62828;margin-top:8px">보안 서버에 연결하지 못했어요. (지문 서버 배포 전이면 정상이에요)</div><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');return;}
+    h+='<div style="background:#f6f8fb;border-radius:12px;padding:11px 12px;margin-top:8px;font-size:12.5px;line-height:1.6;color:#5a6b7c"><b style="color:#14213d">🗝 관리자 마스터키</b> — 어떤 기사 계정이든 들어갈 수 있는 관리자 전용 비밀번호<br>• 서버에 암호화(해시)로만 저장 — 다시 볼 수 없고 바꾸기만 가능<br>• 사용할 때마다 기록 · 5번 틀리면 30분 잠김<br>상태: '+(mi.set?'<b style="color:#2e7d32">설정됨</b> (마지막 변경 '+fmtT(mi.at)+')':'<b style="color:#e65100">아직 설정 안 됨</b>')+'</div>';
+    h+=(mi.set?'<input id="tf-ms-o" type="password" placeholder="지금 마스터키" style="'+INP+'">':'')+'<input id="tf-ms-n1" type="password" placeholder="새 마스터키 (8자 이상)" style="'+INP+'"><input id="tf-ms-n2" type="password" placeholder="새 마스터키 한 번 더" style="'+INP+'"><div id="tf-ms-e" style="color:#c62828;font-size:12px;min-height:16px;margin-top:6px"></div><button style="'+B1+'" onclick="tfFp.masterSave()">'+(mi.set?'마스터키 변경':'마스터키 설정')+'</button>';
+    if(!admTok())h+='<button style="'+B2+'" onclick="tfFp.adminUnlock(tfFp.openAdmin)">🔓 보안 현황 보기 (마스터키 확인)</button>';
+    else{
+      var r=await adm('adminList',{});
+      if(!r.err){
+        var tot=0;try{var db=getDB();tot=Object.keys(db).filter(function(k){return db[k]&&db[k].status==='approved'&&db[k].role!=='admin';}).length;}catch(e){}
+        var reg=(r.counts||[]).length,two=(r.counts||[]).filter(function(c){return c.n>=2;}).length;
+        h+='<div style="display:flex;gap:6px;margin-top:12px">'+[['#e8f5e9','#2e7d32',reg,'지문 등록'],['#fff3e0','#e65100',Math.max(0,tot-reg),'미등록'],['#e3f2fd','#1565c0',two,'2대 이상']].map(function(x){return '<div style="flex:1;background:'+x[0]+';border-radius:12px;padding:8px;text-align:center"><div style="font-size:20px;font-weight:900;color:'+x[1]+'">'+x[2]+'</div><div style="font-size:11px;color:#5a6b7c">'+x[3]+'</div></div>';}).join('')+'</div>';
+        h+='<div style="font-weight:900;font-size:14px;margin-top:12px">📱 새 기기 승인 대기 '+(r.pending||[]).length+'</div>';
+        (r.pending||[]).forEach(function(q){var N=esc(q.name).replace(/'/g,"\\'");h+='<div style="padding:9px;border:2px solid #ffb74d;background:#fff8ee;border-radius:11px;margin-top:6px"><div style="font-size:13px;font-weight:800">'+esc(q.name)+' · '+esc(q.device||'휴대폰')+'</div><div style="font-size:11px;color:#6b7a90">요청 '+fmtT(q.created_at)+'</div><div style="display:flex;gap:8px"><button style="'+B4+'flex:1;padding:10px" onclick="tfFp.decide(\''+N+'\',\''+esc(q.id)+'\',1)">✅ 승인</button><button style="'+B2+'flex:1;padding:10px" onclick="tfFp.decide(\''+N+'\',\''+esc(q.id)+'\',0)">거절</button></div></div>';});
+        var EV={login:'🟢 지문 로그인',reg_first:'🆕 첫 폰 등록',reg_add:'➕ 폰 추가 등록',req:'📱 승인 요청',approve:'✅ 승인',reject:'✖ 거절',reset:'🗑 지문 초기화',del_dev:'🗑 폰 삭제',master_login:'🔴 마스터키 접속',master_fail:'⚠ 마스터키 실패',admin_fail:'⚠ 관리자 확인 실패',master_change:'🗝 마스터키 변경',master_first:'🗝 마스터키 설정',auth_fail:'⚠ 지문 확인 실패',auth_unknown_dev:'⚠ 미등록 폰 시도',reg_fail:'⚠ 등록 실패'};
+        h+='<div style="font-weight:900;font-size:14px;margin-top:12px">최근 보안 기록</div>'+(r.logs||[]).slice(0,30).map(function(l){return '<div style="font-size:11.5px;padding:6px 0;border-bottom:1px dashed #e6eaf0">'+fmtT(l.at)+' · '+esc(l.name||'')+' · '+(EV[l.ev]||esc(l.ev))+(l.detail?(' <span style="color:#8a97a8">('+esc(l.detail)+')</span>'):'')+'</div>';}).join('');
+      }
+    }
+    h+='<button style="'+B2+'" onclick="tfFp.close()">닫기</button>';
+    modal(h);
+  };
+  FP.masterSave=async function(){
+    var o=document.getElementById('tf-ms-o'),a=document.getElementById('tf-ms-n1').value,b=document.getElementById('tf-ms-n2').value,e=document.getElementById('tf-ms-e');
+    if(a.length<8){e.textContent='8자 이상으로 정해주세요.';return;}if(a!==b){e.textContent='두 번 입력한 값이 달라요.';return;}
+    e.textContent='저장 중...';var r=await api('masterSet',{old:o?o.value:'',new:a});
+    if(!r.ok){e.textContent=errMsg(r);return;}
+    lsSet('tf_fp_adm',null);toast('✅ 마스터키 저장 완료 (화면에 다시 표시되지 않아요)',true);FP.openAdmin();
+  };
+  // 관리자: 앱 열 때 승인 대기 알림
+  FP.adminPoll=async function(){try{if(!CU||CU.role!=='admin'||!admTok())return;var r=await adm('adminList',{});if(r&&r.pending&&r.pending.length){toast('📱 새 기기 승인 요청 '+r.pending.length+'건 — 설정 → 🔐 보안·마스터키',true);}}catch(e){}};
+  // ── 민감 화면 연결 (앱 함수 감싸기) ──
+  FP.installGuards=function(){
+    if(FP._g)return;FP._g=1;
+    try{var cp=window.CT_preview;if(typeof cp==='function')window.CT_preview=function(n,t,m){if(m==='driver'&&FP.needGate()){var a=arguments,s=this;FP.gate('계약서',function(){cp.apply(s,a);});return;}return cp.apply(this,arguments);};}catch(e){}
+    try{if(typeof window.dhMyInfo==='function')window.dhMyInfo=FP.guard('내 정보',window.dhMyInfo);}catch(e){}
+    try{if(typeof window.openPwModal==='function')window.openPwModal=FP.guard('비밀번호 변경',window.openPwModal);}catch(e){}
+    try{var de=window.dhMyEditStart;if(typeof de==='function')window.dhMyEditStart=function(name){
+      if(CU&&CU._master){_dhRender(name,true,'self');return;}
+      if(CU&&FP.isFp(CU.name)){if(FP.needGate())FP.gate('내 정보 수정',function(){_dhRender(name,true,'self');});else _dhRender(name,true,'self');return;}
+      return de.apply(this,arguments);};}catch(e){}
+    try{var lo=window.doLogout;if(typeof lo==='function')window.doLogout=function(){var m=window._tfMasterSess;var r=lo.apply(this,arguments);try{var b=document.getElementById('tf-mk-ban');if(b)b.remove();}catch(_){}if(m){window._tfMasterSess=null;setTimeout(function(){location.reload();},50);}return r;};}catch(e){}
+  };
+  function init(){try{ensureLoginUI();}catch(e){}try{FP.installGuards();}catch(e){}setTimeout(function(){try{FP.adminPoll();}catch(e){}},6000);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+
 </script>
 </body></html>
