@@ -22023,10 +22023,14 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   FP.masterLoginUI=function(){
     var db={};try{db=getDB();}catch(e){}
     var names=Object.keys(db).filter(function(k){var d=db[k];return d&&d.status==='approved'&&d.role!=='admin';}).sort(function(a,b){return a.localeCompare(b,'ko');});
-    modal('<div style="font-weight:900;font-size:16px">🗝 관리자 마스터키 접속</div><div style="font-size:12px;color:#5a6b7c;margin-top:4px;line-height:1.55">들어갈 기사 계정을 고르고 마스터키를 입력하세요. 접속 기록이 남아요.</div><select id="tf-mk-n" style="'+INP+'">'+names.map(function(k){return '<option>'+esc(k)+'</option>';}).join('')+'</select><input id="tf-mk-k" type="password" placeholder="마스터키" style="'+INP+'"><div id="tf-mk-e" style="color:#c62828;font-size:12px;min-height:16px;margin-top:6px"></div><button style="'+B1+'" onclick="tfFp.masterLogin()">접속</button><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');
+    var pre=curName();if(names.indexOf(pre)<0)pre='';   /* [v912] 로그인 칸에 쓴 기사 이름을 먼저 채움 */
+    modal('<div style="font-weight:900;font-size:16px">🗝 관리자 마스터키 접속</div><div style="font-size:12px;color:#5a6b7c;margin-top:4px;line-height:1.55">들어갈 기사 계정을 고르고 마스터키를 입력하세요. 접속 기록이 남아요.</div><input id="tf-mk-n" list="tf-mk-list" autocomplete="off" placeholder="기사 이름 (입력하면 목록이 좁혀져요)" value="'+esc(pre)+'" style="'+INP+'"><datalist id="tf-mk-list">'+names.map(function(k){return '<option value="'+esc(k)+'">';}).join('')+'</datalist><input id="tf-mk-k" type="password" placeholder="마스터키" style="'+INP+'"><div id="tf-mk-e" style="color:#c62828;font-size:12px;min-height:16px;margin-top:6px"></div><button style="'+B1+'" onclick="tfFp.masterLogin()">접속</button><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');
+    setTimeout(FP._mkFocus,60);
   };
+  FP._mkFocus=function(){try{var a=document.getElementById('tf-mk-n'),b=document.getElementById('tf-mk-k');if(a&&a.value)b&&b.focus();else a&&a.focus();}catch(e){}};
   FP.masterLogin=async function(){
     var n=document.getElementById('tf-mk-n').value,k=document.getElementById('tf-mk-k').value,e=document.getElementById('tf-mk-e');
+    n=String(n||'').trim();var _db={};try{_db=getDB();}catch(_){}if(!n||!_db[n]){e.textContent='목록에 있는 기사 이름을 정확히 입력하세요.';return;}
     if(!k){e.textContent='마스터키를 입력하세요.';return;}e.textContent='확인 중...';
     var r=await api('masterLogin',{name:n,master:k,by:'login'});
     if(!r.ok){e.textContent=errMsg(r);return;}
