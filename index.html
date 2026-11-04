@@ -9054,7 +9054,7 @@ function openSharePopup(td){
   }).join('');
   showAlertPopup('📋','쉐어 배정 상세','<div style="font-size:12px;color:#888;margin-bottom:10px">'+dateStr+' · '+route+'</div>'+lines,null);
 }
-/* [v837] 분할 표시: 같은 번호면 A/B만 (211A→A) */function _srShort(sr,route,orig){sr=String(sr);var p=(sr.match(/^\d+/)||[''])[0];if(!p)return sr;var rest=sr.slice(p.length);if(!rest)return sr;var rp=(String(route).match(/^\d+/)||[''])[0];if(p===rp||sr!==String(orig||''))return rest;return sr;}
+/* [v837] 분할 표시: 같은 번호면 A/B만 (211A→A) */function _srShort(sr,route,orig){sr=String(sr);var p=(sr.match(/^\d+/)||[''])[0];if(!p)return sr;var rest=sr.slice(p.length);if(!rest)return sr;try{var _bs={};_sxSplitRt(String(route||'').toUpperCase()).forEach(function(x){var b=(String(x).match(/^\d+/)||[''])[0];if(b)_bs[b]=1;});if(Object.keys(_bs).length>1)return sr;}catch(_e){}/* [v915] 608D/609A 처럼 번호가 다른 라우트는 전체 표시 */var rp=(String(route).match(/^\d+/)||[''])[0];if(p===rp||sr!==String(orig||''))return rest;return sr;}
 function escQ(s){return s.replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 // Split driver name into base + route-letter suffix  e.g. '박문도 AB' → {base:'박문도', suf:'AB'}
 function splitDriverSuffix(name){
@@ -9283,9 +9283,13 @@ function _ecCapture(){var st=EC_STATE;st.presplit=st.presplit||{};st.presplitRot
   else{var o={r1:'',r2:''};ins.forEach(function(i){var r=i.getAttribute('data-rot');if(r==='1회전')o.r1=(i.value||'').trim();else if(r==='2회전')o.r2=(i.value||'').trim();});st.presplitRot[sub]=o;st.rotRows[sub]='split';}});}
 function ecRowRot(sub){_ecCapture();var st=EC_STATE;if(st.rotRows[sub]==='split'){var o=st.presplitRot[sub]||{};st.presplit[sub]=o.r1||o.r2||'';delete st.presplitRot[sub];st.rotRows[sub]='12';}else{st.presplitRot[sub]={r1:st.presplit[sub]||'',r2:''};st.rotRows[sub]='split';}ecToggleSplit();}
 function ecCancelSplit(){ecResetSplitUI();var t=document.getElementById('ec-split-toggle');if(t)t.style.display=_ecSplittable(EC_STATE.route)?'block':'none';EC_STATE.rotOnly=false;EC_STATE.splitSubs=null;EC_STATE.presplit=null;EC_STATE.presplitRot=null;EC_STATE.rotRows=null;EC_STATE.splitRoutesMap=null;_ecRotSeg(EC_STATE.route);}
+/* [v915] 메타어드민 반영 안 되는 날짜(지난 날짜·오늘·내일 = 변경분 엑셀 제외 기준 _sxDateLocked)에 저장하면 먼저 확인 */
+function _ecMetaWarn(dt){try{if(!dt||!_sxDateLocked(dt))return true;var t=todStr();var past=String(dt)<String(t);
+ return confirm('⚠️ '+dt+(past?' 은(는) 이미 지난 날짜입니다.':' 은(는) 오늘·내일 날짜입니다.')+'\n\n이 날짜는 메타어드민(쿠팡)에 반영되지 않고\n앱 스케줄에만 저장됩니다.\n(쿠팡 메타는 업무 전날 마감 → 앱은 모레 이후 날짜만 자동 반영)\n\n그래도 앱에만 저장할까요?');}catch(e){return true;}}
 async function saveSplitAssign(){
 var _rz=schedLockReason(EC_STATE&&EC_STATE.date);
 if(_rz){alert(_schedLockMsg(_rz));closeEditCell();return;}
+if(!_ecMetaWarn(EC_STATE&&EC_STATE.date))return;
 var rows=document.querySelectorAll('#ec-split-wrap .ec-split-row');
 var assign=[],blanks=[],err='';
 rows.forEach(function(row){if(err)return;var sub=row.getAttribute('data-sub');var rts=(row.getAttribute('data-routes')||sub).split(',').filter(Boolean);var ins=row.querySelectorAll('.ec-split-input');
@@ -9355,6 +9359,7 @@ function mergeFromSplitModal(){
   var nm='';for(var i=0;i<inputs.length;i++){var v=(inputs[i].value||'').trim();if(v){nm=v;break;}}
   if(!nm){nm=(prompt('합칠 담당 기사 이름')||'').trim();}
   if(!nm){document.getElementById('ec-err').textContent='합칠 기사 이름을 입력하세요.';return;}
+  if(!_ecMetaWarn(EC_STATE&&EC_STATE.date))return;
   var route=EC_STATE.route,dt=EC_STATE.date,ws=EC_STATE.wk;
   closeEditCell();
   sbSaveSplit(ws,route,dt,null,nm).then(function(){try{_pushSharedSchedChange(dt,route,'',nm+' (합치기)');}catch(e){}try{if(typeof schedRefresh==='function')schedRefresh();}catch(e){}});
@@ -9364,6 +9369,7 @@ function saveEditCell(){
   if(_rz){alert(_schedLockMsg(_rz));closeEditCell();return;}
   var newName=document.getElementById('ec-name').value.trim();
   if(!newName){document.getElementById('ec-err').textContent='이름을 입력해주세요.';return;}
+  if(!_ecMetaWarn(EC_STATE&&EC_STATE.date))return;
   var ovr=getSchedOvr();
   var key=EC_STATE.wk+'|||'+EC_STATE.lk+'|||'+EC_STATE.route+'|||'+EC_STATE.date;
   // check original
