@@ -9085,6 +9085,7 @@ function openEditCell(td){
   document.getElementById('ec-err').textContent='';
   EC_STATE.presplit=null;EC_STATE.splitSubs=null;
   ecResetSplitUI();
+  try{_ecLoadDaySubs();}catch(_ds){}
   var _sp=_ecSplittable(rt);
   var _tgl=document.getElementById('ec-split-toggle');
   if(_tgl)_tgl.style.display=_sp?'block':'none';
@@ -9223,16 +9224,24 @@ async function swRestore(){var bk=[];try{var r=await sbClient.from('app_settings
     _swShell('<div style="font-size:16px;font-weight:900;color:#1e293b;margin-bottom:8px">'+(bad.length||fail.length?'⚠ 되돌리기 (확인 필요)':'✅ 되돌리기 완료')+'</div><div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:11px;font-size:13px;line-height:1.8">원래대로: <b>'+okG.length+' / '+last.groups.length+'</b>칸<br>서버 대조: '+(bad.length?'<b style="color:#b91c1c">'+bad.length+'칸 불일치</b>':'<b style="color:#15803d">전부 일치</b>')+'<br>쿠팡 메타: '+(jobs&&jobs.length?jobs.length+'개 주차 요청됨':'보낼 변경분 없음')+'</div><button onclick="swClose()" style="width:100%;margin-top:12px;padding:11px;border:none;background:#1d4ed8;color:#fff;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer">닫기</button>');});}
 window.swOpen=swOpen;window.swClose=swClose;window.swPreview=swPreview;window.swApply=swApply;window.swRestore=swRestore;
 // ── 분할 배정 (104CD → 104C/104D 각각 기사 지정, share 컬럼 기록) ──
-function _ecSplittable(route){var m=(route||'').match(/^(\d+)([A-Za-z]{2,})$/);if(!m)return null;var base=m[1],letters=m[2].toUpperCase().split('');return {base:base,letters:letters,subs:letters.map(function(ch){return base+ch;})};}
+function _ecSplittable(route){/* [v914] '608D/609A'·'606AB (AC)'도 분할 가능 — 메타 엑셀과 같은 _sxSplitRt 로 나눔 */var subs=_sxSplitRt(String(route||'').toUpperCase());if(!subs||subs.length<2)return null;var m=String(route||'').replace(/\s*\(.*?\)/g,'').trim().match(/^(\d+)([A-Za-z]{2,})$/);return {base:m?m[1]:'',letters:m?m[2].toUpperCase().split(''):[],subs:subs};}
 function ecResetSplitUI(){
   var sw=document.getElementById('ec-split-wrap');if(sw){sw.style.display='none';sw.innerHTML='';}
   var single=document.getElementById('ec-single-wrap');if(single)single.style.display='';
   var fs=document.getElementById('ec-foot-single');if(fs)fs.style.display='flex';
   var fp=document.getElementById('ec-foot-split');if(fp){fp.style.display='none';fp.innerHTML='<button class="btn-s" style="flex:1" onclick="ecCancelSplit()">&larr; 하나로</button><button class="btn-p" style="flex:2" onclick="saveSplitAssign()">분할 저장</button>';}
 }
+/* [v914] 그날 실제 서브라우트(weekly_schedules.route) — '606AB (AC)'처럼 날마다 AB/AC가 바뀌는 라우트 대응 */
+function _ecLoadDaySubs(){var st=EC_STATE;if(!st)return;var rt=st.route,dt=st.date;st.daySubs=null;st._subsDone=false;
+ st._subsP=(async function(){try{if(!sbClient||!rt||!dt)return;var q=sbClient.from('weekly_schedules').select('route').eq('route_raw',rt).eq('work_date',dt);if(st.wk)q=q.eq('week_start',st.wk);var r=await q;var a=[];((r&&r.data)||[]).forEach(function(x){var v=String((x&&x.route)||'').trim().toUpperCase();if(v&&a.indexOf(v)<0)a.push(v);});a.sort();
+  if(EC_STATE===st&&a.length>=2){st.daySubs=a;var t=document.getElementById('ec-split-toggle'),sw=document.getElementById('ec-split-wrap'),sg=document.getElementById('ec-single-wrap');if(t&&sw&&sw.style.display==='none'&&(!sg||sg.style.display!=='none'))t.style.display='block';}}catch(e){}finally{st._subsDone=true;}})();}
+function _ecWaitSubs(fn){var st=EC_STATE;if(!st||!st._subsP||st._subsDone||(st.splitSubs&&st.splitSubs.length))return false;Promise.race([st._subsP,new Promise(function(r){setTimeout(r,2500);})]).then(function(){if(EC_STATE===st){st._subsDone=true;fn();}});return true;}
+function _ecDaySubs(rt){var st=EC_STATE||{};return (st.daySubs&&st.daySubs.length>=2&&st.route===rt)?st.daySubs.slice():null;}
 function ecToggleSplit(){
+  if(_ecWaitSubs(ecToggleSplit))return;
   var sp=_ecSplittable(EC_STATE.route);
-  var subs=(EC_STATE.splitSubs&&EC_STATE.splitSubs.length)?EC_STATE.splitSubs:(sp?sp.subs:null);
+  var _dsub=_ecDaySubs(EC_STATE.route);
+  var subs=(EC_STATE.splitSubs&&EC_STATE.splitSubs.length)?EC_STATE.splitSubs:(_dsub||(sp?sp.subs:null));
   if(!subs||!subs.length)return;
   var cur=(document.getElementById('ec-name')&&document.getElementById('ec-name').value.trim())||'';
   var pre=EC_STATE.presplit||{};
@@ -9258,8 +9267,8 @@ function _ecRotSeg(route){var tg=document.getElementById('ec-split-toggle');if(!
  el.innerHTML='<div style="font-size:12px;color:#666;font-weight:700;margin:2px 0 6px">회전</div><div style="display:flex;gap:6px;margin-bottom:10px">'
  +'<button type="button" onclick="ecRotStart(\'12\')" style="flex:1;'+b+'border:2px solid #1565C0;background:#1565C0;color:#fff">1,2회전 모두</button>'
  +'<button type="button" onclick="ecRotStart(\'s\')" style="flex:1;'+b+'border:1.5px solid #cfd8e3;background:#fff;color:#333">🔁 회전 분할</button></div>';}
-function ecRotStart(w){if(w==='12')return;var st=EC_STATE;var rt=st.route;var ne=document.getElementById('ec-name');var cur=(ne&&ne.value.trim())||'';
- st.rotOnly=true;st.splitSubs=[rt];st.splitRoutesMap={};st.splitRoutesMap[rt]=_sxSplitRt(rt);st.presplit={};st.presplitRot={};st.presplitRot[rt]={r1:(w==='2'?'':cur),r2:(w==='2'?cur:'')};st.rotRows={};st.rotRows[rt]='split';ecToggleSplit();}
+function ecRotStart(w){if(w==='12')return;if(_ecWaitSubs(function(){ecRotStart(w);}))return;var st=EC_STATE;var rt=st.route;var ne=document.getElementById('ec-name');var cur=(ne&&ne.value.trim())||'';
+ st.rotOnly=true;st.splitSubs=[rt];st.splitRoutesMap={};st.splitRoutesMap[rt]=_ecDaySubs(rt)||_sxSplitRt(rt);st.presplit={};st.presplitRot={};st.presplitRot[rt]={r1:(w==='2'?'':cur),r2:(w==='2'?cur:'')};st.rotRows={};st.rotRows[rt]='split';ecToggleSplit();}
 function _ecRowHtml(sub){var st=EC_STATE,pre=st.presplit||{},prr=st.presplitRot||{},rows=st.rotRows||{};
  var night=_sxIsNight(sub);var mode=night?'12':(rows[sub]||(prr[sub]?'split':'12'));
  var rts=((st.splitRoutesMap||{})[sub]||[sub]).join(',');
