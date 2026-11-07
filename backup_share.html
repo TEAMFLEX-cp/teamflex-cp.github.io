@@ -400,11 +400,11 @@ function registerHtml(){
 function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}if(isPastDate(draft.date)){toast('지난 날짜에는 요청 등록을 할 수 없습니다.');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,returnReq:!!draft.returnReq,scan:!!draft.scan,qtyNote:draft.qtyNote||'',settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;if(draft._editId){var ex=reqs.find(function(x){return x.id===draft._editId;})||{};r.id=draft._editId;r.supporters=ex.supporters||[];r.status=ex.status||'open';bpSaveReq(r);go('mine');toast('✏️ 요청 수정됨');}else{bpNewReq(r);bpBroadcast('📋 새 백업 요청',ME+'님이 '+bpLabel(r)+' 백업을 요청했습니다.');go('mine');toast('📨 요청 등록·전체 알림');}}
 // ── 역지원 등록 ──
 function startSupReg(md){draft={who:'',sup:'',adm:(md==='adm'&&ROLE==='admin'),route:'',extra:0,qty:'',date:TODAY,scan:false,settle:'정산일',acctShare:false,pm:'base',fixed:0};sub='supReg';pushHist();render();}
-function bpScanOn(){return !!draft.scan&&(draft.extra||0)>0;}
+function bpScanOn(){return !!draft.scan;}
 function supUnit(){if(draft.pm==='fixed')return Math.max(0,draft.fixed||0);var u=(ROUTES[draft.route]||0)+(draft.extra||0);if(bpScanOn())u=Math.max(0,draft.extra||0);return u;}
 function supCalcInner(){var u=supUnit(),q=draft.qty||0,h='';var cash=draft.settle==='개인';
   if(draft.pm==='fixed'){h+='<div class="li"><span>🎯 특정 단가 (협의)</span><span>'+money(draft.fixed||0)+'</span></div>';}
-  else{h+='<div class="li"><span>라우트 기본단가'+(draft.route?(' ('+draft.route+')'):'')+'</span><span'+(bpScanOn()?' style="text-decoration:line-through;color:#aab"':'')+'>'+money(ROUTES[draft.route]||0)+'</span></div><div class="li"><span>추가 +@</span><span>+ '+money(draft.extra||0)+'</span></div>'+(bpScanOn()?'<div class="li"><span style="color:#5e35b1">📷 스캔 → 추가단가만</span><span></span></div>':(draft.scan?'<div class="li"><span style="color:#5e35b1">📷 스캔 · 추가단가 없음 → 기본단가</span><span></span></div>':''));}
+  else{h+='<div class="li"><span>라우트 기본단가'+(draft.route?(' ('+draft.route+')'):'')+'</span><span'+(bpScanOn()?' style="text-decoration:line-through;color:#aab"':'')+'>'+money(ROUTES[draft.route]||0)+'</span></div><div class="li"><span>추가 +@</span><span>+ '+money(draft.extra||0)+'</span></div>'+(bpScanOn()?'<div class="li"><span style="color:#5e35b1">📷 스캔 → 라우트 단가는 업무에 포함, 추가단가만</span><span></span></div>':'');}
   h+='<div class="tot"><span>단가 / 개</span><span>'+money(u)+'</span></div>';
   h+='<div class="li" style="border:none;margin-top:4px"><span>예상 정산금 ('+(q||0)+'개)</span><b style="color:#2e7d32">'+money(cash?Math.round(u*q/1.1):u*q)+(cash?' <small style="color:#e65100">(부가세 10% 제외)</small>':' <small style="color:#1565c0">(부가세 포함)</small>')+'</b></div>';
   return h;}
@@ -437,7 +437,7 @@ function supRegHtml(){
 }
 function submitSupReg(){if(draft.adm)return submitAdmSup();if(!draft.who){toast('요청 기사를 선택하세요');return;}if(!draft.route){toast('라우트를 선택하세요');return;}if(draft.pm==='fixed'&&!(draft.fixed>0)){toast('특정 단가를 입력하세요');return;}if(!(draft.qty>0)){toast('완료 수량을 입력하세요');return;}if(draft.who===ME){toast('본인에게는 요청할 수 없습니다');return;}
   var r={requester:draft.who,rcomp:MYCOMPNAME,rphone:'',date:draft.date||TODAY,company_id:MYCOMP,mode:'개인',viaSupport:true,scan:!!draft.scan,routes:[draft.route],extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:false,needCount:1,supporters:[{name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'}],finalQty:draft.qty||0,status:'confirm'};
-  if(draft.pm==='fixed'){r.negUnit=draft.fixed;r.negBy=ME;r.extra=0;r.scan=false;r.unit=draft.fixed;}else{if(!(r.extra>0))r.scan=false;r.unit=computeUnit(r);}   /* [bs-v2] 특정 단가 · 스캔+추가0=기본단가 */
+  if(draft.pm==='fixed'){r.negUnit=draft.fixed;r.negBy=ME;r.extra=0;r.scan=false;r.unit=draft.fixed;}else r.unit=computeUnit(r);   /* [bs-v2] 특정 단가 */
   var _pu=payUnit(r),_tot=nAmt(r,_pu*(r.finalQty||0));
   bpNewReq(r);bpReqNotify(r,[r.requester],'📤 역지원 확정 요청',ME+'님이 '+bpDateK(r.date)+' '+bpLabel(r)+' '+r.finalQty+'개 역지원 확정을 요청했습니다.\n단가 '+money(_pu)+'/개'+(r.negUnit?'(특정 단가)':(r.scan?'(스캔·추가단가만)':''))+' · 정산금 '+money(_tot)+' ('+(r.settle==='개인'?'개인 정산':'정산일 정산')+')\n앱에서 확인 후 확정해 주세요.');sub=null;go('sup');toast('📤 '+draft.who+' 기사에게 확정 요청 전송');
 }
@@ -446,7 +446,7 @@ function submitAdmSup(){if(ROLE!=='admin'){toast('관리자 전용입니다.');r
   if(!draft.who){toast('지원받은 기사를 선택하세요');return;}if(!draft.sup){toast('지원한 기사를 선택하세요');return;}if(draft.who===draft.sup){toast('지원받은 기사와 지원한 기사가 같습니다');return;}
   if(!draft.route){toast('라우트를 선택하세요');return;}if(draft.pm==='fixed'&&!(draft.fixed>0)){toast('특정 단가를 입력하세요');return;}if(!(draft.qty>0)){toast('완료 수량을 입력하세요');return;}
   var r={requester:draft.who,rcomp:MYCOMPNAME,rphone:'',date:draft.date||TODAY,company_id:MYCOMP,mode:'개인',viaSupport:true,scan:!!draft.scan,routes:[draft.route],extra:draft.extra||0,settle:draft.settle,acctShare:false,collab:false,needCount:1,supporters:[{name:draft.sup,company:MYCOMPNAME,phone:'',acct:'',state:'picked'}],finalQty:draft.qty||0,status:'done'};
-  if(draft.pm==='fixed'){r.negUnit=draft.fixed;r.negBy=ME;r.extra=0;r.scan=false;r.unit=draft.fixed;}else{if(!(r.extra>0))r.scan=false;r.unit=computeUnit(r);}
+  if(draft.pm==='fixed'){r.negUnit=draft.fixed;r.negBy=ME;r.extra=0;r.scan=false;r.unit=draft.fixed;}else r.unit=computeUnit(r);
   var pu=payUnit(r),tot=nAmt(r,pu*r.finalQty);
   if(!confirm('👑 관리자 직접 반영\n\n지원받은 기사: '+r.requester+'\n지원한 기사: '+draft.sup+'\n날짜: '+bpDateK(r.date)+'\n라우트: '+r.routes[0]+'\n수량: '+r.finalQty+'개\n단가: '+money(pu)+'/개'+(r.negUnit?' (특정 단가)':(r.scan?' (스캔·추가단가만)':''))+'\n정산 방식: '+(r.settle==='개인'?'개인 정산':'정산일 정산')+'\n총 정산금: '+money(tot)+'\n\n완료·정산 확정으로 바로 반영할까요?'))return;
   var body=bpDateK(r.date)+' '+bpLabel(r)+' '+r.finalQty+'개 — 지원받은 기사 '+r.requester+' · 지원한 기사 '+draft.sup+'\n단가 '+money(pu)+'/개 · 정산금 '+money(tot)+' ('+(r.settle==='개인'?'개인 정산':'정산일 정산')+')\n관리자('+ME+')가 바로 반영했습니다.';
@@ -489,11 +489,12 @@ async function bpXlFile(inp){var f=inp&&inp.files&&inp.files[0];if(!f)return;inp
 }
 function bpXlCheck(it,items){it.err='';it.warn=[];var who=it.who,sup=it.sup,route=it.route,date=it.date,qty=it.qty;
   if(!date)it.err='날짜 없음';else if(!who)it.err='근무자 없음';else if(!sup)it.err='지원자 없음';else if(!route)it.err='라우트 없음';else if(!(qty>0))it.err='수량 없음';else if(who===sup)it.err='근무자와 지원자가 같음';
-  else if(!it.fixed&&ROUTES[route]==null&&RTOLD[route]==null&&!(it.scan&&it.extra>0))it.err='라우트 단가 없음 (적용단가를 넣어 주세요)';
+  else if(!it.fixed&&ROUTES[route]==null&&RTOLD[route]==null&&!it.scan)it.err='라우트 단가 없음 (적용단가를 넣어 주세요)';
   if(!it.err){
     if(DRIVERS.indexOf(who)<0)it.warn.push('근무자 '+who+' 명단에 없음');
     if(DRIVERS.indexOf(sup)<0)it.warn.push('지원자 '+sup+' 명단에 없음');
 
+    if(it.scan&&!it.fixed&&!it.extra)it.warn.push('스캔인데 추가단가 없음 → 0원 (스캔은 추가단가만)');
     var dup=reqs.some(function(x){return x.viaSupport&&x.date===it.date&&bpDisp(x.requester)===bpDisp(it.who)&&(x.routes||[])[0]===it.route&&(x.finalQty||0)===it.qty&&(x.supporters||[]).some(function(s){return bpDisp(s.name)===bpDisp(it.sup);})&&x.status!=='rejected';});
     var dupIn=(items||[]).some(function(y){return y!==it&&!y.err&&y.date===it.date&&y.who===it.who&&y.sup===it.sup&&y.route===it.route&&y.qty===it.qty&&y.row<it.row;});
     if(dup)it.err='이미 등록된 건 (중복)';else if(dupIn)it.err='엑셀 안에서 같은 줄 반복';
@@ -503,7 +504,7 @@ function bpXlEdit(i){var it=XLIMP.items[i];it._ed=!it._ed;render();}
 function bpXlSet(i,k,v){var it=XLIMP.items[i];if(k==='qty'||k==='extra'||k==='fixed')it[k]=parseInt(String(v).replace(/[^\d]/g,''),10)||0;else if(k==='scan'){it.scan=!!v;it.scanT=v?'스캔':'미스캔';}else if(k==='route')it.route=String(v||'').toUpperCase().replace(/\s/g,'');else it[k]=String(v||'').trim();bpXlCheck(it,XLIMP.items);}
 function bpXlDone(i){XLIMP.items[i]._ed=false;render();}
 function bpXlReq(it,settle){var r={requester:it.who,rcomp:MYCOMPNAME,rphone:'',date:it.date,company_id:MYCOMP,mode:'개인',viaSupport:true,scan:!!it.scan,routes:[it.route],extra:it.extra||0,settle:settle,acctShare:false,collab:false,needCount:1,supporters:[{name:it.sup,company:MYCOMPNAME,phone:'',acct:'',state:'picked'}],finalQty:it.qty,status:'done'};
-  if(it.fixed>0){r.negUnit=it.fixed;r.negBy=ME;r.extra=0;r.scan=false;r.unit=it.fixed;}else{if(!(r.extra>0))r.scan=false;r.unit=computeUnit(r);}return r;}
+  if(it.fixed>0){r.negUnit=it.fixed;r.negBy=ME;r.extra=0;r.scan=false;r.unit=it.fixed;}else r.unit=computeUnit(r);return r;}
 function bpXlTog(i){XLIMP.items[i].on=!XLIMP.items[i].on;render();}
 function bpXlSettle(v){XLIMP.settle=v;render();}
 function admXlHtml(){var X=XLIMP;if(!X)return '';
@@ -512,7 +513,7 @@ function admXlHtml(){var X=XLIMP;if(!X)return '';
   h+='<label class="f">정산 방식 (전체 적용)</label><div class="seg"><div class="'+(X.settle==='정산일'?'on':'')+'" onclick="bpXlSettle(\'정산일\')">📅 정산일</div><div class="'+(X.settle==='개인'?'on':'')+'" onclick="bpXlSettle(\'개인\')">💵 개인</div></div>';
   var n=0,sum=0,bad=0;
   X.items.forEach(function(it,i){var r=bpXlReq(it,X.settle),pu=payUnit(r),tot=nAmt(r,pu*it.qty);if(it.on&&!it.err){n++;sum+=tot;}if(it.err)bad++;
-    var calc=it.err?'':(it.fixed?('🎯 특정 '+money(it.fixed)):((it.scan&&it.extra>0)?('📷 스캔 · 추가 '+money(it.extra)):('기본 '+money(baseUnit(r))+(it.extra?(' + '+money(it.extra)):''))));
+    var calc=it.err?'':(it.fixed?('🎯 특정 '+money(it.fixed)):(it.scan?('📷 스캔 · 추가단가만 '+money(it.extra)):('기본 '+money(baseUnit(r))+(it.extra?(' + '+money(it.extra)):''))));
     var _canEd=it.err.indexOf('중복')<0&&it.err.indexOf('반복')<0;
     var edBtn=_canEd?('<button onclick="event.stopPropagation();bpXlEdit('+i+')" style="border:1.5px solid #b39ddb;background:#fff;color:#5e35b1;border-radius:8px;padding:3px 9px;font-size:11.5px;font-weight:900;cursor:pointer;margin-left:6px">✏ 수정</button>'):'';
     var edBox='';if(it._ed){var IN='width:100%;box-sizing:border-box;padding:7px;border:1.5px solid #cfd8e3;border-radius:8px;font-size:14px';
@@ -709,7 +710,7 @@ function enterQty(id){var r=reqs.find(function(x){return x.id===id;});var v=prom
 function confirmDone(id){var r=reqs.find(function(x){return x.id===id;});r.status='done';bpSaveReq(r);bpReqNotify(r,r.supporters.slice(),'✅ 정산 확정',bpLabel(r)+' 정산이 확정되었습니다.');toast('✅ 최종 확정 · 정산 반영');render();}
 
 // ── 허브 연동 데이터 레이어 ──
-function dbToReq(x){var _ri=x.route_info||'';var _qn='';var _qm=_ri.indexOf('[[QN]]');if(_qm>=0){_qn=_ri.slice(_qm+6);_ri=_ri.slice(0,_qm);}var _ret=_ri.indexOf('[[RET]]')>=0;_ri=_ri.replace('[[RET]]','');var _scan=_ri.indexOf('[[SCAN]]')>=0;_ri=_ri.replace('[[SCAN]]','');return {scan:(_scan&&(x.extra||0)>0&&!x.neg_unit),id:x.id,requester:x.requester,rcomp:x.rcomp,rphone:x.rphone,date:x.date,mode:x.mode,aptType:x.apt_type,routes:x.routes||[],routeInfo:_ri,returnReq:_ret,qtyNote:_qn,mapImg:x.map_img||'',estQty:x.est_qty,finalQty:x.final_qty,extra:x.extra||0,settle:x.settle,acctShare:x.acct_share,collab:x.collab,needCount:x.need_count||1,negUnit:x.neg_unit,negBy:x.neg_by,viaSupport:x.via_support,status:x.status,supporters:x.supporters||[],unit:x.unit,company_id:x.company_id};}
+function dbToReq(x){var _ri=x.route_info||'';var _qn='';var _qm=_ri.indexOf('[[QN]]');if(_qm>=0){_qn=_ri.slice(_qm+6);_ri=_ri.slice(0,_qm);}var _ret=_ri.indexOf('[[RET]]')>=0;_ri=_ri.replace('[[RET]]','');var _scan=_ri.indexOf('[[SCAN]]')>=0;_ri=_ri.replace('[[SCAN]]','');return {scan:_scan,id:x.id,requester:x.requester,rcomp:x.rcomp,rphone:x.rphone,date:x.date,mode:x.mode,aptType:x.apt_type,routes:x.routes||[],routeInfo:_ri,returnReq:_ret,qtyNote:_qn,mapImg:x.map_img||'',estQty:x.est_qty,finalQty:x.final_qty,extra:x.extra||0,settle:x.settle,acctShare:x.acct_share,collab:x.collab,needCount:x.need_count||1,negUnit:x.neg_unit,negBy:x.neg_by,viaSupport:x.via_support,status:x.status,supporters:x.supporters||[],unit:x.unit,company_id:x.company_id};}
 function dbToSlot(x){return {id:x.id,driver:x.driver_name,company:x.driver_company,date:x.date,type:x.type,qty:x.qty,unit:x.unit,status:x.status,company_id:x.company_id};}
 function reqToDb(r){return {company_id:r.company_id||MYCOMP,requester:r.requester,rcomp:r.rcomp,rphone:r.rphone,date:r.date,mode:r.mode,apt_type:r.aptType||null,routes:r.routes||[],route_info:(r.routeInfo||'')+(r.returnReq?'[[RET]]':'')+(r.scan?'[[SCAN]]':'')+(r.qtyNote?('[[QN]]'+r.qtyNote):''),map_img:r.mapImg||'',est_qty:r.estQty||null,final_qty:r.finalQty||null,extra:r.extra||0,settle:r.settle,acct_share:!!r.acctShare,collab:!!r.collab,need_count:r.needCount||1,neg_unit:r.negUnit||null,neg_by:r.negBy||null,via_support:!!r.viaSupport,status:r.status,supporters:r.supporters||[],unit:r.unit||null,updated_at:new Date().toISOString()};}
 function reload(){loadData().then(function(){render();});}
