@@ -22395,7 +22395,7 @@ window.mdConvertToNotice=mdConvertToNotice;
   SR._calc=function(){var el=document.getElementById('sreq-sum');if(!el||!DRAFT)return;var u=draftUnits();var to=(document.getElementById('sreq-to')||{}).value||'';
     el.innerHTML=u.length?('<b>'+esc(me())+'</b> → <b style="color:#1565c0">'+esc(to||'(받을 기사)')+'</b><br>📅 '+md(DRAFT.dt)+' · '+esc(unitsLabel(u))):'<span style="color:#c62828">넘길 라우트를 하나 이상 골라주세요</span>';};
   var _whoT=null;SR._whoSoon=function(){clearTimeout(_whoT);_whoT=setTimeout(SR._who,500);SR._calc();};
-  SR._who=async function(){SR._calc();var el=document.getElementById('sreq-who');var to=((document.getElementById('sreq-to')||{}).value||'').trim();if(!el||!DRAFT)return;if(!to){el.textContent='';return;}
+  SR._who=async function(){try{if(window._tfRefreshNames&&!SR._nmDone){SR._nmDone=1;await _tfRefreshNames();}}catch(_e){}SR._calc();var el=document.getElementById('sreq-who');var to=((document.getElementById('sreq-to')||{}).value||'').trim();if(!el||!DRAFT)return;if(!to){el.textContent='';return;}
     if((window.ALL_NAMES||[]).map(nn).indexOf(nn(to))<0){el.innerHTML='<span style="color:#c62828">등록된 기사 이름이 아니에요</span>';return;}
     if(nn(to)===nn(me())){el.innerHTML='<span style="color:#c62828">본인에게는 넘길 수 없어요</span>';return;}
     try{var r=await sb().from('weekly_schedules').select('route_raw,driver_name,share').eq('work_date',DRAFT.dt);var T=nn(to),on=[];((r&&r.data)||[]).forEach(function(x){var hit=nn(x.driver_name||'')===T;if(!hit&&x.share){try{var s=typeof x.share==='string'?JSON.parse(x.share):x.share;hit=(s||[]).some(function(p){return nn(p.driver||'')===T;});}catch(e){}}if(hit&&on.indexOf(x.route_raw)<0)on.push(x.route_raw);});
@@ -22744,6 +22744,20 @@ window.mdConvertToNotice=mdConvertToNotice;
     FR.close();};
   // 로그인 후 규칙 미리 로드
   var _w=0,_t=setInterval(function(){_w++;if(window.sbClient&&window.CU){clearInterval(_t);FR.load(true);}if(_w>600)clearInterval(_t);},1000);
+})();
+</script>
+<script>
+/* [v937] 기사 이름 목록(ALL_NAMES) 최신화 — 앱에 고정된 목록에 없는 신규 기사(승인됨)를 drivers 표에서 자동 추가
+   스케줄 변경 요청·칸 수정·기사교체·고정배정의 기사 선택/확인에 모두 쓰임 */
+(function(){
+  function ok(n){return /^[가-힣]{2,5}$/.test(n)&&n!=='관리자';}
+  async function refresh(){try{if(!window.sbClient||!Array.isArray(window.ALL_NAMES))return;
+    var r=await sbClient.from('drivers').select('name,status').eq('status','approved');var add=0;
+    ((r&&r.data)||[]).forEach(function(d){var n=String(d.name||'').trim();if(ok(n)&&ALL_NAMES.indexOf(n)<0){ALL_NAMES.push(n);add++;}});
+    if(add)ALL_NAMES.sort(function(a,b){return a.localeCompare(b,'ko');});
+  }catch(e){}}
+  window._tfRefreshNames=refresh;
+  var w=0,t=setInterval(function(){w++;if(window.sbClient){clearInterval(t);refresh();setInterval(refresh,10*60000);}if(w>300)clearInterval(t);},1000);
 })();
 </script>
 </body></html>
