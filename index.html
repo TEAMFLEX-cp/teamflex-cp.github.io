@@ -12245,7 +12245,7 @@ function pgMisdelivery(){
         '</div>'+
         '<div style="flex:1;background:#fff;border-radius:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 3px">'+
           '<div style="font-size:19px;font-weight:800;color:#e65100;line-height:1" id="md-n-noaction">-</div>'+
-          '<div style="font-size:9px;color:#bf6000;margin-top:3px;font-weight:700;white-space:nowrap">미응답 완료</div>'+
+          '<div style="font-size:9px;color:#bf6000;margin-top:3px;font-weight:700;white-space:nowrap">미응답 분실처리</div>'+
         '</div>'+
         '<div style="flex:1;background:#fff;border-radius:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 3px">'+
           '<div style="font-size:19px;font-weight:800;color:#1565c0;line-height:1" id="md-n-waiting">-</div>'+
@@ -12772,7 +12772,7 @@ function mdCloseCountList(){var o=document.getElementById('md-cl-ov');if(o)o.rem
 function mdOpenCountList(kind){
   mdCloseCountList();
   var L=(window._mdCountLists||{})[kind]||[];
-  var ttl={pending:'미답변',noaction:'미응답 완료',waiting:'승인대기'}[kind]||'';
+  var ttl={pending:'미답변',noaction:'미응답 분실처리',waiting:'승인대기'}[kind]||'';
   var sub={pending:'공유 후 3일 이내 · 기사 답변 없음 (기간 필터와 무관, 같은 송장은 최신 건만)',noaction:'공유 후 3일 경과 · 기사 미조치 (같은 송장은 최신 건만)',waiting:'기사 답변 완료 · 관리자 승인 대기'}[kind]||'';
   var col={pending:'#e53935',noaction:'#e65100',waiting:'#1565c0'}[kind]||'#333';
   L=L.slice().sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
@@ -13040,7 +13040,7 @@ function mdRenderList(cases){
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
                     '<span style="font-size:9px;font-weight:800;color:#fff;background:#00838f;padding:1px 6px;border-radius:6px">인입</span>'+
                     (function(){try{var _ct=c.category||(c.issue_content&&c.issue_content.indexOf('미반납')>=0?'미반납':c.issue_content&&c.issue_content.indexOf('오회수')>=0?'오회수':'오배송');var _cs={'오배송':'background:#ffebee;color:#c62828','미반납':'background:#e0f7fa;color:#00838f','오회수':'background:#ede7f6;color:#4527a0','수기회수':'background:#ede9fe;color:#6d28d9','기타':'background:#eceff1;color:#546e7a'}[_ct]||(typeof _mdCatColor==='function'?('background:'+_mdCatColor(_ct)+'1a;color:'+_mdCatColor(_ct)):'background:#ffebee;color:#c62828');return '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:7px;'+_cs+'">'+mdEsc(_ct)+'</span>';}catch(_e){return '';}})()+   /* [v909] 어떤 인입건인지 종류 뱃지 */
-                    (c._noAction?'<span style="font-size:10px;font-weight:800;color:#455a64;background:#eceff1;border:1px solid #cfd8dc;padding:1px 7px;border-radius:7px">⛔ 미응답 완료</span>':'')+
+                    (c._noAction?'<span style="font-size:10px;font-weight:800;color:#455a64;background:#eceff1;border:1px solid #cfd8dc;padding:1px 7px;border-radius:7px">⛔ 미응답 분실처리</span>':'')+
                     (canDelete?'<span style="font-size:11px;font-weight:700;color:#558b2f">'+mdEsc(c.driver_name||c.driver_id||'-')+'</span>':'')+''+
                     '<span style="font-size:11px;color:#aaa">'+mdWbShort(c.waybill_no)+'</span>'+
                     '<span style="margin-left:auto;font-size:10px;color:#26a69a;font-weight:700;flex-shrink:0">⏱ '+_doneTm(it._t)+'</span>'+
@@ -22545,6 +22545,7 @@ window.mdConvertToNotice=mdConvertToNotice;
       }
       var q=L.filter(function(o){return o.status==='queued';}).sort(function(a,b){return String(a.appAt||a.accAt||a.at).localeCompare(String(b.appAt||b.accAt||b.at));})[0];
       if(q)log.push(await process(q));
+      try{if(window.tfAutoLoss){var _al=await window.tfAutoLoss.tick();if(_al)log.push(_al);}}catch(_e){log.push('AL ERR '+(_e.message||_e));}
     }catch(e){log.push('ERR '+(e.message||e));}finally{BUSY=false;}
     return log.join(' | ')||'idle';};
   async function finish(o,st,msg,extra){o.status=st;o.res=Object.assign({msg:msg,at:new Date().toISOString()},extra||{});o.seen={};hist(o,st,'서버',msg);await put(o);
@@ -22781,6 +22782,107 @@ window.mdConvertToNotice=mdConvertToNotice;
   }catch(e){}}
   window._tfRefreshNames=refresh;
   var w=0,t=setInterval(function(){w++;if(window.sbClient){clearInterval(t);refresh();setInterval(refresh,10*60000);}if(w>300)clearInterval(t);},1000);
+})();
+</script>
+<script>
+/* ══════ [v940] 재요청 → 자동 분실처리 ══════
+   인입에서 같은 송장이 다시 공유(재요청)됐는데 기사 답변이 없으면, 유형별 +N일의 처리 시각에
+   팀즈 해당 재요청 글에 답글 "해당건에 대해서 분실 처리 진행부탁드립니다." (건 정보는 폴러 답글 양식이 같이 붙임)
+   설정: app_settings 'md_autoloss' {on,cats:{미반납:1,오배송:2,오회수:0,기타:0},time:'09:00',since}
+   기록: app_settings 'md_autoloss_log' {caseId:{st:'done'|'skip'|'now',at,by,reply}}
+   처리: 서버 처리기(9224 headless 앱)의 tfSreq.workerTick 안에서 1분마다 tick() → 앱을 꺼도 동작 */
+(function(){
+  if(window.tfAutoLoss)return;
+  var AL={};window.tfAutoLoss=AL;
+  var CATS=['미반납','오배송','오회수','기타'],MSG='해당건에 대해서 분실 처리 진행부탁드립니다.';
+  var CFG=null,CFG_AT=0,LOG={},LOG_AT=0,BUSY=false;
+  function pj(v){try{return typeof v==='string'?JSON.parse(v):v;}catch(e){return null;}}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function def(){return {on:false,cats:{'미반납':1,'오배송':2,'오회수':0,'기타':0},time:'09:00',since:''};}
+  AL.cfg=async function(force){if(CFG&&!force&&Date.now()-CFG_AT<30000)return CFG;try{var r=await sbClient.from('app_settings').select('value').eq('key','md_autoloss').maybeSingle();var v=pj(r&&r.data&&r.data.value);CFG=Object.assign(def(),v||{});CFG.cats=Object.assign(def().cats,(v&&v.cats)||{});CFG_AT=Date.now();}catch(e){CFG=CFG||def();}return CFG;};
+  AL.log=async function(force){if(!force&&Date.now()-LOG_AT<30000)return LOG;try{var r=await sbClient.from('app_settings').select('value').eq('key','md_autoloss_log').maybeSingle();LOG=pj(r&&r.data&&r.data.value)||{};LOG_AT=Date.now();}catch(e){}return LOG;};
+  async function putLog(id,o){await AL.log(true);LOG[id]=o;var ks=Object.keys(LOG);if(ks.length>800){ks.sort(function(a,b){return String((LOG[a]||{}).at).localeCompare(String((LOG[b]||{}).at));});ks.slice(0,ks.length-800).forEach(function(k){delete LOG[k];});}
+    await sbClient.from('app_settings').upsert({key:'md_autoloss_log',value:JSON.stringify(LOG)},{onConflict:'key'});LOG_AT=Date.now();}
+  function catOf(c){try{if(typeof mdCaseCat==='function')return mdCaseCat(c);}catch(e){}return c.category||'오배송';}
+  function kymd(iso){var d=new Date(new Date(iso).getTime()+9*3600000);return d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2)+'-'+('0'+d.getUTCDate()).slice(-2);}
+  function addD(ymd,n){var p=ymd.split('-');var d=new Date(Date.UTC(+p[0],+p[1]-1,+p[2]+n));return d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2)+'-'+('0'+d.getUTCDate()).slice(-2);}
+  function dowK(ymd){var p=ymd.split('-');return ['일','월','화','수','목','금','토'][new Date(Date.UTC(+p[0],+p[1]-1,+p[2])).getUTCDay()];}
+  function mdK(ymd){return (+ymd.slice(5,7))+'/'+(+ymd.slice(8,10))+'('+dowK(ymd)+')';}
+  // 재요청 판정: 같은 송장의 더 이른 건이 있으면 재요청 (앱 목록의 _reshare 와 같은 기준)
+  function markReshare(list){var first={};(list||[]).slice().sort(function(a,b){return new Date(a.created_at||0)-new Date(b.created_at||0);}).forEach(function(c){var w=String(c.waybill_no||'').trim();if(!w){c.__rs=false;return;}c.__rs=!!first[w];if(!first[w])first[w]=c;});
+    var last={};(list||[]).forEach(function(c){var w=String(c.waybill_no||'').trim();if(!w)return;if(!last[w]||new Date(c.created_at)>new Date(last[w].created_at))last[w]=c;});
+    (list||[]).forEach(function(c){var w=String(c.waybill_no||'').trim();c.__last=!w||last[w]===c;});}
+  // 이 건의 자동 분실 예정 정보 (없으면 null)
+  AL.planOf=function(c,cfg,log){cfg=cfg||CFG;log=log||LOG;if(!cfg||!cfg.on||!c)return null;var rs=(c.__rs!=null)?c.__rs:c._reshare;if(!rs)return null;
+    var n=+((cfg.cats||{})[catOf(c)]||0);if(!(n>0))return null;
+    var day=addD(kymd(c.created_at||c.occurred_at),n),tm=cfg.time||'09:00';var due=new Date(day+'T'+tm+':00+09:00');
+    var lg=log[c.id]||log[String(c.id)]||null;
+    return {n:n,day:day,time:tm,due:due,label:mdK(day)+' '+tm,log:lg,pending:(c.status==='pending')};};
+  AL.badge=function(c){var p=AL.planOf(c);if(!p)return '';
+    if(p.log&&p.log.st==='skip')return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#eceff1;color:#78909c;border-radius:8px;padding:2px 8px">🚫 자동 분실 제외</span>';
+    if(p.log&&(p.log.st==='done'||p.log.st==='now'))return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:2px 8px">✅ 분실 처리 요청 완료</span>';
+    if(!p.pending)return '';
+    return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#ede7f6;color:#5e35b1;border-radius:8px;padding:2px 8px">⏰ '+p.label+' 자동 분실 예정</span>';};
+  // ── 실행: 팀즈 답글(폴러가 건 정보 양식으로 원글 인용 게시) + 처리완료 + 알림 ──
+  async function act(c,by){
+    var now=new Date().toISOString();
+    var ins=await sbClient.from('misdelivery_replies').insert({case_id:c.id,reply_text:MSG,replied_by:by,replied_by_id:null,approval_status:'approved',posted_to_teams:false,proxy_writer:by,proxy_role:'admin',approved_by:by,posted_at:now}).select().single();
+    if(ins&&ins.error)throw new Error(ins.error.message);
+    var w=String(c.waybill_no||'').trim(),ids=[c.id];
+    if(w){try{var s=await sbClient.from('misdelivery_cases').select('id').eq('waybill_no',w).eq('status','pending');((s&&s.data)||[]).forEach(function(x){if(ids.indexOf(x.id)<0)ids.push(x.id);});}catch(e){}}
+    await sbClient.from('misdelivery_cases').update({status:'approved'}).in('id',ids);
+    await putLog(c.id,{st:by.indexOf('자동')===0?'done':'now',at:now,by:by,reply:ins&&ins.data&&ins.data.id,cat:catOf(c),wb:w});
+    var cat=catOf(c),body=cat+' '+(w||'')+(c.route?(' · '+c.route):'')+' — 재요청 후 답변이 없어 분실 처리 요청을 올렸어요.';
+    try{if(c.driver_name&&typeof mdPushToDriver==='function')mdPushToDriver(c.driver_name,'📉 분실 처리 요청',body,c.id);}catch(e){}
+    try{if(typeof mdPushToLeaders==='function')mdPushToLeaders('📉 자동 분실 처리 요청',(c.driver_name||'')+' · '+body,c.id);}catch(e){}
+    return 'autoloss '+c.id;}
+  AL.tick=async function(){if(BUSY)return '';BUSY=true;var out=[];
+    try{var cfg=await AL.cfg(true);if(!cfg.on)return '';var log=await AL.log(true);
+      var since=new Date(Date.now()-12*86400000).toISOString();
+      var r=await sbClient.from('misdelivery_cases').select('id,category,status,waybill_no,created_at,occurred_at,driver_name,route,issue_content').gte('created_at',since).limit(3000);
+      var L=(r&&r.data)||[];markReshare(L);var now=new Date();
+      for(var i=0;i<L.length;i++){var c=L[i];if(!c.__last||!c.__rs||c.status!=='pending')continue;if(log[c.id])continue;
+        if(cfg.since&&new Date(c.created_at)<new Date(cfg.since))continue;   // 켜기 전에 들어온 재요청은 대상 아님
+        var p=AL.planOf(c,cfg,log);if(!p||now<p.due)continue;
+        try{out.push(await act(c,'자동(재요청 미답변)'));}catch(e){out.push('ERR '+c.id+' '+(e.message||e));}}
+    }catch(e){out.push('ERR '+(e.message||e));}finally{BUSY=false;}
+    return out.join(' | ');};
+  AL.now=async function(id){var c=(window._mdCases||[]).find(function(x){return x.id===id;});if(!c)return;if(!(CU&&(CU.role==='admin'||CU.role==='leader'))){alert('관리자·팀장만 가능합니다.');return;}
+    if(!confirm('지금 바로 분실 처리 요청을 올릴까요?\n\n팀즈 해당 재요청 글에 답글:\n"'+MSG+'"'))return;
+    try{await act(c,CU.name);alert('📉 분실 처리 요청을 올렸어요. (팀즈 답글은 1분 안에 올라가요)');try{document.getElementById('md-detail-modal').style.display='none';}catch(e){}mdLoadCases();}catch(e){alert('실패: '+(e.message||e));}};
+  AL.skip=async function(id,undo){if(!(CU&&(CU.role==='admin'||CU.role==='leader')))return;try{if(undo){await AL.log(true);delete LOG[id];await sbClient.from('app_settings').upsert({key:'md_autoloss_log',value:JSON.stringify(LOG)},{onConflict:'key'});}else await putLog(id,{st:'skip',at:new Date().toISOString(),by:CU.name});showToast(undo?'⏰ 자동 분실 다시 예정':'🚫 이 건은 자동 분실에서 제외',true);}catch(e){alert('저장 실패');}try{mdOpenDetail(id);}catch(e){}paint(true);};
+  // ── 관리자 설정 카드 ──
+  var DR=null;
+  function cardHtml(){var c=DR||CFG||def();
+    var h='<div style="display:flex;align-items:center;gap:8px"><b style="font-size:14px;color:#4527a0;flex:1">⏰ 재요청 → 자동 분실처리</b><div style="display:flex;background:#eee;border-radius:20px;padding:3px">'
+      +'<span onclick="tfAutoLoss._set(\'on\',true)" style="cursor:pointer;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:900;'+(c.on?'background:#2e7d32;color:#fff':'color:#999')+'">🟢 켜짐</span><span onclick="tfAutoLoss._set(\'on\',false)" style="cursor:pointer;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:900;'+(!c.on?'background:#78909c;color:#fff':'color:#999')+'">끄기</span></div></div>'
+      +'<div style="font-size:11.5px;color:#5a6b7c;margin-top:6px;line-height:1.55">같은 송장이 다시 공유(<b>재요청</b>)됐는데 기사 <b>답변이 없으면</b>, 정한 날에 팀즈 해당 글에 답글로 <b>"'+MSG+'"</b>를 자동으로 올려요.</div>'
+      +'<div style="font-size:12.5px;font-weight:900;margin-top:9px">유형별 자동 분실 날짜 <span style="font-weight:600;color:#8a7aa8">(재요청한 날 기준)</span></div>'
+      +CATS.map(function(k){var v=+(c.cats[k]||0);return '<div style="display:flex;align-items:center;gap:5px;margin-top:6px"><b style="width:52px;font-size:12.5px;color:#33475b">'+k+'</b>'+[['끄기',0],['+1일',1],['+2일',2],['+3일',3]].map(function(o){var on=o[1]===v;return '<span onclick="tfAutoLoss._cat(\''+k+'\','+o[1]+')" style="cursor:pointer;flex:1;text-align:center;padding:7px 0;border-radius:10px;font-size:12px;font-weight:900;'+(on?(o[1]?'background:#5e35b1;color:#fff;border:2px solid #5e35b1':'background:#eceff1;color:#78909c;border:2px solid #b0bec5'):'background:#fff;color:#555;border:1.5px solid #d1c4e9')+'">'+o[0]+'</span>';}).join('')+'</div>';}).join('')
+      +'<div style="display:flex;align-items:center;gap:8px;margin-top:9px"><b style="font-size:12.5px">처리 시각</b><input type="time" value="'+esc(c.time||'09:00')+'" onchange="tfAutoLoss._set(\'time\',this.value)" style="flex:1;padding:7px 9px;border:1.5px solid #d1c4e9;border-radius:9px;font-size:14px;font-weight:800"></div>'
+      +'<div style="margin-top:8px;background:#f3eefc;border-radius:10px;padding:7px 10px;font-size:11px;color:#4527a0;line-height:1.6">· 그 전에 기사가 답변하거나 처리완료되면 자동 취소 · 건마다 [자동 제외] 가능<br>· 켠 뒤에 들어온 재요청부터 적용 · 푸시 금지시간엔 알림이 가지 않아요</div>'
+      +(DR?'<div onclick="tfAutoLoss._save()" style="cursor:pointer;margin-top:9px;padding:10px;border-radius:11px;background:linear-gradient(135deg,#7e57c2,#5e35b1);color:#fff;text-align:center;font-weight:900">💾 설정 저장</div>':'');
+    return h;}
+  AL._set=function(k,v){DR=DR||JSON.parse(JSON.stringify(CFG||def()));DR[k]=v;paint(true);};
+  AL._cat=function(k,v){DR=DR||JSON.parse(JSON.stringify(CFG||def()));DR.cats[k]=v;paint(true);};
+  AL._save=async function(){if(!(CU&&CU.role==='admin'))return;var c=DR;if(!c)return;if(!/^\d{2}:\d{2}$/.test(c.time||''))c.time='09:00';if(c.on&&!(CFG&&CFG.on))c.since=new Date().toISOString();if(c.on&&!c.since)c.since=new Date().toISOString();
+    c.by=CU.name;c.at=new Date().toISOString();try{await sbClient.from('app_settings').upsert({key:'md_autoloss',value:JSON.stringify(c)},{onConflict:'key'});CFG=c;CFG_AT=Date.now();DR=null;showToast('💾 자동 분실처리 설정 저장',true);paint(true);}catch(e){alert('저장 실패: '+(e.message||e));}};
+  // ── 화면 꾸미기: 설정 카드 · 목록 배지 · 상세 안내 ──
+  function paint(force){try{if(!window.CU||window.__TF_SREQ_WORKER)return;var adm=CU.role==='admin',ld=CU.role==='leader';
+    if(adm){var anchor=document.getElementById('md-mode-cats');if(anchor){var box=document.getElementById('md-al-card');if(!box){box=document.createElement('div');box.id='md-al-card';box.style.cssText='background:#fff;border-radius:14px;padding:12px 12px 11px;margin:0 0 12px;box-shadow:0 1px 4px rgba(0,0,0,.08);border:2px solid #b39ddb';anchor.parentNode.insertBefore(box,anchor.nextSibling);force=true;}if(force||!box.innerHTML)box.innerHTML=cardHtml();}}
+    if(!CFG||!CFG.on)return;var cs=window._mdCases||[];var byId={};cs.forEach(function(c){byId[c.id]=c;});
+    document.querySelectorAll('[id^="md-card-"]').forEach(function(el){var id=+el.id.slice(8);var c=byId[id];var bh=c?AL.badge(c):'';var cur=el.querySelector('.md-al-b');var sig=bh;if(cur&&cur.dataset.sig===sig)return;if(cur)cur.remove();if(!bh)return;var d=document.createElement('div');d.className='md-al-b';d.dataset.sig=sig;d.style.cssText='margin:5px 0 0';d.innerHTML=bh;el.appendChild(d);});
+    document.querySelectorAll('[id^="md-mgcard-"]').forEach(function(el){var gi=+el.id.slice(10);var g=(window._mdMibaGroupArr||[])[gi];if(!g)return;var bs=[];(g.rows||[]).forEach(function(r){var b=r.latest?AL.badge(r.latest):'';if(b&&bs.indexOf(b)<0)bs.push(b);});var bh=bs.slice(0,2).join(' ');var cur=el.querySelector('.md-al-b');if(cur&&cur.dataset.sig===bh)return;if(cur)cur.remove();if(!bh)return;var d=document.createElement('div');d.className='md-al-b';d.dataset.sig=bh;d.style.cssText='margin:5px 0 0';d.innerHTML=bh;el.appendChild(d);});
+    var mo=document.getElementById('md-detail-modal');if(mo&&mo.style.display!=='none'){var lb=mo.querySelector('button[onclick^="mdLossRequest("]');if(lb){var id=+(lb.getAttribute('onclick').match(/\d+/)||[0])[0];var c=byId[id];var p=c?AL.planOf(c):null;var ex=mo.querySelector('.md-al-d');var sg=p?JSON.stringify([p.label,p.log,c.status]):'';if(ex&&ex.dataset.sig===sg&&!force)return;if(ex)ex.remove();if(!p)return;
+      var can=adm||ld,h;
+      if(p.log&&(p.log.st==='done'||p.log.st==='now'))h='<div style="font-weight:900;color:#2e7d32;font-size:13.5px">✅ 자동 분실처리 요청 완료</div><div style="font-size:12px;color:#2f4f35;margin-top:4px;line-height:1.6">'+esc(new Date(p.log.at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))+' · '+esc(p.log.by||'')+'<br>💬 팀즈 해당 재요청 글에 답글: "'+MSG+'"</div>';
+      else if(p.log&&p.log.st==='skip')h='<div style="font-weight:900;color:#607d8b;font-size:13.5px">🚫 자동 분실 제외된 건</div><div style="font-size:12px;color:#607d8b;margin-top:4px">'+esc(p.log.by||'')+' 님이 제외했어요.</div>'+(can?'<div onclick="tfAutoLoss.skip('+id+',1)" style="cursor:pointer;margin-top:7px;text-align:center;padding:8px;border-radius:9px;background:#fff;border:1.5px solid #b0bec5;color:#546e7a;font-weight:900;font-size:12.5px">⏰ 다시 자동 분실 예정으로</div>':'');
+      else if(c.status==='pending')h='<div style="font-weight:900;color:#4527a0;font-size:13.5px">⏰ 자동 분실처리 예정</div><div style="font-size:12px;color:#4a3d6b;margin-top:4px;line-height:1.6">재요청 후 기사 답변이 없으면<br><b>'+p.label+'</b>에 팀즈 해당 글에 답글로<br>"<b>'+MSG+'</b>"를 자동으로 올려요.<br><span style="color:#7e6aa8">기사가 그 전에 답변하면 자동 취소돼요.</span></div>'+(can?'<div style="display:flex;gap:6px;margin-top:8px"><span onclick="tfAutoLoss.skip('+id+')" style="cursor:pointer;flex:1;text-align:center;padding:8px;border-radius:9px;background:#fff;border:1.5px solid #b39ddb;color:#5e35b1;font-weight:900;font-size:12.5px">🚫 이 건 자동 제외</span><span onclick="tfAutoLoss.now('+id+')" style="cursor:pointer;flex:1;text-align:center;padding:8px;border-radius:9px;background:#5e35b1;color:#fff;font-weight:900;font-size:12.5px">⚡ 지금 바로 분실 요청</span></div>':'');
+      else return;
+      var d=document.createElement('div');d.className='md-al-d';d.dataset.sig=sg;d.style.cssText='margin:0 0 8px;padding:11px 12px;border-radius:12px;background:'+(p.log&&p.log.st!=='skip'?'#e8f5e9':'#f3eefc')+';border:2px solid '+(p.log&&p.log.st!=='skip'?'#43a047':'#7e57c2');d.innerHTML=h;lb.parentNode.insertBefore(d,lb);}}
+  }catch(e){}}
+  AL.paint=paint;
+  var w=0,t=setInterval(function(){w++;if(window.sbClient&&window.CU){clearInterval(t);AL.cfg().then(function(){AL.log().then(function(){paint(true);});});setInterval(function(){if(document.getElementById('md-mode-cats')||document.querySelector('[id^="md-card-"],[id^="md-mgcard-"]')){AL.cfg().then(function(){AL.log().then(function(){paint(false);});});}},1500);}if(w>600)clearInterval(t);},1000);
 })();
 </script>
 </body></html>
