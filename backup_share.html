@@ -267,7 +267,22 @@ function sendMatch(){var sl=slots.find(function(x){return x.id===draft.sid;});sl
 }
 // ── 카드 ──
 function sortByDate(a,b){return a.date<b.date?-1:(a.date>b.date?1:0);}
-function doneCompact(r){return '<div class="card req done" onclick="openDetail('+r.id+')"><div class="dcompact"><span class="badge b-green">✅ 완료</span>'+dBadge(r.date)+'<span style="flex:1"></span><span class="price" style="font-size:15px">'+moneyR(r,reqTotal(r))+'</span><span style="color:#c5cad2;font-weight:900;font-size:18px">›</span></div></div>';}
+function bpUP(r){var B=baseUnit(r),E=r.extra||0,U=payUnit(r);
+  if(r.negUnit)return {txt:'특정 단가 '+money(r.negUnit),html:'<span style="background:#f3e5f5;color:#6a1b9a;border-radius:7px;padding:2px 7px;font-weight:900">🎯 특정 단가 '+money(r.negUnit)+'</span>',u:U};
+  if(r.scan)return {txt:'스캔 · 추가단가 '+money(E),html:'<span style="background:#ede7f6;color:#5e35b1;border-radius:7px;padding:2px 7px;font-weight:900">📷 스캔</span> <span style="text-decoration:line-through;color:#9aa7b4">기본 '+money(B)+'</span> <span style="background:#fff3e0;color:#e65100;border-radius:7px;padding:2px 7px;font-weight:900">추가 '+money(E)+'</span>',u:U};
+  return {txt:'기본단가 '+money(B)+(E?(' + 추가단가 '+money(E)):''),html:'<span style="background:#e3f2fd;color:#1565c0;border-radius:7px;padding:2px 7px;font-weight:900">기본 '+money(B)+'</span>'+(E?(' + <span style="background:#fff3e0;color:#e65100;border-radius:7px;padding:2px 7px;font-weight:900">추가 '+money(E)+'</span>'):''),u:U};}
+function bpSupNames(r){var sp=(r.supporters||[]).filter(function(x){return x.state==='picked';});if(!sp.length)sp=r.supporters||[];return sp.map(function(x){return bpDisp(x.name);}).join(', ');}
+function bpAdmDel(id,stay){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}var r=reqs.find(function(x){return x.id===id;});if(!r)return;
+  if(!CANCEL_PW){alert('⚠️ 관리자 비밀번호가 설정되지 않았습니다.\n⚙️ 설정 → "업무 확정 취소 비밀번호"를 먼저 등록하세요.');return;}
+  var pw=prompt('🗑 이 건을 삭제합니다. (되돌릴 수 없어요)\n\n'+bpDateK(r.date)+' · '+(r.routes||[]).join(',')+' · '+(r.finalQty||0)+'개\n지원받은 기사: '+bpDisp(r.requester)+'\n지원한 기사: '+(bpSupNames(r)||'-')+'\n정산금: '+money(reqTotal(r))+'\n\n🔒 관리자 비밀번호를 입력하세요.');
+  if(pw===null)return;if(pw!==CANCEL_PW){alert('❌ 비밀번호가 일치하지 않아 삭제하지 않았습니다.');return;}
+  sb.from('bp_requests').delete().eq('id',id).then(function(res){if(res&&res.error){toast('삭제 오류');return;}reqs=reqs.filter(function(x){return x.id!==id;});toast('🗑 삭제 완료');if(!stay){sub=null;}render();reload();});}
+function doneCompact(r,which){var up=bpUP(r),q=r.finalQty||0,amt=moneyR(r,reqTotal(r));var sign=which==='sup'?'+':(which==='mine'?'-':'');
+  return '<div class="card req done" onclick="openDetail('+r.id+')"><div class="dcompact"><span class="badge b-green">✅ 완료</span>'+dBadge(r.date)+'<span style="flex:1"></span><span class="price" style="font-size:15px;color:'+(sign==='-'?'#c0392b':(sign==='+'?'#1b7a4b':''))+'">'+sign+amt+'</span><span style="color:#c5cad2;font-weight:900;font-size:18px">›</span></div>'
+   +'<div style="font-size:13px;font-weight:800;color:#1d2b3a;margin-top:6px">🙋 '+bpDisp(r.requester)+' <span style="color:#9aa7b4">←</span> 🚚 '+bpSupNames(r)+' · '+(r.routes||[]).join(',')+' · '+q+'개</div>'
+   +'<div style="font-size:12px;margin-top:5px">'+up.html+' = <b>'+money(up.u)+'</b>/개</div>'
+   +(ROLE==='admin'?'<div style="text-align:right;margin-top:4px"><button onclick="event.stopPropagation();bpAdmDel('+r.id+',1)" style="border:1px solid #ffcdd2;background:#fff;color:#c62828;border-radius:8px;padding:3px 9px;font-size:11.5px;font-weight:800;cursor:pointer">🗑 삭제</button></div>':'')+'</div>';}
+function doneCompactOld(r){return '<div class="card req done" onclick="openDetail('+r.id+')"><div class="dcompact"><span class="badge b-green">✅ 완료</span>'+dBadge(r.date)+'<span style="flex:1"></span><span class="price" style="font-size:15px">'+moneyR(r,reqTotal(r))+'</span><span style="color:#c5cad2;font-weight:900;font-size:18px">›</span></div></div>';}
 function supMini(r){if(!r.supporters||!r.supporters.length)return '';return '<div class="row" style="gap:5px;margin-top:7px">'+r.supporters.map(function(s,i){var c=(s.state==='picked'||s.state==='accepted')?'b-green':(s.state==='declined'?'b-gray':'b-amber');return '<span class="badge '+c+'">지원자 '+(i+1)+'</span>';}).join('')+'</div>';}
 function reqCard(r){if(r.status==='done')return doneCompact(r);
   var qtyTxt=(r.finalQty?('실제 '+r.finalQty+'개'):(r.estQty?('예상 '+r.estQty+'개'):'수량 대기'))+(r.qtyNote?(' ('+r.qtyNote+')'):'');
@@ -292,7 +307,7 @@ function bpSettleData(scope){var inc={},exp={},tin=0,tout=0,ninc=0,nexp=0,thisYM
     var u=payUnit(r),q=r.finalQty||0,total=u*q;
     var sups=(r.supporters||[]).filter(function(s){return s.state==='picked';});if(!sups.length)sups=r.supporters||[];
     var share=sups.length?Math.round(total/sups.length):total,sq=sups.length?Math.round(q/sups.length):q;
-    var rt=(r.routes||[]).join(','),how=r.negUnit?'특정 단가':(r.scan?'스캔·추가단가만':'기본'+((r.extra||0)?(' + 추가 '+money(r.extra)):''));
+    var rt=(r.routes||[]).join(','),how=bpUP(r).html;
     sups.forEach(function(s){if(!sameCo(s.company))return;var nm=bpDisp(s.name);inc[nm]=(inc[nm]||0)+share;tin+=share;ninc++;var o=per(nm);o.inc+=share;o.ni++;o.items.push({k:'in',id:r.id,date:r.date,other:bpDisp(r.requester),route:rt,qty:sq,unit:u,amt:share,how:how});});
     if(r.requester&&(!r.company_id||r.company_id===MYCOMP)){var rn=bpDisp(r.requester);exp[rn]=(exp[rn]||0)+total;tout+=total;nexp++;var o2=per(rn);o2.exp+=total;o2.ne++;o2.items.push({k:'out',id:r.id,date:r.date,other:sups.map(function(x){return bpDisp(x.name);}).join(', '),route:rt,qty:q,unit:u,amt:total,how:how});}
   });
@@ -312,8 +327,8 @@ function bpPersonCard(o,open){var net=o.inc-o.exp;
     o.items.forEach(function(it){var isIn=it.k==='in';
       h+='<div onclick="openDetail('+it.id+')" style="display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px dashed #eef2f6;cursor:pointer">'
         +'<div style="width:62px;flex-shrink:0;font-size:12px;font-weight:800;color:#33475b">'+(+it.date.slice(5,7))+'/'+(+it.date.slice(8,10))+' ('+bpDow(it.date)+')</div>'
-        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:#1d2b3a">'+(isIn?'🚚 ':'🙋 ')+it.route+' · '+it.qty+'개</div><div style="font-size:11.5px;color:#6b7b8c">'+(isIn?('지원받은 기사: <b>'+it.other+'</b>'):('지원한 기사: <b>'+it.other+'</b>'))+' · '+money(it.unit)+'/개 ('+it.how+')</div></div>'
-        +'<div style="font-size:14px;font-weight:900;color:'+(isIn?'#1b7a4b':'#c0392b')+';white-space:nowrap">'+(isIn?'+':'-')+money(it.amt)+'</div></div>';});
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:800;color:#1d2b3a">'+(isIn?'🚚 ':'🙋 ')+it.route+' · '+it.qty+'개</div><div style="font-size:11.5px;color:#6b7b8c">'+(isIn?('지원받은 기사: <b>'+it.other+'</b>'):('지원한 기사: <b>'+it.other+'</b>'))+'</div><div style="font-size:11.5px;margin-top:3px">'+it.how+' = <b>'+money(it.unit)+'</b>/개</div></div>'
+        +'<div style="text-align:right"><div style="font-size:14px;font-weight:900;color:'+(isIn?'#1b7a4b':'#c0392b')+';white-space:nowrap">'+(isIn?'+':'-')+money(it.amt)+'</div>'+(ROLE==='admin'?'<button onclick="event.stopPropagation();bpAdmDel('+it.id+',1)" style="margin-top:4px;border:1px solid #ffcdd2;background:#fff;color:#c62828;border-radius:7px;padding:2px 7px;font-size:11px;font-weight:800;cursor:pointer">🗑 삭제</button>':'')+'</div></div>';});
     h+='</div>';}
   return h+'</div>';}
 function settleHtml(){var D=bpSettleData(settleScope);var adm=ROLE==='admin';
@@ -335,21 +350,23 @@ function settleHtml(){var D=bpSettleData(settleScope);var adm=ROLE==='admin';
   h+='<div style="margin-top:12px"><button class="btn b2" onclick="bpExportSettle()">📥 '+lbl+' 정산 엑셀 내보내기</button></div>';
   return h;
 }
-function listHtml(which){var arr=which==='mine'?reqs.filter(function(r){return meReq(r)&&r.status!=='rejected';}):reqs.filter(function(r){return iAmSup(r)&&!meReq(r)&&r.status!=='rejected';});
+var BP_ALLV={mine:true,sup:true};
+function listHtml(which){var allv=ROLE==='admin'&&BP_ALLV[which];var arr=allv?reqs.filter(function(r){return r.status!=='rejected'&&(which==='mine'||(r.supporters&&r.supporters.length));}):(which==='mine'?reqs.filter(function(r){return meReq(r)&&r.status!=='rejected';}):reqs.filter(function(r){return iAmSup(r)&&!meReq(r)&&r.status!=='rejected';}));
   var f=filt[which];var flt=arr.filter(function(r){return f==='all'?true:(f==='ing'?r.status!=='done':r.status==='done');}).sort(sortByDate);
   var doneArr=arr.filter(function(r){return r.status==='done';}),ingArr=arr.filter(function(r){return r.status!=='done';});
   var total=doneArr.reduce(function(a,r){return a+reqTotal(r);},0);
   var grad=which==='sup'?'linear-gradient(135deg,#12a374,#0b6b4a)':'linear-gradient(135deg,#e53935,#b71c1c)';
-  var h='<div class="card" style="background:'+grad+';color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.2)"><div style="font-size:12px;opacity:.92;font-weight:800">정산 기준 총 '+(which==='sup'?'수익 💰':'지출 💸')+'</div><div style="font-size:26px;font-weight:900;margin-top:2px">'+money(total)+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">완료·확정 '+doneArr.length+'건'+(ingArr.length?' · 진행중 '+ingArr.length+'건':'')+'</div></div>';
+  var h='<div class="card" style="background:'+grad+';color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.2)"><div style="font-size:12px;opacity:.92;font-weight:800">'+(allv?'👑 전체 기사 · ':'')+'정산 기준 총 '+(which==='sup'?'수익 💰':'지출 💸')+'</div><div style="font-size:26px;font-weight:900;margin-top:2px">'+money(total)+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">완료·확정 '+doneArr.length+'건'+(ingArr.length?' · 진행중 '+ingArr.length+'건':'')+'</div></div>';
   if(which==='sup')h+='<div style="margin-bottom:11px"><button class="btn b2" onclick="startSupReg()">＋ 요청 없이 지원 등록 (역지원 → 확정 요청)</button>'+(ROLE==='admin'?'<button class="btn" style="margin-top:8px;background:linear-gradient(135deg,#5e35b1,#3949ab);color:#fff;font-weight:900" onclick="startSupReg(\'adm\')">👑 관리자 직접 등록 (요청·확정 없이 바로 반영)</button>':'')+'</div>';
   h+='<div class="note">'+(which==='mine'?'내가 <b>백업을 요청</b>한 건 + 나에게 온 <b>확정 요청</b>.':'내가 <b>지원·협상·협업제안</b> 받은 건. 개인협업은 완료건이 합산 반영돼요.')+'</div>';
   h+='<div style="background:#fff3e0;border:1.5px solid #ffb74d;border-radius:10px;padding:10px 12px;margin:8px 0 6px;color:#e65100;font-weight:800;font-size:12px;line-height:1.6">⚠️ 주 6일 이상 근무는 지원이 불가합니다.<br>주 7일 근무는 신청하시면 안 됩니다.</div>';
+  if(ROLE==='admin')h+='<div style="margin:6px 0 2px"><span class="fchip '+(allv?'on':'')+'" onclick="BP_ALLV[\''+which+'\']=true;render()">👑 전체 기사</span><span class="fchip '+(allv?'':'on')+'" onclick="BP_ALLV[\''+which+'\']=false;render()">👤 내 것만</span></div>';
   h+='<div style="margin:4px 0 6px">'+['all','ing','done'].map(function(k){var l={all:'전체',ing:'진행중',done:'완료·확정'}[k];return '<span class="fchip '+(f===k?'on':'')+'" onclick="filt[\''+which+'\']=\''+k+'\';render()">'+l+'</span>';}).join('')+'</div>';
   if(which==='sup'){var mySlots=slots.filter(function(x){return meSlot(x)&&x.status==='open';}).sort(sortByDate);
     if(mySlots.length){h+='<div style="font-size:12px;font-weight:900;color:#0d3b66;margin:8px 2px 6px">🙌 내 지원 가능 등록 (매칭 대기)</div>';
       mySlots.forEach(function(sl){h+='<div class="card req '+(sl.status==='open'?'open':'matched')+'"><div class="row" style="margin-bottom:6px">'+dBadge(sl.date)+typeBadge(sl.type)+(sl.status==='open'?'<span class="badge b-blue">🔵 매칭 대기</span>':'<span class="badge b-amber">🟠 매칭됨</span>')+'</div><div class="meta">가능 '+sl.qty+'개 · 희망 '+money(sl.unit)+'/개</div>'+(sl.status==='open'?('<div style="margin-top:8px"><button class="btn b3" onclick="cancelSlot('+sl.id+')">🗑 지원 취소</button></div>'):'')+'</div>';});}}
   if(!flt.length)h+='<div class="note">해당 없음</div>';
-  flt.forEach(function(r){if(r.status==='done'){h+=doneCompact(r);return;}h+=reqCard(r);});
+  flt.forEach(function(r){if(r.status==='done'){h+=doneCompact(r,allv?'':which);return;}h+=reqCard(r);});
   return h;
 }
 // ── 요청 등록 ──
@@ -624,7 +641,7 @@ function detailHtml(r){if(!r)return '';var iReq=(meReq(r)),iSup=iAmSup(r);var si
   if(r.supporters&&r.supporters.length&&r.status!=='nego'){
     supH+='<div style="font-size:12px;font-weight:900;color:#0d3b66;margin:4px 2px 6px">🚚 '+(r.status==='open'?'신청한 지원자':(r.status==='collabreq'?'협업 제안 지원자':'매칭된 지원자'))+' '+r.supporters.length+'명'+(r.collab?(' · 모집 '+r.needCount+'명'):'')+'</div>';
     r.supporters.forEach(function(s,i){var st=s.state||'joined';
-      supH+='<div class="supcard"><div class="suphead"><span class="supn '+(st==='picked'||st==='accepted'?'acc':(st==='declined'?'dec':''))+'">'+(i+1)+'</span><span style="flex:1">지원자 '+(i+1)+' · '+s.name+(s.company?(' '+comp(s.company)):'')+'</span>'+stateBadge(st)+'</div>';
+      supH+='<div class="supcard"><div class="suphead"><span class="supn '+(st==='picked'||st==='accepted'?'acc':(st==='declined'?'dec':''))+'">'+(i+1)+'</span><span style="flex:1"><span style="font-size:11.5px;color:#6b7b8c">지원자 '+(i+1)+'</span> <b style="font-size:17px;color:#123a6b">'+bpDisp(s.name)+'</b>'+(s.company?(' '+comp(s.company)):'')+'</span>'+stateBadge(st)+'</div>';
       supH+='<div style="font-size:11.5px;color:#5a6b7c;margin-top:5px">📞 '+(s.phone||'연락처 미등록')+supAcctLine(r,s,iReq)+'</div>';
       // 등록기사: 모집중 → 업무확정(한명)/포기
       if(iReq&&r.status==='open')supH+='<div class="supbtns"><button class="sbtn sb-ok" onclick="pickOne('+r.id+','+i+')">✅ 업무 확정</button><button class="sbtn sb-no" onclick="dropSup('+r.id+','+i+')">✖ 포기</button></div>';
@@ -640,12 +657,12 @@ function detailHtml(r){if(!r)return '';var iReq=(meReq(r)),iSup=iAmSup(r);var si
   if(supH)supH='<div class="card" style="border-left:5px solid #1565c0;background:#f3f8ff">'+supH+'</div>';
   h+=supH;
   h+='<div class="card"><div class="row" style="margin-bottom:6px">'+stBadge(r.status)+kindBadge(r)+comp(r.rcomp)+collabBadge(r)+settleBadge(r)+scanBadge(r)+(r.returnReq?'<span class="badge" style="background:#c62828;color:#fff">↩️ 회수필수</span>':'')+'</div>';
-  h+='<div class="rname" style="margin-bottom:4px">'+r.requester+'</div>';
+  h+='<div style="font-size:11.5px;color:#6b7b8c;font-weight:800">🙋 지원받은 기사</div><div class="rname" style="margin-bottom:4px">'+bpDisp(r.requester)+'</div>';
   h+='<div class="kv"><span>라우트</span><b>'+r.routes.join(', ')+'</b></div>';
-  h+='<div class="kv"><span>단가/개</span><b style="color:#1565c0">'+moneyR(r,payUnit(r))+'</b></div>';if(r.scan&&!r.negUnit)h+='<div class="kv"><span style="color:#5e35b1">📷 스캔 정산</span><b style="color:#5e35b1;font-size:12px">원단가 '+money(baseUnit(r))+' 제외 · 추가단가만</b></div>';
+  var _up=bpUP(r);h+='<div class="kv"><span>단가 구성</span><span style="font-size:12px;text-align:right">'+_up.html+'</span></div><div class="kv"><span>단가/개</span><b style="color:#1565c0">'+moneyR(r,payUnit(r))+'</b></div>';if(r.scan&&!r.negUnit)h+='<div class="kv"><span style="color:#5e35b1">📷 스캔 정산</span><b style="color:#5e35b1;font-size:12px">라우트 기본단가는 업무에 포함 · 추가단가만</b></div>';
   h+='<div class="kv"><span>예상 수량</span><b>'+(r.estQty?r.estQty+'개':'-')+(r.qtyNote?(' <span style="color:#e65100;font-weight:800">('+r.qtyNote+')</span>'):'')+'</b></div>';
   h+='<div class="kv"><span>실제 수량</span><b>'+(r.finalQty?r.finalQty+'개':'지원기사 입력 대기')+'</b></div>';
-  h+='<div class="kv" style="border:none"><span>정산금</span><b class="price">'+(r.finalQty?moneyR(r,reqTotal(r)):(r.estQty?(moneyR(r,estTotal(r))+' (예상)'):'-'))+'</b></div></div>';
+  h+='<div class="kv" style="border:none"><span>'+(r.finalQty?'지출 (지원받은 기사)':'정산금')+'</span><b class="price" style="'+(r.finalQty?'color:#c0392b':'')+'">'+(r.finalQty?('-'+moneyR(r,reqTotal(r))):(r.estQty?(moneyR(r,estTotal(r))+' (예상)'):'-'))+'</b></div></div>';
   // 액션
   if(r.status==='open'){
     if(iReq){
@@ -673,8 +690,15 @@ function detailHtml(r){if(!r)return '';var iReq=(meReq(r)),iSup=iAmSup(r);var si
   }
   else if(r.status==='matched'){if(iSup)h+='<div class="note">협업 진행 중. 완료 후 <b>실제 수량</b>을 입력하세요.</div><button class="btn b-warn" onclick="enterQty('+r.id+')">📦 실제 수량 입력·제출</button>';else if(iReq)h+='<div class="note">지원 기사 <b>실제 수량 제출 대기</b> 중입니다.</div>';h+=LOCK;}
   else if(r.status==='qty'){if(iReq)h+='<div class="card"><div class="kv"><span>제출 실제 수량</span><b>'+r.finalQty+'개</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+moneyR(r,reqTotal(r))+'</b></div></div><button class="btn b2" onclick="confirmDone('+r.id+')">✅ 수량 확인 · 최종 확정</button>';else if(iSup)h+='<div class="note">수량 제출 완료 · 등록기사 최종 확정 대기.</div>';h+=LOCK;}
-  else if(r.status==='done'){h+='<div class="card" style="border-left:5px solid #2e7d32"><div class="row"><span class="badge b-green">✅ 완료·정산 확정</span></div><div class="kv" style="margin-top:6px"><span>최종 수량</span><b>'+r.finalQty+'개</b></div><div class="kv"><span>정산 방식</span><b>'+(r.settle==='개인'?'개인 정산':'정산일 정산')+'</b></div><div class="kv" style="border:none"><span>정산금</span><b class="price">'+moneyR(r,reqTotal(r))+'</b></div></div>'+LOCK;}
-  if(iReq||ROLE==='admin'){h+='<div class="row" style="gap:8px;margin-top:14px"><button class="btn b3" style="flex:1" onclick="startEditReq('+r.id+')">✏️ 수정</button><button class="btn" style="flex:1;background:#ffe0e0;color:#c62828;font-weight:800" onclick="cancelReq('+r.id+')">🗑 삭제</button></div>'+((ROLE==='admin'&&!iReq)?'<div class="note" style="margin-top:6px">🛡 관리자 권한으로 수정·삭제합니다.</div>':'');}
+  else if(r.status==='done'){var _sp=(r.supporters||[]).filter(function(x){return x.state==='picked';});if(!_sp.length)_sp=r.supporters||[];var _n=_sp.length||1,_tot=reqTotal(r),_u2=bpUP(r);
+    h+='<div class="card" style="border-left:5px solid #2e7d32"><div class="row"><span class="badge b-green">✅ 완료·정산 확정</span></div>';
+    _sp.forEach(function(s2){h+='<div style="margin-top:8px;padding:10px 12px;background:#f1f8f3;border-radius:12px"><div style="font-size:11.5px;color:#2e7d32;font-weight:800">🚚 지원한 기사</div><div style="font-size:18px;font-weight:900;color:#123a6b">'+bpDisp(s2.name)+'</div>'
+      +'<div class="kv"><span>최종 수량</span><b>'+Math.round((r.finalQty||0)/_n)+'개</b></div>'
+      +'<div class="kv"><span>단가</span><span style="font-size:12px;text-align:right">'+_u2.html+' = <b>'+money(_u2.u)+'</b>/개</span></div>'
+      +'<div class="kv"><span>정산 방식</span><b>'+(r.settle==='개인'?'💵 개인 정산':'📅 정산일 정산')+'</b></div>'
+      +'<div class="kv" style="border:none"><span>정산금 (수익)</span><b class="price" style="color:#1b7a4b">+'+moneyR(r,Math.round(_tot/_n))+'</b></div></div>';});
+    h+='<div style="margin-top:8px;padding:10px 12px;background:#fdf1f1;border-radius:12px"><div style="font-size:11.5px;color:#c62828;font-weight:800">🙋 지원받은 기사</div><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:16px;color:#123a6b">'+bpDisp(r.requester)+'</b><b class="price" style="color:#c0392b">-'+moneyR(r,_tot)+'</b></div></div></div>'+LOCK;}
+  if(iReq||ROLE==='admin'){h+='<div class="row" style="gap:8px;margin-top:14px"><button class="btn b3" style="flex:1" onclick="startEditReq('+r.id+')">✏️ 수정</button><button class="btn" style="flex:1;background:#ffe0e0;color:#c62828;font-weight:800" onclick="'+(ROLE==='admin'?'bpAdmDel('+r.id+')':'cancelReq('+r.id+')')+'">🗑 삭제</button></div>'+((ROLE==='admin'&&!iReq)?'<div class="note" style="margin-top:6px">🛡 관리자 권한으로 수정·삭제합니다.</div>':'');}
     h+=routeInfoCard(r);
   // 매칭협상 상세(들어온 조건)
   if(r.status==='nego')h+='<div class="card" style="border-left:5px solid #00acc1"><div style="font-size:12px;font-weight:900;color:#00838f;margin-bottom:5px">🤝 협상 조건 ('+r.negBy+' 제안)</div><div class="kv"><span>유형</span><b>'+r.aptType+'</b></div><div class="kv"><span>예상 수량</span><b>'+(r.estQty||0)+'개</b></div><div class="kv"><span>제안 단가</span><b class="price">'+money(r.negUnit)+'</b></div><div class="kv" style="border:none"><span>정산</span><b>'+(r.settle==='개인'?'개인정산':'정산일정산')+'</b></div></div>';
