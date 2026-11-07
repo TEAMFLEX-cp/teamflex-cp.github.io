@@ -79,6 +79,7 @@
   .cav{font-size:8.5px;font-weight:900;border-radius:4px;padding:1px 4px;margin-top:2px;text-align:left;background:#e6f7ee;color:#12a374}
   .tbig{font-size:13px;font-weight:900;padding:5px 14px;border-radius:12px}
   .selbox{width:100%;border:1.5px solid #d5e2f0;border-radius:10px;padding:12px;font-size:14px;background:#fff;font-weight:700;color:#5a6b7c;cursor:pointer}
+  .fchip{display:inline-block;padding:6px 13px;margin:0 6px 6px 0;border-radius:16px;background:#fff;color:#33475b;font-size:12.5px;font-weight:800;border:1.5px solid #d5e2f0;cursor:pointer}.fchip.on{background:#1565c0;color:#fff;border-color:#1565c0}
   .rtpanel{border:1.5px solid #d5e2f0;border-radius:10px;margin-top:6px;max-height:240px;overflow:auto;background:#fff}
   .rtitem{display:flex;align-items:center;gap:10px;padding:10px 12px;font-size:13.5px;font-weight:800;color:#33475b;cursor:pointer;border-bottom:1px solid #f0f4f8}
   .rtitem.on{background:#e8f2ff;color:#1565c0}
@@ -312,7 +313,7 @@ function listHtml(which){var arr=which==='mine'?reqs.filter(function(r){return m
   var total=doneArr.reduce(function(a,r){return a+reqTotal(r);},0);
   var grad=which==='sup'?'linear-gradient(135deg,#12a374,#0b6b4a)':'linear-gradient(135deg,#e53935,#b71c1c)';
   var h='<div class="card" style="background:'+grad+';color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.2)"><div style="font-size:12px;opacity:.92;font-weight:800">정산 기준 총 '+(which==='sup'?'수익 💰':'지출 💸')+'</div><div style="font-size:26px;font-weight:900;margin-top:2px">'+money(total)+'</div><div style="font-size:11px;opacity:.9;margin-top:2px">완료·확정 '+doneArr.length+'건'+(ingArr.length?' · 진행중 '+ingArr.length+'건':'')+'</div></div>';
-  if(which==='sup')h+='<div style="margin-bottom:11px"><button class="btn b2" onclick="startSupReg()">＋ 요청 없이 지원 등록 (역지원 → 확정 요청)</button></div>';
+  if(which==='sup')h+='<div style="margin-bottom:11px"><button class="btn b2" onclick="startSupReg()">＋ 요청 없이 지원 등록 (역지원 → 확정 요청)</button>'+(ROLE==='admin'?'<button class="btn" style="margin-top:8px;background:linear-gradient(135deg,#5e35b1,#3949ab);color:#fff;font-weight:900" onclick="startSupReg(\'adm\')">👑 관리자 직접 등록 (요청·확정 없이 바로 반영)</button>':'')+'</div>';
   h+='<div class="note">'+(which==='mine'?'내가 <b>백업을 요청</b>한 건 + 나에게 온 <b>확정 요청</b>.':'내가 <b>지원·협상·협업제안</b> 받은 건. 개인협업은 완료건이 합산 반영돼요.')+'</div>';
   h+='<div style="background:#fff3e0;border:1.5px solid #ffb74d;border-radius:10px;padding:10px 12px;margin:8px 0 6px;color:#e65100;font-weight:800;font-size:12px;line-height:1.6">⚠️ 주 6일 이상 근무는 지원이 불가합니다.<br>주 7일 근무는 신청하시면 안 됩니다.</div>';
   h+='<div style="margin:4px 0 6px">'+['all','ing','done'].map(function(k){var l={all:'전체',ing:'진행중',done:'완료·확정'}[k];return '<span class="fchip '+(f===k?'on':'')+'" onclick="filt[\''+which+'\']=\''+k+'\';render()">'+l+'</span>';}).join('')+'</div>';
@@ -370,7 +371,7 @@ function registerHtml(){
 }
 function submitReq(){if(!draft.routes.length){toast('라우트를 1~2개 선택하세요');return;}if(isPastDate(draft.date)){toast('지난 날짜에는 요청 등록을 할 수 없습니다.');return;}var r={id:Date.now(),requester:ME,rcomp:MYCOMPNAME,rphone:MYPHONE,date:draft.date,mode:draft.mode,routes:draft.routes.slice(),routeInfo:draft.routeInfo||'',mapImg:draft.mapImg||'',estQty:draft.estQty||0,extra:draft.extra||0,returnReq:!!draft.returnReq,scan:!!draft.scan,qtyNote:draft.qtyNote||'',settle:draft.settle,acctShare:!!draft.acctShare,collab:!!draft.collab,needCount:draft.collab?(draft.collabExtra+1):1,supporters:[],status:'open'};if(draft.mode==='현장'||draft.mode==='특정일'){r.aptType=draft.aptType;}r.unit=computeUnit(r);r.company_id=MYCOMP;if(draft._editId){var ex=reqs.find(function(x){return x.id===draft._editId;})||{};r.id=draft._editId;r.supporters=ex.supporters||[];r.status=ex.status||'open';bpSaveReq(r);go('mine');toast('✏️ 요청 수정됨');}else{bpNewReq(r);bpBroadcast('📋 새 백업 요청',ME+'님이 '+bpLabel(r)+' 백업을 요청했습니다.');go('mine');toast('📨 요청 등록·전체 알림');}}
 // ── 역지원 등록 ──
-function startSupReg(){draft={who:'',route:'',extra:0,qty:'',date:TODAY,scan:false,settle:'정산일',acctShare:false,pm:'base',fixed:0};sub='supReg';pushHist();render();}
+function startSupReg(md){draft={who:'',sup:'',adm:(md==='adm'&&ROLE==='admin'),route:'',extra:0,qty:'',date:TODAY,scan:false,settle:'정산일',acctShare:false,pm:'base',fixed:0};sub='supReg';pushHist();render();}
 function supUnit(){if(draft.pm==='fixed')return Math.max(0,draft.fixed||0);var u=(ROUTES[draft.route]||0)+(draft.extra||0);if(draft.scan)u=Math.max(0,draft.extra||0);return u;}
 function supCalcInner(){var u=supUnit(),q=draft.qty||0,h='';var cash=draft.settle==='개인';
   if(draft.pm==='fixed'){h+='<div class="li"><span>🎯 특정 단가 (협의)</span><span>'+money(draft.fixed||0)+'</span></div>';}
@@ -382,26 +383,45 @@ function supCalcUpd(){var c=document.getElementById('sup-calc');if(c)c.innerHTML
 function sExtraStep(d){draft.extra=(draft.extra||0)+d;render();}
 function supRegHtml(){
   var u=supUnit();
-  var h='<div class="row"><span onclick="sub=null;go(\'sup\')" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">역지원 등록</b></div>';
+  var _dopt=function(cur){return '<option value="">기사 선택</option>'+DRIVERS.map(function(n){return '<option value="'+n+'"'+(cur===n?' selected':'')+'>'+n+'</option>';}).join('');};
+  var h='<div class="row"><span onclick="sub=null;go(\'sup\')" style="cursor:pointer;color:#1565c0;font-weight:900;font-size:22px">‹</span><b style="font-size:16px;color:#123a6b">'+(draft.adm?'👑 관리자 직접 등록':'역지원 등록')+'</b></div>';
+  if(draft.adm){
+    h+='<div class="note" style="background:#ede7f6;color:#4527a0">요청 등록·확정 요청 없이 <b>관리자가 바로 반영</b>해요. <b>지원받은 기사</b>와 <b>지원한 기사</b>를 고르면 <b>완료·정산 확정</b>으로 바로 들어가고, 두 기사에게 알림이 가요.</div>';
+    h+='<label class="f">🙋 지원받은 기사 (도움 받은 사람)</label><select onchange="draft.who=this.value;render()">'+_dopt(draft.who)+'</select>';
+    h+='<label class="f">🚚 지원한 기사 (도와준 사람)</label><select onchange="draft.sup=this.value;render()">'+_dopt(draft.sup)+'</select>';
+  } else {
   h+='<div class="note">요청 등록 없이 내가 <b>먼저 도와준 건</b>을 역으로 등록해요. 상대 기사에게 <b>확정 요청</b>이 가고, 상대가 확정하면 정산 반영됩니다.</div>';
-  h+='<label class="f">요청 기사 (등록된 기사 선택)</label><select onchange="draft.who=this.value;render()"><option value="">기사 선택</option>'+DRIVERS.map(function(n){return '<option value="'+n+'"'+(draft.who===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select>';
+  h+='<label class="f">요청 기사 (등록된 기사 선택)</label><select onchange="draft.who=this.value;render()">'+_dopt(draft.who)+'</select>';
+  }
   h+='<label class="f">지원한 날짜</label><input type="date" max="'+TODAY+'" value="'+(draft.date||TODAY)+'" onchange="draft.date=this.value||TODAY">';
   h+='<label class="f">라우트 <span style="font-weight:400;color:#8a97a4">(1개만)</span></label><select onchange="draft.route=this.value;render()">'+routeOptions(draft.route)+'</select>';
   h+='<label class="f">단가 방식</label><div class="seg"><div class="'+(draft.pm!=='fixed'?'on':'')+'" onclick="draft.pm=\'base\';render()">🧮 기본단가 + 추가</div><div class="'+(draft.pm==='fixed'?'on':'')+'" onclick="draft.pm=\'fixed\';render()">🎯 특정 단가</div></div>';
   if(draft.pm==='fixed')h+='<label class="f">특정 단가 (개당, 협의된 금액)</label><input type="number" inputmode="numeric" placeholder="예: 900" value="'+(draft.fixed||'')+'" oninput="draft.fixed=parseInt(this.value||0,10)||0;supCalcUpd()"><div class="note" style="margin-top:7px;margin-bottom:0">ℹ️ 특정 단가는 라우트 기본단가·추가단가·스캔 여부와 상관없이 <b>이 금액 그대로</b> 정산됩니다.</div>';
   else h+='<label class="f">추가 단가 +@ (50원, 협의된 경우)</label><div class="stp"><button onclick="sExtraStep(-50)">−</button><div class="v">'+money(draft.extra||0)+'</div><button onclick="sExtraStep(50)">＋</button></div>';
-  h+='<label class="f">완료 수량 (실제)</label><input type="number" placeholder="내가 배송한 수량" value="'+(draft.qty||'')+'" oninput="draft.qty=parseInt(this.value||0,10)||0;supCalcUpd()">';
+  h+='<label class="f">완료 수량 (실제)</label><input type="number" placeholder="'+(draft.adm?'지원한 기사가 배송한 수량':'내가 배송한 수량')+'" value="'+(draft.qty||'')+'" oninput="draft.qty=parseInt(this.value||0,10)||0;supCalcUpd()">';
   h+='<label class="f">정산 방식</label><div class="seg"><div class="'+(draft.settle==='정산일'?'on':'')+'" onclick="draft.settle=\'정산일\';render()">📅 정산일</div><div class="'+(draft.settle==='개인'?'on':'')+'" onclick="draft.settle=\'개인\';render()">💵 개인</div></div>';
   if(draft.pm!=='fixed')h+='<label class="f">스캔 여부</label><div class="seg"><div class="'+(!draft.scan?'on':'')+'" onclick="draft.scan=false;render()">📦 미스캔 <small>(원단가+추가)</small></div><div class="'+(draft.scan?'on':'')+'" onclick="draft.scan=true;render()">📷 스캔 <small>(추가단가만)</small></div></div>';
   h+='<div class="calc" id="sup-calc">'+supCalcInner()+'</div>';
-  h+='<div style="margin-top:14px"><button class="btn b2" onclick="submitSupReg()">📤 확정 요청 보내기</button></div>';
+  h+='<div style="margin-top:14px"><button class="btn b2" '+(draft.adm?'style="background:linear-gradient(135deg,#5e35b1,#3949ab)" ':'')+'onclick="submitSupReg()">'+(draft.adm?'👑 바로 반영 (완료·정산 확정)':'📤 확정 요청 보내기')+'</button></div>';
   return h;
 }
-function submitSupReg(){if(!draft.who){toast('요청 기사를 선택하세요');return;}if(!draft.route){toast('라우트를 선택하세요');return;}if(draft.pm==='fixed'&&!(draft.fixed>0)){toast('특정 단가를 입력하세요');return;}if(!(draft.qty>0)){toast('완료 수량을 입력하세요');return;}if(draft.who===ME){toast('본인에게는 요청할 수 없습니다');return;}
+function submitSupReg(){if(draft.adm)return submitAdmSup();if(!draft.who){toast('요청 기사를 선택하세요');return;}if(!draft.route){toast('라우트를 선택하세요');return;}if(draft.pm==='fixed'&&!(draft.fixed>0)){toast('특정 단가를 입력하세요');return;}if(!(draft.qty>0)){toast('완료 수량을 입력하세요');return;}if(draft.who===ME){toast('본인에게는 요청할 수 없습니다');return;}
   var r={requester:draft.who,rcomp:MYCOMPNAME,rphone:'',date:draft.date||TODAY,company_id:MYCOMP,mode:'개인',viaSupport:true,scan:!!draft.scan,routes:[draft.route],extra:draft.extra||0,settle:draft.settle,acctShare:!!draft.acctShare,collab:false,needCount:1,supporters:[{name:ME,company:MYCOMPNAME,phone:MYPHONE,acct:MYACCT,state:'joined'}],finalQty:draft.qty||0,status:'confirm'};
   if(draft.pm==='fixed'){r.negUnit=draft.fixed;r.negBy=ME;r.extra=0;r.scan=false;r.unit=draft.fixed;}else r.unit=computeUnit(r);   /* [bs-v2] 특정 단가 */
   var _pu=payUnit(r),_tot=nAmt(r,_pu*(r.finalQty||0));
   bpNewReq(r);bpReqNotify(r,[r.requester],'📤 역지원 확정 요청',ME+'님이 '+bpDateK(r.date)+' '+bpLabel(r)+' '+r.finalQty+'개 역지원 확정을 요청했습니다.\n단가 '+money(_pu)+'/개'+(r.negUnit?'(특정 단가)':(r.scan?'(스캔·추가단가만)':''))+' · 정산금 '+money(_tot)+' ('+(r.settle==='개인'?'개인 정산':'정산일 정산')+')\n앱에서 확인 후 확정해 주세요.');sub=null;go('sup');toast('📤 '+draft.who+' 기사에게 확정 요청 전송');
+}
+/* [bs-v2] 관리자 직접 등록: 지원받은 기사·지원한 기사를 골라 바로 완료·정산 확정 */
+function submitAdmSup(){if(ROLE!=='admin'){toast('관리자 전용입니다.');return;}
+  if(!draft.who){toast('지원받은 기사를 선택하세요');return;}if(!draft.sup){toast('지원한 기사를 선택하세요');return;}if(draft.who===draft.sup){toast('지원받은 기사와 지원한 기사가 같습니다');return;}
+  if(!draft.route){toast('라우트를 선택하세요');return;}if(draft.pm==='fixed'&&!(draft.fixed>0)){toast('특정 단가를 입력하세요');return;}if(!(draft.qty>0)){toast('완료 수량을 입력하세요');return;}
+  var r={requester:draft.who,rcomp:MYCOMPNAME,rphone:'',date:draft.date||TODAY,company_id:MYCOMP,mode:'개인',viaSupport:true,scan:!!draft.scan,routes:[draft.route],extra:draft.extra||0,settle:draft.settle,acctShare:false,collab:false,needCount:1,supporters:[{name:draft.sup,company:MYCOMPNAME,phone:'',acct:'',state:'picked'}],finalQty:draft.qty||0,status:'done'};
+  if(draft.pm==='fixed'){r.negUnit=draft.fixed;r.negBy=ME;r.extra=0;r.scan=false;r.unit=draft.fixed;}else r.unit=computeUnit(r);
+  var pu=payUnit(r),tot=nAmt(r,pu*r.finalQty);
+  if(!confirm('👑 관리자 직접 반영\n\n지원받은 기사: '+r.requester+'\n지원한 기사: '+draft.sup+'\n날짜: '+bpDateK(r.date)+'\n라우트: '+r.routes[0]+'\n수량: '+r.finalQty+'개\n단가: '+money(pu)+'/개'+(r.negUnit?' (특정 단가)':(r.scan?' (스캔·추가단가만)':''))+'\n정산 방식: '+(r.settle==='개인'?'개인 정산':'정산일 정산')+'\n총 정산금: '+money(tot)+'\n\n완료·정산 확정으로 바로 반영할까요?'))return;
+  var body=bpDateK(r.date)+' '+bpLabel(r)+' '+r.finalQty+'개 — 지원받은 기사 '+r.requester+' · 지원한 기사 '+draft.sup+'\n단가 '+money(pu)+'/개 · 정산금 '+money(tot)+' ('+(r.settle==='개인'?'개인 정산':'정산일 정산')+')\n관리자('+ME+')가 바로 반영했습니다.';
+  bpNewReq(r);bpReqNotify(r,[r.requester,draft.sup],'👑 백업 지원 반영 (관리자)',body);
+  sub=null;go('sup');toast('👑 바로 반영 완료 · '+r.requester+'←'+draft.sup);
 }
 // ── 상세 ──
 function reloadCompanies(){sb.from('bp_companies').select('*').order('requested_at',{ascending:true}).then(function(r){COMPANIES=(r.data||[]);render();});}
