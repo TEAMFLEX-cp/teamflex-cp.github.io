@@ -21455,7 +21455,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     return {title:title,meta:meta,num:num,lb:lb,unit:unit,camp:cm?cm[1]+'캠프':''};
   }
   /* ── 인입건 · 프백 소명 · 분실 차감 (본인 것 / 관리자는 전체) ── */
-  var DATA={md:0,pb:0,loss:0},IDS={md:[],pb:[],loss:[]},dsig='',synDone=false,gOpen=false,gT0=0,gTm=null;
+  var DATA={md:0,pb:0,loss:0,sr:0},IDS={md:[],pb:[],loss:[],sr:[]},dsig='',synDone=false,gOpen=false,gT0=0,gTm=null;
   function synKey(){return 'u3_syn_'+((window.CU&&CU.name)||'x');}
   function synSeen(){try{var v=JSON.parse(localStorage.getItem(synKey())||'{}');return (v&&typeof v==='object')?v:{};}catch(e){return {};}}
   function synMark(k){try{var v=synSeen();var a=v[k]||[];(IDS[k]||[]).forEach(function(i){i=String(i);if(a.indexOf(i)<0)a.push(i);});v[k]=a.slice(-500);localStorage.setItem(synKey(),JSON.stringify(v));}catch(e){}}   // [v884] 본 건 기억
@@ -21465,18 +21465,20 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   function SYN(){return [
     {k:'md',cls:'u3-r',ic:'incoming_envelope',lb:adm()?'인입건 대기':'인입건',fn:function(){go('md');}},
     {k:'pb',cls:'u3-b',ic:'page_facing_up',lb:adm()?'프백 소명 승인':'프백 소명',fn:function(){go('pb');setTimeout(function(){try{pbGoSub('pback');}catch(e){}},60);}},
-    {k:'loss',cls:'u3-y',ic:'money_bag',lb:adm()?'분실차감 미확인':'분실 차감',fn:function(){go('pb');setTimeout(function(){try{pbGoSub('loss');}catch(e){}},60);}}];}
+    {k:'loss',cls:'u3-y',ic:'money_bag',lb:adm()?'분실차감 미확인':'분실 차감',fn:function(){go('pb');setTimeout(function(){try{pbGoSub('loss');}catch(e){}},60);}},
+    {k:'sr',cls:'u3-p',ic:'spiral_calendar',lb:(IDS.sr||[]).some(function(x){return /^ap:/.test(x);})?'스케줄 변경 승인':'스케줄 변경 요청',fn:function(){try{tfSreq.openList();}catch(e){}}}];}   // [v938]
   async function loadSyn(){
     try{
       if(!window.sbClient||!window.CU)return;
       if(window._isSusp&&_isSusp()){synDone=true;return;}
-      var me=CU.name,D={md:0,pb:0,loss:0},I2={md:[],pb:[],loss:[]};
+      var me=CU.name,D={md:0,pb:0,loss:0,sr:0},I2={md:[],pb:[],loss:[],sr:[]};
       await Promise.all([(async function(){try{var q=sbClient.from('misdelivery_cases').select('id,status,category,created_at,occurred_at,driver_name').eq('status','pending').limit(1000);if(!adm())q=q.eq('driver_name',me);
         var r=await q;(r&&r.data||[]).forEach(function(x){if(x.category==='수기회수')return;try{if(typeof _mdNoAction==='function'&&_mdNoAction(x))return;}catch(e){}D.md++;I2.md.push('c'+x.id);});}catch(e){}})(),
       (async function(){try{if(adm()||getFeatureCtrl('pback','active')){var pr=await sbClient.from('pback_somyeong').select('id,driver_name,status').eq('period',pPer()).eq('status',adm()?'answered':'pending');
         var mn=nn(me);(pr&&pr.data||[]).forEach(function(x){if(adm()||nn(x.driver_name)===mn){D.pb++;I2.pb.push('p'+x.id+':'+x.status);}});}}catch(e){}})(),
       (async function(){try{var lr=await sbClient.from('app_settings').select('value').eq('key','loss_deduction_log').maybeSingle();var v=lr&&lr.data&&lr.data.value;if(typeof v==='string')v=JSON.parse(v);
-        var mn2=nn(me);((v&&v.records)||[]).forEach(function(x){if(x.status==='nofault'||x.confirmed===true||x.missing_final)return;if(adm()||nn(x.driver_name)===mn2){D.loss++;I2.loss.push('w'+(x.wb||x.date+x.driver_name));}});}catch(e){}})()]);   // [v886] 세 가지를 동시에 조회
+        var mn2=nn(me);((v&&v.records)||[]).forEach(function(x){if(x.status==='nofault'||x.confirmed===true||x.missing_final)return;if(adm()||nn(x.driver_name)===mn2){D.loss++;I2.loss.push('w'+(x.wb||x.date+x.driver_name));}});}catch(e){}})(),
+      (async function(){try{if(window.tfSreq&&tfSreq.homeItems){var si=await tfSreq.homeItems();D.sr=si.length;I2.sr=si;}}catch(e){}})()]);   // [v938] 스케줄 변경 요청   // [v886] 세 가지를 동시에 조회
       IDS=I2;var sg=JSON.stringify(D)+JSON.stringify(I2);DATA=D;synDone=true;if(sg!==dsig){dsig=sg;}sched();
     }catch(e){}
   }
@@ -22427,6 +22429,16 @@ window.mdConvertToNotice=mdConvertToNotice;
     +(o.memo?'<div style="font-size:11.5px;color:#5a6b7c">💬 '+esc(o.memo)+'</div>':'')
     +'<div style="font-size:11px;color:#8a97a8;margin-top:2px">요청 '+fmtT(o.at)+(ACTIVE[o.status]&&o.status!=='processing'&&o.status!=='queued'?' · 마감 '+fmtT(o.deadline):'')+(o.appBy?' · 승인 '+esc(o.appBy):'')+'</div>'
     +(o.res&&o.res.msg?'<div style="font-size:11.5px;margin-top:3px;color:'+stCol(o.status)+'">'+esc(o.res.msg)+'</div>':'')+(acts||'')+'</div>';return h;}
+  /* [v938] 홈 '오늘 확인할 것' 타일용: 승인할 요청(팀장·관리자) / 나에게 온 요청·내 요청 진행·결과(기사) — 상태가 바뀌면 키가 바뀌어 다시 뜸 */
+  SR.homeItems=async function(){if(!window.CU||window.__TF_SREQ_WORKER)return [];try{await loadCfg();}catch(e){}var L=[];try{L=await list();}catch(e){return [];}
+    var M=nn(me()),now=new Date(),out=[];
+    L.forEach(function(o){var mine=nn(o.from)===M,toMe=nn(o.to)===M;
+      if(o.status==='wait_approve'&&canApprove(o)){out.push('ap:'+o.id);return;}
+      if(!(mine||toMe))return;
+      if(o.status==='wait_accept'&&toMe&&now<=new Date(o.deadline)){out.push('ac:'+o.id);return;}
+      if(['done','failed','declined','rejected','expired','check'].indexOf(o.status)>=0){if(!(o.seen&&o.seen[M])&&now-new Date(o.upd||o.at)<7*86400000)out.push('rs:'+o.id+':'+o.status);return;}
+      if(mine&&['wait_accept','wait_approve','queued','processing'].indexOf(o.status)>=0)out.push('ip:'+o.id+':'+o.status);});
+    return out;};
   SR.openList=async function(){
     modal('<div style="font-weight:900;font-size:16px">📝 스케줄 요청</div><div style="font-size:12px;color:#8a97a8;margin-top:4px">불러오는 중…</div>','sreq-list');
     await loadCfg(true);var L=await list(true),M=nn(me()),adm=isAdm();
