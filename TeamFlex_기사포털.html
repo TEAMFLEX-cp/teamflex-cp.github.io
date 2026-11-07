@@ -8546,6 +8546,7 @@ async function _sxDoTableUp(file){
     alert('✅ 표 업로드 완료\n반영: '+upd+'셀'+(miss?(' / 실패 '+miss):'')+'\n\n※ 분할(share)은 그대로 유지됩니다.');
     if(st)st.textContent='✅ 표 반영 '+upd+'셀';
     if(typeof schedRefresh==='function')schedRefresh();
+    try{if(window.tfFixRule)setTimeout(function(){tfFixRule.afterUpload(ws0);},800);}catch(_fx){}   // [v925] 고정 배정 규칙 확인
   }catch(e){if(st)st.textContent='';alert('표 업로드 오류: '+((e&&e.message)||e));}
 }
 /* ── 변경분만 다운로드 (변경이력 → 이전기사 휴무 / 새기사 출근) ── */
@@ -8877,6 +8878,7 @@ function pgFullSched(){
       '<button class="sxbtn b3" onclick="schedDownloadList()">📋 리스트</button>'+
       '<button class="sxbtn b4" onclick="metaUpload(\'changed\')" title="변경분 쿠팡 메타 자동 반영">🔴 변경분<span style="font-size:8px;background:#1e9e63;color:#fff;border-radius:6px;padding:0 4px;margin-left:3px;vertical-align:middle">↑쿠팡</span></button>'+
       '<button class="sxbtn" style="background:linear-gradient(135deg,#ff8f00,#e65100);color:#fff" onclick="swOpen()">🔄 기사교체</button>'+
+      '<button class="sxbtn" style="background:linear-gradient(135deg,#5c6bc0,#3949ab);color:#fff" onclick="tfFixRule.open()">📌 고정배정</button>'+
     '</div>'+
     '<div id="sx-status" style="'+_wrap+';text-align:center;font-size:11px;color:#00695c;font-weight:700;margin-bottom:5px"></div>'
   ):'';
@@ -22572,6 +22574,176 @@ window.mdConvertToNotice=mdConvertToNotice;
     var _w=0,_t=setInterval(function(){_w++;if(window.CU){clearInterval(_t);loadCfg(true).then(function(){list(true).then(function(){try{rer();}catch(e){}SR.check();});});}if(_w>600)clearInterval(_t);},1000);}
   // 스타일
   try{var st=document.createElement('style');st.textContent='td[data-sreq="me"]{background:#fff8e1!important;outline:2px solid #ffb74d;outline-offset:-2px;cursor:pointer}td[data-sreq="no"]{opacity:.38}td[data-sreqhl="1"]{outline:3px solid #1e88e5!important;outline-offset:-3px;animation:sreqbl 1.1s ease-in-out 4}@keyframes sreqbl{50%{background:#bbdefb}}';document.head.appendChild(st);}catch(e){}
+})();
+</script>
+<script>
+/* ══════ [v925] 고정 배정 규칙 (요일별로 특정 기사가 맡는 서브라우트 고정) ══════
+   예) 권오승 · 월화수 = 211A,211D / 금토 = 211C,211D
+   저장: app_settings 'sched_fixed_rules' {rules:[{id,driver,days:[0~6],routes:[..],on}]}
+   적용: 그날 그 기사가 규칙 라우트 중 하나라도 맡고 있을 때만 → 규칙 라우트를 그 기사에게 (나머지 라우트는 원래 기사 그대로)
+         묶음 라우트(211AD 등)는 기존 '분할 배정(share)' 저장 방식 그대로 → 메타 변경분도 기존 흐름 그대로 */
+(function(){
+  if(window.tfFixRule)return;
+  var FR={};window.tfFixRule=FR;
+  var KEY='sched_fixed_rules',RULES=[],LOADED=false;
+  var DN=['일','월','화','수','목','금','토'];
+  function nn(s){try{return norm_name_js(s||'');}catch(e){return String(s||'').trim();}}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function dow(ymd){var p=String(ymd).split('-');return new Date(+p[0],+p[1]-1,+p[2]).getDay();}
+  function addD(ymd,n){return _ymdAdd(ymd,n);}
+  function normRts(s){return String(s||'').toUpperCase().split(/[\s,\/]+/).map(function(x){return x.trim();}).filter(function(x){return /^\d{3}[A-Z]$/.test(x);});}
+  FR.load=async function(force){
+    if(LOADED&&!force)return RULES;
+    try{var r=await sbClient.from('app_settings').select('value').eq('key',KEY).maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);RULES=(v&&Array.isArray(v.rules))?v.rules:[];LOADED=true;}catch(e){}
+    return RULES;
+  };
+  async function saveRules(){
+    await sbClient.from('app_settings').upsert({key:KEY,value:JSON.stringify({rules:RULES,at:new Date().toISOString(),by:(CU&&CU.name)||''})},{onConflict:'key'});
+  }
+  FR.rules=function(){return RULES.slice();};
+  // ── 계획: [from,to] 기간에 규칙대로 바꿔야 할 칸 계산 (저장 안 함) ──
+  FR.plan=async function(from,to){
+    await FR.load(true);
+    var act=RULES.filter(function(r){return r.on!==false&&r.driver&&r.routes&&r.routes.length&&r.days&&r.days.length;});
+    if(!act.length)return {changes:[],touch:[],skipped:[]};
+    var allR={};act.forEach(function(r){r.routes.forEach(function(x){allR[x]=1;});});
+    var q1=await sbClient.from('weekly_schedules').select('work_date,route,route_raw').gte('work_date',from).lte('work_date',to).in('route',Object.keys(allR));
+    var raws={};(q1.data||[]).forEach(function(e){if(e.route_raw)raws[e.route_raw]=1;});
+    if(!Object.keys(raws).length)return {changes:[],touch:[],skipped:[]};
+    var q2=await sbClient.from('weekly_schedules').select('week_start,work_date,route,route_raw,driver_name,share').gte('work_date',from).lte('work_date',to).in('route_raw',Object.keys(raws));
+    var G={};   // date -> rr -> {ws,rows:[]}
+    (q2.data||[]).forEach(function(e){var d=e.work_date,rr=e.route_raw;if(!d||!rr)return;var g=((G[d]=G[d]||{})[rr]=G[d][rr]||{ws:e.week_start,rr:rr,rows:[],share:null});g.rows.push(e);if(e.share&&!g.share)g.share=e.share;});
+    var changes=[],touch=[],skipped=[];
+    Object.keys(G).sort().forEach(function(d){
+      var day=dow(d);var groups=G[d];
+      // 현재 라우트별 기사
+      var cur={},rot2={};
+      Object.keys(groups).forEach(function(rr){var g=groups[rr];var sh=null;try{sh=g.share?(typeof g.share==='string'?JSON.parse(g.share):g.share):null;}catch(e){sh=null;}
+        if(sh&&sh.length){if(sh.some(function(s){return s.rot&&s.rot!=='1회전,2회전';})){rot2[rr]=1;}sh.forEach(function(s){(s.routes||[]).forEach(function(x){cur[x]={d:s.driver||'',rr:rr};});});g.rows.forEach(function(e){if(!cur[e.route])cur[e.route]={d:e.driver_name||'',rr:rr};});}
+        else g.rows.forEach(function(e){cur[e.route]={d:e.driver_name||'',rr:rr};});});
+      var want={};Object.keys(cur).forEach(function(x){want[x]=cur[x].d;});
+      var hit=[];
+      act.forEach(function(rule){if(rule.days.indexOf(day)<0)return;var rts=rule.routes.filter(function(x){return cur[x];});if(!rts.length)return;
+        var works=rts.some(function(x){return nn(cur[x].d)===nn(rule.driver);});
+        if(!works)return;   // 그날 그 기사가 이 라우트들에 없음(휴무 등) → 건드리지 않음
+        if(rts.some(function(x){return rot2[cur[x].rr];})){skipped.push(d+' '+rts.join(',')+' (회전 분할 칸)');return;}
+        rts.forEach(function(x){want[x]=rule.driver;});hit.push(rule);});
+      if(!hit.length)return;
+      var ruleR={};hit.forEach(function(r){r.routes.forEach(function(x){ruleR[x]=1;});});
+      Object.keys(groups).forEach(function(rr){var g=groups[rr];var subs=g.rows.map(function(e){return e.route;}).filter(Boolean).sort();
+        if(!subs.some(function(x){return ruleR[x];}))return;
+        var before=subs.map(function(x){return x+':'+(cur[x]?cur[x].d:'');}).join(' / ');
+        var after=subs.map(function(x){return x+':'+want[x];}).join(' / ');
+        var item={date:d,ws:g.ws,rr:rr,subs:subs};
+        if(before===after){var nm=want[subs[0]];item.name=nm;touch.push(item);return;}
+        var grp={},order=[];subs.forEach(function(x){var k=nn(want[x]);if(!grp[k]){grp[k]={driver:want[x],rot:'1회전,2회전',routes:[]};order.push(k);}grp[k].routes.push(x);});
+        var share=order.length>1?order.map(function(k){return grp[k];}):null;
+        item.share=share;item.main=want[subs[0]];item.before=before;item.after=after;
+        item.oldSum=(function(){var o={},od=[];subs.forEach(function(x){var n=cur[x]?cur[x].d:'';if(!(n in o)){o[n]=[];od.push(n);}o[n].push(x);});return od.length>1?od.map(function(n){return o[n].join(',')+':'+n;}).join(' / '):(od[0]||'');})();
+        item.newSum=share?share.map(function(s){return s.routes.join(',')+':'+s.driver;}).join(' / '):item.main;
+        changes.push(item);});
+    });
+    return {changes:changes,touch:touch,skipped:skipped};
+  };
+  // ── 적용: 분할 저장(기존 방식) + 변경이력 + (모레 이후 날짜는) 메타 변경분 자동 반영 ──
+  FR.apply=async function(plan,opt){
+    opt=opt||{};var ch=plan.changes||[];if(!ch.length)return {n:0};
+    var n=0,fail=0,weeks={},chDates={};
+    for(var i=0;i<ch.length;i++){var c=ch[i];
+      try{var res=await sbClient.from('weekly_schedules').update({driver_name:c.main,share:c.share?JSON.stringify(c.share):null,synced_at:new Date().toISOString()}).eq('week_start',c.ws).eq('work_date',c.date).eq('route_raw',c.rr);
+        if(res&&res.error){fail++;continue;}n++;}catch(e){fail++;continue;}
+      try{await _pushSharedSchedChange(c.date,c.rr,c.oldSum,c.newSum+' (고정배정)');}catch(e){}
+      chDates[c.date]=1;if(!_sxDateLocked(c.date))weeks[c.ws]=1;}
+    // 같은 날 함께 묶인 칸(예: 211C)도 변경분에 넣어야 메타에서 그 기사의 라우트가 합쳐짐(211C,211D)
+    for(var j=0;j<(plan.touch||[]).length;j++){var t=plan.touch[j];if(!chDates[t.date]||_sxDateLocked(t.date))continue;
+      try{await _pushSharedSchedChange(t.date,t.rr,'',(t.name||'')+' (고정배정)');}catch(e){}}
+    var wl=Object.keys(weeks).sort();
+    if(!opt.noMeta&&wl.length){for(var k=0;k<wl.length;k++){try{await metaWeek(wl[k]);}catch(e){}}}
+    try{if(typeof schedRefresh==='function')schedRefresh();}catch(e){}
+    return {n:n,fail:fail,weeks:wl};
+  };
+  async function metaWeek(wk){
+    await new Promise(function(r){hcLoadXLSX(function(){r();});});
+    var sv=SCHED_WK;
+    try{SCHED_WK=wk;window._sxMetaCap=true;window._sxMetaB64='';window._sxSilent=true;
+      await _sxDoChanged();window._sxMetaCap=false;window._sxSilent=false;
+      if(!window._sxMetaB64)return '';
+      var jid=await _metaCreateJob('changed',wk,window._sxMetaFname,window._sxMetaB64);
+      if(jid)_metaPollJobs([jid],'고정배정 반영',window._sxPendingChangedIds||[]);
+      return jid;
+    }finally{window._sxMetaCap=false;window._sxSilent=false;SCHED_WK=sv;}
+  }
+  function planText(p){
+    var L=p.changes.map(function(c){return '· '+c.date.slice(5)+'('+DN[dow(c.date)]+') '+c.rr+' : '+c.before+'  →  '+c.after+(_sxDateLocked(c.date)?'  [앱만]':'');});
+    return L.join('\n')+(p.skipped.length?('\n\n건너뜀(회전 분할 칸): '+p.skipped.join(', ')):'');
+  }
+  // 표 업로드 직후 그 주차에 자동 적용(확인 후)
+  FR.afterUpload=async function(ws){
+    try{await FR.load(true);if(!RULES.some(function(r){return r.on!==false;}))return;
+      var from=ws,to=addD(ws,6),t=kstToday();if(from<t)from=t;if(from>to)return;
+      var p=await FR.plan(from,to);if(!p.changes.length)return;
+      if(!confirm('📌 고정 배정 규칙 적용\n\n업로드한 표에서 규칙과 다른 칸 '+p.changes.length+'개를 규칙대로 바꿀까요?\n\n'+planText(p)+'\n\n※ 모레 이후 날짜는 메타어드민에도 반영됩니다.'))return;
+      var r=await FR.apply(p);showToast('📌 고정 배정 '+r.n+'칸 적용'+(r.fail?(' (실패 '+r.fail+')'):''),!r.fail);
+    }catch(e){console.warn('[fixrule afterUpload]',e);}
+  };
+  // ── 화면 ──
+  var DRAFT=null;
+  function modal(html){var m=document.getElementById('fxr-modal');if(!m){m=document.createElement('div');m.id='fxr-modal';m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30050;display:flex;align-items:center;justify-content:center;padding:14px';m.onclick=function(e){if(e.target===m)FR.close();};document.body.appendChild(m);}
+    m.innerHTML='<div style="background:#fff;border-radius:18px;width:100%;max-width:440px;max-height:88vh;overflow:auto;padding:16px 16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.3)">'+html+'</div>';m.style.display='flex';}
+  FR.close=function(){var m=document.getElementById('fxr-modal');if(m)m.style.display='none';};
+  var B1='width:100%;padding:11px;border:none;border-radius:11px;background:#1565c0;color:#fff;font-weight:900;font-size:14px;cursor:pointer;margin-top:10px',B2='width:100%;padding:10px;border:1.5px solid #cfd8e3;border-radius:11px;background:#fff;color:#455a64;font-weight:800;font-size:13px;cursor:pointer;margin-top:8px';
+  FR.open=async function(){
+    if(!(CU&&CU.role==='admin')){alert('관리자만 설정할 수 있어요.');return;}
+    await FR.load(true);DRAFT=null;render();
+  };
+  function render(){
+    var h='<div style="display:flex;align-items:center"><div style="font-weight:900;font-size:16px;flex:1">📌 고정 배정 규칙</div><button onclick="tfFixRule.close()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#90a4ae">✕</button></div>'
+      +'<div style="font-size:12px;color:#607d8b;line-height:1.6;margin-top:6px">요일마다 정해진 기사가 맡는 서브라우트를 고정해요.<br>그날 그 기사가 규칙 라우트 중 하나라도 맡고 있으면, 규칙 라우트를 모두 그 기사에게 맞춰요. (휴무인 날은 그대로)</div>';
+    if(!RULES.length)h+='<div style="font-size:12.5px;color:#8a97a8;margin-top:12px">아직 규칙이 없어요.</div>';
+    RULES.forEach(function(r,i){var off=r.on===false;
+      h+='<div style="border:1.5px solid '+(off?'#e0e0e0':'#bbdefb')+';background:'+(off?'#fafafa':'#f5f9ff')+';border-radius:12px;padding:10px 12px;margin-top:10px;'+(off?'opacity:.6':'')+'">'
+        +'<div style="display:flex;align-items:center;gap:6px"><b style="font-size:14px">'+esc(r.driver)+'</b><span style="font-size:12px;color:#1565c0;font-weight:800">'+r.days.slice().sort().map(function(d){return DN[d];}).join('·')+'</span><span style="flex:1"></span>'
+        +'<button onclick="tfFixRule._edit('+i+')" style="border:1px solid #cfd8e3;background:#fff;border-radius:8px;padding:4px 8px;font-size:11.5px;font-weight:800;cursor:pointer">✏ 수정</button>'
+        +'<button onclick="tfFixRule._tog('+i+')" style="border:1px solid #cfd8e3;background:#fff;border-radius:8px;padding:4px 8px;font-size:11.5px;font-weight:800;cursor:pointer">'+(off?'▶ 켜기':'⏸ 끄기')+'</button>'
+        +'<button onclick="tfFixRule._del('+i+')" style="border:1px solid #ffcdd2;background:#fff;color:#c62828;border-radius:8px;padding:4px 8px;font-size:11.5px;font-weight:800;cursor:pointer">🗑</button></div>'
+        +'<div style="font-size:13px;margin-top:5px">라우트: <b>'+esc(r.routes.join(', '))+'</b></div></div>';});
+    if(DRAFT){
+      h+='<div style="border:2px solid #1565c0;border-radius:12px;padding:12px;margin-top:12px"><div style="font-weight:900;font-size:13.5px">'+(DRAFT.i>=0?'규칙 수정':'새 규칙')+'</div>'
+        +'<div style="font-size:12px;font-weight:800;margin-top:8px">기사</div><input id="fxr-drv" list="fxr-names" value="'+esc(DRAFT.driver)+'" placeholder="이름" style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #cfd8e3;border-radius:9px;font-size:14px;margin-top:4px"><datalist id="fxr-names">'+(window.ALL_NAMES||[]).map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist>'
+        +'<div style="font-size:12px;font-weight:800;margin-top:8px">요일</div><div style="display:flex;gap:4px;margin-top:4px">'+DN.map(function(n,d){var on=DRAFT.days.indexOf(d)>=0;return '<button type="button" onclick="tfFixRule._day('+d+')" style="flex:1;padding:8px 0;border-radius:9px;font-weight:900;font-size:13px;cursor:pointer;'+(on?'border:2px solid #1565c0;background:#1565c0;color:#fff':'border:1.5px solid #cfd8e3;background:#fff;color:'+(d===0?'#e53935':d===6?'#1e88e5':'#333'))+'">'+n+'</button>';}).join('')+'</div>'
+        +'<div style="font-size:12px;font-weight:800;margin-top:8px">라우트 (쉼표로 구분)</div><input id="fxr-rts" value="'+esc(DRAFT.routes.join(','))+'" placeholder="예: 211C,211D" style="width:100%;box-sizing:border-box;padding:9px;border:1.5px solid #cfd8e3;border-radius:9px;font-size:14px;margin-top:4px;text-transform:uppercase">'
+        +'<div id="fxr-err" style="color:#c62828;font-size:12px;min-height:15px;margin-top:5px"></div>'
+        +'<div style="display:flex;gap:8px"><button style="'+B2+';flex:1" onclick="tfFixRule._cancel()">취소</button><button style="'+B1+';flex:1.4" onclick="tfFixRule._save()">규칙 저장</button></div></div>';
+    } else h+='<button style="'+B2+'" onclick="tfFixRule._edit(-1)">➕ 규칙 추가</button>';
+    h+='<button style="'+B1+';background:#2e7d32" onclick="tfFixRule._run()">▶ 지금 스케줄에 적용 (오늘부터)</button>'
+      +'<div style="font-size:11px;color:#90a4ae;margin-top:6px;line-height:1.5">· 바꾸기 전에 바뀌는 칸을 먼저 보여드려요.<br>· 오늘·내일은 앱에만, 모레부터는 메타어드민에도 반영돼요.<br>· 표 업로드 후에도 자동으로 확인해요. 칸을 직접 고치는 기존 수정도 그대로 돼요.</div>';
+    modal(h);
+  }
+  FR._edit=function(i){var r=i>=0?RULES[i]:{driver:'',days:[],routes:[]};DRAFT={i:i,driver:r.driver,days:r.days.slice(),routes:r.routes.slice()};render();};
+  FR._cancel=function(){DRAFT=null;render();};
+  FR._day=function(d){if(!DRAFT)return;try{DRAFT.driver=document.getElementById('fxr-drv').value;DRAFT.routes=normRts(document.getElementById('fxr-rts').value);}catch(e){}var k=DRAFT.days.indexOf(d);if(k>=0)DRAFT.days.splice(k,1);else DRAFT.days.push(d);render();};
+  FR._save=async function(){var drv=(document.getElementById('fxr-drv').value||'').trim();var rts=normRts(document.getElementById('fxr-rts').value);var err=document.getElementById('fxr-err');
+    if(!drv){err.textContent='기사 이름을 넣어주세요.';return;}if(!DRAFT.days.length){err.textContent='요일을 하나 이상 골라주세요.';return;}if(!rts.length){err.textContent='라우트를 넣어주세요. (예: 211C,211D)';return;}
+    var dup=RULES.some(function(r,i){if(i===DRAFT.i||r.on===false)return false;return r.days.some(function(d){return DRAFT.days.indexOf(d)>=0;})&&r.routes.some(function(x){return rts.indexOf(x)>=0;})&&nn(r.driver)!==nn(drv);});
+    if(dup&&!confirm('같은 요일·라우트에 다른 기사 규칙이 있어요. 그래도 저장할까요?'))return;
+    var o={id:(DRAFT.i>=0&&RULES[DRAFT.i].id)||('r'+Date.now().toString(36)),driver:drv,days:DRAFT.days.slice().sort(),routes:rts,on:true};
+    if(DRAFT.i>=0)RULES[DRAFT.i]=o;else RULES.push(o);DRAFT=null;
+    try{await saveRules();showToast('📌 규칙 저장 완료',true);}catch(e){alert('저장 실패: '+(e.message||e));}
+    render();};
+  FR._tog=async function(i){RULES[i].on=(RULES[i].on===false);await saveRules();render();};
+  FR._del=async function(i){if(!confirm(RULES[i].driver+' 규칙을 지울까요?'))return;RULES.splice(i,1);await saveRules();render();};
+  FR._run=async function(){
+    var t=kstToday();var to=addD(t,42);
+    modal('<div style="text-align:center;padding:20px;font-weight:800">⏳ 바뀌는 칸 확인 중…</div>');
+    var p;try{p=await FR.plan(t,to);}catch(e){alert('확인 오류: '+(e.message||e));render();return;}
+    if(!p.changes.length){alert('📌 지금 스케줄이 이미 규칙과 같아요. 바꿀 칸이 없습니다.'+(p.skipped.length?('\n\n건너뜀(회전 분할 칸): '+p.skipped.join(', ')):''));render();return;}
+    if(!confirm('📌 규칙대로 '+p.changes.length+'칸을 바꿀까요?\n\n'+planText(p)+'\n\n※ 모레 이후 날짜는 메타어드민에도 반영됩니다.')){render();return;}
+    modal('<div style="text-align:center;padding:20px;font-weight:800">⏳ 적용 중…</div>');
+    var r=await FR.apply(p);
+    alert('✅ 고정 배정 적용 완료\n바뀐 칸: '+r.n+(r.fail?(' / 실패 '+r.fail):'')+(r.weeks&&r.weeks.length?('\n메타어드민 반영 요청: '+r.weeks.length+'개 주차'):'\n(메타어드민 반영할 날짜 없음 — 오늘·내일은 앱만)'));
+    FR.close();};
+  // 로그인 후 규칙 미리 로드
+  var _w=0,_t=setInterval(function(){_w++;if(window.sbClient&&window.CU){clearInterval(_t);FR.load(true);}if(_w>600)clearInterval(_t);},1000);
 })();
 </script>
 </body></html>
