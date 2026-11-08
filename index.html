@@ -22977,10 +22977,11 @@ window.mdConvertToNotice=mdConvertToNotice;
   OB.next=function(){close();next();};
   // ── 보안 ──
   var SEC={};
+  async function fpMirror(n){try{var r=await sbClient.from('app_settings').select('value').eq('key','tf_fp_names').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);if(typeof v==='string')v=JSON.parse(v);var a=(v&&v.names)||(Array.isArray(v)?v:[]);return a.indexOf(n)>=0;}catch(e){return false;}}
   async function secNeed(n){
-    var fp=false;try{if(tfFp.isFp(n))fp=true;else{var st=await tfFp.status(n);fp=!!(st&&st.fp);}}catch(e){}
-    if(fp)return false;
-    var rows=[];try{rows=await _sbDrvRows(n,'password');}catch(e){}
+    if(window.tfFp&&tfFp.isFp&&tfFp.isFp(n))return false;
+    var rr=await Promise.all([_sbDrvRows(n,'password').catch(function(){return [];}),fpMirror(n)]);
+    var rows=rr[0]||[];if(rr[1])return false;
     var pw=(rows[0]&&rows[0].password)||((getDB()[n]||{}).password)||'';
     if(!rows.length&&!pw)return false;
     return rows.length?rows.every(function(x){return !x.password||x.password==='1234';}):(pw==='1234');
@@ -23046,18 +23047,24 @@ window.mdConvertToNotice=mdConvertToNotice;
   OB.start=async function(){
     if(RUN)return;if(!window.CU||CU.role==='admin'||CU._master||window._tfMasterSess||window.__TF_SREQ_WORKER)return;
     if(window.tfFp&&tfFp.checkAfterAuto&&!window.sbClient)return;
-    RUN=true;Q=[];var c=await OB.cfg(true);var n=CU.name;
+    RUN=true;Q=[];
+    try{
+    var n=CU.name;
+    // [v946] 설정·보안·차량·건강을 한 번에 동시 조회 → 바로 뜨게
+    var R=await Promise.all([OB.cfg(true),secNeed(n).catch(function(){return false;}),vehTodo().catch(function(){return false;}),hcTodo().catch(function(){return false;})]);
+    var c=R[0],need={sec:R[1],veh:R[2],hc:R[3]};
+    if(!window.CU||CU.name!==n){RUN=false;return;}
     var tasks={};
-    for(var i=0;i<c.order.length;i++){var k=c.order[i];var s=c[k];if(!s||!s.on)continue;
-      if(k==='sec'){if(await secNeed(n)){SEC.mode=s.mode==='block'?'block':'rec';Q.push(secMain);}}
-      else if(k==='veh'){if(await vehTodo())tasks.veh=s.mode;}
-      else if(k==='hc'){if(await hcTodo())tasks.hc=s.mode;}
+    for(var i=0;i<c.order.length;i++){var k=c.order[i];var s=c[k];if(!s||!s.on||!need[k])continue;
+      if(k==='sec'){SEC.mode=s.mode==='block'?'block':'rec';Q.push(secMain);}
+      else tasks[k]=s.mode;
     }
     // 차량점검·건강체크는 한 창에 같이 (더 센 방식 기준)
     var tk=c.order.filter(function(k){return tasks[k];});
     if(tk.length){var m=tk.some(function(k){return tasks[k]==='block';})?'block':(tk.some(function(k){return tasks[k]==='rec';})?'rec':'info');
       var today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);var ik='tf_onb_info_'+n;
       if(!(m==='info'&&(function(){try{return localStorage.getItem(ik)===today;}catch(e){return false;}})())){Q.push(function(){if(m==='info'){try{localStorage.setItem(ik,today);}catch(e){}}taskPop(tk,m);});}}
+    }catch(e){RUN=false;return;}
     next();
   };
   // 막기 모드: 홈으로 돌아올 때마다 다시 확인
@@ -23065,10 +23072,10 @@ window.mdConvertToNotice=mdConvertToNotice;
   // 앱 시작 직후 실행
   var _la=window.launchApp;
   if(typeof _la==='function'){
-    window.launchApp=function(){var r=_la.apply(this,arguments);try{setTimeout(function(){tfSess.checkSavedPw();tfSess.check();},1500);setTimeout(OB.start,2200);}catch(e){}return r;};
+    window.launchApp=function(){var r=_la.apply(this,arguments);try{setTimeout(function(){tfSess.checkSavedPw();tfSess.check();},400);setTimeout(OB.start,250);}catch(e){}return r;};
   }
   // 이미 자동로그인으로 들어와 있는 경우(이 스크립트보다 먼저 실행됨)도 바로 점검
-  setTimeout(function(){try{if(window.CU){tfSess.checkSavedPw();tfSess.check();setTimeout(OB.start,700);}}catch(e){}},1500);
+  setTimeout(function(){try{if(window.CU){tfSess.checkSavedPw();tfSess.check();OB.start();}}catch(e){}},300);
   var _go=window.go;
   if(typeof _go==='function'){window.go=function(t){var r=_go.apply(this,arguments);try{if(t==='hm'&&CFG&&((CFG.veh&&CFG.veh.mode==='block')||(CFG.hc&&CFG.hc.mode==='block')||(CFG.sec&&CFG.sec.mode==='block')))OB.recheck();}catch(e){}return r;};}
 
