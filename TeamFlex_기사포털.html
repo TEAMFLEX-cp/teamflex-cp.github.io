@@ -12643,7 +12643,7 @@ async function mdLoadCases(){
     // 요약 카운트 (팀장/관리자)
     if(isAdmin||isLeader){
       var _mdL=_mdLatestOnly(_mdCases);  // ★ 같은 송장 재공유 → 최신 건만
-      var _lP=_mdL.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&!_mdNoAction(c);});
+      var _lP=_mdL.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&!_mdNoAction(c)&&!_mdSgMiss(c);});
       var _lNo=_mdL.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&_mdNoAction(c);});
       var _lW=_mdL.filter(function(c){return c.status==='replied';});
       window._mdCountLists={pending:_lP,noaction:_lNo,waiting:_lW};
@@ -12798,8 +12798,18 @@ function _mdSgOld(c){try{if(!c)return false;var k=c.category||'';if(!k&&typeof m
 async function mdDayOnlySet(cat,on){await _loadMdKw();if(!_mdCatKw.__dayonly||typeof _mdCatKw.__dayonly!=='object')_mdCatKw.__dayonly={};_mdCatKw.__dayonly[cat]=!!on;await _saveMdKw();_renderMdKwCats();try{showToast(cat+' → '+(on?'📅 당일만 보이기':'계속 보이기'),true);}catch(e){}try{if(typeof mdRenderList==='function')mdRenderList(_mdCases);}catch(e){}}
 window.mdDayOnlySet=mdDayOnlySet;
 window._mdSgOld=_mdSgOld;
+/* [v943] 캠프 구분: 팀즈 채팅방으로 판단(없으면 라우트 첫 자리) */
+function mdCaseCampNo(c){try{var ch=String(c.teams_channel_id||'');if(ch.indexOf('19:5f71d261708')===0)return 3;if(ch.indexOf('19:b3a4948b793')===0)return 6;if(ch.indexOf('19:7243eb1ffc0')===0)return 8;var r=String(c.route||'').trim().charAt(0);if(r==='6')return 6;if(r==='8')return 8;if(r==='1'||r==='2'||r==='3')return 3;}catch(e){}return 0;}
+window.mdCaseCampNo=mdCaseCampNo;
+function mdUnansBadge(c,idAttr){var n=c?mdCaseCampNo(c):0;if(!n)return '';var col={3:'#1e88e5',6:'#2e7d32',8:'#8e24aa'}[n];return '<span class="md-badge"'+(idAttr?' id="'+idAttr+'"':'')+' style="display:inline-flex;padding:0;border-radius:8px;overflow:hidden;font-size:11px;font-weight:900;white-space:nowrap;flex-shrink:0;line-height:1.3"><span style="background:#e53935;color:#fff;padding:3px 7px">미답변</span><span style="background:'+col+';color:#fff;padding:3px 8px">'+n+'캠프</span></span>';}
+window.mdUnansBadge=mdUnansBadge;
+/* [v943] 수기회수는 당일이 지나면 '미응답'(분실처리 아님) */
+function _mdIsSg(c){try{return (c.category||(typeof mdCaseCat==='function'?mdCaseCat(c):''))==='수기회수';}catch(e){return c&&c.category==='수기회수';}}
+function _mdSgMiss(c){if(!c||(c.status!=='pending'&&c.status!=='rejected'))return false;if(!_mdIsSg(c))return false;var d=kstDateStr(c.created_at||c.occurred_at);return !!d&&d<kstToday();}
+window._mdSgMiss=_mdSgMiss;
 function _mdNoAction(c){
   if(!c||(c.status!=='pending'&&c.status!=='rejected'))return false;
+  if(_mdIsSg(c))return false;   // [v943] 수기회수는 미응답 분실처리 대상 아님
   var _t=new Date(c.created_at||c.occurred_at).getTime();
   if(isNaN(_t))return false;
   return (Date.now()-_t)>=3*86400000;  // 최초공유 후 3일 경과 + 기사 미조치
@@ -12836,6 +12846,7 @@ function mdRenderList(cases){
   var active=[];var completed=[];
   (cases||[]).forEach(function(c){
     if(c.status==='approved'){c._noAction=false;completed.push(c);}
+    else if(_mdSgMiss(c)){c._noAction=false;c._noReply=true;completed.push(c);}   // [v943] 수기회수 당일 지남 → 미응답
     else if(_mdNoAction(c)){c._noAction=true;completed.push(c);}
     else{c._noAction=false;active.push(c);}
   });
@@ -13040,7 +13051,7 @@ function mdRenderList(cases){
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
                     '<span style="font-size:9px;font-weight:800;color:#fff;background:#00838f;padding:1px 6px;border-radius:6px">인입</span>'+
                     (function(){try{var _ct=c.category||(c.issue_content&&c.issue_content.indexOf('미반납')>=0?'미반납':c.issue_content&&c.issue_content.indexOf('오회수')>=0?'오회수':'오배송');var _cs={'오배송':'background:#ffebee;color:#c62828','미반납':'background:#e0f7fa;color:#00838f','오회수':'background:#ede7f6;color:#4527a0','수기회수':'background:#ede9fe;color:#6d28d9','기타':'background:#eceff1;color:#546e7a'}[_ct]||(typeof _mdCatColor==='function'?('background:'+_mdCatColor(_ct)+'1a;color:'+_mdCatColor(_ct)):'background:#ffebee;color:#c62828');return '<span style="font-size:10px;font-weight:800;padding:1px 7px;border-radius:7px;'+_cs+'">'+mdEsc(_ct)+'</span>';}catch(_e){return '';}})()+   /* [v909] 어떤 인입건인지 종류 뱃지 */
-                    (c._noAction?'<span style="font-size:10px;font-weight:800;color:#455a64;background:#eceff1;border:1px solid #cfd8dc;padding:1px 7px;border-radius:7px">⛔ 미응답 분실처리</span>':'')+
+                    (c._noAction?'<span style="font-size:10px;font-weight:800;color:#455a64;background:#eceff1;border:1px solid #cfd8dc;padding:1px 7px;border-radius:7px">⛔ 미응답 분실처리</span>':'')+(c._noReply?'<span style="font-size:10px;font-weight:800;color:#6d28d9;background:#f3e8ff;border:1px solid #ddd6fe;padding:1px 7px;border-radius:7px">⛔ 미응답</span>':'')+
                     (canDelete?'<span style="font-size:11px;font-weight:700;color:#558b2f">'+mdEsc(c.driver_name||c.driver_id||'-')+'</span>':'')+''+
                     '<span style="font-size:11px;color:#aaa">'+mdWbShort(c.waybill_no)+'</span>'+
                     '<span style="margin-left:auto;font-size:10px;color:#26a69a;font-weight:700;flex-shrink:0">⏱ '+_doneTm(it._t)+'</span>'+
@@ -13125,7 +13136,7 @@ function mdMibaenaepGroupCard(drvName,groupCases,isAdmin,isLeader){
     '<div class="md-top">'+
       '<div style="flex:1;min-width:0">'+
         '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
-          '<span class="md-badge '+badgeCls+'">'+badgeTxt+'</span>'+
+          ((topStatus==='pending'&&mdUnansBadge(groupCases[0]))||'<span class="md-badge '+badgeCls+'">'+badgeTxt+'</span>')+
           '<span style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:12px;background:#e65100;color:#fff">미반납</span>'+
           '<span style="font-size:11px;font-weight:700;color:#e65100;background:#fff3e0;padding:2px 8px;border-radius:8px;border:1px solid #ffcc80">'+groupCases.length+'건</span>'+
           '<span style="font-size:11px;color:#bbb">'+dateStr+'</span>'+mbDd+
@@ -13161,7 +13172,7 @@ function mdCardHtml(c,isAdmin,isLeader){
   var apprSweep=isAppr?'<div style="position:absolute;top:0;bottom:0;left:0;width:32%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.45) 40%,rgba(255,255,255,.95) 50%,rgba(255,255,255,.45) 60%,transparent);animation:apprSweepX 2.1s linear infinite;pointer-events:none;z-index:0"></div>':'';
   var badgeHtml=isAppr
     ?'<span class="md-badge" id="md-badge-'+c.id+'" style="font-size:11px;padding:3px 10px;flex-shrink:0;line-height:1.3;background:#1976d2;color:#fff;border-radius:8px;font-weight:800;animation:apprBlinkX 1s ease-in-out infinite">승인요청</span>'
-    :'<span class="md-badge '+badgeCls+'" id="md-badge-'+c.id+'" style="font-size:11px;padding:3px 9px;flex-shrink:0;line-height:1.3">'+badgeTxt+'</span>';
+    :((c.status==='pending'&&mdUnansBadge(c,'md-badge-'+c.id))||'<span class="md-badge '+badgeCls+'" id="md-badge-'+c.id+'" style="font-size:11px;padding:3px 9px;flex-shrink:0;line-height:1.3">'+badgeTxt+'</span>');
   return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'" onclick="mdOpenDetail('+c.id+')" style="cursor:pointer'+apprCard+'">'+
     apprSweep+
     '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:8px;padding:10px 13px">'+
@@ -13185,7 +13196,7 @@ function mdMibaGroupCard(g,gi){
   return '<div class="md-card c-red" onclick="mdOpenMibaGroup('+gi+')" id="md-mgcard-'+gi+'" style="cursor:pointer;border-left:4px solid #00838f">'+
     '<div style="display:flex;align-items:center;gap:8px;padding:10px 13px">'+
       (redoN?'<span style="font-size:11px;font-weight:900;background:#e53935;color:#fff;padding:3px 9px;border-radius:8px;flex-shrink:0;line-height:1.3">🔁 '+redoN+' 재요청</span>':'')+
-      '<span class="md-badge mb-red" style="font-size:11px;padding:3px 9px;flex-shrink:0;line-height:1.3">미답변</span>'+
+      ((function(){try{var r0=g.rows[0];var cc=r0&&(r0.latest||(r0.cases&&r0.cases[0]));return cc?mdUnansBadge(cc):'';}catch(e){return '';}})()||'<span class="md-badge mb-red" style="font-size:11px;padding:3px 9px;flex-shrink:0;line-height:1.3">미답변</span>')+
       '<span style="font-size:15px;font-weight:800;color:#1a237e;flex-shrink:0;white-space:nowrap">'+mdEsc(g.driver)+'</span>'+
       '<span style="font-size:11px;color:#9e9e9e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+mdEsc(g.day)+'</span>'+dd+
       '<span style="flex-shrink:0;margin-left:auto;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;background:#e0f7fa;color:#00838f">미반납 '+g.rows.length+'건</span>'+
