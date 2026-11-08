@@ -8918,7 +8918,7 @@ function pgFullSched(){
   h+='<div id="sched-scroll-wrap"><div id="sched-inner">';
   var _sgGl=_sgOrder(SCHED_WK,wk.g),_sgPrev='';var _lrAd={};try{if(typeof _lrAdds==='function')_lrAd=_lrAdds(wk.g,SCHED_WK);}catch(_lre){}
   for(var gi=0;gi<_sgGl.length;gi++){
-    var g=_sgGl[gi];try{if(!EDIT_MODE&&!window._sreqMode&&typeof _rrMergeGroup==='function')g=_rrMergeGroup(g,wk);}catch(_rrme){}try{if(!EDIT_MODE&&!window._sreqMode)g=_subSplitGroup(g,wk);}catch(_ssge){}try{var _sgH=_sgSecHead(SCHED_WK,g.l.join('|'),_sgPrev);_sgPrev=_sgH.sec;h+=_sgH.h;}catch(_sge){}var lk=g.l.join('|');
+    var g=_sgGl[gi];try{if(!EDIT_MODE&&!window._sreqMode&&typeof _rrMergeGroup==='function')g=_rrMergeGroup(g,wk);}catch(_rrme){}try{if(!window._sreqMode)g=_subSplitGroup(g,wk);}catch(_ssge){}try{var _sgH=_sgSecHead(SCHED_WK,g.l.join('|'),_sgPrev);_sgPrev=_sgH.sec;h+=_sgH.h;}catch(_sge){}var lk=g.l.join('|');
     var _lrL=g.l;try{if(typeof _lrGroupLeaders==='function')_lrL=_lrGroupLeaders(g,SCHED_WK,_lrAd)||g.l;}catch(_lre){_lrL=g.l;}
     var ldisplay=_lrL.map(function(n){return (n.indexOf('팀장')>=0?n.replace(/\s*팀장\s*$/,'')+_ldBadge(1,1):(n.indexOf('조장')>=0?n.replace(/\s*조장\s*$/,'')+_ldBadge(0,1):n));}).join(' / ');
     var gc=GCM[lk]||_gcmByLead(lk)||_sgGC(SCHED_WK,lk)||{bg:'#607d8b',tx:'#fff',mid:'#90a4ae',lt:'#eceff1',mtx:'#37474f'};
@@ -9030,6 +9030,11 @@ function pgFullSched(){
             +newBadge+_splitLines+_raHtml(dt,route)
             +(EDIT_MODE?'<div style="font-size:9px;color:#E65100;font-weight:700;margin-top:1px">✏ 분할수정</div>':'')
             +'</td>';
+        } else if(EDIT_MODE&&rtObj._raw){
+          // [v956] 편집 모드에서도 211A/211D 줄 그대로 → 칸 누르면 그 날 211AD 분할 수정창(해당 서브라우트 입력칸 강조)
+          var eStyle2=isLead?(' style="'+_ldCellStyle(cellGC)+'"'):'';
+          var _sbp=JSON.stringify(rtObj._subs.map(function(x){return {r:x,d:(rtObj._per[x]&&rtObj._per[x][dt])||'',t:''};})).replace(/"/g,'&quot;');
+          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+' editable'+newCls+'"'+eStyle2+rowspanAttr+' onclick="openSubCell(this)" data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-route="'+escQ(rtObj._raw)+'" data-sub="'+escQ(route)+'" data-dt="'+dt+'" data-share="'+_sbp+'" data-driver="'+dBase+'">'+newBadge+ddisp+(rtObj._si===0?_raHtml(dt,rtObj._raw):'')+'</td>';
         } else if(EDIT_MODE){
           var eStyle=isLead?(' style="'+_ldCellStyle(cellGC)+'"'):'';
           cells+='<td class="dname'+(tdCC?' '+tdCC:'')+' editable'+newCls+'"'+eStyle+rowspanAttr+' onclick="openEditCell(this)" data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-rt="'+route+'" data-dt="'+dt+'" data-driver="'+dBase+'">'+newBadge+ddisp+_raHtml(dt,route)+'</td>';
@@ -9130,7 +9135,7 @@ function _subSplitGroup(g,wk){try{if(!g||!g.rt||!wk||!wk.dt)return g;var out=[],
         has=true;subs.forEach(function(x){per[x][dt]=m[x];});}
       else if(ro.d&&ro.d[dt]){subs.forEach(function(x){per[x][dt]=ro.d[dt];});}});
     if(bad||(!has&&!_alw)){out.push(ro);return;}
-    chg=true;subs.forEach(function(x,i){var n={r:x,d:per[x],_raw:ro.r,_si:i};if(ro.b)n.b=ro.b;out.push(n);});});
+    chg=true;subs.forEach(function(x,i){var n={r:x,d:per[x],_raw:ro.r,_si:i,_subs:subs,_per:per};if(ro.b)n.b=ro.b;out.push(n);});});
   if(!chg)return g;var ng={};for(var k in g)ng[k]=g[k];ng.rt=out;return ng;}catch(e){return g;}}
 function _raHtml(dt,rt){var n=_RA&&_RA[dt+'|'+rt];return n?'<div style="margin-top:2px"><span style="font-size:10px;font-weight:800;color:#00695c;background:#e0f2f1;border:1px solid #80cbc4;border-radius:6px;padding:1px 5px;white-space:nowrap">동승 : '+escQ(String(n))+'</span></div>':'';}
 async function _raSave(dt,rt,name){var v={};try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_ridealong').maybeSingle();var x=r&&r.data&&r.data.value;if(typeof x==='string')x=JSON.parse(x);if(x&&typeof x==='object')v=x;}catch(e){}
@@ -9364,6 +9369,14 @@ async function sbSaveSplit(ws,rr,dt,share,mainDriver){
     if(res&&res.error){showToast('❌ 저장 실패: '+res.error.message,false);}
     else{showToast(share?'✅ 분할 배정 완료':'✅ 합치기 완료',true);}
   }catch(e){showToast('❌ 저장 실패: '+(e.message||String(e)),false);}
+}
+// [v956] 편집모드 서브라우트 줄(211A/211D) 칸 → 그 날 묶음 라우트 분할 수정창, 누른 서브라우트 입력칸 강조
+function openSubCell(td){
+  if(!EDIT_MODE)return;
+  var dt=td.getAttribute('data-dt');var _rz=schedLockReason(dt);if(_rz){alert(_schedLockMsg(_rz));return;}
+  ecEditExistingSplit(td.getAttribute('data-wk'),td.getAttribute('data-lk'),td.getAttribute('data-route'),dt,td.getAttribute('data-share'));
+  var sub=td.getAttribute('data-sub');
+  setTimeout(function(){try{var i=document.querySelector('#ec-split-wrap .ec-split-input[data-sub="'+sub+'"]');if(i){i.style.outline='2.5px solid #ff9800';i.style.background='#fff8e1';i.focus();i.select();}}catch(e){}},150);
 }
 // 편집모드에서 쉐어(분할) 셀 탭 → 분할 수정 진입
 function openSplitCell(td){
