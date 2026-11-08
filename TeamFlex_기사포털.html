@@ -50,6 +50,7 @@
 .sched-sticky-nav{padding:4px 0!important;margin-bottom:6px!important}
 }
 .sched-new-badge{z-index:3}
+#sched-inner td.ldsp{position:relative}#sched-inner td.ldsp>.ldin{position:absolute;left:3px;right:3px;top:3px;bottom:3px;min-height:0!important;align-items:center}#sched-inner td.ldsp>.ldph{visibility:hidden;display:block;line-height:1;font-size:10.5px}
 .ldg{display:inline-block;position:relative;overflow:hidden;white-space:nowrap;font-size:7.4px;line-height:12px;padding:0 5px;border-radius:4px;font-weight:900;letter-spacing:.35px;vertical-align:middle}
 .ldg.ldT{background:linear-gradient(180deg,#fffbe8 0%,#ffe27a 40%,#dca437 54%,#ffeaa8 100%);color:#4a2c00;text-shadow:0 1px 0 rgba(255,255,255,.9);box-shadow:0 0 0 1px #b8860b inset,0 1px 0 #8a5a00,0 1px 4px rgba(255,190,40,.55)}
 .ldg.ldS{background:linear-gradient(180deg,#ffffff 0%,#f1f4f8 40%,#b3bdcb 54%,#f7f9fc 100%);color:#1f2937;text-shadow:0 1px 0 rgba(255,255,255,.95);box-shadow:0 0 0 1px #7b8794 inset,0 1px 0 #4b5563,0 1px 4px rgba(150,170,200,.55)}
@@ -8917,7 +8918,7 @@ function pgFullSched(){
   h+='<div id="sched-scroll-wrap"><div id="sched-inner">';
   var _sgGl=_sgOrder(SCHED_WK,wk.g),_sgPrev='';var _lrAd={};try{if(typeof _lrAdds==='function')_lrAd=_lrAdds(wk.g,SCHED_WK);}catch(_lre){}
   for(var gi=0;gi<_sgGl.length;gi++){
-    var g=_sgGl[gi];try{if(!EDIT_MODE&&!window._sreqMode&&typeof _rrMergeGroup==='function')g=_rrMergeGroup(g,wk);}catch(_rrme){}try{var _sgH=_sgSecHead(SCHED_WK,g.l.join('|'),_sgPrev);_sgPrev=_sgH.sec;h+=_sgH.h;}catch(_sge){}var lk=g.l.join('|');
+    var g=_sgGl[gi];try{if(!EDIT_MODE&&!window._sreqMode&&typeof _rrMergeGroup==='function')g=_rrMergeGroup(g,wk);}catch(_rrme){}try{if(!EDIT_MODE&&!window._sreqMode)g=_subSplitGroup(g,wk);}catch(_ssge){}try{var _sgH=_sgSecHead(SCHED_WK,g.l.join('|'),_sgPrev);_sgPrev=_sgH.sec;h+=_sgH.h;}catch(_sge){}var lk=g.l.join('|');
     var _lrL=g.l;try{if(typeof _lrGroupLeaders==='function')_lrL=_lrGroupLeaders(g,SCHED_WK,_lrAd)||g.l;}catch(_lre){_lrL=g.l;}
     var ldisplay=_lrL.map(function(n){return (n.indexOf('팀장')>=0?n.replace(/\s*팀장\s*$/,'')+_ldBadge(1,1):(n.indexOf('조장')>=0?n.replace(/\s*조장\s*$/,'')+_ldBadge(0,1):n));}).join(' / ');
     var gc=GCM[lk]||_gcmByLead(lk)||_sgGC(SCHED_WK,lk)||{bg:'#607d8b',tx:'#fff',mid:'#90a4ae',lt:'#eceff1',mtx:'#37474f'};
@@ -8988,7 +8989,7 @@ function pgFullSched(){
         var tdCC=(cc==='tod-col')?'tod-col':'';
         // ★ 변경된 스케줄(순변경·근무일 안 지남) → New 배지 + 무지개 테두리. spanVal로 병합된 라우트도 함께 검사.
         var _isNew=false;
-        if(_newKeys){ if(_newKeys[dt+'|'+route])_isNew=true; else if(spanVal>1){for(var _sk=0;_sk<spanVal;_sk++){var _rr2=(g.rt[ri+_sk]&&g.rt[ri+_sk].r);if(_rr2&&_newKeys[dt+'|'+_rr2]){_isNew=true;break;}}} }
+        if(_newKeys){ if(_newKeys[dt+'|'+route]||(rtObj._raw&&_newKeys[dt+'|'+rtObj._raw]))_isNew=true; else if(spanVal>1){for(var _sk=0;_sk<spanVal;_sk++){var _rr2=(g.rt[ri+_sk]&&g.rt[ri+_sk].r),_rw2=(g.rt[ri+_sk]&&g.rt[ri+_sk]._raw);if((_rr2&&_newKeys[dt+'|'+_rr2])||(_rw2&&_newKeys[dt+'|'+_rw2])){_isNew=true;break;}}} }
         var newCls=_isNew?' sched-new':'';
         var newBadge=_isNew?'<span class="sched-new-badge">New</span>':'';
         var rowspanAttr='';if(spanVal>1)rowspanAttr=' rowspan="'+spanVal+'"';
@@ -9034,7 +9035,9 @@ function pgFullSched(){
           cells+='<td class="dname'+(tdCC?' '+tdCC:'')+' editable'+newCls+'"'+eStyle+rowspanAttr+' onclick="openEditCell(this)" data-wk="'+SCHED_WK+'" data-lk="'+escQ(lk)+'" data-rt="'+route+'" data-dt="'+dt+'" data-driver="'+dBase+'">'+newBadge+ddisp+_raHtml(dt,route)+'</td>';
         } else {
           var lStyle=isLead?(' style="'+_ldCellStyle(cellGC)+'"'):'';
-          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+newCls+'"'+lStyle+rowspanAttr+(window.tfSreq?tfSreq.cell(SCHED_WK,lk,route,dt,dBase,null):'')+'>'+newBadge+ddisp+_raHtml(dt,route)+'</td>';
+          var _ldsp=(isLead&&spanVal>1&&ddisp.indexOf('class="ldin"')>=0);   // [v954] 병합칸 조장급 박스 → 칸 높이만큼 크게
+          var _rawRt=rtObj._raw||route,_raRt=(rtObj._raw?(rtObj._si===0?rtObj._raw:''):route);
+          cells+='<td class="dname'+(tdCC?' '+tdCC:'')+newCls+(_ldsp?' ldsp':'')+'"'+lStyle+rowspanAttr+(window.tfSreq?tfSreq.cell(SCHED_WK,lk,_rawRt,dt,dBase,null):'')+'>'+newBadge+(_ldsp?'<span class="ldph">'+dBase+'</span>':'')+ddisp+(_raRt?_raHtml(dt,_raRt):'')+'</td>';
         }
       }
       rows+='<tr>'+routeCell+cells+'</tr>';
@@ -9111,6 +9114,20 @@ function closeEditCell(){document.getElementById('edit-cell-modal').style.displa
 /* ══ [v833] 동승교육 표시 (app_settings.sched_ridealong · 쿠팡/정산 영향 없음) ══ */
 var _RA=null;
 async function _raLoad(){try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_ridealong').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}_RA=(v&&typeof v==='object')?v:{};}catch(e){_RA=_RA||{};}return _RA;}
+/* [v954] 묶음 라우트(211AD 등)에 서브라우트별로 다른 기사가 있는 주 → 화면에서만 211A/211D 줄로 나눠 표시 (206C/206D처럼).
+   저장 데이터(route_raw+share)는 그대로 → 메타 변경분·기사교체·요청 기존 흐름 유지. 편집/요청 모드에선 나누지 않음. */
+function _subSplitGroup(g,wk){try{if(!g||!g.rt||!wk||!wk.dt)return g;var out=[],chg=false;
+  g.rt.forEach(function(ro){var subs=_sxSplitRt(ro.r);if(subs.length<2||!ro.sh){out.push(ro);return;}
+    var bad=false,has=false,per={};subs.forEach(function(x){per[x]={};});
+    wk.dt.forEach(function(dt){if(bad)return;var sh=ro.sh[dt];
+      if(sh&&sh.length){if(_rotPartial(sh)){bad=true;return;}var m={};
+        sh.forEach(function(p){var r=String(p.r||'').replace(/\s*\(.*?\)/g,'').trim().toUpperCase();if(subs.indexOf(r)<0){bad=true;return;}if(m[r]&&norm_name_js(m[r])!==norm_name_js(p.d||'')){bad=true;return;}m[r]=p.d||'';});
+        if(bad)return;if(subs.some(function(x){return !(x in m);})){bad=true;return;}
+        has=true;subs.forEach(function(x){per[x][dt]=m[x];});}
+      else if(ro.d&&ro.d[dt]){subs.forEach(function(x){per[x][dt]=ro.d[dt];});}});
+    if(bad||!has){out.push(ro);return;}
+    chg=true;subs.forEach(function(x,i){var n={r:x,d:per[x],_raw:ro.r,_si:i};if(ro.b)n.b=ro.b;out.push(n);});});
+  if(!chg)return g;var ng={};for(var k in g)ng[k]=g[k];ng.rt=out;return ng;}catch(e){return g;}}
 function _raHtml(dt,rt){var n=_RA&&_RA[dt+'|'+rt];return n?'<div style="margin-top:2px"><span style="font-size:10px;font-weight:800;color:#00695c;background:#e0f2f1;border:1px solid #80cbc4;border-radius:6px;padding:1px 5px;white-space:nowrap">동승 : '+escQ(String(n))+'</span></div>':'';}
 async function _raSave(dt,rt,name){var v={};try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_ridealong').maybeSingle();var x=r&&r.data&&r.data.value;if(typeof x==='string')x=JSON.parse(x);if(x&&typeof x==='object')v=x;}catch(e){}
   var k=dt+'|'+rt;if(name)v[k]=name;else delete v[k];
