@@ -9116,16 +9116,20 @@ var _RA=null;
 async function _raLoad(){try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_ridealong').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}_RA=(v&&typeof v==='object')?v:{};}catch(e){_RA=_RA||{};}return _RA;}
 /* [v954] 묶음 라우트(211AD 등)에 서브라우트별로 다른 기사가 있는 주 → 화면에서만 211A/211D 줄로 나눠 표시 (206C/206D처럼).
    저장 데이터(route_raw+share)는 그대로 → 메타 변경분·기사교체·요청 기존 흐름 유지. 편집/요청 모드에선 나누지 않음. */
+/* [v955] 항상 서브라우트 줄로 나눌 묶음 라우트 (app_settings 'sched_split_routes' = ["211AD",...], 없으면 211AD) */
+var _SS_ALW=['211AD'],_SS_LD=false;
+function _ssAlways(rr){try{if(!_SS_LD&&typeof sbClient!=='undefined'&&sbClient){_SS_LD=true;sbClient.from('app_settings').select('value').eq('key','sched_split_routes').maybeSingle().then(function(r){try{var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);if(Array.isArray(v))_SS_ALW=v.map(function(x){return String(x).toUpperCase().replace(/\s+/g,'');});}catch(e){}});}
+  var k=String(rr||'').replace(/\s*\(.*?\)/g,'').toUpperCase().replace(/\s+/g,'');return _SS_ALW.indexOf(k)>=0;}catch(e){return false;}}
 function _subSplitGroup(g,wk){try{if(!g||!g.rt||!wk||!wk.dt)return g;var out=[],chg=false;
-  g.rt.forEach(function(ro){var subs=_sxSplitRt(ro.r);if(subs.length<2||!ro.sh){out.push(ro);return;}
+  g.rt.forEach(function(ro){var subs=_sxSplitRt(ro.r);var _alw=_ssAlways(ro.r);if(subs.length<2||(!ro.sh&&!_alw)){out.push(ro);return;}var _rsh=ro.sh||{};
     var bad=false,has=false,per={};subs.forEach(function(x){per[x]={};});
-    wk.dt.forEach(function(dt){if(bad)return;var sh=ro.sh[dt];
+    wk.dt.forEach(function(dt){if(bad)return;var sh=_rsh[dt];
       if(sh&&sh.length){if(_rotPartial(sh)){bad=true;return;}var m={};
         sh.forEach(function(p){var r=String(p.r||'').replace(/\s*\(.*?\)/g,'').trim().toUpperCase();if(subs.indexOf(r)<0){bad=true;return;}if(m[r]&&norm_name_js(m[r])!==norm_name_js(p.d||'')){bad=true;return;}m[r]=p.d||'';});
         if(bad)return;if(subs.some(function(x){return !(x in m);})){bad=true;return;}
         has=true;subs.forEach(function(x){per[x][dt]=m[x];});}
       else if(ro.d&&ro.d[dt]){subs.forEach(function(x){per[x][dt]=ro.d[dt];});}});
-    if(bad||!has){out.push(ro);return;}
+    if(bad||(!has&&!_alw)){out.push(ro);return;}
     chg=true;subs.forEach(function(x,i){var n={r:x,d:per[x],_raw:ro.r,_si:i};if(ro.b)n.b=ro.b;out.push(n);});});
   if(!chg)return g;var ng={};for(var k in g)ng[k]=g[k];ng.rt=out;return ng;}catch(e){return g;}}
 function _raHtml(dt,rt){var n=_RA&&_RA[dt+'|'+rt];return n?'<div style="margin-top:2px"><span style="font-size:10px;font-weight:800;color:#00695c;background:#e0f2f1;border:1px solid #80cbc4;border-radius:6px;padding:1px 5px;white-space:nowrap">동승 : '+escQ(String(n))+'</span></div>':'';}
