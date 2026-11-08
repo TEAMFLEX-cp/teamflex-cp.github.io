@@ -22817,11 +22817,13 @@ window.mdConvertToNotice=mdConvertToNotice;
     var n=+((cfg.cats||{})[catOf(c)]||0);if(!(n>0))return null;
     var day=addD(kymd(c.created_at||c.occurred_at),n),tm=cfg.time||'09:00';var due=new Date(day+'T'+tm+':00+09:00');
     var lg=log[c.id]||log[String(c.id)]||null;
-    return {n:n,day:day,time:tm,due:due,label:mdK(day)+' '+tm,log:lg,pending:(c.status==='pending')};};
+    var pre=!!(cfg.since&&new Date(c.created_at||c.occurred_at)<new Date(cfg.since));
+    return {n:n,day:day,time:tm,due:due,label:mdK(day)+' '+tm,log:lg,pending:(c.status==='pending'),pre:pre};};
   AL.badge=function(c){var p=AL.planOf(c);if(!p)return '';
     if(p.log&&p.log.st==='skip')return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#eceff1;color:#78909c;border-radius:8px;padding:2px 8px">🚫 자동 분실 제외</span>';
     if(p.log&&(p.log.st==='done'||p.log.st==='now'))return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:2px 8px">✅ 분실 처리 요청 완료</span>';
     if(!p.pending)return '';
+    if(p.pre)return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#fff3e0;color:#e65100;border-radius:8px;padding:2px 8px">⚠️ 자동 대상 아님 (켜기 전 재요청) · 직접 분실 요청</span>';
     return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#ede7f6;color:#5e35b1;border-radius:8px;padding:2px 8px">⏰ '+p.label+' 자동 분실 예정</span>';};
   // ── 실행: 팀즈 답글(폴러가 건 정보 양식으로 원글 인용 게시) + 처리완료 + 알림 ──
   async function act(c,by){
@@ -22883,6 +22885,7 @@ window.mdConvertToNotice=mdConvertToNotice;
       var can=adm||ld,h;
       if(p.log&&(p.log.st==='done'||p.log.st==='now'))h='<div style="font-weight:900;color:#2e7d32;font-size:13.5px">✅ 자동 분실처리 요청 완료</div><div style="font-size:12px;color:#2f4f35;margin-top:4px;line-height:1.6">'+esc(new Date(p.log.at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))+' · '+esc(p.log.by||'')+'<br>💬 팀즈 해당 재요청 글에 답글: "'+MSG+'"</div>';
       else if(p.log&&p.log.st==='skip')h='<div style="font-weight:900;color:#607d8b;font-size:13.5px">🚫 자동 분실 제외된 건</div><div style="font-size:12px;color:#607d8b;margin-top:4px">'+esc(p.log.by||'')+' 님이 제외했어요.</div>'+(can?'<div onclick="tfAutoLoss.skip('+id+',1)" style="cursor:pointer;margin-top:7px;text-align:center;padding:8px;border-radius:9px;background:#fff;border:1.5px solid #b0bec5;color:#546e7a;font-weight:900;font-size:12.5px">⏰ 다시 자동 분실 예정으로</div>':'');
+      else if(c.status==='pending'&&p.pre)h='<div style="font-weight:900;color:#e65100;font-size:13.5px">⚠️ 자동 분실 대상 아님</div><div style="font-size:12px;color:#6d4c41;margin-top:4px;line-height:1.6">이 재요청은 자동 분실처리를 <b>켜기 전에</b> 들어와서 자동으로 처리되지 않아요.<br>필요하면 아래 버튼으로 바로 올려 주세요.</div>'+(can?'<div onclick="tfAutoLoss.now('+id+')" style="cursor:pointer;margin-top:8px;text-align:center;padding:9px;border-radius:9px;background:#5e35b1;color:#fff;font-weight:900;font-size:12.5px">⚡ 지금 바로 분실 요청</div>':'');
       else if(c.status==='pending')h='<div style="font-weight:900;color:#4527a0;font-size:13.5px">⏰ 자동 분실처리 예정</div><div style="font-size:12px;color:#4a3d6b;margin-top:4px;line-height:1.6">재요청 후 기사 답변이 없으면<br><b>'+p.label+'</b>에 팀즈 해당 글에 답글로<br>"<b>'+MSG+'</b>"를 자동으로 올려요.<br><span style="color:#7e6aa8">기사가 그 전에 답변하면 자동 취소돼요.</span></div>'+(can?'<div style="display:flex;gap:6px;margin-top:8px"><span onclick="tfAutoLoss.skip('+id+')" style="cursor:pointer;flex:1;text-align:center;padding:8px;border-radius:9px;background:#fff;border:1.5px solid #b39ddb;color:#5e35b1;font-weight:900;font-size:12.5px">🚫 이 건 자동 제외</span><span onclick="tfAutoLoss.now('+id+')" style="cursor:pointer;flex:1;text-align:center;padding:8px;border-radius:9px;background:#5e35b1;color:#fff;font-weight:900;font-size:12.5px">⚡ 지금 바로 분실 요청</span></div>':'');
       else return;
       var d=document.createElement('div');d.className='md-al-d';d.dataset.sig=sg;d.style.cssText='margin:0 0 8px;padding:11px 12px;border-radius:12px;background:'+(p.log&&p.log.st!=='skip'?'#e8f5e9':'#f3eefc')+';border:2px solid '+(p.log&&p.log.st!=='skip'?'#43a047':'#7e57c2');d.innerHTML=h;lb.parentNode.insertBefore(d,lb);}}
