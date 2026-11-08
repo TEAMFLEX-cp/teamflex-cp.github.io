@@ -22098,8 +22098,10 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   FP.masterBanner=function(){
     if(!window._tfMasterSess)return;var b=document.getElementById('tf-mk-ban');if(b)b.remove();
     b=document.createElement('div');b.id='tf-mk-ban';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:2147481000;background:#c62828;color:#fff;font-size:12px;font-weight:800;padding:6px 10px;text-align:center';
-    b.innerHTML='🗝 마스터키 접속 중 — '+esc(window._tfMasterSess)+' 계정 (관리자) · 기록됨 <span onclick="tfFp.masterExit()" style="text-decoration:underline;margin-left:6px;cursor:pointer">나가기</span>';
+    b.innerHTML='🗝 <b style="font-size:13.5px">'+esc(window._tfMasterSess)+'</b> 계정으로 보는 중 <span style="opacity:.85;font-weight:700">(관리자 마스터키 · 기록됨)</span> <span onclick="tfFp.masterExit()" style="display:inline-block;background:#fff;color:#c62828;border-radius:8px;padding:2px 9px;margin-left:6px;cursor:pointer;font-weight:900">나가기</span>';
     document.body.appendChild(b);
+    /* [v944] 배너가 위쪽 머리(이름·배지)를 가리지 않게 그만큼 아래로 밀기 */
+    try{var hh=b.offsetHeight||30;document.body.style.paddingTop=hh+'px';var stl=document.getElementById('tf-mk-ban-css');if(!stl){stl=document.createElement('style');stl.id='tf-mk-ban-css';document.head.appendChild(stl);}stl.textContent='#app .ah{top:'+hh+'px !important}';}catch(_e){}
   };
   FP.masterExit=function(){try{doLogout();}catch(e){}location.reload();};
   // ── 관리자 ──
