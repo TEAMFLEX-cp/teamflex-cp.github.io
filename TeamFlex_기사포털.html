@@ -22957,12 +22957,20 @@ window.mdConvertToNotice=mdConvertToNotice;
   SS.kick=async function(n){if(!(window.CU&&CU.role==='admin'))return;if(!confirm(n+' 님 계정으로 로그인된 모든 기기를 로그아웃할까요?'))return;var ok=await SS.bump(n,false);try{showToast(ok?('🚪 '+n+' — 모든 기기 로그아웃 (1분 안에 적용)'):'❌ 실패',ok);}catch(e){}};
 })();
 
+
 (function(){
   if(window.tfOnb)return;
   var OB={};window.tfOnb=OB;var esc=tfSess.esc;
-  var DEF={sec:{on:true,mode:'block'},veh:{on:true,mode:'rec'},hc:{on:true,mode:'rec'},order:['sec','veh','hc']};
+  /* 순서 바꿀 수 있는 항목 + 마지막 고정(당일 라우트·스케줄 변경 확인) */
+  var KEYS=['sec','push','veh','hc','md','greet','ann'];
+  var DEF={sec:{on:true,mode:'block'},push:{on:true,mode:'rec'},veh:{on:true,mode:'rec'},hc:{on:true,mode:'rec'},md:{on:true,mode:'info'},greet:{on:true,mode:'info'},ann:{on:true,mode:'info'},sched:{on:true,mode:'info'},order:KEYS.slice()};
+  var MODES={sec:['block','rec'],push:['block','rec','info'],veh:['block','rec','info'],hc:['block','rec','info'],md:['rec','info'],greet:[],ann:[],sched:[]};
+  var LBL={sec:['🔐','보안 (지문·비번)','지문 등록 또는 비번 변경 중 하나만 하면 끝 · 그 뒤로는 안 뜸'],push:['🔔','알림 켜기','알림이 안 되는 폰이면 켜는 방법 안내 (허용 한 번이면 자동 연결)'],veh:['🚚','차량 점검','오늘 점검 전이면'],hc:['💪','건강 자가체크','이달 미작성이면'],md:['🚨','처리할 인입','미답변 인입이 있으면 [인입 보기]'],greet:['🌅','오늘의 인사','하루 첫 접속 인사 카드 (기존)'],ann:['📢','안 읽은 공지','안 읽은 공지 팝업 (기존)'],sched:['📅','당일 라우트 · 스케줄 변경 확인','맨 마지막 고정 (기존)']};
   var CFG=null;
-  OB.cfg=async function(force){if(CFG&&!force)return CFG;try{var r=await sbClient.from('app_settings').select('value').eq('key','tf_onb_cfg').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);CFG=Object.assign(JSON.parse(JSON.stringify(DEF)),v||{});['sec','veh','hc'].forEach(function(k){CFG[k]=Object.assign({},DEF[k],(v&&v[k])||{});});if(!Array.isArray(CFG.order)||CFG.order.length!==3)CFG.order=DEF.order.slice();}catch(e){CFG=JSON.parse(JSON.stringify(DEF));}return CFG;};
+  function fixCfg(v){var c=JSON.parse(JSON.stringify(DEF));v=v||{};Object.keys(DEF).forEach(function(k){if(k!=='order'&&v[k])c[k]=Object.assign({},DEF[k],v[k]);});
+    var o=Array.isArray(v.order)?v.order.filter(function(k){return KEYS.indexOf(k)>=0;}):[];KEYS.forEach(function(k){if(o.indexOf(k)<0){var di=KEYS.indexOf(k);o.splice(Math.min(di,o.length),0,k);}});c.order=o;
+    Object.keys(MODES).forEach(function(k){if(MODES[k].length&&MODES[k].indexOf(c[k].mode)<0)c[k].mode=DEF[k].mode;});return c;}
+  OB.cfg=async function(force){if(CFG&&!force)return CFG;try{var r=await sbClient.from('app_settings').select('value').eq('key','tf_onb_cfg').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);CFG=fixCfg(v);}catch(e){CFG=fixCfg(null);}return CFG;};
   var WEAK=['1234','0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','4321','1212','0123','12345','123456','00000','000000','11111','111111'];
   function ov(inner,id){id=id||'tf-onb';var o=document.getElementById(id);if(o)o.remove();o=document.createElement('div');o.id=id;o.style.cssText='position:fixed;inset:0;z-index:2147482500;background:rgba(10,25,45,.6);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';o.innerHTML='<div style="background:#fff;border-radius:22px;width:100%;max-width:370px;padding:20px 18px 16px;box-shadow:0 18px 50px rgba(0,0,0,.35);max-height:94vh;overflow:auto">'+inner+'</div>';document.body.appendChild(o);return o;}
   function close(id){var o=document.getElementById(id||'tf-onb');if(o)o.remove();}
@@ -22971,11 +22979,29 @@ window.mdConvertToNotice=mdConvertToNotice;
   var INP='width:100%;box-sizing:border-box;border:1.5px solid #d5dbe4;border-radius:11px;padding:12px;font-size:15px;margin-top:8px';
   var B1='display:block;width:100%;border:0;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer;margin-top:10px;color:#fff;background:linear-gradient(135deg,#1565c0,#1e88e5)';
   var B2='display:block;width:100%;border:0;border-radius:12px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;margin-top:8px;background:#eef2f6;color:#455a64';
-  function card(ic,t,sub,c,bg,btn,fn){return '<div style="display:flex;align-items:center;gap:10px;border:2px solid '+c+'55;background:'+bg+';border-radius:14px;padding:11px 12px;margin-bottom:9px"><span style="font-size:26px">'+ic+'</span><div style="flex:1"><div style="font-size:15px;font-weight:900;color:#14213d">'+t+'</div><div style="font-size:12px;color:'+c+';font-weight:800;margin-top:2px">'+sub+'</div></div><button onclick="'+fn+'" style="border:0;background:'+c+';color:#fff;font-weight:900;font-size:13px;border-radius:10px;padding:9px 10px;white-space:nowrap;cursor:pointer">'+btn+'</button></div>';}
-  var Q=[],RUN=false;
-  function next(){var f=Q.shift();if(f){f();}else{RUN=false;}}
+  function card(ic,t,sub,c,bg,btn,fn){return '<div style="display:flex;align-items:center;gap:10px;border:2px solid '+c+'55;background:'+bg+';border-radius:14px;padding:11px 12px;margin-bottom:9px"><span style="font-size:26px">'+ic+'</span><div style="flex:1"><div style="font-size:15px;font-weight:900;color:#14213d">'+t+'</div><div style="font-size:12px;color:'+c+';font-weight:800;margin-top:2px">'+sub+'</div></div>'+(btn?'<button onclick="'+fn+'" style="border:0;background:'+c+';color:#fff;font-weight:900;font-size:13px;border-radius:10px;padding:9px 10px;white-space:nowrap;cursor:pointer">'+btn+'</button>':'')+'</div>';}
+  function laterBtn(mode,txt){return mode==='block'?'':'<button style="'+B2+'" onclick="tfOnb.next()">'+(txt||(mode==='info'?'확인 ›':'나중에 하기 ›'))+'</button>';}
+  function today(){return new Date(Date.now()+9*3600000).toISOString().slice(0,10);}
+  function infoSeen(k){try{return localStorage.getItem('tf_onb_'+k+'_'+CU.name)===today();}catch(e){return false;}}
+  function infoMark(k){try{localStorage.setItem('tf_onb_'+k+'_'+CU.name,today());}catch(e){}}
+
+  /* ── 실행 큐 ── */
+  var Q=[],RUN=false,PAUSED=false;
+  function next(){if(PAUSED)return;var f=Q.shift();if(f){try{f();}catch(e){next();}}else{RUN=false;}}
   OB.next=function(){close();next();};
-  // ── 보안 ──
+  OB.pauseGo=function(fn){close();PAUSED=true;try{fn();}catch(e){}};   // 다른 화면으로 이동 → 홈에 돌아오면 이어서
+  OB.resume=function(){if(PAUSED){PAUSED=false;setTimeout(next,350);}};
+
+  /* ── 기존 시작 팝업(인사·공지→당일라우트·스케줄) 잠시 붙잡기 ── */
+  var HOLD=null,_ORIG={};
+  function holdStart(){HOLD={greet:false,ann:null};
+    if(!_ORIG.g&&typeof window.showDailyGreeting==='function'){_ORIG.g=window.showDailyGreeting;window.showDailyGreeting=function(){if(HOLD){HOLD.greet=true;return;}return _ORIG.g.apply(this,arguments);};}
+    if(!_ORIG.a&&typeof window.checkUnreadAnns==='function'){_ORIG.a=window.checkUnreadAnns;window.checkUnreadAnns=function(a,b){if(HOLD){if(b!==undefined||!HOLD.ann)HOLD.ann=[a,b];return;}return _ORIG.a.apply(this,arguments);};}
+  }
+  function holdRelease(){HOLD=null;}
+  OB._releaseAll=function(){var h=HOLD;holdRelease();if(!h)return;if(h.greet&&_ORIG.g)try{_ORIG.g();}catch(e){}if(_ORIG.a)try{_ORIG.a(false,(typeof _startupPopupStep2==='function')?_startupPopupStep2:undefined);}catch(e){}};
+
+  /* ── 보안 ── */
   var SEC={};
   async function fpMirror(n){try{var r=await sbClient.from('app_settings').select('value').eq('key','tf_fp_names').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);if(typeof v==='string')v=JSON.parse(v);var a=(v&&v.names)||(Array.isArray(v)?v:[]);return a.indexOf(n)>=0;}catch(e){return false;}}
   async function secNeed(n){
@@ -22987,20 +23013,18 @@ window.mdConvertToNotice=mdConvertToNotice;
     return rows.length?rows.every(function(x){return !x.password||x.password==='1234';}):(pw==='1234');
   }
   function secMain(){
-    var n=CU.name,canFp=!!(window.tfFp&&tfFp.supported&&tfFp.supported());
-    var h='<div style="text-align:center;font-size:40px;line-height:1">🔐</div><div style="text-align:center;font-size:19px;font-weight:900;color:#14213d;margin-top:6px">보안 설정이 필요해요</div>'+MSG+
+    var canFp=!!(window.tfFp&&tfFp.supported&&tfFp.supported());
+    ov('<div style="text-align:center;font-size:40px;line-height:1">🔐</div><div style="text-align:center;font-size:19px;font-weight:900;color:#14213d;margin-top:6px">보안 설정이 필요해요</div>'+MSG+
       '<div style="font-size:12.5px;color:#556;text-align:center;margin-bottom:10px">아래 <b>둘 중 하나만</b> 하면 돼요</div>'+
-      (canFp?card('👆','지문 등록 <span style="font-size:10.5px;background:#0f766e;color:#fff;border-radius:6px;padding:1px 6px;vertical-align:middle">추천</span>','내 폰 지문으로만 들어올 수 있어요','#0f766e','#f0fdfa','등록','tfOnb.secFp()'):card('👆','지문 등록','이 폰은 지문 로그인을 지원하지 않아요','#94a3b8','#f8fafc','불가','void 0'))+
+      (canFp?card('👆','지문 등록 <span style="font-size:10.5px;background:#0f766e;color:#fff;border-radius:6px;padding:1px 6px;vertical-align:middle">추천</span>','내 폰 지문으로만 들어올 수 있어요','#0f766e','#f0fdfa','등록','tfOnb.secFp()'):card('👆','지문 등록','이 기기는 지문 로그인을 지원하지 않아요','#94a3b8','#f8fafc','',''))+
       card('🔑','비밀번호 바꾸기','지금 기본 비밀번호(1234) 사용 중','#1565c0','#eff6ff','바꾸기','tfOnb.secPw()')+
-      '<div style="font-size:11.5px;color:#7a8794;text-align:center;line-height:1.55;margin-top:2px">하나를 마치면 <b>내 계정으로 로그인된 다른 기기는 자동 로그아웃</b>돼요</div>'+
-      (SEC.mode==='block'?'':'<button style="'+B2+'" onclick="tfOnb.next()">나중에 하기</button>');
-    ov(h);
+      '<div style="font-size:11.5px;color:#7a8794;text-align:center;line-height:1.55;margin-top:2px">하나를 마치면 <b>내 계정으로 로그인된 다른 기기는 자동 로그아웃</b>돼요</div>'+laterBtn(SEC.mode));
   }
   OB.secMain=secMain;
   OB.secPw=function(){
     ov('<div style="font-size:17px;font-weight:900;color:#14213d">🔑 비밀번호 바꾸기</div><div style="font-size:12.5px;color:#667;margin-top:4px">1234 말고 나만 아는 숫자로 바꿔 주세요</div>'+
       '<input id="onb-c" type="password" inputmode="numeric" placeholder="현재 비밀번호 (1234)" style="'+INP+'"><input id="onb-n1" type="password" inputmode="numeric" placeholder="새 비밀번호 (4자리 이상)" style="'+INP+'"><input id="onb-n2" type="password" inputmode="numeric" placeholder="새 비밀번호 한 번 더" style="'+INP+'">'+
-      '<div style="font-size:11.5px;color:#b91c1c;margin-top:6px">※ 1234, 0000, 1111 같은 쉬운 번호는 안 돼요<br>※ 바꾸면 <b>이 폰을 포함한 모든 기기</b>가 로그아웃돼요 → 새 비밀번호로 다시 로그인</div><div id="onb-e" style="color:#c62828;font-size:12.5px;font-weight:800;min-height:16px;margin-top:6px"></div>'+
+      '<div style="font-size:11.5px;color:#b91c1c;margin-top:6px">※ 1234, 0000, 1111 같은 쉬운 번호는 안 돼요<br>※ 바꾸면 <b>이 기기를 포함한 모든 기기</b>가 로그아웃돼요 → 새 비밀번호로 다시 로그인</div><div id="onb-e" style="color:#c62828;font-size:12.5px;font-weight:800;min-height:16px;margin-top:6px"></div>'+
       '<button style="'+B1+'" onclick="tfOnb.secPwGo()">변경하기</button><button style="'+B2+'" onclick="tfOnb.secMain()">← 뒤로</button>');
   };
   OB.secPwGo=async function(){
@@ -23014,9 +23038,9 @@ window.mdConvertToNotice=mdConvertToNotice;
       var n=CU.name,rows=await _sbDrvRows(n);var drv=getDB()[n];
       var ok=(drv&&drv.password===c)||rows.some(function(x){return x.password===c;});
       if(!ok){e.textContent='현재 비밀번호가 틀려요.';return;}
-      await _sbSetPw(n,a);   // 성공 → 보안 번호 변경(모든 기기 로그아웃)
+      await _sbSetPw(n,a);
       var db=getDB();if(db[n]){db[n].password=a;try{localStorage.setItem('tfdb6',JSON.stringify(db));}catch(_e){}}
-      close();tfSess.out('✅ 비밀번호를 바꿨어요.\n\n보안을 위해 이 계정으로 로그인된 모든 기기를 로그아웃했어요.\n새 비밀번호로 다시 로그인해 주세요.');
+      close();Q=[];RUN=false;holdRelease();tfSess.out('✅ 비밀번호를 바꿨어요.\n\n보안을 위해 이 계정으로 로그인된 모든 기기를 로그아웃했어요.\n새 비밀번호로 다시 로그인해 주세요.');
     }catch(x){e.textContent='❌ 저장 실패: '+((x&&x.message)||x);}
   };
   OB.secFp=function(){
@@ -23029,59 +23053,101 @@ window.mdConvertToNotice=mdConvertToNotice;
     if(!pw){e.textContent='비밀번호를 입력해 주세요.';return;}
     e.textContent='👆 지문을 확인해 주세요...';
     var r=await tfFp.register(n,{pw:pw});
-    if(!r||!r.ok){e.textContent=(r&&r.err==='cancel')?'지문 등록이 취소됐어요.':(r&&r.err==='unsupported')?'이 폰은 지문 로그인을 지원하지 않아요.':tfFp.errMsg(r);return;}
+    if(!r||!r.ok){e.textContent=(r&&r.err==='cancel')?'지문 등록이 취소됐어요.':(r&&r.err==='unsupported')?'이 기기는 지문 로그인을 지원하지 않아요.':tfFp.errMsg(r);return;}
     try{localStorage.setItem('tf_autologin',JSON.stringify({name:n,fp:1,tok:r.tok}));}catch(_e){}
     ov('<div style="text-align:center;font-size:46px">✅</div><div style="text-align:center;font-size:19px;font-weight:900;color:#15803d;margin-top:6px">지문 등록 완료!</div><div style="font-size:12.5px;color:#556;text-align:center;line-height:1.6;margin-top:6px">이제 <b>이 폰 지문</b>으로만 들어올 수 있어요.<br>내 계정으로 로그인돼 있던 <b>다른 기기는 로그아웃</b>했어요.</div><button style="'+B1+'" onclick="tfOnb.next()">계속</button>');
   };
-  // ── 차량 점검 · 건강 자가체크 ──
+
+  /* ── 알림 켜기 ── */
+  var PUSH={};
+  function isIOS(){var u=navigator.userAgent||'';return /iPhone|iPad|iPod/.test(u)||(/Macintosh/.test(u)&&'ontouchend' in document);}
+  function standalone(){try{return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}catch(e){return false;}}
+  async function pushNeed(){
+    if(isIOS()&&!standalone())return 'ios';
+    if(typeof Notification==='undefined'||!('serviceWorker' in navigator))return null;   // 알림을 아예 못 쓰는 기기 → 안내 안 함
+    if(Notification.permission==='denied')return 'denied';
+    if(Notification.permission!=='granted')return 'default';
+    try{if(typeof registerSW==='function')await registerSW();var ok=(typeof subscribePush==='function')?await subscribePush():true;window._pushOn=!!ok;return ok?null:'fail';}catch(e){return 'fail';}
+  }
+  function step(n,t,ill){return '<div style="display:flex;gap:10px;align-items:center;background:#f6f8ff;border-radius:12px;padding:9px 10px;margin-bottom:7px"><span style="width:24px;height:24px;border-radius:50%;background:#1e88e5;color:#fff;font-weight:900;font-size:12.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+n+'</span><div style="flex:1;font-size:13.5px;color:#223;line-height:1.45">'+t+'</div>'+(ill?'<div style="flex-shrink:0;font-size:12px;font-weight:800;background:#eceff1;border-radius:8px;padding:3px 7px">'+ill+'</div>':'')+'</div>';}
+  function pushPop(kind){
+    var m=PUSH.mode,h;
+    if(kind==='default'){h='<div style="text-align:center;font-size:42px;line-height:1">🔔</div><div style="text-align:center;font-size:19px;font-weight:900;color:#1a237e;margin-top:8px">버튼 한 번이면 끝나요</div><div style="text-align:center;font-size:13px;color:#667;margin-top:6px">아래 버튼 → 뜨는 창에서 <b style="color:#1e88e5">[허용]</b>만 누르면<br>나머지는 앱이 알아서 연결해요</div><div style="background:#f5f7ff;border-radius:12px;padding:9px 12px;margin:12px 0 0;font-size:12.5px;color:#334;line-height:1.7">📦 오배송·미반납 <b>인입</b> 바로 알림<br>🌿 <b>신선 수량</b> 알림 · 📅 <b>스케줄·공지</b> 알림</div><div id="onb-pe" style="color:#c62828;font-size:12.5px;font-weight:800;min-height:16px;margin-top:8px;text-align:center"></div><button style="'+B1+'" onclick="tfOnb.pushGo()">🔔 알림 켜기</button>';}
+    else if(kind==='ios'){h='<div style="text-align:center;font-size:40px;line-height:1">📱</div><div style="text-align:center;font-size:18px;font-weight:900;color:#1a237e;margin-top:8px">아이폰은 홈 화면에 추가해야<br>알림이 와요</div><div style="margin-top:12px">'+step(1,'아래쪽 <b>공유 버튼</b> 누르기','⬆️')+step(2,'<b>홈 화면에 추가</b> 누르기','＋')+step(3,'홈 화면의 <b>TeamFlex</b> 아이콘으로 열기','TF')+step(4,'<b>[알림 켜기] → [허용]</b>','허용')+'</div><div style="text-align:center;font-size:11.5px;color:#99a">사파리 창에서는 아이폰 규칙상 알림이 안 와요</div>';}
+    else if(kind==='denied'){var and=/Android/i.test(navigator.userAgent||''),ios=isIOS();
+      h='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:30px">🚫</span><div><div style="font-size:18px;font-weight:900;color:#c62828">알림이 차단돼 있어요</div><div style="font-size:12.5px;color:#666">'+(ios?'아이폰':and?'안드로이드':'컴퓨터')+' · 30초면 풀 수 있어요</div></div></div><div style="margin-top:12px">'+
+        (ios?step(1,'아이폰 <b>설정</b> 앱 열기','⚙️')+step(2,'<b>알림</b> 누르기','🔔')+step(3,'목록에서 <b>TeamFlex</b> 누르기','TF')+step(4,'<b>알림 허용</b> 켜기','ON'):
+         and?step(1,'홈 화면 <b>TeamFlex 아이콘</b>을 <b>꾹~</b> 누르기','TF')+step(2,'<b>앱 정보</b> (ⓘ) 누르기','ⓘ')+step(3,'<b>알림</b> 누르기','🔔')+step(4,'<b>알림 허용</b> 켜기','ON')+'<div style="font-size:11.5px;color:#888;margin:2px 2px 6px">크롬 창으로 쓰는 경우: 주소창 왼쪽 🔒 → 권한 → 알림 허용</div>':
+         step(1,'주소창 왼쪽 <b>🔒(자물쇠)</b> 누르기','🔒')+step(2,'<b>알림</b> → <b>허용</b>으로 바꾸기','허용')+step(3,'화면 <b>새로고침</b>','⟳'))+
+        '</div><button style="'+B1+'" onclick="tfOnb.pushRe()">✅ 켰어요 — 다시 확인</button><div style="text-align:center;font-size:11.5px;color:#99a;margin-top:6px">켜고 돌아오면 연결은 자동으로 돼요</div>';}
+    else{h='<div style="text-align:center;font-size:40px">⚠️</div><div style="text-align:center;font-size:17px;font-weight:900;color:#c62828;margin-top:6px">알림 연결이 안 됐어요</div><div style="font-size:12.5px;color:#556;text-align:center;margin-top:6px;line-height:1.6">인터넷을 확인하고 다시 눌러 주세요.<br>계속 안 되면 관리자에게 알려 주세요.</div><button style="'+B1+'" onclick="tfOnb.pushRe()">🔄 다시 연결</button>';}
+    ov(h+laterBtn(m,m==='info'?'확인 ›':'나중에 하기 ›'));
+  }
+  OB.pushGo=async function(){var e=document.getElementById('onb-pe');try{if(e)e.textContent='⏳ 허용 창을 확인해 주세요...';var p=await Notification.requestPermission();if(p!=='granted'){pushPop(p==='denied'?'denied':'default');return;}await OB.pushRe(true);}catch(x){if(e)e.textContent='다시 눌러 주세요.';}};
+  OB.pushRe=async function(){var k=await pushNeed();if(k){pushPop(k);return;}
+    try{if(typeof _pushSend==='function')_pushSend({title:'✅ TeamFlex 알림 연결됐어요',body:'이제 인입·신선·스케줄 알림이 바로 와요',target_name:CU.name,data:{url:'/',type:'push_test'}});}catch(e){}
+    ov('<div style="text-align:center;font-size:46px">✅</div><div style="text-align:center;font-size:19px;font-weight:900;color:#1b5e20;margin-top:6px">알림 연결 완료!</div><div style="text-align:center;font-size:13px;color:#556;margin-top:6px">방금 시험 알림을 보냈어요.<br>알림이 왔으면 정상이에요 👍</div><button style="'+B1+'" onclick="tfOnb.next()">계속</button>');};
+
+  /* ── 차량 점검 · 건강 자가체크 ── */
   async function vehTodo(){try{var d=new Date(Date.now()+9*3600000);var ym=d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2);var r=await sbClient.from('app_settings').select('value').eq('key','insp_'+encodeURIComponent(CU.name)+'_'+ym).maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){}}var days=(v&&v.days)||{};return !days[d.getUTCDate()];}catch(e){return false;}}
   async function hcTodo(){try{if(typeof hcActive!=='function'||!hcActive())return false;if(!window._hcMineLoaded&&typeof hcLoadMine==='function')await hcLoadMine();return !window._hcMine;}catch(e){return false;}}
-  OB.go=function(k){close();RUN=false;Q=[];if(k==='veh'){try{inspOpen();}catch(e){}}else{try{hcOpenInput();}catch(e){}}};
+  OB.goTask=function(k){OB.pauseGo(function(){if(k==='veh'){inspOpen();}else{hcOpenInput();}});};
   function taskPop(items,mode){
     var h='<div style="text-align:center;font-size:38px;line-height:1">✅</div><div style="text-align:center;font-size:19px;font-weight:900;color:#14213d;margin-top:6px">오늘 꼭 해야 할 일</div><div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:12px;padding:8px 10px;font-size:12.5px;color:#9f1239;font-weight:800;text-align:center;margin:10px 0">필수 수행 항목입니다. 누르면 바로 해당 화면으로 가요.</div>';
-    items.forEach(function(k){h+=k==='veh'?card('🚚','차량 점검','오늘 점검 전 · 매일','#2563eb','#eff6ff','점검하러 가기',"tfOnb.go('veh')"):card('💪','건강 자가체크','이달 미작성 · 매월 1회','#e11d48','#fff1f2','체크하러 가기',"tfOnb.go('hc')");});
-    if(mode==='block')h+='<div style="font-size:11.5px;color:#b91c1c;text-align:center;margin-top:2px;font-weight:800">다 하기 전에는 앱을 쓸 수 없어요</div>';
-    else h+='<div style="font-size:11.5px;color:#7a8794;text-align:center;margin-top:2px">다 할 때까지 앱을 열 때마다 이 창이 떠요</div><button style="'+B2+'" onclick="tfOnb.next()">'+(mode==='info'?'확인 ›':'나중에 하기 ›')+'</button>';
+    items.forEach(function(k){h+=k==='veh'?card('🚚','차량 점검','오늘 점검 전 · 매일','#2563eb','#eff6ff','점검하러 가기',"tfOnb.goTask('veh')"):card('💪','건강 자가체크','이달 미작성 · 매월 1회','#e11d48','#fff1f2','체크하러 가기',"tfOnb.goTask('hc')");});
+    h+=mode==='block'?'<div style="font-size:11.5px;color:#b91c1c;text-align:center;margin-top:2px;font-weight:800">다 하기 전에는 앱을 쓸 수 없어요</div>':'<div style="font-size:11.5px;color:#7a8794;text-align:center;margin-top:2px">'+(mode==='info'?'하루 한 번 알려 드려요':'다 할 때까지 앱을 열 때마다 이 창이 떠요')+'</div>'+laterBtn(mode);
     ov(h);
   }
+  /* ── 처리할 인입 ── */
+  async function mdCount(){try{var r=await sbClient.from('misdelivery_cases').select('id,waybill_no,created_at,occurred_at,status,category').eq('driver_name',CU.name).eq('status','pending');var sw={},n=0,urg=99;((r&&r.data)||[]).forEach(function(x){if(typeof _mdNoAction==='function'&&_mdNoAction(x))return;if(typeof _mdSgOld==='function'&&_mdSgOld(x))return;var k=x.waybill_no?('w'+String(x.waybill_no).trim()):('i'+x.id);if(sw[k])return;sw[k]=1;n++;var el=(Date.now()-new Date(x.created_at||x.occurred_at).getTime())/86400000;var dl=3-Math.floor(el);if(dl<urg)urg=dl;});return n?{n:n,urg:urg}:null;}catch(e){return null;}}
+  OB.goMd=function(){OB.pauseGo(function(){go('md');});};
+  function mdPop(x,mode){ov('<div style="text-align:center;font-size:38px;line-height:1">🚨</div><div style="text-align:center;font-size:19px;font-weight:900;color:#c62828;margin-top:6px">처리할 인입이 있어요</div><div style="margin:12px 0">'+card('📦','미답변 인입 '+x.n+'건',(x.urg<=1?'가장 급한 건 D-'+Math.max(x.urg,0):'기한 안에 답변해 주세요'),'#c62828','#fff5f5','인입 보기','tfOnb.goMd()')+'</div>'+laterBtn(mode,'다음 ›'));}
+
+  /* ── 시작 ── */
   OB.start=async function(){
-    if(RUN)return;if(!window.CU||CU.role==='admin'||CU._master||window._tfMasterSess||window.__TF_SREQ_WORKER)return;
-    if(window.tfFp&&tfFp.checkAfterAuto&&!window.sbClient)return;
-    RUN=true;Q=[];
+    if(RUN)return;if(!window.CU||CU.role==='admin'||CU._master||window._tfMasterSess||window.__TF_SREQ_WORKER){OB._releaseAll();return;}
+    RUN=true;PAUSED=false;Q=[];
     try{
-    var n=CU.name;
-    // [v946] 설정·보안·차량·건강을 한 번에 동시 조회 → 바로 뜨게
-    var R=await Promise.all([OB.cfg(true),secNeed(n).catch(function(){return false;}),vehTodo().catch(function(){return false;}),hcTodo().catch(function(){return false;})]);
-    var c=R[0],need={sec:R[1],veh:R[2],hc:R[3]};
-    if(!window.CU||CU.name!==n){RUN=false;return;}
-    var tasks={};
-    for(var i=0;i<c.order.length;i++){var k=c.order[i];var s=c[k];if(!s||!s.on||!need[k])continue;
-      if(k==='sec'){SEC.mode=s.mode==='block'?'block':'rec';Q.push(secMain);}
-      else tasks[k]=s.mode;
-    }
-    // 차량점검·건강체크는 한 창에 같이 (더 센 방식 기준)
-    var tk=c.order.filter(function(k){return tasks[k];});
-    if(tk.length){var m=tk.some(function(k){return tasks[k]==='block';})?'block':(tk.some(function(k){return tasks[k]==='rec';})?'rec':'info');
-      var today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);var ik='tf_onb_info_'+n;
-      if(!(m==='info'&&(function(){try{return localStorage.getItem(ik)===today;}catch(e){return false;}})())){Q.push(function(){if(m==='info'){try{localStorage.setItem(ik,today);}catch(e){}}taskPop(tk,m);});}}
-    }catch(e){RUN=false;return;}
+      var n=CU.name;
+      var R=await Promise.all([OB.cfg(true),secNeed(n).catch(function(){return false;}),pushNeed().catch(function(){return null;}),vehTodo().catch(function(){return false;}),hcTodo().catch(function(){return false;}),mdCount().catch(function(){return null;})]);
+      var c=R[0],need={sec:R[1],push:R[2],veh:R[3],hc:R[4],md:R[5]};
+      if(!window.CU||CU.name!==n){RUN=false;OB._releaseAll();return;}
+      var h=HOLD||{greet:false,ann:null};
+      var taskDone=false;
+      c.order.forEach(function(k){var s=c[k];if(!s)return;
+        if(k==='sec'){if(s.on&&need.sec){SEC.mode=s.mode;Q.push(secMain);}}
+        else if(k==='push'){if(s.on&&need.push&&!(s.mode==='info'&&infoSeen('push'))){PUSH.mode=s.mode;var kind=need.push;Q.push(function(){if(PUSH.mode==='info')infoMark('push');pushPop(kind);});}}
+        else if(k==='veh'||k==='hc'){if(taskDone)return;var it=['veh','hc'].filter(function(t){return c[t].on&&need[t];});if(!it.length)return;taskDone=true;
+          it.sort(function(a,b){return c.order.indexOf(a)-c.order.indexOf(b);});
+          var m=it.some(function(t){return c[t].mode==='block';})?'block':(it.some(function(t){return c[t].mode==='rec';})?'rec':'info');
+          if(m==='info'&&infoSeen('task'))return;Q.push(function(){if(m==='info')infoMark('task');taskPop(it,m);});}
+        else if(k==='md'){if(s.on&&need.md&&!(s.mode==='info'&&infoSeen('md'))){var x=need.md,mm=s.mode;Q.push(function(){if(mm==='info')infoMark('md');mdPop(x,mm);});}}
+        else if(k==='greet'){if(s.on&&h.greet&&_ORIG.g)Q.push(function(){holdGreetDone=true;try{_ORIG.g();}catch(e){}setTimeout(next,60);});}
+        else if(k==='ann'){if(s.on&&_ORIG.a)Q.push(function(){holdRelease();try{_ORIG.a(false,function(){setTimeout(next,60);});}catch(e){next();}});}
+      });
+      // 마지막: 당일 라우트 · 스케줄 변경 확인 (기존)
+      Q.push(function(){holdRelease();RUN=false;if(c.sched.on&&typeof _startupPopupStep2==='function'){try{_startupPopupStep2();}catch(e){}}});
+    }catch(e){RUN=false;OB._releaseAll();return;}
     next();
   };
-  // 막기 모드: 홈으로 돌아올 때마다 다시 확인
-  OB.recheck=function(){if(!RUN)setTimeout(OB.start,400);};
-  // 앱 시작 직후 실행
+  var holdGreetDone=false;
+  OB.recheck=function(){if(PAUSED){OB.resume();return;}if(!RUN)setTimeout(OB.start,400);};
   var _la=window.launchApp;
   if(typeof _la==='function'){
-    window.launchApp=function(){var r=_la.apply(this,arguments);try{setTimeout(function(){tfSess.checkSavedPw();tfSess.check();},400);setTimeout(OB.start,250);}catch(e){}return r;};
+    window.launchApp=function(){
+      var drv=!!(window.CU&&CU.role!=='admin'&&!CU._master&&!window._tfMasterSess&&!window.__TF_SREQ_WORKER);
+      if(drv)holdStart();
+      var r=_la.apply(this,arguments);
+      try{setTimeout(function(){tfSess.checkSavedPw();tfSess.check();},400);if(drv)setTimeout(OB.start,200);else OB._releaseAll();}catch(e){}
+      setTimeout(function(){if(HOLD&&!RUN)OB._releaseAll();},20000);   // 안전장치: 무슨 일이 있어도 20초 뒤엔 기존 팝업 풀기
+      return r;};
   }
-  // 이미 자동로그인으로 들어와 있는 경우(이 스크립트보다 먼저 실행됨)도 바로 점검
   setTimeout(function(){try{if(window.CU){tfSess.checkSavedPw();tfSess.check();OB.start();}}catch(e){}},300);
   var _go=window.go;
-  if(typeof _go==='function'){window.go=function(t){var r=_go.apply(this,arguments);try{if(t==='hm'&&CFG&&((CFG.veh&&CFG.veh.mode==='block')||(CFG.hc&&CFG.hc.mode==='block')||(CFG.sec&&CFG.sec.mode==='block')))OB.recheck();}catch(e){}return r;};}
+  if(typeof _go==='function'){window.go=function(t){var r=_go.apply(this,arguments);try{if(t==='hm'){if(PAUSED)OB.resume();else if(CFG&&['sec','push','veh','hc'].some(function(k){return CFG[k]&&CFG[k].on&&CFG[k].mode==='block';}))OB.recheck();}}catch(e){}return r;};}
 
-  // ── 관리자: 접속 팝업 · 보안 현황 ──
+  /* ── 관리자 화면 ── */
   var DR=null;
-  var LBL={sec:['🔐','보안 (지문·비번)','지문 등록 또는 비번 변경 중 하나만 하면 끝 · 그 뒤로는 안 뜸'],veh:['🚚','차량 점검','오늘 점검 전이면'],hc:['💪','건강 자가체크','이달 미작성이면']};
   OB.openAdmin=async function(){
     if(!(window.CU&&CU.role==='admin'))return;
     DR=JSON.parse(JSON.stringify(await OB.cfg(true)));
@@ -23093,21 +23159,24 @@ window.mdConvertToNotice=mdConvertToNotice;
   OB.closeAdmin=function(){var o=document.getElementById('tf-onb-adm');if(o)o.remove();};
   OB._mode=function(k,m){DR[k].mode=m;OB.paintAdmin();};
   OB._on=function(k){DR[k].on=!DR[k].on;OB.paintAdmin();};
-  OB._mv=function(k,d){var a=DR.order,i=a.indexOf(k),j=i+d;if(j<0||j>=a.length)return;a.splice(i,1);a.splice(j,0,k);OB.paintAdmin();};
+  OB._mv=function(k,d){var a=DR.order,i=a.indexOf(k),j=i+d;if(i<0||j<0||j>=a.length)return;a.splice(i,1);a.splice(j,0,k);OB.paintAdmin();};
   OB._save=async function(){try{await sbClient.from('app_settings').upsert({key:'tf_onb_cfg',value:JSON.stringify(DR)},{onConflict:'key'});CFG=JSON.parse(JSON.stringify(DR));showToast('💾 접속 팝업 설정 저장',true);}catch(e){alert('저장 실패');}};
+  var MD={block:['🔒 막기','#c62828'],rec:['💡 권장','#c2410c'],info:['ℹ️ 알림만','#1565c0']};
+  function rowHtml(k,i,fixed){var r=DR[k],L=LBL[k],on=!!r.on,ms=MODES[k];
+    return '<div style="border:1.5px solid #e5e7eb;border-radius:13px;padding:9px 10px;margin-bottom:7px;opacity:'+(on?1:.55)+';background:'+(fixed?'#fafafa':'#fff')+'"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;font-weight:900;color:#94a3b8;width:14px">'+(i+1)+'</span><span style="font-size:20px">'+L[0]+'</span><div style="flex:1"><div style="font-size:14px;font-weight:900;color:#1f2937">'+L[1]+'</div><div style="font-size:10.5px;color:#64748b">'+L[2]+'</div></div>'+
+      (fixed?'<span style="font-size:10px;color:#94a3b8;font-weight:800">고정</span>':'<span style="display:flex;flex-direction:column;gap:2px"><span onclick="tfOnb._mv(\''+k+'\',-1)" style="cursor:pointer;color:#64748b;font-size:12px;padding:0 4px">▲</span><span onclick="tfOnb._mv(\''+k+'\',1)" style="cursor:pointer;color:#64748b;font-size:12px;padding:0 4px">▼</span></span>')+
+      '<span onclick="tfOnb._on(\''+k+'\')" style="cursor:pointer;display:inline-block;width:40px;height:22px;border-radius:11px;background:'+(on?'#16a34a':'#cbd5e1')+';position:relative;flex-shrink:0"><span style="position:absolute;'+(on?'right':'left')+':2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff"></span></span></div>'+
+      (ms.length?'<div style="display:flex;gap:3px;margin-top:6px">'+ms.map(function(m){var a=m===r.mode;return '<span onclick="tfOnb._mode(\''+k+'\',\''+m+'\')" style="cursor:pointer;flex:1;text-align:center;font-size:11.5px;font-weight:900;padding:6px 0;border-radius:8px;'+(a?'background:'+MD[m][1]+';color:#fff':'background:#f3f4f6;color:#9ca3af')+'">'+MD[m][0]+'</span>';}).join('')+'</div>':'')+'</div>';}
   OB.paintAdmin=function(){
     var b=document.getElementById('tf-onb-body');if(!b||!DR)return;
     var sec=document.getElementById('tf-onb-sec');var secH=sec?sec.outerHTML:'<div id="tf-onb-sec" style="font-size:12px;color:#94a3b8;text-align:center;padding:10px">보안 현황 불러오는 중...</div>';
-    var h='<div style="font-size:11.5px;color:#64748b;text-align:center;margin-bottom:10px;line-height:1.55">기사가 앱을 열면 <b>위에서부터 순서대로, 해당되는 것만</b> 떠요<br><b style="color:#c62828">🔒 막기</b>=끝낼 때까지 앱 못 씀 · <b style="color:#c2410c">💡 권장</b>=[나중에] 가능, 다음 접속 때 또 뜸 · <b style="color:#1565c0">ℹ️ 알림만</b>=하루 한 번</div>';
-    DR.order.forEach(function(k,i){var r=DR[k],L=LBL[k],on=!!r.on;
-      var opts=k==='sec'?[['block','🔒 막기','#c62828'],['rec','💡 권장','#c2410c']]:[['block','🔒 막기','#c62828'],['rec','💡 권장','#c2410c'],['info','ℹ️ 알림만','#1565c0']];
-      h+='<div style="border:1.5px solid #e5e7eb;border-radius:13px;padding:9px 10px;margin-bottom:7px;opacity:'+(on?1:.55)+'"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;font-weight:900;color:#94a3b8;width:12px">'+(i+1)+'</span><span style="font-size:20px">'+L[0]+'</span><div style="flex:1"><div style="font-size:14px;font-weight:900;color:#1f2937">'+L[1]+'</div><div style="font-size:10.5px;color:#64748b">'+L[2]+'</div></div>'+
-        '<span style="display:flex;flex-direction:column;gap:2px"><span onclick="tfOnb._mv(\''+k+'\',-1)" style="cursor:pointer;color:#64748b;font-size:12px;padding:0 4px">▲</span><span onclick="tfOnb._mv(\''+k+'\',1)" style="cursor:pointer;color:#64748b;font-size:12px;padding:0 4px">▼</span></span>'+
-        '<span onclick="tfOnb._on(\''+k+'\')" style="cursor:pointer;display:inline-block;width:40px;height:22px;border-radius:11px;background:'+(on?'#16a34a':'#cbd5e1')+';position:relative"><span style="position:absolute;'+(on?'right':'left')+':2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff"></span></span></div>'+
-        '<div style="display:flex;gap:3px;margin-top:6px">'+opts.map(function(x){var a=x[0]===r.mode;return '<span onclick="tfOnb._mode(\''+k+'\',\''+x[0]+'\')" style="cursor:pointer;flex:1;text-align:center;font-size:11.5px;font-weight:900;padding:6px 0;border-radius:8px;'+(a?'background:'+x[2]+';color:#fff':'background:#f3f4f6;color:#9ca3af')+'">'+x[1]+'</span>';}).join('')+'</div></div>';});
-    h+='<div style="font-size:11px;color:#64748b;background:#f8fafc;border-radius:10px;padding:8px 10px;line-height:1.55;margin-bottom:8px">그 다음은 기존대로: 📄 계약서 → 📢 공지·🚨 인입 → 📅 스케줄 요청 · 관리자·마스터키 접속은 안 뜸</div>';
-    h+='<button onclick="tfOnb._save()" style="display:block;width:100%;border:0;border-radius:12px;padding:12px;font-weight:900;font-size:15px;cursor:pointer;background:#ea580c;color:#fff">💾 저장</button>';
-    h+='<div style="height:14px"></div>'+secH;
+    var gate=(typeof ctGateOn==='function'&&ctGateOn());
+    var h='<div style="font-size:11.5px;color:#64748b;text-align:center;margin-bottom:10px;line-height:1.55">기사가 앱을 열면 <b>위에서부터 순서대로, 해당되는 것만</b> 떠요<br><b style="color:#c62828">🔒 막기</b>=끝낼 때까지 앱 못 씀 · <b style="color:#c2410c">💡 권장</b>=[나중에] 가능, 다음 접속 때 또 뜸 · <b style="color:#1565c0">ℹ️ 알림만</b>=하루 한 번</div>'+
+      '<div style="border:1.5px solid #e5e7eb;border-radius:13px;padding:9px 10px;margin-bottom:7px;background:#fafafa"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;font-weight:900;color:#94a3b8;width:14px">·</span><span style="font-size:20px">📄</span><div style="flex:1"><div style="font-size:14px;font-weight:900;color:#1f2937">계약서 <span style="font-size:11px;font-weight:900;color:'+(gate?'#c62828':'#94a3b8')+'">'+(gate?'🔒 막기 켜짐':'꺼짐')+'</span></div><div style="font-size:10.5px;color:#64748b">작성·승인 전엔 앱 화면 대신 계약서 화면 (계약서 관리에서 켜고 끔)</div></div><span onclick="tfOnb.closeAdmin();_ctAdminV=\'hub\';openContractAdmin()" style="cursor:pointer;font-size:11px;font-weight:900;color:#5a2fb0;border:1.5px solid #c4b5fd;border-radius:8px;padding:4px 7px;white-space:nowrap">설정 ›</span></div></div>';
+    DR.order.forEach(function(k,i){h+=rowHtml(k,i,false);});
+    h+=rowHtml('sched',DR.order.length,true);
+    h+='<button onclick="tfOnb._save()" style="display:block;width:100%;border:0;border-radius:12px;padding:12px;font-weight:900;font-size:15px;cursor:pointer;background:#ea580c;color:#fff;margin-top:4px">💾 저장</button>';
+    h+='<div style="font-size:11px;color:#64748b;text-align:center;margin-top:6px">관리자·마스터키 접속에는 안 떠요</div><div style="height:14px"></div>'+secH;
     b.innerHTML=h;
   };
   OB.loadSec=async function(){
@@ -23130,4 +23199,5 @@ window.mdConvertToNotice=mdConvertToNotice;
   };
 })();
 </script>
+
 </body></html>
