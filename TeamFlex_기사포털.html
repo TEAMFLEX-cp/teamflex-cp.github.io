@@ -22835,12 +22835,18 @@ window.mdConvertToNotice=mdConvertToNotice;
     var lg=log[c.id]||log[String(c.id)]||null;
     var pre=!!(cfg.since&&new Date(c.created_at||c.occurred_at)<new Date(cfg.since));
     return {n:n,day:day,time:tm,due:due,label:mdK(day)+' '+tm,log:lg,pending:(c.status==='pending'),pre:pre};};
-  AL.badge=function(c){var p=AL.planOf(c);if(!p)return '';
+  /* [v951] 재요청 줄의 D-day 자리에 '오늘/내일 HH:MM 분실처리 예정' */
+  function kToday(){return kymd(new Date().toISOString());}
+  AL.relLabel=function(p){var t=kToday(),tm=addD(t,1);if(new Date()>=p.due)return '곧 분실';if(p.day===t)return '오늘 분실';if(p.day===tm)return '내일 분실';return (+p.day.slice(5,7))+'/'+(+p.day.slice(8,10))+' 분실';};
+  AL.ddFor=function(c){var p=AL.planOf(c);if(!p||!p.pending||p.log)return '';
+    if(p.pre)return '<span class="md-al-dd" style="font-size:11px;font-weight:900;color:#e65100;background:#fff3e0;border:1px solid #ffcc80;padding:2px 5px;border-radius:7px;flex-shrink:0;white-space:nowrap">⚠️직접 분실</span>';
+    return '<span class="md-al-dd" style="font-size:11px;font-weight:900;color:#fff;background:#5e35b1;padding:2px 6px;border-radius:7px;flex-shrink:0;white-space:nowrap">⏰'+AL.relLabel(p)+'</span>';};
+  AL.badge=function(c,inRow){var p=AL.planOf(c);if(!p)return '';
     if(p.log&&p.log.st==='skip')return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#eceff1;color:#78909c;border-radius:8px;padding:2px 8px">🚫 자동 분실 제외</span>';
     if(p.log&&(p.log.st==='done'||p.log.st==='now'))return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:2px 8px">✅ 분실 처리 요청 완료</span>';
     if(!p.pending)return '';
     if(p.pre)return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#fff3e0;color:#e65100;border-radius:8px;padding:2px 8px">⚠️ 자동 대상 아님 (켜기 전 재요청) · 직접 분실 요청</span>';
-    return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#ede7f6;color:#5e35b1;border-radius:8px;padding:2px 8px">⏰ '+p.label+' 자동 분실 예정</span>';};
+    return '<span style="display:inline-block;font-size:11px;font-weight:900;background:#ede7f6;color:#5e35b1;border-radius:8px;padding:2px 8px">⏰ '+p.label+' 분실처리 예정</span>';};
   // ── 실행: 팀즈 답글(폴러가 건 정보 양식으로 원글 인용 게시) + 처리완료 + 알림 ──
   async function act(c,by){
     var now=new Date().toISOString();
@@ -22895,7 +22901,7 @@ window.mdConvertToNotice=mdConvertToNotice;
   function paint(force){try{if(!window.CU||window.__TF_SREQ_WORKER)return;var adm=CU.role==='admin',ld=CU.role==='leader';
     if(adm){var anchor=document.getElementById('md-mode-cats');if(anchor){var box=document.getElementById('md-al-card');if(!box){box=document.createElement('div');box.id='md-al-card';box.style.cssText='background:#fff;border-radius:14px;padding:11px 12px;margin:0 0 12px;box-shadow:0 1px 4px rgba(0,0,0,.08);border:2px solid #b39ddb';anchor.parentNode.insertBefore(box,anchor.nextSibling);force=true;}if(force||!box.innerHTML)box.innerHTML=cardHtml();}}
     if(!CFG||!CFG.on)return;var cs=window._mdCases||[];var byId={};cs.forEach(function(c){byId[c.id]=c;});
-    document.querySelectorAll('[id^="md-card-"]').forEach(function(el){var id=+el.id.slice(8);var c=byId[id];var bh=c?AL.badge(c):'';var cur=el.querySelector('.md-al-b');var sig=bh;if(cur&&cur.dataset.sig===sig)return;if(cur)cur.remove();if(!bh)return;var d=document.createElement('div');d.className='md-al-b';d.dataset.sig=sig;d.style.cssText='margin:5px 0 0';d.innerHTML=bh;el.appendChild(d);});
+    document.querySelectorAll('[id^="md-card-"]').forEach(function(el){var id=+el.id.slice(8);var c=byId[id];try{var pp=c?AL.planOf(c):null;var row=el.querySelector('div[style*="display:flex"]');var dd=row&&[].slice.call(row.children).find(function(x){return /^D-\d+일$/.test(x.textContent.trim());});if(dd)dd.style.display=(pp&&pp.pending&&!pp.log)?'none':'';}catch(_e){}var bh=c?AL.badge(c,true):'';var cur=el.querySelector('.md-al-b');var sig=bh;if(cur&&cur.dataset.sig===sig)return;if(cur)cur.remove();if(!bh)return;var d=document.createElement('div');d.className='md-al-b';d.dataset.sig=sig;d.style.cssText='margin:5px 0 0';d.innerHTML=bh;el.appendChild(d);});
     document.querySelectorAll('[id^="md-mgcard-"]').forEach(function(el){var gi=+el.id.slice(10);var g=(window._mdMibaGroupArr||[])[gi];if(!g)return;var bs=[];(g.rows||[]).forEach(function(r){var b=r.latest?AL.badge(r.latest):'';if(b&&bs.indexOf(b)<0)bs.push(b);});var bh=bs.slice(0,2).join(' ');var cur=el.querySelector('.md-al-b');if(cur&&cur.dataset.sig===bh)return;if(cur)cur.remove();if(!bh)return;var d=document.createElement('div');d.className='md-al-b';d.dataset.sig=bh;d.style.cssText='margin:5px 0 0';d.innerHTML=bh;el.appendChild(d);});
     var mo=document.getElementById('md-detail-modal');if(mo&&mo.style.display!=='none'){var lb=mo.querySelector('button[onclick^="mdLossRequest("]');if(lb){var id=+(lb.getAttribute('onclick').match(/\d+/)||[0])[0];var c=byId[id];var p=c?AL.planOf(c):null;var ex=mo.querySelector('.md-al-d');var sg=p?JSON.stringify([p.label,p.log,c.status]):'';if(ex&&ex.dataset.sig===sg&&!force)return;if(ex)ex.remove();if(!p)return;
       var can=adm||ld,h;
