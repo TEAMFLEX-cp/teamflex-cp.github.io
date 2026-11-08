@@ -4142,6 +4142,9 @@ function openCfgSubMenu(){
         '<button onclick="closeCfgSubMenu();hcOpenAdmin()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#fdeeec;border:2px solid #f0b8b0;border-radius:14px;font-size:15px;font-weight:700;color:#b0392f;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F4AA;</span><div style="flex:1;min-width:0"><div>근골격계 건강체크</div><div style="font-size:11px;font-weight:400;color:#c86a62;margin-top:2px">월1회 증상조사 · 종합·출력·노출제어</div></div>'+
         '</button>'+
+        '<button onclick="closeCfgSubMenu();tfOnb.openAdmin()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#fff7ed;border:2px solid #fdba74;border-radius:14px;font-size:15px;font-weight:700;color:#9a3412;cursor:pointer;text-align:left;box-sizing:border-box">'+
+          '<span style="font-size:24px;flex-shrink:0">📋</span><div style="flex:1;min-width:0"><div>접속 팝업 · 보안 현황</div><div style="font-size:11px;font-weight:400;color:#c2410c;margin-top:2px">앱 열 때 뜨는 창 순서·막기/권장 · 기사 지문/비번 · 강제 로그아웃</div></div>'+
+        '</button>'+
         '<button onclick="closeCfgSubMenu();pushStatusAdmin()" style="display:flex;align-items:center;gap:14px;width:100%;padding:16px 20px;background:#e7f0ff;border:2px solid #b8ccff;border-radius:14px;font-size:15px;font-weight:700;color:#1546b0;cursor:pointer;text-align:left;box-sizing:border-box">'+
           '<span style="font-size:24px;flex-shrink:0">&#x1F514;</span><div style="flex:1;min-width:0"><div>구독 관리</div><div style="font-size:11px;font-weight:400;color:#5b83c9;margin-top:2px">실시간 구독자·미구독자 확인</div></div>'+
         '</button>'+
@@ -11119,7 +11122,7 @@ function submitPwChange(){
       await _sbSetPw(CU.name,n1);
       db=getDB();if(db[CU.name]){db[CU.name].password=n1;localStorage.setItem('tfdb6',JSON.stringify(db));try{_drvPushSnap[CU.name]=JSON.stringify(db[CU.name]);}catch(_e){}}
       try{var al=JSON.parse(localStorage.getItem('tf_autologin')||'null');if(al&&al.name===CU.name){saveAutoLogin(CU.name,n1);}}catch(_e){}
-      errEl.textContent='';closePwModal();alert('비밀번호가 변경되었습니다.');
+      errEl.textContent='';closePwModal();try{tfSess.out('✅ 비밀번호가 변경되었습니다.\n\n보안을 위해 이 계정으로 로그인된 모든 기기를 로그아웃했어요.\n새 비밀번호로 다시 로그인해 주세요.');}catch(_x){alert('비밀번호가 변경되었습니다.');}
     }catch(e){errEl.textContent='❌ 저장 실패: '+((e&&e.message)||e)+' — 다시 시도해 주세요.';}
   })();
 }
@@ -22905,6 +22908,219 @@ window.mdConvertToNotice=mdConvertToNotice;
   }catch(e){}}
   AL.paint=paint;
   var w=0,t=setInterval(function(){w++;if(window.sbClient&&window.CU){clearInterval(t);AL.cfg().then(function(){AL.log().then(function(){paint(true);});});setInterval(function(){if(document.getElementById('md-mode-cats')||document.querySelector('[id^="md-card-"],[id^="md-mgcard-"]')){AL.cfg().then(function(){AL.log().then(function(){paint(false);});});}},1500);}if(w>600)clearInterval(t);},1000);
+})();
+</script>
+<script>
+/* ══════ [v945] 접속 보안 · 접속 팝업 순서 ══════
+   1) tfSess: 계정별 '보안 번호'(app_settings 'tf_sv:<이름>'). 비번 변경·지문 등록·관리자 로그아웃 때 바뀜
+      → 그 계정으로 로그인된 다른 폰은 앱을 열 때 / 1분마다 / 화면 돌아올 때 확인해서 즉시 로그아웃
+      → 자동로그인에 저장된 예전 비번이 서버 비번과 다르면 앱 열 때 바로 로그아웃
+   2) tfOnb: 앱 열 때 팝업 순서 — 보안(지문 또는 비번 변경 중 하나) → 차량 점검 → 건강 자가체크 → (기존: 공지·인입·스케줄 등)
+      관리자 설정 app_settings 'tf_onb_cfg' {sec:{on,mode},veh:{on,mode},hc:{on,mode},order:[..]}  mode: block(막기)/rec(권장)/info(알림만)  */
+(function(){
+  if(window.tfSess)return;
+  var SS={};window.tfSess=SS;
+  function sb(){return window.sbClient;}
+  function lsG(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+  function lsS(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v);}catch(e){}}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  SS.esc=esc;
+  function skip(){return !window.CU||CU.role==='admin'||CU._master||window._tfMasterSess||window.__TF_SREQ_WORKER||CU.name==='__admin__';}
+  SS.server=async function(n){try{var r=await sb().from('app_settings').select('value').eq('key','tf_sv:'+n).maybeSingle();if(r&&r.error)return undefined;return (r&&r.data&&r.data.value)||'';}catch(e){return undefined;}};
+  SS.bump=async function(n,keepHere){var v=String(Date.now())+Math.random().toString(36).slice(2,6);try{await sb().from('app_settings').upsert({key:'tf_sv:'+n,value:v},{onConflict:'key'});}catch(e){return false;}if(keepHere)lsS('tf_sv_'+n,v);return true;};
+  SS.out=function(msg){var n=window.CU&&CU.name;if(n)lsS('tf_sv_'+n,null);try{doLogout();}catch(e){}setTimeout(function(){try{alert(msg);}catch(e){}},80);};
+  var BUSY=false;
+  SS.check=async function(){
+    if(BUSY||skip()||!sb())return;BUSY=true;
+    try{
+      var n=CU.name,sv=await SS.server(n);if(sv===undefined)return;
+      var lv=lsG('tf_sv_'+n);
+      if(lv==null){lsS('tf_sv_'+n,sv);return;}      // 이 폰에서 처음 → 현재 번호 기억
+      if(sv!==lv){SS.out('🔒 '+n+' 님 계정의 비밀번호·지문이 바뀌어서\n이 기기는 자동으로 로그아웃됐어요.\n\n본인이 바꾼 게 아니면 관리자에게 바로 알려 주세요.');}
+    }finally{BUSY=false;}
+  };
+  // 자동로그인에 저장된 비번이 서버 비번과 다르면(다른 폰에서 바꿈) 즉시 로그아웃
+  SS.checkSavedPw=async function(){
+    if(skip()||!sb())return;
+    try{var s=JSON.parse(lsG('tf_autologin')||'null');if(!s||s.fp||!s.pw||s.name!==CU.name)return;
+      var rows=await _sbDrvRows(CU.name,'password');if(!rows||!rows.length)return;
+      if(!rows.some(function(x){return x&&x.password===s.pw;}))SS.out('🔒 비밀번호가 바뀌어서 로그아웃됐어요.\n새 비밀번호로 다시 로그인해 주세요.');
+    }catch(e){}
+  };
+  setInterval(function(){SS.check();},60000);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')SS.check();});
+  // 비번 저장(_sbSetPw)이 성공하면 → 그 계정 보안 번호 변경 (기사 본인 변경·관리자 초기화 모두)
+  try{var _o=window._sbSetPw;if(typeof _o==='function'){window._sbSetPw=async function(name,pw){var r=await _o.apply(this,arguments);try{await SS.bump(name,false);}catch(e){}return r;};}}catch(e){}
+  // 지문 등록 성공 → 다른 기기 로그아웃(이 폰은 유지)
+  var _w=0,_t=setInterval(function(){_w++;if(window.tfFp&&tfFp.register&&!tfFp.__svHook){clearInterval(_t);var _r=tfFp.register;tfFp.register=async function(n){var f=await _r.apply(this,arguments);if(f&&f.ok){try{await SS.bump(n,true);}catch(e){}}return f;};tfFp.__svHook=1;}if(_w>200)clearInterval(_t);},300);
+  // 관리자: 특정 기사 모든 기기 로그아웃
+  SS.kick=async function(n){if(!(window.CU&&CU.role==='admin'))return;if(!confirm(n+' 님 계정으로 로그인된 모든 기기를 로그아웃할까요?'))return;var ok=await SS.bump(n,false);try{showToast(ok?('🚪 '+n+' — 모든 기기 로그아웃 (1분 안에 적용)'):'❌ 실패',ok);}catch(e){}};
+})();
+
+(function(){
+  if(window.tfOnb)return;
+  var OB={};window.tfOnb=OB;var esc=tfSess.esc;
+  var DEF={sec:{on:true,mode:'block'},veh:{on:true,mode:'rec'},hc:{on:true,mode:'rec'},order:['sec','veh','hc']};
+  var CFG=null;
+  OB.cfg=async function(force){if(CFG&&!force)return CFG;try{var r=await sbClient.from('app_settings').select('value').eq('key','tf_onb_cfg').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);CFG=Object.assign(JSON.parse(JSON.stringify(DEF)),v||{});['sec','veh','hc'].forEach(function(k){CFG[k]=Object.assign({},DEF[k],(v&&v[k])||{});});if(!Array.isArray(CFG.order)||CFG.order.length!==3)CFG.order=DEF.order.slice();}catch(e){CFG=JSON.parse(JSON.stringify(DEF));}return CFG;};
+  var WEAK=['1234','0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','4321','1212','0123','12345','123456','00000','000000','11111','111111'];
+  function ov(inner,id){id=id||'tf-onb';var o=document.getElementById(id);if(o)o.remove();o=document.createElement('div');o.id=id;o.style.cssText='position:fixed;inset:0;z-index:2147482500;background:rgba(10,25,45,.6);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';o.innerHTML='<div style="background:#fff;border-radius:22px;width:100%;max-width:370px;padding:20px 18px 16px;box-shadow:0 18px 50px rgba(0,0,0,.35);max-height:94vh;overflow:auto">'+inner+'</div>';document.body.appendChild(o);return o;}
+  function close(id){var o=document.getElementById(id||'tf-onb');if(o)o.remove();}
+  OB.close=close;
+  var MSG='<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:12px;padding:9px 11px;font-size:13px;color:#9f1239;font-weight:800;text-align:center;margin:10px 0">🔒 개인정보 보안을 위해서 필수항목입니다.</div>';
+  var INP='width:100%;box-sizing:border-box;border:1.5px solid #d5dbe4;border-radius:11px;padding:12px;font-size:15px;margin-top:8px';
+  var B1='display:block;width:100%;border:0;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer;margin-top:10px;color:#fff;background:linear-gradient(135deg,#1565c0,#1e88e5)';
+  var B2='display:block;width:100%;border:0;border-radius:12px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;margin-top:8px;background:#eef2f6;color:#455a64';
+  function card(ic,t,sub,c,bg,btn,fn){return '<div style="display:flex;align-items:center;gap:10px;border:2px solid '+c+'55;background:'+bg+';border-radius:14px;padding:11px 12px;margin-bottom:9px"><span style="font-size:26px">'+ic+'</span><div style="flex:1"><div style="font-size:15px;font-weight:900;color:#14213d">'+t+'</div><div style="font-size:12px;color:'+c+';font-weight:800;margin-top:2px">'+sub+'</div></div><button onclick="'+fn+'" style="border:0;background:'+c+';color:#fff;font-weight:900;font-size:13px;border-radius:10px;padding:9px 10px;white-space:nowrap;cursor:pointer">'+btn+'</button></div>';}
+  var Q=[],RUN=false;
+  function next(){var f=Q.shift();if(f){f();}else{RUN=false;}}
+  OB.next=function(){close();next();};
+  // ── 보안 ──
+  var SEC={};
+  async function secNeed(n){
+    var fp=false;try{if(tfFp.isFp(n))fp=true;else{var st=await tfFp.status(n);fp=!!(st&&st.fp);}}catch(e){}
+    if(fp)return false;
+    var rows=[];try{rows=await _sbDrvRows(n,'password');}catch(e){}
+    var pw=(rows[0]&&rows[0].password)||((getDB()[n]||{}).password)||'';
+    if(!rows.length&&!pw)return false;
+    return rows.length?rows.every(function(x){return !x.password||x.password==='1234';}):(pw==='1234');
+  }
+  function secMain(){
+    var n=CU.name,canFp=!!(window.tfFp&&tfFp.supported&&tfFp.supported());
+    var h='<div style="text-align:center;font-size:40px;line-height:1">🔐</div><div style="text-align:center;font-size:19px;font-weight:900;color:#14213d;margin-top:6px">보안 설정이 필요해요</div>'+MSG+
+      '<div style="font-size:12.5px;color:#556;text-align:center;margin-bottom:10px">아래 <b>둘 중 하나만</b> 하면 돼요</div>'+
+      (canFp?card('👆','지문 등록 <span style="font-size:10.5px;background:#0f766e;color:#fff;border-radius:6px;padding:1px 6px;vertical-align:middle">추천</span>','내 폰 지문으로만 들어올 수 있어요','#0f766e','#f0fdfa','등록','tfOnb.secFp()'):card('👆','지문 등록','이 폰은 지문 로그인을 지원하지 않아요','#94a3b8','#f8fafc','불가','void 0'))+
+      card('🔑','비밀번호 바꾸기','지금 기본 비밀번호(1234) 사용 중','#1565c0','#eff6ff','바꾸기','tfOnb.secPw()')+
+      '<div style="font-size:11.5px;color:#7a8794;text-align:center;line-height:1.55;margin-top:2px">하나를 마치면 <b>내 계정으로 로그인된 다른 기기는 자동 로그아웃</b>돼요</div>'+
+      (SEC.mode==='block'?'':'<button style="'+B2+'" onclick="tfOnb.next()">나중에 하기</button>');
+    ov(h);
+  }
+  OB.secMain=secMain;
+  OB.secPw=function(){
+    ov('<div style="font-size:17px;font-weight:900;color:#14213d">🔑 비밀번호 바꾸기</div><div style="font-size:12.5px;color:#667;margin-top:4px">1234 말고 나만 아는 숫자로 바꿔 주세요</div>'+
+      '<input id="onb-c" type="password" inputmode="numeric" placeholder="현재 비밀번호 (1234)" style="'+INP+'"><input id="onb-n1" type="password" inputmode="numeric" placeholder="새 비밀번호 (4자리 이상)" style="'+INP+'"><input id="onb-n2" type="password" inputmode="numeric" placeholder="새 비밀번호 한 번 더" style="'+INP+'">'+
+      '<div style="font-size:11.5px;color:#b91c1c;margin-top:6px">※ 1234, 0000, 1111 같은 쉬운 번호는 안 돼요<br>※ 바꾸면 <b>이 폰을 포함한 모든 기기</b>가 로그아웃돼요 → 새 비밀번호로 다시 로그인</div><div id="onb-e" style="color:#c62828;font-size:12.5px;font-weight:800;min-height:16px;margin-top:6px"></div>'+
+      '<button style="'+B1+'" onclick="tfOnb.secPwGo()">변경하기</button><button style="'+B2+'" onclick="tfOnb.secMain()">← 뒤로</button>');
+  };
+  OB.secPwGo=async function(){
+    var c=document.getElementById('onb-c').value,a=document.getElementById('onb-n1').value,b=document.getElementById('onb-n2').value,e=document.getElementById('onb-e');
+    if(a.length<4){e.textContent='새 비밀번호는 4자리 이상이어야 해요.';return;}
+    if(a!==b){e.textContent='새 비밀번호가 서로 달라요.';return;}
+    if(WEAK.indexOf(a)>=0){e.textContent='너무 쉬운 번호예요. 다른 번호로 해 주세요.';return;}
+    if(a===c){e.textContent='지금과 다른 번호로 해 주세요.';return;}
+    e.textContent='⏳ 저장 중...';
+    try{
+      var n=CU.name,rows=await _sbDrvRows(n);var drv=getDB()[n];
+      var ok=(drv&&drv.password===c)||rows.some(function(x){return x.password===c;});
+      if(!ok){e.textContent='현재 비밀번호가 틀려요.';return;}
+      await _sbSetPw(n,a);   // 성공 → 보안 번호 변경(모든 기기 로그아웃)
+      var db=getDB();if(db[n]){db[n].password=a;try{localStorage.setItem('tfdb6',JSON.stringify(db));}catch(_e){}}
+      close();tfSess.out('✅ 비밀번호를 바꿨어요.\n\n보안을 위해 이 계정으로 로그인된 모든 기기를 로그아웃했어요.\n새 비밀번호로 다시 로그인해 주세요.');
+    }catch(x){e.textContent='❌ 저장 실패: '+((x&&x.message)||x);}
+  };
+  OB.secFp=function(){
+    ov('<div style="font-size:17px;font-weight:900;color:#0f766e">👆 지문 등록</div><div style="font-size:12.5px;color:#556;margin-top:6px;line-height:1.6">본인 확인을 위해 <b>지금 비밀번호</b>를 한 번 입력하고,<br>폰이 띄우는 지문 창에 손가락을 대 주세요.<br><span style="color:#0f766e">등록하면 이 폰 지문으로만 들어올 수 있고, 다른 기기는 로그아웃돼요.</span></div>'+
+      '<input id="onb-fp" type="password" inputmode="numeric" placeholder="지금 비밀번호" style="'+INP+'"><div id="onb-e" style="color:#c62828;font-size:12.5px;font-weight:800;min-height:16px;margin-top:6px"></div>'+
+      '<button style="'+B1.replace('#1565c0,#1e88e5','#0f766e,#14b8a6')+'" onclick="tfOnb.secFpGo()">👆 지문 등록하기</button><button style="'+B2+'" onclick="tfOnb.secMain()">← 뒤로</button>');
+  };
+  OB.secFpGo=async function(){
+    var pw=document.getElementById('onb-fp').value,e=document.getElementById('onb-e'),n=CU.name;
+    if(!pw){e.textContent='비밀번호를 입력해 주세요.';return;}
+    e.textContent='👆 지문을 확인해 주세요...';
+    var r=await tfFp.register(n,{pw:pw});
+    if(!r||!r.ok){e.textContent=(r&&r.err==='cancel')?'지문 등록이 취소됐어요.':(r&&r.err==='unsupported')?'이 폰은 지문 로그인을 지원하지 않아요.':tfFp.errMsg(r);return;}
+    try{localStorage.setItem('tf_autologin',JSON.stringify({name:n,fp:1,tok:r.tok}));}catch(_e){}
+    ov('<div style="text-align:center;font-size:46px">✅</div><div style="text-align:center;font-size:19px;font-weight:900;color:#15803d;margin-top:6px">지문 등록 완료!</div><div style="font-size:12.5px;color:#556;text-align:center;line-height:1.6;margin-top:6px">이제 <b>이 폰 지문</b>으로만 들어올 수 있어요.<br>내 계정으로 로그인돼 있던 <b>다른 기기는 로그아웃</b>했어요.</div><button style="'+B1+'" onclick="tfOnb.next()">계속</button>');
+  };
+  // ── 차량 점검 · 건강 자가체크 ──
+  async function vehTodo(){try{var d=new Date(Date.now()+9*3600000);var ym=d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2);var r=await sbClient.from('app_settings').select('value').eq('key','insp_'+encodeURIComponent(CU.name)+'_'+ym).maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){}}var days=(v&&v.days)||{};return !days[d.getUTCDate()];}catch(e){return false;}}
+  async function hcTodo(){try{if(typeof hcActive!=='function'||!hcActive())return false;if(!window._hcMineLoaded&&typeof hcLoadMine==='function')await hcLoadMine();return !window._hcMine;}catch(e){return false;}}
+  OB.go=function(k){close();RUN=false;Q=[];if(k==='veh'){try{inspOpen();}catch(e){}}else{try{hcOpenInput();}catch(e){}}};
+  function taskPop(items,mode){
+    var h='<div style="text-align:center;font-size:38px;line-height:1">✅</div><div style="text-align:center;font-size:19px;font-weight:900;color:#14213d;margin-top:6px">오늘 꼭 해야 할 일</div><div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:12px;padding:8px 10px;font-size:12.5px;color:#9f1239;font-weight:800;text-align:center;margin:10px 0">필수 수행 항목입니다. 누르면 바로 해당 화면으로 가요.</div>';
+    items.forEach(function(k){h+=k==='veh'?card('🚚','차량 점검','오늘 점검 전 · 매일','#2563eb','#eff6ff','점검하러 가기',"tfOnb.go('veh')"):card('💪','건강 자가체크','이달 미작성 · 매월 1회','#e11d48','#fff1f2','체크하러 가기',"tfOnb.go('hc')");});
+    if(mode==='block')h+='<div style="font-size:11.5px;color:#b91c1c;text-align:center;margin-top:2px;font-weight:800">다 하기 전에는 앱을 쓸 수 없어요</div>';
+    else h+='<div style="font-size:11.5px;color:#7a8794;text-align:center;margin-top:2px">다 할 때까지 앱을 열 때마다 이 창이 떠요</div><button style="'+B2+'" onclick="tfOnb.next()">'+(mode==='info'?'확인 ›':'나중에 하기 ›')+'</button>';
+    ov(h);
+  }
+  OB.start=async function(){
+    if(RUN)return;if(!window.CU||CU.role==='admin'||CU._master||window._tfMasterSess||window.__TF_SREQ_WORKER)return;
+    if(window.tfFp&&tfFp.checkAfterAuto&&!window.sbClient)return;
+    RUN=true;Q=[];var c=await OB.cfg(true);var n=CU.name;
+    var tasks={};
+    for(var i=0;i<c.order.length;i++){var k=c.order[i];var s=c[k];if(!s||!s.on)continue;
+      if(k==='sec'){if(await secNeed(n)){SEC.mode=s.mode==='block'?'block':'rec';Q.push(secMain);}}
+      else if(k==='veh'){if(await vehTodo())tasks.veh=s.mode;}
+      else if(k==='hc'){if(await hcTodo())tasks.hc=s.mode;}
+    }
+    // 차량점검·건강체크는 한 창에 같이 (더 센 방식 기준)
+    var tk=c.order.filter(function(k){return tasks[k];});
+    if(tk.length){var m=tk.some(function(k){return tasks[k]==='block';})?'block':(tk.some(function(k){return tasks[k]==='rec';})?'rec':'info');
+      var today=new Date(Date.now()+9*3600000).toISOString().slice(0,10);var ik='tf_onb_info_'+n;
+      if(!(m==='info'&&(function(){try{return localStorage.getItem(ik)===today;}catch(e){return false;}})())){Q.push(function(){if(m==='info'){try{localStorage.setItem(ik,today);}catch(e){}}taskPop(tk,m);});}}
+    next();
+  };
+  // 막기 모드: 홈으로 돌아올 때마다 다시 확인
+  OB.recheck=function(){if(!RUN)setTimeout(OB.start,400);};
+  // 앱 시작 직후 실행
+  var _la=window.launchApp;
+  if(typeof _la==='function'){
+    window.launchApp=function(){var r=_la.apply(this,arguments);try{setTimeout(function(){tfSess.checkSavedPw();tfSess.check();},1500);setTimeout(OB.start,2200);}catch(e){}return r;};
+  }
+  // 이미 자동로그인으로 들어와 있는 경우(이 스크립트보다 먼저 실행됨)도 바로 점검
+  setTimeout(function(){try{if(window.CU){tfSess.checkSavedPw();tfSess.check();setTimeout(OB.start,700);}}catch(e){}},1500);
+  var _go=window.go;
+  if(typeof _go==='function'){window.go=function(t){var r=_go.apply(this,arguments);try{if(t==='hm'&&CFG&&((CFG.veh&&CFG.veh.mode==='block')||(CFG.hc&&CFG.hc.mode==='block')||(CFG.sec&&CFG.sec.mode==='block')))OB.recheck();}catch(e){}return r;};}
+
+  // ── 관리자: 접속 팝업 · 보안 현황 ──
+  var DR=null;
+  var LBL={sec:['🔐','보안 (지문·비번)','지문 등록 또는 비번 변경 중 하나만 하면 끝 · 그 뒤로는 안 뜸'],veh:['🚚','차량 점검','오늘 점검 전이면'],hc:['💪','건강 자가체크','이달 미작성이면']};
+  OB.openAdmin=async function(){
+    if(!(window.CU&&CU.role==='admin'))return;
+    DR=JSON.parse(JSON.stringify(await OB.cfg(true)));
+    var o=document.getElementById('tf-onb-adm');if(o)o.remove();
+    o=document.createElement('div');o.id='tf-onb-adm';o.style.cssText='position:fixed;inset:0;z-index:10650;display:flex;flex-direction:column;justify-content:flex-end';
+    o.innerHTML='<div onclick="tfOnb.closeAdmin()" style="flex:1;background:rgba(0,0,0,.45)"></div><div style="background:#fff;border-radius:22px 22px 0 0;max-height:90vh;display:flex;flex-direction:column"><div style="width:44px;height:5px;border-radius:3px;background:#dde;margin:10px auto 6px"></div><div style="font-size:17px;font-weight:900;color:#9a3412;text-align:center">📋 접속 팝업 · 보안 현황</div><div id="tf-onb-body" style="overflow:auto;padding:10px 14px 22px;flex:1"></div></div>';
+    document.body.appendChild(o);OB.paintAdmin();OB.loadSec();
+  };
+  OB.closeAdmin=function(){var o=document.getElementById('tf-onb-adm');if(o)o.remove();};
+  OB._mode=function(k,m){DR[k].mode=m;OB.paintAdmin();};
+  OB._on=function(k){DR[k].on=!DR[k].on;OB.paintAdmin();};
+  OB._mv=function(k,d){var a=DR.order,i=a.indexOf(k),j=i+d;if(j<0||j>=a.length)return;a.splice(i,1);a.splice(j,0,k);OB.paintAdmin();};
+  OB._save=async function(){try{await sbClient.from('app_settings').upsert({key:'tf_onb_cfg',value:JSON.stringify(DR)},{onConflict:'key'});CFG=JSON.parse(JSON.stringify(DR));showToast('💾 접속 팝업 설정 저장',true);}catch(e){alert('저장 실패');}};
+  OB.paintAdmin=function(){
+    var b=document.getElementById('tf-onb-body');if(!b||!DR)return;
+    var sec=document.getElementById('tf-onb-sec');var secH=sec?sec.outerHTML:'<div id="tf-onb-sec" style="font-size:12px;color:#94a3b8;text-align:center;padding:10px">보안 현황 불러오는 중...</div>';
+    var h='<div style="font-size:11.5px;color:#64748b;text-align:center;margin-bottom:10px;line-height:1.55">기사가 앱을 열면 <b>위에서부터 순서대로, 해당되는 것만</b> 떠요<br><b style="color:#c62828">🔒 막기</b>=끝낼 때까지 앱 못 씀 · <b style="color:#c2410c">💡 권장</b>=[나중에] 가능, 다음 접속 때 또 뜸 · <b style="color:#1565c0">ℹ️ 알림만</b>=하루 한 번</div>';
+    DR.order.forEach(function(k,i){var r=DR[k],L=LBL[k],on=!!r.on;
+      var opts=k==='sec'?[['block','🔒 막기','#c62828'],['rec','💡 권장','#c2410c']]:[['block','🔒 막기','#c62828'],['rec','💡 권장','#c2410c'],['info','ℹ️ 알림만','#1565c0']];
+      h+='<div style="border:1.5px solid #e5e7eb;border-radius:13px;padding:9px 10px;margin-bottom:7px;opacity:'+(on?1:.55)+'"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;font-weight:900;color:#94a3b8;width:12px">'+(i+1)+'</span><span style="font-size:20px">'+L[0]+'</span><div style="flex:1"><div style="font-size:14px;font-weight:900;color:#1f2937">'+L[1]+'</div><div style="font-size:10.5px;color:#64748b">'+L[2]+'</div></div>'+
+        '<span style="display:flex;flex-direction:column;gap:2px"><span onclick="tfOnb._mv(\''+k+'\',-1)" style="cursor:pointer;color:#64748b;font-size:12px;padding:0 4px">▲</span><span onclick="tfOnb._mv(\''+k+'\',1)" style="cursor:pointer;color:#64748b;font-size:12px;padding:0 4px">▼</span></span>'+
+        '<span onclick="tfOnb._on(\''+k+'\')" style="cursor:pointer;display:inline-block;width:40px;height:22px;border-radius:11px;background:'+(on?'#16a34a':'#cbd5e1')+';position:relative"><span style="position:absolute;'+(on?'right':'left')+':2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff"></span></span></div>'+
+        '<div style="display:flex;gap:3px;margin-top:6px">'+opts.map(function(x){var a=x[0]===r.mode;return '<span onclick="tfOnb._mode(\''+k+'\',\''+x[0]+'\')" style="cursor:pointer;flex:1;text-align:center;font-size:11.5px;font-weight:900;padding:6px 0;border-radius:8px;'+(a?'background:'+x[2]+';color:#fff':'background:#f3f4f6;color:#9ca3af')+'">'+x[1]+'</span>';}).join('')+'</div></div>';});
+    h+='<div style="font-size:11px;color:#64748b;background:#f8fafc;border-radius:10px;padding:8px 10px;line-height:1.55;margin-bottom:8px">그 다음은 기존대로: 📄 계약서 → 📢 공지·🚨 인입 → 📅 스케줄 요청 · 관리자·마스터키 접속은 안 뜸</div>';
+    h+='<button onclick="tfOnb._save()" style="display:block;width:100%;border:0;border-radius:12px;padding:12px;font-weight:900;font-size:15px;cursor:pointer;background:#ea580c;color:#fff">💾 저장</button>';
+    h+='<div style="height:14px"></div>'+secH;
+    b.innerHTML=h;
+  };
+  OB.loadSec=async function(){
+    var db={};try{db=getDB();}catch(e){}
+    var names=[];try{names=(typeof _ctDrivers==='function'?_ctDrivers():[]).map(function(d){return d.name;});}catch(e){}
+    if(!names.length)names=Object.keys(db).filter(function(k){var d=db[k];return d&&d.status==='approved'&&d.role!=='admin';});
+    var fpn=[];try{var r=await sbClient.from('app_settings').select('value').eq('key','tf_fp_names').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);if(typeof v==='string')v=JSON.parse(v);fpn=(v&&v.names)||(Array.isArray(v)?v:[]);}catch(e){}
+    var pw={};try{var q=await sbClient.from('drivers').select('name,password').in('name',names);((q&&q.data)||[]).forEach(function(x){if(pw[x.name]===undefined||x.password!=='1234')pw[x.name]=x.password;});}catch(e){}
+    var rows=names.map(function(n){var f=fpn.indexOf(n)>=0,d=pw[n]===undefined?null:(pw[n]==='1234'||!pw[n]);return {n:n,f:f,d:d,ok:f||d===false};});
+    var bad=rows.filter(function(x){return !x.ok;}).sort(function(a,b){return a.n.localeCompare(b.n,'ko');}),good=rows.filter(function(x){return x.ok;}).sort(function(a,b){return a.n.localeCompare(b.n,'ko');});
+    function rl(n){var d=db[n];return d?({leader:'팀장',sub:'조장',driver:'기사'}[d.role]||''):'';}
+    function chip(t,c,bg){return '<span style="font-size:10.5px;font-weight:900;color:'+c+';background:'+bg+';border-radius:7px;padding:2px 6px;white-space:nowrap">'+t+'</span>';}
+    function row(x){return '<div style="display:flex;align-items:center;gap:6px;padding:8px 2px;border-bottom:1px solid #f0f2f6"><div style="width:58px"><div style="font-size:13.5px;font-weight:900;color:#33475b">'+esc(x.n)+'</div><div style="font-size:10px;color:#9aa">'+rl(x.n)+'</div></div>'+(x.f?chip('👆지문','#15803d','#dcfce7'):chip('👆✕','#94a3b8','#f1f5f9'))+(x.d===null?chip('🔑?','#94a3b8','#f1f5f9'):x.d?chip('🔑1234','#c62828','#ffebee'):chip('🔑변경','#15803d','#dcfce7'))+'<span style="flex:1"></span><span onclick="tfSess.kick(\''+esc(x.n)+'\')" style="cursor:pointer;font-size:11px;font-weight:900;color:#c62828;border:1.5px solid #ef9a9a;border-radius:8px;padding:3px 7px;white-space:nowrap">🚪 로그아웃</span></div>';}
+    var h='<div id="tf-onb-sec"><div style="font-size:15px;font-weight:900;color:#14213d;margin-bottom:6px">🔐 기사 보안 현황 <span style="font-size:11.5px;color:#94a3b8;font-weight:700">'+rows.length+'명</span></div>'+
+      '<div style="display:flex;gap:6px;margin-bottom:8px">'+[['완료',good.length,'#15803d','#dcfce7'],['미완료',bad.length,'#c62828','#ffebee']].map(function(s){return '<div style="flex:1;text-align:center;background:'+s[3]+';border-radius:11px;padding:7px"><div style="font-size:19px;font-weight:900;color:'+s[2]+'">'+s[1]+'</div><div style="font-size:11px;font-weight:800;color:'+s[2]+'">'+s[0]+'</div></div>';}).join('')+'</div>'+
+      '<div style="font-size:11px;color:#64748b;margin-bottom:6px">완료 = 지문 등록 <b>또는</b> 비번 변경 · [🚪 로그아웃] = 그 계정으로 로그인된 모든 기기 로그아웃</div>'+
+      '<div style="font-weight:900;color:#c62828;margin:6px 0 2px">⚠️ 미완료 ('+bad.length+')</div>'+bad.map(row).join('')+
+      '<div style="font-weight:900;color:#15803d;margin:12px 0 2px">✅ 완료 ('+good.length+')</div>'+good.map(row).join('')+'</div>';
+    var el=document.getElementById('tf-onb-sec');if(el)el.outerHTML=h;
+  };
 })();
 </script>
 </body></html>
