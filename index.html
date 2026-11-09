@@ -23308,7 +23308,7 @@ window.mdConvertToNotice=mdConvertToNotice;
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function pj(v){try{return typeof v==='string'?JSON.parse(v):v;}catch(e){return null;}}
   function hm(iso){if(!iso)return '';var d=new Date(iso);if(isNaN(d.getTime()))return '';var k=new Date(d.getTime()+d.getTimezoneOffset()*60000+9*3600000);return (k.getMonth()+1)+'.'+k.getDate()+' '+('0'+k.getHours()).slice(-2)+':'+('0'+k.getMinutes()).slice(-2);}
-  var WHY={nosub:'이 기사 폰에 알림이 등록돼 있지 않아요 (앱에서 알림을 안 켰거나 차단).',gone:'알림 등록이 만료됐어요 (폰을 바꿨거나 앱을 지웠다 깔았을 때). 기사가 앱을 열면 다시 등록돼요.',err:'알림 서버 오류로 못 보냈어요. [다시 알림 보내기]를 눌러 주세요.',quiet:'푸시 금지시간이라 아침에 모아서 보내요.'};
+  var WHY={nosub:'이 기사 폰에 알림이 등록돼 있지 않아요 (앱에서 알림을 안 켰거나 차단).',gone:'알림 등록이 만료됐어요 (폰을 바꿨거나 앱을 지웠다 깔았을 때). 기사가 앱을 열면 다시 등록돼요.',err:'알림 서버 오류로 못 보냈어요. [다시 알림 보내기]를 눌러 주세요.',quiet:'푸시 금지시간이라 아침에 모아서 보내요.',night:'푸시 금지시간(밤)에 들어온 미반납이라 알림을 보내지 않았어요.',dup:'오늘 먼저 보낸 미반납 알림에 같이 안내됐어요.'};
   M.why=function(w){return WHY[w]||WHY.err;};
   /* 목록용: 보이는 건들의 기록 한 번에 읽기 */
   M.loadFor=async function(cases){
@@ -23367,7 +23367,7 @@ window.mdConvertToNotice=mdConvertToNotice;
     function step(ic,t,tm,on,col){return '<div style="display:flex;align-items:center;gap:7px;padding:6px 8px;margin-top:4px;border-radius:8px;background:'+(on?'#fff':'#fafafa')+';border-left:3px solid '+(on?col:'#cfd8dc')+'"><span style="font-size:14px;'+(on?'':'filter:grayscale(1);opacity:.5')+'">'+ic+'</span><span style="flex:1;font-size:12.5px;font-weight:800;color:'+(on?col:'#9e9e9e')+'">'+t+'</span><span style="font-size:11px;color:'+(on?'#607d8b':'#b0bec5')+'">'+tm+'</span></div>';}
     var h='<div style="'+wrap+'background:#f8fbff;border:1.5px solid #bbdefb"><div style="display:flex;align-items:center;gap:6px"><b style="font-size:13px;color:#0d47a1;flex:1">📮 기사 알림 기록</b>'+(s==='ok'?'<span onclick="tfMdn.toggle('+c.id+')" style="font-size:11px;font-weight:800;color:#1565c0;cursor:pointer">접기 ▴</span>':'')+'</div>';
     if(p&&p.st==='queued')h+=step('🌙','금지시간 · 아침에 모아서 발송',p.at?hm(p.at):'',true,'#546e7a');
-    else h+=step('📲','푸시 보냄'+(p&&p.by&&p.by!=='server'?' ('+esc(p.by)+')':''),p&&p.at?hm(p.at):'',!!p,'#1565c0');
+    else h+=step('📲',(p&&p.why==='dup'?'푸시 보냄 (오늘 먼저 보낸 미반납 알림)':'푸시 보냄')+(p&&p.by&&p.by!=='server'&&p.by!=='backfill'?' ('+esc(p.by)+')':''),p&&p.at?hm(p.at):'',!!p,'#1565c0');
     h+=step('📱',esc(c.driver_name||'기사')+' 폰에 도착',d&&d.at?hm(d.at):'아직',!!(d&&d.at),'#1565c0');
     h+=step('✅','기사가 열어서 확인',o&&o.at?hm(o.at):'아직 안 봄',!!(o&&o.at),'#2e7d32');
     h+=step('💬','기사 답변',rep||'아직 없음',!!rep,'#6a1b9a');
