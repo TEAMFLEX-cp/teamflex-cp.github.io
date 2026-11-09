@@ -677,6 +677,8 @@ textarea.ann-input:focus{border-color:#1565c0}
 .md-sn{font-size:22px;font-weight:800}.md-sl{font-size:10px;color:#aaa;margin-top:2px}
 .md-sb.red .md-sn{color:#e53935}.md-sb.blue .md-sn{color:#1565c0}.md-sb.green .md-sn{color:#2e7d32}
 .md-card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:10px;overflow:hidden}
+/* [v957] 폰에서 인입 한 줄 */@media (max-width:520px){.mdr{gap:4px!important;padding:9px 8px 9px 10px!important;flex-wrap:nowrap!important}.mdr>span{font-size:10px!important;padding:2px 5px!important;border-radius:6px!important;letter-spacing:-.3px}.mdr>.md-badge{font-size:10px!important}.mdr>.md-badge>span{padding:2px 4px!important}.mdr>.mdr-nm{font-size:14px!important;padding:0!important;letter-spacing:-.5px}.mdr>.mdr-tm{font-size:10px!important;padding:0!important;flex:0 1 auto}.mdr>.mdr-cat{padding:2px 5px!important}.mdr>span:last-child{padding:0!important;font-size:14px!important}}
+@media (max-width:400px){.mdr .mdn-tx{display:none}}
 .md-card.c-red{border-left:4px solid #e53935}.md-card.c-blue{border-left:4px solid #1565c0}
 .md-card.c-orange{border-left:4px solid #e65100}.md-card.c-green{border-left:4px solid #2e7d32}
 .md-top{padding:10px 14px 6px;display:flex;align-items:flex-start;justify-content:space-between}
@@ -2603,27 +2605,73 @@ function pgContractRequired(){
    '<button class="btn-ok" style="margin-top:18px;width:100%" onclick="CT_startWrite(&quot;wc&quot;,&quot;'+nm+'&quot;,null,&quot;driver&quot;)">&#x270D;&#xFE0F; 계약서 작성하기</button>'+
    '</div>';
 }
+/* [v957] 알림 구독 현황판: 기사별 상태(정상/재등록/미등록) + 마지막 알림 결과 + 앱 막기 예외 + 시험 알림 */
+async function _psLoad(){
+  var subs=[];try{var r=await sbClient.from('push_subscriptions').select('driver_name,role,endpoint');if(r&&r.data)subs=r.data;}catch(e){}
+  var last=(window.tfMdn&&tfMdn.lastByDriver)?await tfMdn.lastByDriver():{};
+  var cfg=null;try{cfg=window.tfOnb?await tfOnb.cfg(true):null;}catch(e){}
+  return {subs:subs,last:last,cfg:cfg};
+}
 async function pushStatusAdmin(){
   if(!(CU&&CU.role==='admin'))return;
   var old=document.getElementById('pushstat-pop');if(old)old.remove();
   var pop=document.createElement('div');pop.id='pushstat-pop';pop.style.cssText='position:fixed;inset:0;z-index:10600;display:flex;flex-direction:column;justify-content:flex-end';
-  pop.innerHTML='<div onclick="var p=document.getElementById(\'pushstat-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div><div style="background:#fff;border-radius:22px 22px 0 0;max-height:88vh;display:flex;flex-direction:column"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:12px auto 8px"></div><div style="font-size:15px;font-weight:900;color:#5a2fb0;text-align:center">🔔 알림 구독 현황</div><div id="pushstat-body" style="overflow:auto;padding:10px 14px 22px;flex:1"><div style="text-align:center;color:#999;padding:24px">수파베이스에서 불러오는 중…</div></div></div>';
+  pop.innerHTML='<div onclick="var p=document.getElementById(\'pushstat-pop\');if(p)p.remove();" style="flex:1;background:rgba(0,0,0,.45)"></div><div style="background:#fff;border-radius:22px 22px 0 0;max-height:88vh;display:flex;flex-direction:column"><div style="width:40px;height:4px;background:#e0e0e0;border-radius:2px;margin:12px auto 8px"></div><div style="font-size:15px;font-weight:900;color:#5a2fb0;text-align:center">🔔 알림 구독 관리</div><div id="pushstat-body" style="overflow:auto;padding:10px 14px 22px;flex:1"><div style="text-align:center;color:#999;padding:24px">불러오는 중…</div></div></div>';
   document.body.appendChild(pop);
-  var subs=[];try{var r=await sbClient.from('push_subscriptions').select('driver_name,role,endpoint');if(r&&r.data)subs=r.data;}catch(e){}
+  var D=await _psLoad();window._psD=D;_psRender();
+}
+function _psRender(){
+  var D=window._psD;if(!D)return;var subs=D.subs,last=D.last||{},cfg=D.cfg;
   var byName={};subs.forEach(function(x){var n=(x.driver_name||'').trim();if(!n)return;byName[n]=(byName[n]||0)+1;});
   var drs=(typeof _ctDrivers==='function')?_ctDrivers():[];
-  var subd=drs.filter(function(d){return byName[d.name];});var uns=drs.filter(function(d){return !byName[d.name];});
-  var dn={};drs.forEach(function(d){dn[d.name]=1;});var others=Object.keys(byName).filter(function(n){return !dn[n];});
   var db=(typeof getDB==='function')?getDB():{};
+  var pc=(cfg&&cfg.push)||{on:false,mode:'rec'};var ex=Array.isArray(pc.ex)?pc.ex:[];
   function rl(nm){var d=db[nm];return d?({leader:'팀장',sub:'조장',driver:'기사'}[d.role]||''):'';}
-  function row(nm,cnt,ok){var _rl=rl(nm);return '<div style="display:flex;align-items:center;gap:8px;padding:9px 6px;border-bottom:1px solid #f2f5f8"><span style="flex:1;font-size:13px;font-weight:700;color:#33475b">'+nm+(_rl?' <span style="font-size:9px;color:#8090a0">'+_rl+'</span>':'')+'</span>'+(ok?'<span style="font-size:11px;font-weight:800;color:#1b7a3f;background:#e7f6ec;border:1px solid #a8e0bd;padding:4px 10px;border-radius:12px">🔔 구독 '+cnt+'대</span>':'<span style="font-size:11px;font-weight:800;color:#c62828;background:#fdeaea;border:1px solid #f2b8b8;padding:4px 10px;border-radius:12px">미구독</span>')+'</div>';}
-  var h='<div style="font-size:12px;color:#7a8794;text-align:center;margin-bottom:10px">수파베이스 push_subscriptions 기준 · 총 구독 '+subs.length+'대 · 구독 '+subd.length+'명 / 미구독 '+uns.length+'명</div>';
-  h+='<div style="font-weight:900;color:#1b7a3f;margin:6px 0 4px">🔔 구독됨 ('+subd.length+')</div>'+(subd.length?subd.map(function(d){return row(d.name,byName[d.name],true);}).join(''):'<div style="color:#bbb;font-size:12px;padding:6px">없음</div>');
-  h+='<div style="font-weight:900;color:#c62828;margin:14px 0 4px">⛔ 미구독 ('+uns.length+')</div>'+(uns.length?uns.map(function(d){return row(d.name,0,false);}).join(''):'<div style="color:#bbb;font-size:12px;padding:6px">없음</div>');
-  if(others.length){h+='<div style="font-weight:900;color:#607d8b;margin:14px 0 4px">그 외 구독(관리자 등) ('+others.length+')</div>'+others.map(function(n){return row(n,byName[n],true);}).join('');}
+  var hm=(window.tfMdn&&tfMdn.hm)||function(x){return x||'';};
+  var G={x:[],re:[],ok:[]};
+  drs.forEach(function(d){var n=d.name,cnt=byName[n]||0,L=last[n]||null;var k=!cnt?'x':((L&&L.st==='fail'&&L.why==='gone')?'re':'ok');G[k].push({n:n,cnt:cnt,L:L});});
+  function chip(t,c,b,bd){return '<span style="font-size:10.5px;font-weight:900;color:'+c+';background:'+b+';border:1px solid '+bd+';padding:2px 7px;border-radius:9px;white-space:nowrap">'+t+'</span>';}
+  function row(it,k){var n=it.n,L=it.L,isEx=ex.indexOf(n)>=0;
+    var st=k==='x'?chip('✕ 미등록','#c62828','#ffebee','#ef9a9a'):k==='re'?chip('🔄 재등록 필요','#e65100','#fff3e0','#ffcc80'):chip('✅ 정상 '+it.cnt+'대','#1b5e20','#e8f5e9','#a5d6a7');
+    var why=k==='x'?'앱에서 알림을 안 켰거나 차단 → 앱 열면 켜는 방법 팝업':k==='re'?'폰 교체·재설치로 등록 만료 → 앱 열면 자동 재등록':'';
+    var ls=L&&L.at?('마지막 알림 '+hm(L.at)+' · '+(L.st==='sent'?('도착 '+(L.n||0)+'대'):L.st==='queued'?'아침 발송 대기':'안 감')):'';
+    var safeN=String(n).replace(/'/g,"\\'");
+    return '<div style="padding:9px 4px;border-bottom:1px solid #f2f5f8"><div style="display:flex;align-items:center;gap:6px"><span style="font-size:13.5px;font-weight:800;color:#33475b">'+n+'</span><span style="font-size:9.5px;color:#8090a0">'+rl(n)+'</span>'+st+'<span style="flex:1"></span>'
+      +'<button onclick="_psEx(\''+safeN+'\')" title="켜면 알림을 안 켜도 앱 사용을 막지 않아요" style="border:1.5px solid '+(isEx?'#7e57c2':'#cfd8dc')+';background:'+(isEx?'#ede7f6':'#fff')+';color:'+(isEx?'#4527a0':'#78909c')+';border-radius:8px;padding:3px 7px;font-size:11px;font-weight:800;cursor:pointer">'+(isEx?'✔ 예외':'예외')+'</button>'
+      +(it.cnt?'<button onclick="_psTest(\''+safeN+'\')" style="border:1.5px solid #90caf9;background:#e3f2fd;color:#0d47a1;border-radius:8px;padding:3px 7px;font-size:11px;font-weight:800;cursor:pointer">🔔 시험</button>':'')+'</div>'
+      +((why||ls)?'<div style="font-size:11px;color:#8a97a8;margin-top:3px;line-height:1.5">'+[why,ls].filter(Boolean).join(' · ')+'</div>':'')+'</div>';}
+  var modeTxt={block:'🔒 막기 (알림 켜야 앱 사용)',rec:'💡 권장 (열 때마다 안내)',info:'ℹ️ 알림만 (하루 1번 안내)'}[pc.mode]||'';
+  var h='<div style="display:flex;gap:6px;margin-bottom:10px">'
+    +'<div style="flex:1;text-align:center;background:#e8f5e9;border-radius:12px;padding:8px 0"><div style="font-size:20px;font-weight:900;color:#1b5e20">'+G.ok.length+'</div><div style="font-size:11px;color:#2e7d32;font-weight:800">정상</div></div>'
+    +'<div style="flex:1;text-align:center;background:#fff3e0;border-radius:12px;padding:8px 0"><div style="font-size:20px;font-weight:900;color:#e65100">'+G.re.length+'</div><div style="font-size:11px;color:#e65100;font-weight:800">재등록</div></div>'
+    +'<div style="flex:1;text-align:center;background:#ffebee;border-radius:12px;padding:8px 0"><div style="font-size:20px;font-weight:900;color:#c62828">'+G.x.length+'</div><div style="font-size:11px;color:#c62828;font-weight:800">미등록</div></div></div>';
+  h+='<div style="border:1.5px solid #d1c4e9;background:#f8f5ff;border-radius:12px;padding:10px 12px;margin-bottom:10px"><div style="display:flex;align-items:center;gap:6px"><b style="font-size:13px;color:#4527a0;flex:1">🔒 알림 안 켜면 앱 사용 제한</b><span style="font-size:11.5px;font-weight:900;color:'+(pc.on?'#2e7d32':'#9e9e9e')+'">'+(pc.on?'켜짐':'꺼짐')+'</span></div>'
+    +'<div style="font-size:11.5px;color:#5e548e;margin-top:4px;line-height:1.55">'+(pc.on?modeTxt:'지금은 제한 안 함')+' · 예외 '+ex.length+'명'+(ex.length?(' ('+ex.join(', ')+')'):'')+'</div>'
+    +'<button onclick="var p=document.getElementById(\'pushstat-pop\');if(p)p.remove();tfOnb.openAdmin()" style="margin-top:7px;width:100%;padding:8px;border:none;border-radius:9px;background:#5e35b1;color:#fff;font-weight:900;font-size:12.5px;cursor:pointer">⚙️ 막기 / 권장 / 알림만 바꾸기</button></div>';
+  if(G.x.length||G.re.length)h+='<div style="font-weight:900;color:#c62828;margin:6px 0 2px">⚠️ 확인 필요 ('+(G.x.length+G.re.length)+')</div>'+G.re.map(function(i){return row(i,'re');}).join('')+G.x.map(function(i){return row(i,'x');}).join('');
+  h+='<div style="font-weight:900;color:#1b7a3f;margin:14px 0 2px">✅ 정상 ('+G.ok.length+')</div>'+(G.ok.length?G.ok.map(function(i){return row(i,'ok');}).join(''):'<div style="color:#bbb;font-size:12px;padding:6px">없음</div>');
+  var dn={};drs.forEach(function(d){dn[d.name]=1;});var others=Object.keys(byName).filter(function(n){return !dn[n];});
+  if(others.length)h+='<div style="font-weight:900;color:#607d8b;margin:14px 0 4px">그 외 구독(관리자 등) ('+others.length+')</div><div style="font-size:12px;color:#78909c;line-height:1.7">'+others.map(function(n){return n+' '+byName[n]+'대';}).join(' · ')+'</div>';
   var body=document.getElementById('pushstat-body');if(body)body.innerHTML=h;
 }
-window.pushStatusAdmin=pushStatusAdmin;
+async function _psEx(n){
+  try{var r=await sbClient.from('app_settings').select('value').eq('key','tf_onb_cfg').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);v=v||{};v.push=v.push||{on:true,mode:'rec'};var ex=Array.isArray(v.push.ex)?v.push.ex:[];var i=ex.indexOf(n);if(i>=0)ex.splice(i,1);else ex.push(n);v.push.ex=ex;
+    var u=await sbClient.from('app_settings').upsert({key:'tf_onb_cfg',value:JSON.stringify(v)},{onConflict:'key'});if(u&&u.error)throw u.error;
+    if(window._psD){window._psD.cfg=window.tfOnb?await tfOnb.cfg(true):v;}_psRender();try{showToast(i>=0?(n+' 예외 해제'):(n+' 예외 — 알림 안 켜도 앱 사용 가능'),true);}catch(e){}
+  }catch(e){alert('저장 실패: '+((e&&e.message)||e));}
+}
+async function _psTest(n){
+  try{if(typeof isQuietHour==='function'&&isQuietHour()){alert('지금은 푸시 금지시간이에요.');return;}}catch(e){}
+  if(!confirm(n+' 님 폰에 시험 알림을 보낼까요?'))return;
+  try{var r=await fetch(SB_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify({title:'🔔 TeamFlex 시험 알림',body:'알림이 잘 오는지 확인하는 시험 알림이에요. 무시하셔도 돼요.',driver_name:n,data:{url:'/'}})});var j={};try{j=await r.json();}catch(e){}
+    var k=Number(j&&j.sent)||0;alert(k>0?('✅ '+n+' 님 폰 '+k+'대로 보냈어요'):('✕ 안 갔어요 — 등록이 만료됐을 수 있어요. 기사가 앱을 열면 다시 등록돼요.'));
+    var v={st:k>0?'sent':'fail',why:k>0?'':'gone',n:k,at:new Date().toISOString(),d:n,by:(CU&&CU.name)||''};
+    try{await sbClient.from('app_settings').upsert({key:'mdnd:'+n,value:JSON.stringify(v)},{onConflict:'key'});}catch(e){}
+    if(window._psD){window._psD.last[n]=v;_psRender();}
+  }catch(e){alert('오류: '+((e&&e.message)||e));}
+}
+window.pushStatusAdmin=pushStatusAdmin;window._psEx=_psEx;window._psTest=_psTest;
+
 // 관리자: 계약서 관리 화면
 function _ctCapDetails(){try{return Array.prototype.map.call(document.querySelectorAll('#mc details.ctdet'),function(d){return d.open;});}catch(e){return null;}}
 function _ctResDetails(st){if(!st)return;try{var ds=document.querySelectorAll('#mc details.ctdet');for(var i=0;i<ds.length&&i<st.length;i++)ds[i].open=st[i];}catch(e){}}
@@ -12647,6 +12695,7 @@ async function mdLoadCases(){
         _mdCases.forEach(function(c){c._reads=readsByCaseId[c.id]||[];});
       }
     }catch(re){console.warn('[reads load]',re);}
+    try{if(window.tfMdn)await tfMdn.loadFor(_mdCases);}catch(_mdne){}   // [v957] 기사 알림 기록
 
     // 처리(팀즈 공유)시각: 케이스별 '최신 답글 created_at' → c._sharedAt (처리완료 시간표시·정렬용)
     try{
@@ -13214,11 +13263,11 @@ function mdCardHtml(c,isAdmin,isLeader){
     :((c.status==='pending'&&mdUnansBadge(c,'md-badge-'+c.id))||'<span class="md-badge '+badgeCls+'" id="md-badge-'+c.id+'" style="font-size:11px;padding:3px 9px;flex-shrink:0;line-height:1.3">'+badgeTxt+'</span>');
   return '<div class="md-card '+borderCls+'" id="md-card-'+c.id+'" onclick="mdOpenDetail('+c.id+')" style="cursor:pointer'+apprCard+'">'+
     apprSweep+
-    '<div style="position:relative;z-index:1;display:flex;align-items:center;gap:8px;padding:10px 13px">'+
+    '<div class="mdr" style="position:relative;z-index:1;display:flex;align-items:center;gap:8px;padding:10px 13px">'+
       badgeHtml+(c._reshare?'<span class="tf-redo" style="font-size:11px;font-weight:900;background:#e53935;color:#fff;padding:3px 9px;border-radius:8px;flex-shrink:0;line-height:1.3">🔁 재요청</span>':'')+
-      '<span style="font-size:15px;font-weight:800;color:#1a237e;flex-shrink:0;white-space:nowrap">'+drvName+'</span>'+
-      '<span style="font-size:11px;color:#9e9e9e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+dtStr+'</span>'+ddBadge+_mdPushedBadge(c.id,isAdmin,isLeader)+
-      '<span style="flex-shrink:0;margin-left:auto;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;'+catSty+'">'+cat+'</span>'+
+      '<span class="mdr-nm" style="font-size:15px;font-weight:800;color:#1a237e;flex-shrink:0;white-space:nowrap">'+drvName+'</span>'+
+      '<span class="mdr-tm" style="font-size:11px;color:#9e9e9e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+dtStr+'</span>'+ddBadge+((window.tfMdn&&tfMdn.chip(c,isAdmin,isLeader))||_mdPushedBadge(c.id,isAdmin,isLeader))+
+      '<span class="mdr-cat" style="flex-shrink:0;margin-left:auto;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;'+catSty+'">'+cat+'</span>'+
       '<span style="flex-shrink:0;font-size:16px;color:#c5cae9;font-weight:700">›</span>'+
     '</div>'+_alH+
   '</div>';
@@ -13233,12 +13282,12 @@ function mdMibaGroupCard(g,gi){
   var urg=null;g.rows.forEach(function(r){r.cases.forEach(function(c){if(c.status==='pending'||c.status==='rejected'){var t=new Date(c.created_at||c.occurred_at).getTime();if(!isNaN(t)&&(urg===null||t<urg))urg=t;}});});
   var dd=(urg!==null)?mdDdBadgeHtml(urg):'';
   return '<div class="md-card c-red" onclick="mdOpenMibaGroup('+gi+')" id="md-mgcard-'+gi+'" style="cursor:pointer;border-left:4px solid #00838f">'+
-    '<div style="display:flex;align-items:center;gap:8px;padding:10px 13px">'+
+    '<div class="mdr" style="display:flex;align-items:center;gap:8px;padding:10px 13px">'+
       ((function(){try{var r0=g.rows[0];var cc=r0&&(r0.latest||(r0.cases&&r0.cases[0]));return cc?mdUnansBadge(cc):'';}catch(e){return '';}})()||'<span class="md-badge mb-red" style="font-size:11px;padding:3px 9px;flex-shrink:0;line-height:1.3">미답변</span>')+
       (redoN?'<span class="tf-redo" style="font-size:11px;font-weight:900;background:#e53935;color:#fff;padding:3px 9px;border-radius:8px;flex-shrink:0;line-height:1.3">🔁 '+redoN+' 재요청</span>':'')+
-      '<span style="font-size:15px;font-weight:800;color:#1a237e;flex-shrink:0;white-space:nowrap">'+mdEsc(g.driver)+'</span>'+
-      '<span style="font-size:11px;color:#9e9e9e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+mdEsc(g.day)+'</span>'+dd+
-      '<span style="flex-shrink:0;margin-left:auto;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;background:#e0f7fa;color:#00838f">미반납 '+g.rows.length+'건</span>'+
+      '<span class="mdr-nm" style="font-size:15px;font-weight:800;color:#1a237e;flex-shrink:0;white-space:nowrap">'+mdEsc(g.driver)+'</span>'+
+      '<span class="mdr-tm" style="font-size:11px;color:#9e9e9e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+mdEsc(g.day)+'</span>'+dd+
+      '<span class="mdr-cat" style="flex-shrink:0;margin-left:auto;font-size:11px;font-weight:800;padding:3px 9px;border-radius:8px;background:#e0f7fa;color:#00838f">미반납 '+g.rows.length+'건</span>'+
       '<span style="flex-shrink:0;font-size:16px;color:#c5cae9;font-weight:700">›</span>'+
     '</div>'+
   '</div>';
@@ -13248,6 +13297,7 @@ function mdMibaCbChange(gi){var cbs=document.querySelectorAll('#md-detail-modal 
 function mdMibaSelectAll(gi){var all=document.getElementById('mg-all-'+gi);if(!all)return;document.querySelectorAll('#md-detail-modal .mg-cb').forEach(function(b){b.checked=all.checked;});mdMibaCbChange(gi);}
 function mdOpenMibaGroup(gi){
   var g=_mdMibaGroupArr[gi]; if(!g)return;
+  try{if(window.tfMdn)g.rows.forEach(function(r){(r.cases||[]).forEach(function(c){tfMdn.markOpen(c);});});}catch(_mdne){}   // [v957] 기사 확인 기록
   var isAdmin=CU.role==='admin',isLeader=CU.role==='leader';
   var pid=-(gi+1);
   var rowsHtml=g.rows.map(function(r,ri){
@@ -13924,6 +13974,7 @@ function mdOpenDetail(caseId){
   var isAdmin=(CU&&CU.role==='admin');
   var isLeader=(CU&&CU.role==='leader'); // 팀장만 (조장 제외)
   var isSub=(CU&&CU.role==='sub'); // 조장
+  try{if(window.tfMdn){tfMdn.markOpen(c);if(isAdmin||isLeader)setTimeout(function(){tfMdn.fill(c);},50);}}catch(_mdne){}   // [v957] 기사 확인 기록 + 알림 기록 새로 읽기
   var isDriver=(CU&&CU.role==='driver');
   var drvName=c.driver_name||'';
   if(!drvName&&c.driver_id){
@@ -14029,6 +14080,7 @@ function mdOpenDetail(caseId){
       '</div>'+
       ((typeof isAdmin!=='undefined'&&(isAdmin||isLeader))?'<button onclick="mdRedetect('+c.id+')" style="width:100%;margin:0 0 12px;padding:9px 12px;border:none;border-radius:9px;background:linear-gradient(100deg,#7b3fb5,#5f2e93);color:#fff;font-weight:800;font-size:13px;cursor:pointer">🔄 재감지 · 팀즈 수정분 다시 읽기</button>':'')+
       '<div style="font-size:17px;font-weight:700;color:#1a1a1a;margin-bottom:12px;user-select:text;-webkit-user-select:text">'+mdEsc(mdiTitle(c.issue_content)||'오배송 처리 요청')+'</div>'+
+      (window.tfMdn?tfMdn.boxHtml(c,isAdmin,isLeader):'')+
       '<div class="mdi-box">'+
         '<div class="mdi-k">1. 배송기사</div><div class="mdi-v" style="color:#1a237e;font-weight:800">'+mdEsc(drvName)+'</div>'+
         '<div class="mdi-k">2. 운송장</div><div class="mdi-v">'+mdiWb(c)+((c.waybill_no&&String(c.waybill_no).trim())?'<button class="md-copy1" data-wb="'+encodeURIComponent(c.waybill_no)+'" onclick="mdCopyWb(this)" title="송장번호 복사" style="margin-top:4px;padding:2px 9px;background:#e0f2f1;color:#00838f;border:1px solid #80cbc4;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer">📋 복사</button>':'')+'</div>'+
@@ -23152,7 +23204,7 @@ window.mdConvertToNotice=mdConvertToNotice;
     try{
       var n=CU.name;
       var R=await Promise.all([OB.cfg(true),secNeed(n).catch(function(){return false;}),pushNeed().catch(function(){return null;}),vehTodo().catch(function(){return false;}),hcTodo().catch(function(){return false;}),mdCount().catch(function(){return null;})]);
-      var c=R[0],need={sec:R[1],push:R[2],veh:R[3],hc:R[4],md:R[5]};
+      var c=R[0],need={sec:R[1],push:R[2],veh:R[3],hc:R[4],md:R[5]};try{if(c&&c.push&&Array.isArray(c.push.ex)&&c.push.ex.indexOf(n)>=0)need.push=null;}catch(_pex){}   // [v957] 관리자 예외
       if(!window.CU||CU.name!==n){RUN=false;OB._releaseAll();return;}
       var h=HOLD||{greet:false,ann:null};
       var taskDone=false;
@@ -23242,4 +23294,109 @@ window.mdConvertToNotice=mdConvertToNotice;
 })();
 </script>
 
-<style>/* [v950] 재요청 배지 번쩍임 */@keyframes tfRedoFlash{0%,100%{background:#e53935;box-shadow:0 0 0 2px #ffcdd2;transform:scale(1)}50%{background:#ff1744;box-shadow:0 0 0 2px #fff,0 0 14px 5px rgba(255,214,0,.85);transform:scale(1.1)}}.tf-redo{animation:tfRedoFlash 1.1s ease-in-out infinite;will-change:transform}</style></body></html>
+<style>/* [v950] 재요청 배지 번쩍임 */@keyframes tfRedoFlash{0%,100%{background:#e53935;box-shadow:0 0 0 2px #ffcdd2;transform:scale(1)}50%{background:#ff1744;box-shadow:0 0 0 2px #fff,0 0 14px 5px rgba(255,214,0,.85);transform:scale(1.1)}}.tf-redo{animation:tfRedoFlash 1.1s ease-in-out infinite;will-change:transform}</style><script>
+/* ══════ [v957] 인입 건별 기사 알림 기록 (tfMdn) ══════
+   저장: app_settings
+     'mdn:<caseId>:p' = 푸시 결과 {st:'sent'|'queued'|'fail', why:'nosub'|'gone'|'err', n, at, d, by}  (서버·앱 재발송)
+     'mdn:<caseId>:d' = 폰 도착 {at}   (sw.js push 이벤트)
+     'mdn:<caseId>:o' = 기사가 열어서 확인 {at, d}  (기사 본인이 상세/묶음 열 때, 최초 1회)
+     'mdnd:<기사>'     = 그 기사의 마지막 푸시 결과 (구독 현황판)
+   35일 지난 기록은 서버가 하루 1번 정리. 화면 표시는 관리자·팀장만. */
+(function(){
+  if(window.tfMdn)return;
+  var M={};window.tfMdn=M;
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function pj(v){try{return typeof v==='string'?JSON.parse(v):v;}catch(e){return null;}}
+  function hm(iso){if(!iso)return '';var d=new Date(iso);if(isNaN(d.getTime()))return '';var k=new Date(d.getTime()+d.getTimezoneOffset()*60000+9*3600000);return (k.getMonth()+1)+'.'+k.getDate()+' '+('0'+k.getHours()).slice(-2)+':'+('0'+k.getMinutes()).slice(-2);}
+  var WHY={nosub:'이 기사 폰에 알림이 등록돼 있지 않아요 (앱에서 알림을 안 켰거나 차단).',gone:'알림 등록이 만료됐어요 (폰을 바꿨거나 앱을 지웠다 깔았을 때). 기사가 앱을 열면 다시 등록돼요.',err:'알림 서버 오류로 못 보냈어요. [다시 알림 보내기]를 눌러 주세요.',quiet:'푸시 금지시간이라 아침에 모아서 보내요.'};
+  M.why=function(w){return WHY[w]||WHY.err;};
+  /* 목록용: 보이는 건들의 기록 한 번에 읽기 */
+  M.loadFor=async function(cases){
+    if(!(window.CU&&(CU.role==='admin'||CU.role==='leader'))||!cases||!cases.length||!window.sbClient)return;
+    var keys=[];cases.forEach(function(c){if(c&&c.id!=null){keys.push('mdn:'+c.id+':p','mdn:'+c.id+':d','mdn:'+c.id+':o');}});
+    var map={};
+    for(var i=0;i<keys.length;i+=90){
+      try{var r=await sbClient.from('app_settings').select('key,value').in('key',keys.slice(i,i+90));((r&&r.data)||[]).forEach(function(x){map[x.key]=pj(x.value);});}catch(e){}
+    }
+    cases.forEach(function(c){if(!c||c.id==null)return;var o={p:map['mdn:'+c.id+':p']||null,d:map['mdn:'+c.id+':d']||null,o:map['mdn:'+c.id+':o']||null};c._mdn=(o.p||o.d||o.o)?o:null;});
+  };
+  M.loadOne=async function(cid){
+    var keys=['mdn:'+cid+':p','mdn:'+cid+':d','mdn:'+cid+':o'],o={p:null,d:null,o:null};
+    try{var r=await sbClient.from('app_settings').select('key,value').in('key',keys);((r&&r.data)||[]).forEach(function(x){o[x.key.split(':')[2]]=pj(x.value);});}catch(e){}
+    return o;
+  };
+  /* 상태 판정 */
+  function stOf(m){if(!m)return '';if(m.o&&m.o.at)return 'ok';var p=m.p;if(!p)return m.d?'sent':'';if(p.st==='fail')return 'x';if(p.st==='queued')return 'q';return 'sent';}
+  M.state=stOf;
+  /* 목록 칩 (관리자·팀장) */
+  M.chip=function(c,isAdmin,isLeader){
+    if(!(isAdmin||isLeader))return '';var s=stOf(c&&c._mdn);if(!s)return '';
+    var S={ok:['✅','확인','#1b5e20','#e8f5e9','#a5d6a7','기사가 열어서 확인함'],sent:['📲','푸시','#0d47a1','#e3f2fd','#90caf9','푸시 보냄 · 아직 안 봄'],q:['🌙','대기','#455a64','#eceff1','#b0bec5','금지시간 · 아침에 발송'],x:['✕','','#fff','#e53935','#e53935','알림이 안 감']}[s];
+    return '<span class="mdn-chip" title="'+S[5]+'" style="display:inline-flex;align-items:center;gap:1px;flex-shrink:0;white-space:nowrap;font-size:10px;font-weight:900;line-height:1.3;padding:2px 5px;border-radius:7px;color:'+S[2]+';background:'+S[3]+';border:1px solid '+S[4]+'">'+S[0]+(S[1]?'<span class="mdn-tx">'+S[1]+'</span>':'')+'</span>';
+  };
+  /* 기사 본인이 열었을 때 → 확인 기록(최초 1회만) */
+  var _opened={};
+  M.markOpen=function(c){try{
+    if(!c||c.id==null||!window.CU||!window.sbClient)return;
+    var nm=(typeof norm_name_js==='function')?norm_name_js:function(x){return String(x||'').trim();};
+    if(!c.driver_name||nm(c.driver_name)!==nm(CU.name))return;
+    if(_opened[c.id])return;_opened[c.id]=1;
+    sbClient.from('app_settings').upsert({key:'mdn:'+c.id+':o',value:JSON.stringify({at:new Date().toISOString(),d:CU.name})},{onConflict:'key',ignoreDuplicates:true}).then(function(){}).catch(function(){});
+  }catch(e){}};
+  /* 상세 맨 위 '기사 알림 기록' */
+  M.boxHtml=function(c,isAdmin,isLeader){if(!(isAdmin||isLeader)||!c)return '';return '<div id="mdn-box-'+c.id+'" style="margin:0 0 12px">'+M.boxInner(c,c._mdn||null,false)+'</div>';};
+  M.fill=async function(c){try{var o=await M.loadOne(c.id);c._mdn=(o.p||o.d||o.o)?o:null;var el=document.getElementById('mdn-box-'+c.id);if(el)el.innerHTML=M.boxInner(c,c._mdn,false);}catch(e){}};
+  M.toggle=function(cid){var c=(window._mdCases||[]).find(function(x){return x.id===cid;});if(!c)return;var el=document.getElementById('mdn-box-'+cid);if(!el)return;var open=el.getAttribute('data-open')!=='1';el.setAttribute('data-open',open?'1':'0');el.innerHTML=M.boxInner(c,c._mdn,open);};
+  M.boxInner=function(c,m,forceOpen){
+    var s=stOf(m),p=(m&&m.p)||null,d=(m&&m.d)||null,o=(m&&m.o)||null;
+    var replied=(c.status==='replied'||c.status==='approved');
+    var rep=replied?(c._sharedAt?hm(c._sharedAt):'답변함'):'';
+    var resend='<button onclick="event.stopPropagation();tfMdn.resend('+c.id+')" style="width:100%;margin-top:7px;padding:8px;border:1.5px solid #ffcc80;background:#fff8e1;color:#e65100;border-radius:9px;font-weight:900;font-size:12.5px;cursor:pointer">🔔 다시 알림 보내기</button>';
+    var wrap='border-radius:12px;padding:9px 11px;';
+    if(!s){
+      return '<div style="'+wrap+'background:#f7f9fc;border:1.5px solid #e3e8ef"><div style="display:flex;align-items:center;gap:6px"><b style="font-size:13px;color:#37474f">📮 기사 알림</b><span style="font-size:11.5px;color:#90a4ae">기록 없음 (기록 기능 생기기 전 건 또는 미지정 기사)</span></div>'+(c.driver_name&&(c.status==='pending'||c.status==='rejected')?resend:'')+'</div>';
+    }
+    if(s==='x'){
+      return '<div style="'+wrap+'background:#fff5f5;border:2px solid #ef9a9a"><div style="display:flex;align-items:center;gap:6px"><b style="font-size:13px;color:#b71c1c;flex:1">📮 기사 알림 기록</b><span style="font-size:10.5px;font-weight:900;color:#fff;background:#e53935;border-radius:7px;padding:1px 7px">✕ 안 감</span></div>'
+        +'<div style="font-size:12.5px;font-weight:800;color:#c62828;margin-top:5px;line-height:1.5">'+esc(c.driver_name||'')+' 님에게 알림이 가지 않았어요.</div>'
+        +'<div style="font-size:11.5px;color:#5d4037;margin-top:3px;line-height:1.55">'+esc(M.why(p&&p.why))+'<br>급하면 전화·문자로 직접 알려 주세요.'+(p&&p.at?'<br><span style="color:#999">시도: '+hm(p.at)+'</span>':'')+'</div>'+resend+'</div>';
+    }
+    if(s==='ok'&&!forceOpen){
+      return '<div onclick="tfMdn.toggle('+c.id+')" style="'+wrap+'background:#f6fbf6;border:1.5px solid #c8e6c9;display:flex;align-items:center;gap:6px;cursor:pointer"><b style="font-size:13px;color:#2e7d32">📮 기사 알림</b><span style="font-size:10.5px;font-weight:900;color:#1b5e20;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:7px;padding:1px 6px">✅ 확인</span><span style="flex:1;min-width:0;font-size:11px;color:#78909c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(p&&p.at?hm(p.at).split(' ')[1]+' 보냄 · ':'')+hm(o.at).split(' ')[1]+' 확인</span><span style="font-size:11px;font-weight:800;color:#1565c0;white-space:nowrap">펼치기 ▾</span></div>';
+    }
+    function step(ic,t,tm,on,col){return '<div style="display:flex;align-items:center;gap:7px;padding:6px 8px;margin-top:4px;border-radius:8px;background:'+(on?'#fff':'#fafafa')+';border-left:3px solid '+(on?col:'#cfd8dc')+'"><span style="font-size:14px;'+(on?'':'filter:grayscale(1);opacity:.5')+'">'+ic+'</span><span style="flex:1;font-size:12.5px;font-weight:800;color:'+(on?col:'#9e9e9e')+'">'+t+'</span><span style="font-size:11px;color:'+(on?'#607d8b':'#b0bec5')+'">'+tm+'</span></div>';}
+    var h='<div style="'+wrap+'background:#f8fbff;border:1.5px solid #bbdefb"><div style="display:flex;align-items:center;gap:6px"><b style="font-size:13px;color:#0d47a1;flex:1">📮 기사 알림 기록</b>'+(s==='ok'?'<span onclick="tfMdn.toggle('+c.id+')" style="font-size:11px;font-weight:800;color:#1565c0;cursor:pointer">접기 ▴</span>':'')+'</div>';
+    if(p&&p.st==='queued')h+=step('🌙','금지시간 · 아침에 모아서 발송',p.at?hm(p.at):'',true,'#546e7a');
+    else h+=step('📲','푸시 보냄'+(p&&p.by&&p.by!=='server'?' ('+esc(p.by)+')':''),p&&p.at?hm(p.at):'',!!p,'#1565c0');
+    h+=step('📱',esc(c.driver_name||'기사')+' 폰에 도착',d&&d.at?hm(d.at):'아직',!!(d&&d.at),'#1565c0');
+    h+=step('✅','기사가 열어서 확인',o&&o.at?hm(o.at):'아직 안 봄',!!(o&&o.at),'#2e7d32');
+    h+=step('💬','기사 답변',rep||'아직 없음',!!rep,'#6a1b9a');
+    if(c.status==='pending'||c.status==='rejected')h+=resend;
+    return h+'</div>';
+  };
+  /* 다시 알림 보내기 (관리자·팀장) */
+  var TT={'오배송':'🚨 오배송 처리 요청','미반납':'📋 미반납 알림','오회수':'🔄 오회수 알림','수기회수':'🔁 수기회수 요청','기타':'📩 기타 인입 알림'};
+  M.resend=async function(cid){
+    var c=(window._mdCases||[]).find(function(x){return x.id===cid;});if(!c||!c.driver_name){alert('담당 기사가 지정되지 않았어요.');return;}
+    try{if(typeof isQuietHour==='function'&&isQuietHour()){alert('지금은 푸시 금지시간이에요.\n금지시간에는 알림을 보내지 않아요.');return;}}catch(e){}
+    if(!confirm(c.driver_name+' 님에게 이 건 알림을 다시 보낼까요?'))return;
+    var cat=c.category||'오배송';var body=(c.route?('['+c.route+'] '):'')+(c.waybill_no?('운송장 '+c.waybill_no+' '):'')+'처리 부탁드려요. 앱 인입 탭에서 확인해 주세요.';
+    var payload={title:TT[cat]||TT['오배송'],body:body.slice(0,200),driver_name:c.driver_name,data:{url:'/?tab=md',caseId:String(c.id),type:'misdelivery_new'}};
+    var n=-1,ok=false;
+    try{var r=await fetch(SB_URL+'/functions/v1/send-push',{method:'POST',headers:{'Content-Type':'application/json','apikey':SB_KEY},body:JSON.stringify(payload)});ok=r.ok;try{var j=await r.json();n=Number(j&&j.sent);if(j&&j.blocked)n=-2;}catch(e){}}catch(e){ok=false;}
+    var st,why='';
+    if(n===-2){alert('푸시 금지시간이라 보내지 않았어요.');return;}
+    if(ok&&n>0)st='sent';else if(ok&&n===0){st='fail';var cnt=0;try{var q=await sbClient.from('push_subscriptions').select('endpoint').eq('driver_name',c.driver_name);cnt=((q&&q.data)||[]).length;}catch(e){}why=cnt>0?'gone':'nosub';}else{st='fail';why='err';}
+    var v={st:st,why:why,n:Math.max(n,0),at:new Date().toISOString(),d:c.driver_name,by:(CU&&CU.name)||''};
+    try{await sbClient.from('app_settings').upsert([{key:'mdn:'+c.id+':p',value:JSON.stringify(v)},{key:'mdnd:'+c.driver_name,value:JSON.stringify(Object.assign({cid:String(c.id)},v))}],{onConflict:'key'});}catch(e){}
+    try{showToast(st==='sent'?('📲 '+c.driver_name+' 님 폰 '+n+'대에 보냈어요'):('✕ 알림이 안 갔어요 — '+M.why(why)),st==='sent');}catch(e){}
+    await M.fill(c);
+    try{var card=document.getElementById('md-card-'+c.id);if(card&&typeof mdCardHtml==='function'){var t=document.createElement('div');t.innerHTML=mdCardHtml(c,CU.role==='admin',CU.role==='leader');card.replaceWith(t.firstChild);}}catch(e){}
+  };
+  /* 구독 현황판용: 기사별 마지막 결과 */
+  M.lastByDriver=async function(){var m={};try{var r=await sbClient.from('app_settings').select('key,value').like('key','mdnd:%');((r&&r.data)||[]).forEach(function(x){m[x.key.slice(5)]=pj(x.value);});}catch(e){}return m;};
+  M.hm=hm;
+})();
+</script>
+
+</body></html>

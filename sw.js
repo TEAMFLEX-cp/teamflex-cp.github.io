@@ -1,5 +1,5 @@
 // TeamFlex Service Worker v347 — v346 원복(잘못된 consignment 필드로 PDD미스 판정 오류 → 복구)
-const CACHE_NAME = 'teamflex-v956';
+const CACHE_NAME = 'teamflex-v957';
 const SB_URL = 'https://czpinyfirgvkhdfnvkls.supabase.co';
 const SB_KEY = 'sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 
@@ -227,8 +227,20 @@ self.addEventListener('push', e => {
     silent:             false,
     data:               d.data || {}
   };
-  e.waitUntil(self.registration.showNotification(title, opts));
+  e.waitUntil(Promise.all([self.registration.showNotification(title, opts), _tfDlv(d)]));
 });
+// [v957] 인입 알림 '폰에 도착' 기록 (app_settings 'mdn:<caseId>:d')
+function _tfDlv(d) {
+  try {
+    const cid = d && d.data && d.data.caseId;
+    if (!cid) return Promise.resolve();
+    return fetch(SB_URL + '/rest/v1/app_settings?on_conflict=key', {
+      method: 'POST',
+      headers: { apikey: SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ key: 'mdn:' + cid + ':d', value: JSON.stringify({ at: new Date().toISOString() }) })
+    }).catch(() => {});
+  } catch (e) { return Promise.resolve(); }
+}
 
 // ── 알림 클릭 → 앱 열기 ──────────────────────────────────────────────────────
 self.addEventListener('notificationclick', e => {
