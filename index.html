@@ -13115,8 +13115,8 @@ function mdRenderList(cases){
                 var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',olddel:'🧹 이전라우트삭제',retcamp:'🏬 타캠프 반품 반납 확인',lost:'🔍 분실',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무신청',loss:'📉 차감[분실]'};
                 var _tl=_tm[r.type]||r.type;
                 var _cp=(r.payload&&r.payload.camp)?' ['+mdEsc(r.payload.camp)+']':'';
-                var _st=r.status==='approved'?'완료':'반려';
-                var _sc=r.status==='approved'?'#2e7d32':'#c62828';
+                var _st=r.status==='approved'?'완료':(r.status==='photo_wait'?'📷 사진 대기':'반려');   // [v959] 전취건 사진 대기는 반려 아님
+                var _sc=r.status==='approved'?'#2e7d32':(r.status==='photo_wait'?'#ef6c00':'#c62828');
                 var _desc=((r.requester_name||'')+' · '+(((r.payload&&r.payload.text)||'').replace(/\n/g,' '))).slice(0,40);
                 return '<div onclick="rqShowPopup('+r.id+')" style="background:#faf8ff;border-radius:8px;padding:9px 12px;margin-bottom:5px;border:1px solid #ede7f6;border-left:4px solid #7c4dff;cursor:pointer">'+
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
@@ -18928,8 +18928,9 @@ function rqBuildCard(r){
   var dt = r.created_at ? new Date(r.created_at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
   var stsDot = r.status==='pending'?'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff9800;margin-right:4px;vertical-align:middle"></span>'
     :r.status==='approved'?'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4caf50;margin-right:4px;vertical-align:middle"></span>'
+    :r.status==='photo_wait'?'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef6c00;margin-right:4px;vertical-align:middle"></span>'
     :'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f44336;margin-right:4px;vertical-align:middle"></span>';
-  var stsLbl = r.status==='pending'?'대기':r.status==='approved'?'완료':'반려';
+  var stsLbl = r.status==='pending'?'대기':r.status==='approved'?'완료':r.status==='photo_wait'?'📷 사진 대기':'반려';
   return '<div onclick="rqShowPopup('+r.id+')" style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid #f0f0f8;cursor:pointer;background:#fff;transition:background .12s" onmouseover="this.style.background=\'#f5f3ff\'" onmouseout="this.style.background=\'#fff\'">'+
     '<div style="flex:1;min-width:0">'+
       '<span style="font-size:13px;font-weight:700;color:#4527a0">'+typeLbl+'</span>'+
@@ -18980,7 +18981,7 @@ function rqShowPopup(id){
     setTimeout(function(){ _rqLoadPhotos(id); }, 0);
   }
   var stsColor={pending:'#ff9800',approved:'#4caf50',rejected:'#f44336'};
-  var stsLbl={pending:'⏳ 승인대기',approved:'✅ 승인완료',rejected:'❌ 반려됨'};
+  var stsLbl={pending:'⏳ 승인대기',approved:'✅ 승인완료',rejected:'❌ 반려됨',photo_wait:'📷 사진 입력 대기'};
   var delBtn = isLdr ? '<button onclick="rqClosePopup();rqDelete('+r.id+')" style="width:100%;margin-top:8px;padding:11px;background:#fff;color:#9e9e9e;border:1.5px solid #e0e0e0;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">🗑 삭제</button>' : '';
   var _reBase=(payload.resent_at)||r.created_at;
   var _reLeft=Math.ceil(((new Date(_reBase).getTime()+600000)-Date.now())/60000);
