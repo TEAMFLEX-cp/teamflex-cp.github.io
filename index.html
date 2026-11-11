@@ -22118,6 +22118,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     var rq=null;try{rq=JSON.parse(lsGet('tf_fp_req_'+n)||'null');}catch(e){}if(!rq)return;
     var r=await FP.register(n,{reqTok:rq.tok});
     if(!r.ok){alert(r.err==='cancel'?'지문 등록이 취소됐어요.':errMsg(r));return;}
+    try{FP.addMark(n,false);}catch(_fa){}   // [v960] 새 폰 등록 끝 → 매일 안내 중지
     FP.close();finishLogin(n,r.tok);
   };
   // ── 자동로그인 중 확인: 초기화됐거나, 비번 자동로그인인데 지문 전용 계정이 됐으면 로그아웃 ──
@@ -22221,7 +22222,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     else h+='<div style="font-size:11.5px;color:#6b7a90;margin-top:6px">기사가 설정 → 🔐 보안·지문에서 첫 폰을 직접 등록해요 (승인 필요 없음).</div>';
     box(h,(r.reqs||[]).some(function(q){return q.status==='pending';}));
   };
-  FP.decide=async function(name,id,ok){var r=await adm('adminDecide',{reqId:id,ok:!!ok});if(r.err){alert(errMsg(r));return;}toast(ok?'✅ 승인했어요 — 기사 폰에서 지문 등록하면 끝':'거절했어요',!!ok);try{if(typeof sendPushToAll==='function')sendPushToAll(ok?'✅ 새 폰 승인 완료':'❌ 새 폰 승인 거절',ok?'새 폰 추가가 승인됐어요. 그 폰 로그인 화면에서 [승인 확인] 후 지문을 등록하세요.':'새 폰 추가 요청이 거절됐어요. 관리자에게 문의하세요.',null,name);}catch(_){}FP.dhSection(name);if(document.getElementById('tf-adm-sec'))FP.openAdmin();};
+  FP.decide=async function(name,id,ok){var r=await adm('adminDecide',{reqId:id,ok:!!ok});if(r.err){alert(errMsg(r));return;}try{FP.addMark(name,!!ok);}catch(_fa){}toast(ok?'✅ 승인했어요 — 기사 폰에서 지문 등록하면 끝':'거절했어요',!!ok);try{if(typeof sendPushToAll==='function')sendPushToAll(ok?'✅ 새 폰 승인 완료':'❌ 새 폰 승인 거절',ok?'새 폰 추가가 승인됐어요. 그 폰 로그인 화면에서 [승인 확인] 후 지문을 등록하세요.':'새 폰 추가 요청이 거절됐어요. 관리자에게 문의하세요.',null,name);}catch(_){}FP.dhSection(name);if(document.getElementById('tf-adm-sec'))FP.openAdmin();};
   FP.reset=async function(name){if(!confirm(name+' 기사의 지문 등록을 모두 지울까요?\n지운 뒤에는 비밀번호로 다시 로그인할 수 있게 됩니다.'))return;var r=await adm('adminReset',{name:name});if(r.err){alert(errMsg(r));return;}toast('🗑 지문 초기화 완료 ('+r.removed+'대)',true);FP.dhSection(name);};
   FP.delDev=async function(name,id){if(!confirm('이 폰의 지문 등록을 지울까요?'))return;var r=await adm('adminDelDev',{name:name,id:id});if(r.err){alert(errMsg(r));return;}toast('삭제했어요',true);FP.dhSection(name);};
   // 관리자 설정: 마스터키 + 보안 현황
@@ -22243,6 +22244,10 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
         /* [v916] 사람별 등록 대수 — 조경민 2대 · 김민기 1대 */
         try{var _cs=(r.counts||[]).slice().sort(function(a,b){return (b.n-a.n)||String(a.name).localeCompare(String(b.name));});
          var _lg=r.logs||[],_apd={};_lg.forEach(function(l){var t=String(l.at||'');if(l.ev==='approve'){if(!_apd[l.name]||t>_apd[l.name].a)_apd[l.name]={a:t,r:(_apd[l.name]||{}).r||''};}});_lg.forEach(function(l){if((l.ev==='reg_add'||l.ev==='reg_first')&&_apd[l.name]&&String(l.at||'')>_apd[l.name].r)_apd[l.name].r=String(l.at||'');});
+         try{var _wN={};_cs.forEach(function(c){if(_apd[c.name]&&_apd[c.name].a>_apd[c.name].r)_wN[c.name]=_apd[c.name].a;});
+           sbClient.from('app_settings').select('key').like('key','fpadd:%').then(function(q){var have={};((q&&q.data)||[]).forEach(function(x){have[x.key.slice(6)]=1;});
+             Object.keys(_wN).forEach(function(n){if(!have[n])sbClient.from('app_settings').upsert({key:'fpadd:'+n,value:JSON.stringify({at:_wN[n],by:'sync'})},{onConflict:'key'}).then(function(){});});
+             Object.keys(have).forEach(function(n){if(!_wN[n]&&_cs.some(function(c){return c.name===n;}))sbClient.from('app_settings').delete().eq('key','fpadd:'+n).then(function(){});});});}catch(_sy){}   // [v960] 매일 안내 대상 자동 맞춤
          h+='<div id="tf-fp-reglist" style="display:none">';
          h+='<div style="font-weight:900;font-size:14px;margin-top:12px">👆 지문 등록 현황 <span style="font-size:11.5px;color:#8a97a8;font-weight:700">'+_cs.length+'명 · 폰 '+_cs.reduce(function(s,c){return s+(c.n||0);},0)+'대</span></div>';
          h+=_cs.length?('<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+_cs.map(function(c){var w=_apd[c.name]&&_apd[c.name].a>_apd[c.name].r;return '<div style="border-radius:10px;padding:6px 10px;font-size:12.5px;font-weight:800;background:'+(c.n>=2?'#e3f2fd':'#e8f5e9')+';color:'+(c.n>=2?'#1565c0':'#2e7d32')+'">'+esc(c.name)+' · '+c.n+'대'+(w?' <span style="font-size:10.5px;color:#e65100">(추가 승인됨·폰 등록 전)</span>':'')+'</div>';}).join('')+'</div>'):'<div style="font-size:12px;color:#8a97a8;margin-top:6px">아직 지문 등록한 기사가 없어요.</div>';
@@ -22285,7 +22290,19 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
       return de.apply(this,arguments);};}catch(e){}
     try{var lo=window.doLogout;if(typeof lo==='function')window.doLogout=function(){var m=window._tfMasterSess;var r=lo.apply(this,arguments);try{var b=document.getElementById('tf-mk-ban');if(b)b.remove();}catch(_){}if(m){window._tfMasterSess=null;setTimeout(function(){location.reload();},50);}return r;};}catch(e){}
   };
-  function init(){try{ensureLoginUI();}catch(e){}try{FP.installGuards();}catch(e){}setTimeout(function(){try{FP.adminPoll();}catch(e){}},6000);}
+  /* ── [v960] 새 폰 추가 승인 후 미등록 안내 ──
+     app_settings 'fpadd:<이름>' = {at, by} : 관리자가 승인했는데 아직 새 폰 지문 등록을 안 한 상태
+     · 원래 폰: 하루 1번 안내 팝업 (tfFpAdd)   · 새 폰: 앱 열면 승인 확인 → 바로 '이 폰 지문 등록' 창 */
+  FP.addMark=async function(name,on){if(!name||!window.sbClient)return;try{if(on)await sbClient.from('app_settings').upsert({key:'fpadd:'+name,value:JSON.stringify({at:new Date().toISOString(),by:(window.CU&&CU.name)||''})},{onConflict:'key'});else await sbClient.from('app_settings').delete().eq('key','fpadd:'+name);}catch(e){}};
+  FP.reqPeek=async function(n){var rq=null;try{rq=JSON.parse(lsGet('tf_fp_req_'+n)||'null');}catch(e){}if(!rq)return null;try{var j=await api('reqStatus',{reqId:rq.id,reqTok:rq.tok});return j&&j.status;}catch(e){return null;}};
+  var _npDone=false;
+  FP.newPhoneCheck=async function(){
+    if(_npDone||(window.CU&&CU.name))return;_npDone=true;
+    var names=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('tf_fp_req_')===0&&lsGet(k))names.push(k.slice(10));}}catch(e){}
+    for(var j=0;j<names.length;j++){var n=names[j];if(FP.tokOf(n))continue;var st=await FP.reqPeek(n);
+      if(st==='approved'){if(window.CU&&CU.name)return;var u=document.getElementById('uid');if(u){u.value=n;}try{showFpLogin(n);}catch(e){}FP.reqWait(n);return;}}
+  };
+  function init(){try{ensureLoginUI();}catch(e){}setTimeout(function(){try{FP.newPhoneCheck();}catch(e){}},2500);try{FP.installGuards();}catch(e){}setTimeout(function(){try{FP.adminPoll();}catch(e){}},6000);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 
@@ -23400,4 +23417,44 @@ window.mdConvertToNotice=mdConvertToNotice;
 })();
 </script>
 
+<script>
+/* ══════ [v960] 새 폰 추가 승인됐는데 등록 안 한 기사 → 하루 1번 안내 팝업 (원래 쓰던 폰) ══════ */
+(function(){
+  if(window.tfFpAdd)return;var A={};window.tfFpAdd=A;
+  function today(){try{return kstToday();}catch(e){return new Date().toISOString().slice(0,10);}}
+  function busy(){return !!(document.getElementById('tf-onb')||document.getElementById('tf-fp-mod')||document.getElementById('sreq-ov')||document.getElementById('tf-fpadd'));}
+  function hm(iso){try{var d=new Date(iso);return (d.getMonth()+1)+'월 '+d.getDate()+'일';}catch(e){return '';}}
+  A.check=async function(force){
+    try{if(!window.CU||!CU.name||CU.role==='admin'||CU._master||window._tfMasterSess||window.__TF_SREQ_WORKER||!window.sbClient)return;
+      var dk='tf_fpadd_day_'+CU.name;if(!force){try{if(localStorage.getItem(dk)===today())return;}catch(e){}}
+      var r=await sbClient.from('app_settings').select('value').eq('key','fpadd:'+CU.name).maybeSingle();var v=r&&r.data&&r.data.value;if(!v)return;try{v=JSON.parse(v);}catch(e){v={};}
+      var n=0;(function wait(){if(!window.CU||!CU.name)return;if(busy()&&n++<40){setTimeout(wait,3000);return;}A.show(v);try{localStorage.setItem(dk,today());}catch(e){}})();
+    }catch(e){}
+  };
+  A.show=function(v){
+    var o=document.getElementById('tf-fpadd');if(o)o.remove();o=document.createElement('div');o.id='tf-fpadd';
+    o.style.cssText='position:fixed;inset:0;z-index:2147481000;background:rgba(10,25,45,.55);display:flex;align-items:center;justify-content:center;padding:18px';
+    var st='display:flex;gap:10px;align-items:flex-start;background:#f5f9ff;border-radius:11px;padding:9px 11px;margin-top:6px;font-size:13px;color:#263238;line-height:1.5';
+    function step(i,t){return '<div style="'+st+'"><b style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#1565c0;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">'+i+'</b><div>'+t+'</div></div>';}
+    o.innerHTML='<div style="background:#fff;border-radius:20px;width:100%;max-width:400px;padding:20px 18px 16px;box-shadow:0 12px 40px rgba(0,0,0,.3)">'
+      +'<div style="text-align:center;font-size:36px;line-height:1">📱</div>'
+      +'<div style="text-align:center;font-size:18px;font-weight:900;color:#1a237e;margin-top:6px">새 폰 추가가 승인돼 있어요</div>'
+      +'<div style="text-align:center;font-size:12.5px;color:#607d8b;margin-top:4px">'+(v&&v.at?hm(v.at)+' 승인 · ':'')+'아직 새 폰에 지문 등록을 안 하셨어요</div>'
+      +'<div style="margin-top:12px">'+step(1,'<b>새 폰</b>에서 TeamFlex 앱을 열기')+step(2,'로그인 화면에 <b>이름</b> 입력')+step(3,'<b>[⏳ 이 폰 추가 승인 확인]</b> 누르기')+step(4,'<b>[👆 이 폰 지문 등록]</b> 누르고 지문 대기')+'</div>'
+      +'<div style="font-size:11.5px;color:#90a4ae;text-align:center;margin-top:8px;line-height:1.5">버튼이 [이 폰 추가 승인 요청]으로만 보이면<br>한 번 더 요청해 주세요. 관리자가 다시 승인해요.</div>'
+      +'<button onclick="tfFpAdd.close()" style="display:block;width:100%;border:0;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer;margin-top:12px;background:linear-gradient(135deg,#1565c0,#1e88e5);color:#fff">확인했어요</button>'
+      +'<button onclick="tfFpAdd.noNeed()" style="display:block;width:100%;border:0;border-radius:12px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;margin-top:7px;background:#eef2f6;color:#546e7a">새 폰은 안 쓸게요 (이 폰만 사용)</button>'
+      +'<div style="font-size:11px;color:#b0bec5;text-align:center;margin-top:6px">새 폰 등록을 마치면 이 안내는 더 이상 안 떠요</div></div>';
+    document.body.appendChild(o);
+  };
+  A.close=function(){var o=document.getElementById('tf-fpadd');if(o)o.remove();};
+  A.noNeed=async function(){if(!confirm('새 폰 추가를 취소할까요?\n관리자에게도 알려 드려요.'))return;A.close();
+    try{await sbClient.from('app_settings').delete().eq('key','fpadd:'+CU.name);}catch(e){}
+    try{if(typeof sendPushToAll==='function')sendPushToAll('📱 새 폰 추가 취소',CU.name+' 기사님이 새 폰 추가를 안 하기로 했어요 (지금 폰만 사용).',null,'관리자');}catch(e){}
+    try{showToast('새 폰 추가를 취소했어요',true);}catch(e){}};
+  // 앱 실행 후 · 홈으로 올 때 · 다시 열 때 확인 (하루 1번만 보임)
+  var _st=0;var t=setInterval(function(){if(window.CU&&CU.name){clearInterval(t);setTimeout(function(){A.check();},20000);}if(++_st>400)clearInterval(t);},1500);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')setTimeout(function(){A.check();},5000);});
+})();
+</script>
 </body></html>
