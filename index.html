@@ -1076,6 +1076,7 @@ setTimeout(hide,3500);})();</script>
         <input type="text" id="ec-ra-name" list="ec-driver-list" placeholder="동승자 이름" style="width:100%;box-sizing:border-box;padding:8px;border:1.5px solid #B2DFDB;border-radius:8px;font-size:14px">
         <div style="display:flex;gap:6px;margin-top:6px"><button id="ec-ra-del" onclick="ecRaSave(true)" style="flex:1;padding:8px;border:1px solid #ef9a9a;background:#fff;color:#c62828;border-radius:8px;font-size:12.5px;font-weight:800;cursor:pointer">동승 삭제</button><button onclick="ecRaSave(false)" style="flex:1.6;padding:8px;border:none;background:#00897B;color:#fff;border-radius:8px;font-size:12.5px;font-weight:800;cursor:pointer">동승 저장</button></div>
       </div>
+      <button id="ec-mr-btn" onclick="mrOpen()" style="display:none;width:100%;margin-top:6px;padding:9px;background:#FFF3E0;color:#E65100;border:1px dashed #FFB74D;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer">&#x1F6CC; 메타 휴무 → 재배정 (메타어드민 바로잡기)</button>
       <div class="errmsg" id="ec-err"></div>
       <div id="ec-foot-single" style="display:flex;gap:8px;margin-top:10px">
         <button class="btn-s" style="flex:1" onclick="closeEditCell()">취소</button>
@@ -9278,10 +9279,69 @@ function openEditCell(td){
   var _sp=_ecSplittable(rt);
   var _tgl=document.getElementById('ec-split-toggle');
   if(_tgl)_tgl.style.display=_sp?'block':'none';
-  _ecRotSeg(rt);document.getElementById('edit-cell-modal').style.display='';try{_ecRaInit();}catch(_ra){}
+  _ecRotSeg(rt);document.getElementById('edit-cell-modal').style.display='';try{_ecRaInit();}catch(_ra){}try{_mrBtn();}catch(_mb){}
   setTimeout(function(){document.getElementById('ec-name').focus();},100);
 }
 function closeEditCell(){document.getElementById('edit-cell-modal').style.display='none';}
+/* [v965] 메타 휴무 → 재배정: 메타어드민에 잘못 남은 배정을 바로잡기.
+   1차) 고른 기사들을 그 캠프에서 '휴무'로 보냄 → 메타의 남은 배정 삭제
+   2차) 1차 완료 후, 그 기사들 + 이 라우트 현재 기사를 '그날 같은 캠프 라우트 전체' 출근으로 다시 보냄
+   (한 파일에 같은 기사의 휴무+출근을 같이 넣으면 출근만 남으므로 반드시 2번에 나눔) */
+function _mrBtn(){var b=document.getElementById('ec-mr-btn');if(b)b.style.display=(CU&&CU.role==='admin')?'block':'none';}
+function _mrCW(rr){var b=String(rr||'').replace(/\s*\(.*?\)/g,'').trim();return _rrCampKey(b)+'|'+(_sxIsNight(b)?'N':'D');}
+async function _mrDay(date){var q=await sbClient.from('weekly_schedules').select('route,route_raw,driver_name,share').eq('work_date',date);if(q&&q.error)throw new Error(q.error.message);var m={};
+  ((q&&q.data)||[]).forEach(function(e){var rr=e.route_raw||e.route||'';if(!rr)return;var sh=e.share;if(typeof sh==='string'){try{sh=JSON.parse(sh);}catch(_x){sh=null;}}m[rr]={drv:e.driver_name||'',share:(sh&&sh.length)?sh:null};});return m;}
+function _mrSegs(day,nm,cw){var k=norm_name_js(nm||''),out=[];Object.keys(day).forEach(function(rr){if(cw&&_mrCW(rr)!==cw)return;var o=day[rr];
+  if(o.share){o.share.forEach(function(s){if(norm_name_js(s.driver||'')===k)out.push({rr:rr,rs:(s.routes&&s.routes.length)?s.routes:_sxSplitRt(rr),rot:s.rot||''});});}
+  else if(norm_name_js(o.drv||'')===k)out.push({rr:rr,rs:_sxSplitRt(rr),rot:''});});return out;}
+function _mrNamesOf(o){var a=[];if(!o)return a;if(o.share)o.share.forEach(function(s){if(s.driver&&a.indexOf(s.driver)<0)a.push(s.driver);});else if(o.drv)a.push(o.drv);return a;}
+async function mrOpen(){if(!(CU&&CU.role==='admin')){alert('관리자만 사용할 수 있어요.');return;}var st=EC_STATE||{};var dt=st.date,rr=st.route,wk=st.wk;if(!dt||!rr)return;
+  if(_sxDateLocked(dt)){alert('⚠ '+dt+' 은(는) 오늘·내일 날짜라 쿠팡 메타 마감이 지났어요.\n메타어드민에서 직접 수정해 주세요.');return;}
+  closeEditCell();var ov=document.getElementById('mr-ov');if(ov)ov.remove();ov=document.createElement('div');ov.id='mr-ov';ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:flex-end;justify-content:center';
+  ov.innerHTML='<div id="mr-in" style="background:#fff;width:100%;max-width:460px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 14px 20px"><div style="text-align:center;color:#999;padding:30px">그날 배정 불러오는 중…</div></div>';document.body.appendChild(ov);
+  try{var day=await _mrDay(dt);var cw=_mrCW(rr);var cur=_mrNamesOf(day[rr]);var cand={};cur.forEach(function(n){cand[n]={cur:true};});
+    // 이 라우트를 거쳐간 기사(변경이력) + 마지막으로 메타에 보낸 기사
+    try{var lg=await _loadSharedSchedLog();var subs=_sxSplitRt(rr);(lg||[]).forEach(function(c){if(c.workDate!==dt)return;var r0=String(c.route||''),rw=String(c.raw||'');if(r0!==rr&&rw!==rr&&subs.indexOf(r0)<0)return;
+      String((c.oldDriver||'')+'/'+(c.newDriver||'')).split('/').forEach(function(p){p=p.trim();var ci=p.indexOf(':');if(ci>=0)p=p.slice(ci+1);p=p.replace(/\(.*?\)/g,'').trim();if(p&&!cand[p])cand[p]={};});});}catch(_l){}
+    try{var sn=await _metaSnapLoad();var sd=sn[dt]||{};_sxSplitRt(rr).forEach(function(s){(sd[String(s).toUpperCase()]||[]).forEach(function(n){if(n&&!cand[n])cand[n]={};});});}catch(_s){}
+    window._mr={dt:dt,rr:rr,wk:wk,cw:cw,day:day,cand:cand};_mrRender();}catch(e){document.getElementById('mr-in').innerHTML='<div style="padding:20px;color:#c62828">불러오기 실패: '+escQ(e.message||String(e))+'</div>';}}
+function _mrRender(){var M=window._mr;var el=document.getElementById('mr-in');if(!M||!el)return;var names=Object.keys(M.cand);
+  var rows=names.map(function(n){var segs=_mrSegs(M.day,n,M.cw);var rts=[];segs.forEach(function(g){g.rs.forEach(function(x){if(rts.indexOf(x)<0)rts.push(x);});});rts.sort();
+    return '<label style="display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid #ffe0b2;border-radius:10px;margin-bottom:6px;background:#fff"><input type="checkbox" class="mr-ck" value="'+escQ(n)+'" checked style="width:18px;height:18px"><b style="font-size:13.5px">'+escQ(n)+'</b>'+(M.cand[n].cur?'<span style="font-size:10px;background:#e3f2fd;color:#1565c0;border-radius:8px;padding:1px 7px;font-weight:800">지금 배정</span>':'<span style="font-size:10px;background:#eceff1;color:#546e7a;border-radius:8px;padding:1px 7px;font-weight:800">이전 배정</span>')+'<span style="margin-left:auto;font-size:11.5px;color:#455a64;font-weight:700">'+(rts.length?('→ 출근 '+escQ(rts.join(','))):'→ 휴무로 끝')+'</span></label>';}).join('');
+  el.innerHTML='<div style="display:flex;align-items:center"><div style="font-size:15.5px;font-weight:900;color:#e65100">🛌 메타 휴무 → 재배정</div><span onclick="document.getElementById(\'mr-ov\').remove()" style="margin-left:auto;font-size:20px;color:#999;cursor:pointer">✕</span></div>'
+   +'<div style="background:#fff8e1;border-radius:10px;padding:9px 11px;margin:9px 0 10px;font-size:12px;color:#5d4037;line-height:1.65;font-weight:600">'+escQ(M.dt)+' · <b>'+escQ(M.rr)+'</b> · '+escQ(_rrMetaCamp(String(M.rr).replace(/\s*\(.*?\)/g,'').trim(),M.dt))+'<br>① 체크한 기사를 메타에서 <b>휴무</b>로 보내 남은 배정을 지우고<br>② 끝나면 앱 스케줄 그대로 <b>그날 라우트 전체 출근</b>으로 다시 넣어요.</div>'
+   +rows+'<div style="display:flex;gap:6px;margin:8px 0 2px"><input id="mr-add" list="ec-driver-list" placeholder="기사 추가 (메타에 잘못 남은 사람)" style="flex:1;min-width:0;padding:8px;border:1px solid #cfd8dc;border-radius:8px;font-size:13px"><button onclick="_mrAdd()" style="padding:8px 12px;border:none;border-radius:8px;background:#607d8b;color:#fff;font-weight:800;cursor:pointer">추가</button></div>'
+   +'<div id="mr-st" style="font-size:12.5px;font-weight:800;color:#1565c0;margin-top:10px;white-space:pre-line"></div>'
+   +'<button id="mr-go" onclick="mrRun()" style="width:100%;margin-top:10px;padding:12px;border:none;border-radius:11px;background:#e65100;color:#fff;font-size:14px;font-weight:900;cursor:pointer">🛌 휴무 → 재배정 실행</button>';}
+function _mrAdd(){var i=document.getElementById('mr-add');var v=(i&&i.value||'').trim();if(!v||!window._mr)return;if(!window._mr.cand[v])window._mr.cand[v]={};_mrRender();}
+async function _mrWait(id,label){var st=document.getElementById('mr-st');for(var t=0;t<70;t++){await new Promise(function(r){setTimeout(r,3000);});var r=await sbClient.from('meta_upload_jobs').select('status,result').eq('id',id).maybeSingle();var d=r&&r.data;if(st)st.textContent=label+' 처리중… (#'+id+' · '+((t+1)*3)+'초)';if(d&&(d.status==='done'||d.status==='failed'))return d;}return {status:'timeout',result:'4분 넘게 응답 없음'};}
+function _mrXlsx(aoa,fname){var wb=XLSX.utils.book_new();var sh=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});sh['!cols']=[{wch:18},{wch:16},{wch:8},{wch:8},{wch:16},{wch:8},{wch:14},{wch:22}];for(var R=2;R<=aoa.length;R++){var ad='A'+R;if(sh[ad])sh[ad].z='yyyy-mm-dd hh:mm:ss';}XLSX.utils.book_append_sheet(wb,sh,'변경리스트');return XLSX.write(wb,{type:'base64',bookType:'xlsx'});}
+async function mrRun(){var M=window._mr;if(!M)return;var sel=[].slice.call(document.querySelectorAll('.mr-ck')).filter(function(c){return c.checked;}).map(function(c){return c.value;});
+  if(!sel.length){alert('휴무로 보낼 기사를 체크해 주세요.');return;}if(_sxDateLocked(M.dt)){alert('오늘·내일 날짜는 메타 마감이 지났어요.');return;}
+  if(!confirm(M.dt+' '+M.rr+'\n\n① 휴무: '+sel.join(', ')+'\n② 다시 출근: 앱 스케줄 기준\n\n쿠팡 메타어드민에 2번 나눠 반영할까요?'))return;
+  var go=document.getElementById('mr-go');if(go){go.disabled=true;go.style.opacity='.5';}var st=document.getElementById('mr-st');
+  hcLoadXLSX(async function(ok){try{if(!ok||typeof XLSX==='undefined')throw new Error('엑셀 모듈을 불러오지 못했어요');
+    var didmap=await _sxDidMap();var day=await _mrDay(M.dt);M.day=day;var H=['업무일','사업자등록번호','캠프명','웨이브','아이디','업무상태','회전','업무라우트'];
+    var base=String(M.rr).replace(/\s*\(.*?\)/g,'').trim();var b0=_sxSplitRt(base).map(function(x){return _rrMetaRt(x,M.dt);})[0]||base;var bb=b0.replace(/\s*\(.*?\)/g,'').trim();var ni=_sxIsNight(bb);
+    if(_rrMetaUnset(bb,M.dt))throw new Error('이 라우트의 캠프 메타 설정이 비어 있어요');
+    var camp=_rrMetaCamp(bb,M.dt),wave=_rrMetaWave(bb,ni,M.dt);
+    var a1=[H],skip=[];sel.forEach(function(n){if(!_sxReg(didmap,n)){skip.push(n);return;}a1.push([_sxDateVal(M.dt),_SX_CFG.bizno,camp,wave,_sxDid(didmap,n,''),'휴무','','']);});
+    if(a1.length<2)throw new Error('등록된 아이디가 있는 기사가 없어요 ('+skip.join(',')+')');
+    var work={};sel.concat(_mrNamesOf(day[M.rr])).forEach(function(n){work[n]=1;});
+    var a2=[H];Object.keys(work).forEach(function(n){if(!_sxReg(didmap,n))return;var segs=_mrSegs(day,n,M.cw);var byW={};
+      segs.forEach(function(g){var rts=g.rs.map(function(x){return _rrMetaRt(x,M.dt);});var f=(rts[0]||'').replace(/\s*\(.*?\)/g,'').trim();if(!f||_rrMetaUnset(f,M.dt))return;var nI=_sxIsNight(f);var cp=_rrMetaCamp(f,M.dt),wv=_rrMetaWave(f,nI,M.dt);var k=cp+'|'+wv;var o=byW[k]||(byW[k]={cp:cp,wv:wv,rot:'',rts:[]});o.rot=_mergeRot(o.rot,g.rot||_rrMetaRot(f,nI,M.dt));rts.forEach(function(x){if(o.rts.indexOf(x)<0)o.rts.push(x);});});
+      Object.keys(byW).forEach(function(k){var o=byW[k];o.rts.sort();a2.push([_sxDateVal(M.dt),_SX_CFG.bizno,o.cp,o.wv,_sxDid(didmap,n,''),_SX_CFG.status,o.rot,o.rts.join(',')]);});});
+    var lbl=M.dt.slice(5).replace('-','.')+'_'+base;
+    if(st)st.textContent='① 휴무 '+(a1.length-1)+'명 보내는 중…';var j1=await _metaCreateJob('changed',M.wk,lbl+'_휴무.xlsx',_mrXlsx(a1,lbl));if(!j1)throw new Error('1차 작업 생성 실패');
+    var r1=await _mrWait(j1,'① 휴무');if(r1.status!=='done')throw new Error('① 휴무 반영 실패: '+(r1.result||r1.status));
+    if(a2.length<2){if(st)st.textContent='✅ 휴무 반영 완료 (다시 출근할 배정 없음)';return;}
+    if(st)st.textContent='② 재배정 '+(a2.length-1)+'줄 보내는 중…';var j2=await _metaCreateJob('changed',M.wk,lbl+'_재배정.xlsx',_mrXlsx(a2,lbl));if(!j2)throw new Error('2차 작업 생성 실패');
+    var r2=await _mrWait(j2,'② 재배정');if(r2.status!=='done')throw new Error('② 재배정 반영 실패: '+(r2.result||r2.status)+'\n(휴무만 반영된 상태예요 — 다시 실행해 주세요)');
+    try{var sn=await _metaSnapLoad();var rws=[];Object.keys(day).forEach(function(rr){if(_mrCW(rr)!==M.cw)return;var o=day[rr];_sxSplitRt(rr).forEach(function(x){rws.push({work_date:M.dt,route:x,route_raw:rr,driver_name:o.drv,share:o.share?JSON.stringify(o.share):null});});});await _metaSnapSave(rws);}catch(_ss){}
+    if(st){st.style.color='#2e7d32';st.textContent='✅ 완료 — ① 휴무 '+(a1.length-1)+'명 → ② 재배정 '+(a2.length-1)+'줄 메타어드민 반영'+(skip.length?('\n(아이디 미등록 제외: '+skip.join(',')+')'):'');}
+    try{showToast('✅ 메타 휴무→재배정 완료',true);}catch(e){}
+  }catch(e){if(st){st.style.color='#c62828';st.textContent='❌ '+(e.message||e);}if(go){go.disabled=false;go.style.opacity='1';}}});}
+
 /* ══ [v833] 동승교육 표시 (app_settings.sched_ridealong · 쿠팡/정산 영향 없음) ══ */
 var _RA=null;
 async function _raLoad(){try{var r=await sbClient.from('app_settings').select('value').eq('key','sched_ridealong').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}_RA=(v&&typeof v==='object')?v:{};}catch(e){_RA=_RA||{};}return _RA;}
@@ -9564,7 +9624,7 @@ function ecEditExistingSplit(wk,lk,route,dt,pairsJson){
   document.getElementById('ec-err').textContent='';
   document.getElementById('ec-split-toggle').style.display='none';
   document.getElementById('edit-cell-modal').style.display='';
-  ecToggleSplit();try{_ecRaInit();}catch(_ra){}
+  ecToggleSplit();try{_ecRaInit();}catch(_ra){}try{_mrBtn();}catch(_mb){}
   var fp=document.getElementById('ec-foot-split');
   if(fp)fp.innerHTML='<button class="btn-s" style="flex:1" onclick="closeEditCell()">취소</button>'
     +'<button class="btn-s" style="flex:1;background:#FFF3E0;color:#E65100;border:1px solid #FFB74D" onclick="mergeFromSplitModal()">🔗 합치기</button>'
