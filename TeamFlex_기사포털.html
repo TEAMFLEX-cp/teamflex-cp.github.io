@@ -22283,7 +22283,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   FP.status=async function(n){
     n=String(n||'').trim();if(!n)return {fp:false};
     var j=await api('status',{name:n},5000);
-    if(j&&!j.err){FP.cache[n]={fp:!!j.fp,n:j.n||0,pend:j.pend||0,at:Date.now()};return FP.cache[n];}
+    if(j&&!j.err){FP.cache[n]={fp:!!j.fp,n:j.n||0,pend:j.pend||0,at:Date.now()};if(!j.fp&&lsGet('tf_fp_tok_'+n)){lsSet('tf_fp_tok_'+n,null);}/* [v967] 관리자가 지문 초기화한 폰: 남아 있던 지문 표시 지우기 */return FP.cache[n];}
     var m=await mirrorHas(n);var o={fp:!!m,off:true};if(m!==null)FP.cache[n]=o;return o;
   };
   FP.register=async function(n,opt){
@@ -22534,12 +22534,16 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   // ── 민감 화면 연결 (앱 함수 감싸기) ──
   FP.installGuards=function(){
     if(FP._g)return;FP._g=1;
+    /* [v967] 로그인 후 서버에 지문 상태 확인 → 초기화된 계정이면 이 폰의 지문 표시 자동 삭제 */
+    var _fpChk=function(){try{if(CU&&!CU._master&&lsGet('tf_fp_tok_'+CU.name))FP.status(CU.name);}catch(e){}};try{setTimeout(_fpChk,2500);}catch(e){}
+    try{var _la=window.launchApp;if(typeof _la==='function')window.launchApp=function(){var r=_la.apply(this,arguments);setTimeout(_fpChk,2000);return r;};}catch(e){}
     try{var cp=window.CT_preview;if(typeof cp==='function')window.CT_preview=function(n,t,m){if(m==='driver'&&FP.needGate()){var a=arguments,s=this;FP.gate('계약서',function(){cp.apply(s,a);});return;}return cp.apply(this,arguments);};}catch(e){}
     try{if(typeof window.dhMyInfo==='function')window.dhMyInfo=FP.guard('내 정보',window.dhMyInfo);}catch(e){}
-    try{var opm=window.openPwModal;if(typeof opm==='function')window.openPwModal=function(){if(CU&&!CU._master&&FP.isFp(CU.name)){modal('<div style="text-align:center;font-size:34px">🔒</div><div style="text-align:center;font-weight:900;font-size:16px;margin:4px 0">지문 전용 계정이에요</div><div style="font-size:12.5px;color:#5a6b7c;text-align:center;line-height:1.6">이 계정은 비밀번호를 쓰지 않고 지문으로만 들어와요.<br>지문을 못 쓰게 되면 관리자에게 <b>지문 초기화</b>를 요청하세요.</div><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');return;}return opm.apply(this,arguments);};}catch(e){}
+    try{var opm=window.openPwModal;if(typeof opm==='function')window.openPwModal=function(){if(CU&&!CU._master&&FP.isFp(CU.name)&&!FP._pwChk){var _a=arguments,_s=this;FP.status(CU.name).then(function(st){if(st&&!st.off&&!st.fp){opm.apply(_s,_a);return;}FP._pwChk=1;try{window.openPwModal.apply(_s,_a);}finally{FP._pwChk=0;}});return;}if(CU&&!CU._master&&FP.isFp(CU.name)){modal('<div style="text-align:center;font-size:34px">🔒</div><div style="text-align:center;font-weight:900;font-size:16px;margin:4px 0">지문 전용 계정이에요</div><div style="font-size:12.5px;color:#5a6b7c;text-align:center;line-height:1.6">이 계정은 비밀번호를 쓰지 않고 지문으로만 들어와요.<br>지문을 못 쓰게 되면 관리자에게 <b>지문 초기화</b>를 요청하세요.</div><button style="'+B2+'" onclick="tfFp.close()">닫기</button>');return;}return opm.apply(this,arguments);};}catch(e){}
     try{var rdp=window.resetDriverPw;if(typeof rdp==='function')window.resetDriverPw=async function(name){try{var st=await FP.status(name);if(st&&st.fp){alert(name+' 기사는 지문 전용 계정이에요.\n비밀번호 초기화 대신 기사정보 상세 → 🔐 보안 → [지문 초기화]를 사용하세요.\n(지문 초기화하면 원래 비밀번호로 돌아와요)');return false;}}catch(_){}return rdp.apply(this,arguments);};}catch(e){}
     try{var de=window.dhMyEditStart;if(typeof de==='function')window.dhMyEditStart=function(name){
       if(CU&&CU._master){_dhRender(name,true,'self');return;}
+      if(CU&&FP.isFp(CU.name)&&!FP._edChk){var _a2=arguments,_s2=this;FP.status(CU.name).then(function(st){FP._edChk=1;try{window.dhMyEditStart.apply(_s2,_a2);}finally{FP._edChk=0;}});return;}
       if(CU&&FP.isFp(CU.name)){if(FP.needGate())FP.gate('내 정보 수정',function(){_dhRender(name,true,'self');});else _dhRender(name,true,'self');return;}
       return de.apply(this,arguments);};}catch(e){}
     try{var lo=window.doLogout;if(typeof lo==='function')window.doLogout=function(){var m=window._tfMasterSess;var r=lo.apply(this,arguments);try{var b=document.getElementById('tf-mk-ban');if(b)b.remove();}catch(_){}if(m){window._tfMasterSess=null;setTimeout(function(){location.reload();},50);}return r;};}catch(e){}
