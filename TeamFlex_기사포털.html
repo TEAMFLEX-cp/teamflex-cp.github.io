@@ -19189,9 +19189,16 @@ async function rqAutoCamp(){try{
 }catch(e){console.warn('rqAutoCamp',e);}}
 /* [v969] 캠프 선택: 드롭다운 대신 3캠프·6캠프·8캠프 버튼(누르면 선택 표시) */
 var _RQ_CAMPS=[['일산3캠프','3캠프'],['일산6캠프','6캠프'],['일산8캠프2wave','8캠프']];
+try{if(!document.getElementById('rq-arm-css')){var _st=document.createElement('style');_st.id='rq-arm-css';_st.textContent='@keyframes rqArm{from{transform:scale(1)}to{transform:scale(1.07);box-shadow:0 0 0 3px rgba(245,158,11,.35)}}';(document.head||document.documentElement).appendChild(_st);}}catch(e){}
 function _rqCampSeg(sm){var cur=rqGetCamp();return '<div class="rq-cseg" style="display:flex;gap:4px;flex-shrink:0">'+_RQ_CAMPS.map(function(c){var on=(c[0]===cur);return '<button type="button" data-camp="'+c[0]+'" onclick="rqCampPick(\''+c[0]+'\')" style="padding:'+(sm?'5px 7px':'6px 10px')+';border-radius:8px;font-size:'+(sm?'11.5px':'12.5px')+';font-weight:800;cursor:pointer;white-space:nowrap;border:1.5px solid '+(on?'#3949ab':'#c5cae9')+';background:'+(on?'#3949ab':'#fff')+';color:'+(on?'#fff':'#3949ab')+'">'+(on?'✓ ':'')+c[1]+'</button>';}).join('')+'</div>';}
-function rqCampPaint(){var cur=rqGetCamp();document.querySelectorAll('.rq-cseg button[data-camp]').forEach(function(b){var on=b.getAttribute('data-camp')===cur;var lb=(_RQ_CAMPS.filter(function(c){return c[0]===b.getAttribute('data-camp');})[0]||['',''])[1];b.textContent=(on?'✓ ':'')+lb;b.style.borderColor=on?'#3949ab':'#c5cae9';b.style.background=on?'#3949ab':'#fff';b.style.color=on?'#fff':'#3949ab';});}
-function rqCampPick(v){try{window.rqSetCamp(v);}catch(e){}rqCampPaint();try{if(_rqTab==='addr'&&typeof rqAdInput==='function')rqAdInput();}catch(e){}}
+function rqCampPaint(){var cur=rqGetCamp();document.querySelectorAll('.rq-cseg button[data-camp]').forEach(function(b){var on=b.getAttribute('data-camp')===cur;var lb=(_RQ_CAMPS.filter(function(c){return c[0]===b.getAttribute('data-camp');})[0]||['',''])[1];var arm=(!on&&window._rqCampArm===b.getAttribute('data-camp'));b.textContent=arm?'한번 더':((on?'✓ ':'')+lb);b.style.borderColor=arm?'#f59e0b':(on?'#3949ab':'#c5cae9');b.style.background=arm?'#fef3c7':(on?'#3949ab':'#fff');b.style.color=arm?'#b45309':(on?'#fff':'#3949ab');b.style.animation=arm?'rqArm .5s ease-in-out infinite alternate':'';});}
+/* [v970] 잘못 눌림 방지: 다른 캠프는 3초 안에 두 번 눌러야 바뀜 */
+function rqCampPick(v){if(v===rqGetCamp()){window._rqCampArm=null;rqCampPaint();return;}
+  var now=Date.now();if(window._rqCampArm===v&&now-(window._rqCampArmAt||0)<3000){window._rqCampArm=null;clearTimeout(window._rqCampArmT);
+    try{window.rqSetCamp(v);}catch(e){}rqCampPaint();try{if(_rqTab==='addr'&&typeof rqAdInput==='function')rqAdInput();}catch(e){}
+    try{showToast('✅ '+((_RQ_CAMPS.filter(function(c){return c[0]===v;})[0]||['',v])[1])+'으로 변경했어요',true);}catch(e){}return;}
+  window._rqCampArm=v;window._rqCampArmAt=now;clearTimeout(window._rqCampArmT);rqCampPaint();
+  window._rqCampArmT=setTimeout(function(){window._rqCampArm=null;rqCampPaint();},3000);}
 function rqSetCamp(v){
   window._rqCampManual=true;
   window._rqCamp=v;
