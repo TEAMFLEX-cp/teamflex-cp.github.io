@@ -17672,7 +17672,7 @@ async function rqLoadSettings(){
 // 요청 종류 선택 게이트: 파손·라우트변경은 '안내 팝업 1회' 후 진입, 나머지는 바로 진입.
 function rqSwitchTab(k){
   if(k === _rqTab) return;
-  if(k === 'damage' || k === 'route' || k === 'pretake' || k === 'lostret'){ rqShowNotice(k); return; }
+  if(k === 'damage' || k === 'route' || k === 'lostret'){ rqShowNotice(k); return; }   // [v974] 전취건은 안내 팝업 없이 바로
   _rqSelectTab(k);
 }
 function _rqSelectTab(k){
@@ -18558,7 +18558,7 @@ function rqRetForm(kind){
   return '<div class="rq-card">'+
     '<div id="rq-ret-'+kind+'-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
-    rtnWarnBoxRq()+(kind==='pretake'?_rqBcModeHtml(kind):'')+'<label class="rq-label">'+((kind==='pretake'&&_rqBcMode()==='bc')?'📋 인식된 운송장 <span style="font-size:10.5px;color:#888;font-weight:600">(직접 고쳐도 돼요)</span>':'📋 운송장 정보 붙여넣기')+' <span class="rq-req">필수</span></label>'+
+    (kind==='pretake'?'':rtnWarnBoxRq())+(kind==='pretake'?_rqBcModeHtml(kind):'')+'<label class="rq-label">'+((kind==='pretake'&&_rqBcMode()==='bc')?'📋 인식된 운송장 <span style="font-size:10.5px;color:#888;font-weight:600">(직접 고쳐도 돼요)</span>':'📋 운송장 정보 붙여넣기')+' <span class="rq-req">필수</span></label>'+
     '<textarea class="rq-paste" id="rq-ret-'+kind+'-paste" placeholder="'+((kind==='pretake'&&_rqBcMode()==='bc')?'📷 위 [송장 바코드 찍기]로 찍으면&#10;여기에 운송장번호가 자동으로 들어가요':'📋 운송장·주문번호를 붙여넣으면 자동으로 행 분리 됨&#10;✅ 여러 건을 동시에 붙여넣기 해도 자동 처리 됨')+'" oninput="window._rqRetRaw[\''+kind+'\']=this.value;rqUpdateRetPreview(\''+kind+'\')">'+rqEsc(raw)+'</textarea>'+
     (pairs.length?'<div class="rq-hint" id="rq-ret-'+kind+'-hint" style="background:#e8f5e9;color:#2e7d32">✅ '+pairs.length+'건 인식</div>':'<div id="rq-ret-'+kind+'-hint" style="display:none"></div>')+
     ((kind==='pretake'&&_rqBcMode()==='bc')?_rqBcCampWarn(kind):'')+
