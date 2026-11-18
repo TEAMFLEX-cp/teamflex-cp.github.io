@@ -17673,7 +17673,7 @@ async function rqLoadSettings(){
 // 요청 종류 선택 게이트: 파손·라우트변경은 '안내 팝업 1회' 후 진입, 나머지는 바로 진입.
 function rqSwitchTab(k){
   if(k === _rqTab) return;
-  if(k === 'damage' || k === 'route' || k === 'lostret'){ rqShowNotice(k); return; }   // [v974] 전취건은 안내 팝업 없이 바로
+  if(k === 'route' || k === 'lostret'){ rqShowNotice(k); return; }   // [v976] 파손 안내 팝업 삭제   // [v974] 전취건은 안내 팝업 없이 바로
   _rqSelectTab(k);
 }
 function _rqSelectTab(k){
@@ -17702,7 +17702,7 @@ function rqLandingHtml(){
             {k:'scan',e:'🗑️',l:'스캔대기 삭제'},{k:'lost',e:'🔍',l:'분실건 처리요청'}];
   var G='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(5px,0.8vh,7px)';
   var grid='<div style="'+G+'">';
-  grid+='<button onclick="rqSwitchTab(\'chaebun\')" style="'+_b+';border:2px solid #b39ddb;background:#ede7f6;color:#4527a0">🧾 채번 서베이</button>';   // [v975] 업무신청 자리 → 채번 서베이
+  grid+='<button onclick="rqSwitchTab(\'chaebun\')" style="'+_b+';border:2px solid #b39ddb;background:#ede7f6;color:#4527a0">🧾 채번 서베이 <span style="font-size:0.8em;font-weight:700;opacity:.8">(테스트중)</span></button>';   // [v975] 업무신청 자리 → 채번 서베이
   grid+='<button onclick="rqSwitchTab(\'addr\')" style="'+_b+';border:2px solid #80cbc4;background:#e0f2f1;color:#00695c;white-space:normal;line-height:1.2;padding-top:clamp(5px,0.9vh,9px);padding-bottom:clamp(5px,0.9vh,9px)">📍 위탁 배송(반품)<br><span style="font-size:0.86em">주소 확인 요청</span></button>';
   main.forEach(function(t){ grid+='<button onclick="rqSwitchTab(\''+t.k+'\')" style="'+_b+';'+_blue+'">'+t.e+' '+t.l+'</button>'; });
   grid+='</div>';
@@ -17848,6 +17848,8 @@ var _rqCSS = '<style id="rq-css">'+
 '</style>';
 
 // ── 파손 폼 ────────────────────────────────────────────────────────
+/* [v976] 파손 사진 3장 안내 — 운송장 / 전체 / 파손 부위 강조 */
+function _rqDmNeedHtml(cnt){var bd='display:inline-block;background:#e53935;color:#fff;border-radius:7px;padding:2px 8px;margin:1px 1px;font-weight:900;font-size:12.5px;white-space:nowrap';return '<div style="background:#fff5f5;border:2px solid #ef9a9a;border-radius:10px;padding:9px 10px;margin-bottom:8px;text-align:center;line-height:1.75;color:#b71c1c;font-size:12.5px;font-weight:700">사진 3장 모두 첨부<br><span style="'+bd+'">📄 운송장</span> <span style="'+bd+'">📦 전체</span> <span style="'+bd+'">💥 파손 부위</span><br>꼭 넣어주셔야 합니다.<div style="margin-top:3px;font-size:11px;color:#c62828;font-weight:600">현재 '+(cnt||0)+'장 / 3장</div></div>';}
 function rqDamageForm(){
   if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
   var isAdm = CU && CU.role==='admin';
@@ -17891,7 +17893,7 @@ function rqDamageForm(){
       '<div><span style="color:#888;font-size:11px">주문번호: </span><span id="rq-dm-od-val" style="font-weight:700;color:'+(od?'#222':'#999')+'">'+(od||'자동 추출 대기')+'</span></div>'+
     '</div>'+
     '<label class="rq-label">&#x1F4F7; 사진 3장 <span class="rq-req">필수 (3장 모두)</span></label>'+
-    (filled<3?'<div class="rq-hint" id="rq-dm-hint">사진 '+filled+'장 / 3장 — 3장 모두 첨부해야 전송 가능합니다</div>':'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:5px 8px;margin-bottom:8px;text-align:center;font-size:11px" id="rq-dm-hint">&#x2705; 사진 3장 완료</div>')+
+    (filled<3?'<div class="rq-hint" id="rq-dm-hint" style="padding:0;background:none">'+_rqDmNeedHtml(filled)+'</div>':'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32;border-radius:6px;padding:5px 8px;margin-bottom:8px;text-align:center;font-size:11px" id="rq-dm-hint">&#x2705; 사진 3장 완료</div>')+
     '<div style="margin-bottom:4px;text-align:center;font-size:10px;color:#7986cb">📷 아래 칸 클릭 → 카메라 직접 촬영</div>'+
     '<div class="rq-photo-row">'+slots+'</div>'+
     '<button type="button" onclick="rqGalleryClickMulti(\'dm\')" style="width:100%;padding:10px;background:#e8eaf6;color:#3949ab;border:1.5px solid #c5cae9;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px">'+((_rqDmPhotos[0]&&_rqDmPhotos[1]&&_rqDmPhotos[2])?'✅ 사진첩 3장 완료 (재선택)':'📁 사진첩에서 3장 한번에 첨부')+'</button>'+
@@ -18048,7 +18050,7 @@ function rqUpdateDmBtn(){
   var hint = document.getElementById('rq-dm-hint');
   if(hint){
     if(cnt===3){ hint.style.background='#e8f5e9'; hint.style.color='#2e7d32'; hint.textContent='✅ 사진 3장 완료'; }
-    else { hint.style.background='#fff8e1'; hint.style.color='#c62828'; hint.textContent='사진 '+cnt+'장 / 3장 — 3장 모두 첨부해야 전송 가능합니다'; }
+    else { hint.style.background='none'; hint.style.padding='0'; hint.innerHTML=_rqDmNeedHtml(cnt); }
   }
 }
 
