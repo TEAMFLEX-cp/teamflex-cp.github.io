@@ -18464,6 +18464,64 @@ function rqUpdateRetPreview(kind){
   var ok=rqRetOk(kind); var btn=document.getElementById('rq-ret-'+kind+'-btn');
   if(btn){ btn.disabled=!ok; btn.className='rq-btn '+(ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):''); btn.innerHTML=_rqAutoApprove?'⚡ 팀즈 전송':'📤 팀즈 전송 요청'; }
 }
+/* [v971] 전취건 반납 확인: 바코드 인식 / 운송장 복사 선택 — 쿠팡 송장 ITF·DataMatrix(송장|캠프_라우트|…)·Code128 인식 */
+function _rqBcMode(){try{return localStorage.getItem('rq_bc_mode')||'bc';}catch(e){return 'bc';}}
+function rqBcSetMode(m){try{localStorage.setItem('rq_bc_mode',m);}catch(e){}rqRenderBody();}
+function _rqBcModeHtml(kind){var m=_rqBcMode();function chip(v,t){var on=m===v;return '<div onclick="rqBcSetMode(\''+v+'\')" style="flex:1;text-align:center;padding:10px 4px;border-radius:10px;font-weight:800;font-size:13.5px;cursor:pointer;border:2px solid '+(on?'#ef6a2b':'#e0d6cc')+';background:'+(on?'#ef6a2b':'#fff')+';color:'+(on?'#fff':'#8a6a4a')+'">'+t+'</div>';}
+  var h='<div style="display:flex;gap:8px;margin-bottom:10px">'+chip('bc','📷 바코드 인식')+chip('copy','📋 운송장 복사')+'</div>';
+  if(m==='bc')h+='<button type="button" onclick="rqBcOpen(\''+kind+'\')" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#ef6a2b,#f59e0b);color:#fff;font-size:15.5px;font-weight:900;cursor:pointer;margin-bottom:10px;box-shadow:0 3px 10px rgba(239,106,43,.3)">📷 송장 바코드 찍기</button>';
+  return h;}
+var _ZXP=null;
+function _rqZx(){if(window.ZXingWASM)return Promise.resolve(window.ZXingWASM);if(_ZXP)return _ZXP;_ZXP=new Promise(function(res,rej){var sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.6/dist/iife/reader/index.js';sc.onload=function(){window.ZXingWASM?res(window.ZXingWASM):rej(new Error('바코드 모듈 없음'));};sc.onerror=function(){_ZXP=null;rej(new Error('바코드 모듈을 불러오지 못했어요'));};document.head.appendChild(sc);});return _ZXP;}
+function _rqBcPick(results){/* 결과에서 송장번호(10~14자리) 뽑기: DataMatrix '송장|ISN3_0316|…' 우선 */
+  var out=[];(results||[]).forEach(function(r){var t=String((r&&(r.text||r.rawValue))||'');var fm=String((r&&r.format)||'');var first=t.split('|')[0].replace(/\D/g,'');
+    if(/^\d{10,14}$/.test(first))out.push({wb:first,info:t.indexOf('|')>=0?t.split('|')[1]:'',fmt:fm});});return out;}
+var _BC={};
+async function rqBcOpen(kind){
+  _BC={kind:kind,found:[],stream:null,run:true,busy:false};
+  var ov=document.getElementById('bc-ov');if(ov)ov.remove();ov=document.createElement('div');ov.id='bc-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:100060;background:#000;display:flex;flex-direction:column';
+  ov.innerHTML='<div style="position:relative;flex:1;overflow:hidden"><video id="bc-v" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover"></video>'
+   +'<div style="position:absolute;left:8%;right:8%;top:30%;height:34%;border:3px solid #f59e0b;border-radius:14px;box-shadow:0 0 0 2000px rgba(0,0,0,.35)"></div>'
+   +'<button onclick="rqBcClose(false)" style="position:absolute;right:12px;top:calc(10px + env(safe-area-inset-top));z-index:2;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:18px;font-weight:900">✕</button>'
+   +'<div id="bc-st" style="position:absolute;left:0;right:50px;top:16px;text-align:center;color:#fff;font-weight:800;font-size:14px;text-shadow:0 1px 3px #000">카메라 켜는 중…</div></div>'
+   +'<div style="background:#fff;padding:12px 12px calc(14px + env(safe-area-inset-bottom))"><div id="bc-list" style="min-height:24px;display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;font-size:12.5px;color:#888">송장 바코드를 노란 네모 안에 맞춰 주세요</div>'
+   +'<div style="display:flex;gap:8px"><button onclick="rqBcPhoto()" style="flex:1;padding:12px;border:1.5px solid #9fa8da;background:#e8eaf6;color:#3949ab;border-radius:10px;font-weight:800;font-size:13px">🖼 사진에서 읽기</button>'
+   +'<button onclick="rqBcClose(true)" style="flex:1.4;padding:12px;border:none;background:#ef6a2b;color:#fff;border-radius:10px;font-weight:900;font-size:14px">완료</button></div>'
+   +'<input type="file" id="bc-file" accept="image/*" style="display:none" onchange="rqBcFile(this)"></div>';
+  document.body.appendChild(ov);
+  var st=document.getElementById('bc-st');
+  var zxP=_rqZx().catch(function(e){return null;});
+  try{_BC.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});}
+  catch(e){if(st)st.textContent='카메라를 쓸 수 없어요 → 아래 [🖼 사진에서 읽기]를 눌러주세요';return;}
+  var v=document.getElementById('bc-v');if(!v){_rqBcStop();return;}v.srcObject=_BC.stream;try{await v.play();}catch(e){}
+  if(st)st.textContent='송장 바코드를 비춰 주세요';
+  var nat=null;try{if('BarcodeDetector' in window){var fs=await BarcodeDetector.getSupportedFormats();var want=['itf','data_matrix','code_128'].filter(function(f){return fs.indexOf(f)>=0;});if(want.length>=2)nat=new BarcodeDetector({formats:want});}}catch(e){nat=null;}
+  var zx=nat?null:await zxP;if(!nat&&!zx){if(st)st.textContent='바코드 모듈을 불러오지 못했어요 (인터넷 확인)';return;}
+  var cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+  async function tick(){if(!_BC.run||!document.getElementById('bc-ov'))return;
+    if(!_BC.busy&&v.videoWidth){_BC.busy=true;try{var r;
+      if(nat){r=await nat.detect(v);r=r.map(function(x){return {text:x.rawValue,format:x.format};});}
+      else{var W=v.videoWidth,H=v.videoHeight,sc=Math.min(1,1280/Math.max(W,H));cv.width=Math.round(W*sc);cv.height=Math.round(H*sc);cx.drawImage(v,0,0,cv.width,cv.height);r=await zx.readBarcodes(cx.getImageData(0,0,cv.width,cv.height),{formats:['ITF','DataMatrix','Code128'],tryHarder:true,maxNumberOfSymbols:4});}
+      _rqBcAdd(_rqBcPick(r));}catch(e){}_BC.busy=false;}
+    setTimeout(tick,180);}
+  tick();
+}
+function _rqBcAdd(list){var added=0;(list||[]).forEach(function(x){if(_BC.found.some(function(f){return f.wb===x.wb;}))return;_BC.found.push(x);added++;});
+  if(!added)return;try{if(navigator.vibrate)navigator.vibrate(120);}catch(e){}
+  var el=document.getElementById('bc-list');if(el)el.innerHTML=_BC.found.map(function(f){return '<span style="background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32;border-radius:8px;padding:3px 9px;font-weight:800">✅ '+f.wb+(f.info?' <span style="color:#78909c;font-weight:600">'+rqEsc(f.info)+'</span>':'')+'</span>';}).join('');
+  var st=document.getElementById('bc-st');if(st)st.textContent='✅ '+_BC.found.length+'건 인식 — 다음 송장을 비추거나 [완료]';}
+function rqBcPhoto(){var f=document.getElementById('bc-file');if(f)f.click();}
+async function rqBcFile(inp){var f=inp.files&&inp.files[0];inp.value='';if(!f)return;var st=document.getElementById('bc-st');if(st)st.textContent='사진에서 바코드 찾는 중…';
+  try{var zx=await _rqZx();var r=await zx.readBarcodes(f,{formats:['ITF','DataMatrix','Code128'],tryHarder:true,maxNumberOfSymbols:6});var got=_rqBcPick(r);if(!got.length){if(st)st.textContent='❌ 이 사진에서 바코드를 못 찾았어요 — 바코드가 크고 선명하게 다시 찍어주세요';return;}_rqBcAdd(got);}
+  catch(e){if(st)st.textContent='❌ '+(e.message||e);}}
+function _rqBcStop(){_BC.run=false;try{(_BC.stream&&_BC.stream.getTracks()||[]).forEach(function(t){t.stop();});}catch(e){}_BC.stream=null;}
+function rqBcClose(apply){_rqBcStop();var ov=document.getElementById('bc-ov');if(ov)ov.remove();
+  if(!apply||!_BC.found||!_BC.found.length)return;var k=_BC.kind;var cur=window._rqRetRaw[k]||'';var have=rqParsePairs(cur).map(function(p){return p.wb;});
+  var add=_BC.found.filter(function(f){return have.indexOf(f.wb)<0;}).map(function(f){return '운송장 '+f.wb;});
+  if(cur&&!/운송장|주문/.test(cur)){cur=rqParsePairs(cur).map(function(p){return '운송장 '+p.wb+(p.od?'\n주문 '+p.od:'');}).join('\n');}
+  window._rqRetRaw[k]=(cur?cur.replace(/\s+$/,'')+'\n':'')+add.join('\n');rqRenderBody();
+  try{showToast('✅ 송장 '+add.length+'건 입력됐어요',true);}catch(e){}}
 function rqRetForm(kind){
   var c=_rqRetCfg[kind];
   if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
@@ -18482,8 +18540,8 @@ function rqRetForm(kind){
   return '<div class="rq-card">'+
     '<div id="rq-ret-'+kind+'-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
     adminBox+
-    rtnWarnBoxRq()+'<label class="rq-label">📋 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
-    '<textarea class="rq-paste" id="rq-ret-'+kind+'-paste" placeholder="📋 운송장·주문번호를 붙여넣으면 자동으로 행 분리 됨&#10;✅ 여러 건을 동시에 붙여넣기 해도 자동 처리 됨" oninput="window._rqRetRaw[\''+kind+'\']=this.value;rqUpdateRetPreview(\''+kind+'\')">'+rqEsc(raw)+'</textarea>'+
+    rtnWarnBoxRq()+(kind==='pretake'?_rqBcModeHtml(kind):'')+'<label class="rq-label">'+((kind==='pretake'&&_rqBcMode()==='bc')?'📋 인식된 운송장 <span style="font-size:10.5px;color:#888;font-weight:600">(직접 고쳐도 돼요)</span>':'📋 운송장 정보 붙여넣기')+' <span class="rq-req">필수</span></label>'+
+    '<textarea class="rq-paste" id="rq-ret-'+kind+'-paste" placeholder="'+((kind==='pretake'&&_rqBcMode()==='bc')?'📷 위 [송장 바코드 찍기]로 찍으면&#10;여기에 운송장번호가 자동으로 들어가요':'📋 운송장·주문번호를 붙여넣으면 자동으로 행 분리 됨&#10;✅ 여러 건을 동시에 붙여넣기 해도 자동 처리 됨')+'" oninput="window._rqRetRaw[\''+kind+'\']=this.value;rqUpdateRetPreview(\''+kind+'\')">'+rqEsc(raw)+'</textarea>'+
     (pairs.length?'<div class="rq-hint" id="rq-ret-'+kind+'-hint" style="background:#e8f5e9;color:#2e7d32">✅ '+pairs.length+'건 인식</div>':'<div id="rq-ret-'+kind+'-hint" style="display:none"></div>')+
     (kind!=='pretake'?(
       '<label class="rq-label" style="margin-top:6px">📷 사진 <span class="rq-req">필수</span></label>'+
