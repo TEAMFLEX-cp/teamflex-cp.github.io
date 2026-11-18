@@ -17606,7 +17606,8 @@ function pgRequest(){
     {k:'work',   lbl:'&#x1F9D1;&#x200D;&#x1F4BC; 업무신청'},
     {k:'olddel', lbl:'🧹 이전 라우트 할당 삭제'},   // [v861]
     {k:'retcamp',lbl:'🏬 타캠프 반품 반납 확인'},   // [v873]
-    {k:'addr',   lbl:'📍 위탁 주소 확인'}   // [v968]
+    {k:'addr',   lbl:'📍 위탁 주소 확인'},   // [v968]
+    {k:'chaebun',lbl:'🧾 채번 서베이'}   // [v975]
   ];
   var tabHtml = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">';
   tabs.forEach(function(t){
@@ -17701,10 +17702,11 @@ function rqLandingHtml(){
             {k:'scan',e:'🗑️',l:'스캔대기 삭제'},{k:'lost',e:'🔍',l:'분실건 처리요청'}];
   var G='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(5px,0.8vh,7px)';
   var grid='<div style="'+G+'">';
-  grid+='<button onclick="rqSwitchTab(\'work\')" style="'+_b+';'+_green+'">🧑‍💼 업무신청</button>';
+  grid+='<button onclick="rqSwitchTab(\'chaebun\')" style="'+_b+';border:2px solid #b39ddb;background:#ede7f6;color:#4527a0">🧾 채번 서베이</button>';   // [v975] 업무신청 자리 → 채번 서베이
   grid+='<button onclick="rqSwitchTab(\'addr\')" style="'+_b+';border:2px solid #80cbc4;background:#e0f2f1;color:#00695c;white-space:normal;line-height:1.2;padding-top:clamp(5px,0.9vh,9px);padding-bottom:clamp(5px,0.9vh,9px)">📍 위탁 배송(반품)<br><span style="font-size:0.86em">주소 확인 요청</span></button>';
   main.forEach(function(t){ grid+='<button onclick="rqSwitchTab(\''+t.k+'\')" style="'+_b+';'+_blue+'">'+t.e+' '+t.l+'</button>'; });
   grid+='</div>';
+  grid+='<button onclick="rqSwitchTab(\'work\')" style="'+_b+';'+_green+';width:100%;margin-top:clamp(5px,0.8vh,7px);display:block">🧑‍💼 업무신청</button>';   // [v975] 업무신청은 한 줄로
   grid+='<div style="display:flex;align-items:center;gap:8px;margin:clamp(6px,1.1vh,12px) 2px clamp(5px,0.9vh,9px)"><div style="flex:1;height:1px;background:#f1c4c0"></div><span style="font-size:11px;font-weight:800;color:#c0392b;background:#fff0f0;border:1px solid #f1a9a9;padding:2px 11px;border-radius:11px;white-space:nowrap">📥 반납 처리 요청</span><div style="flex:1;height:1px;background:#f1c4c0"></div></div>';
   /* [v969] 전취건(반납 확인·사진 대기)은 넓게 2/3, 옆 박스는 1/3 */
   var G2='display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:clamp(5px,0.8vh,7px)';
@@ -17790,6 +17792,7 @@ function rqRenderBody(){
   else if(_rqTab==='pretakewait'){el.innerHTML = rqRetWaitForm(); rqWaitLoad();}
   else if(_rqTab==='work')   el.innerHTML = rqWorkForm();
   else if(_rqTab==='addr')   el.innerHTML = rqAddrForm();
+  else if(_rqTab==='chaebun')el.innerHTML = rqCbForm();   // [v975]
   rqUpdateDmBtn();
 }
 
@@ -18531,6 +18534,7 @@ function rqBcClose(apply){_rqBcStop();var ov=document.getElementById('bc-ov');if
   if(!apply||!_BC.found||!_BC.found.length)return;var k=_BC.kind;var wbs=_BC.found.map(function(f){return f.wb;});var n=0;
   if(k==='dm'){/* 파손: 운송장 1건 */var t=document.getElementById('rq-dm-paste');var cur=(t&&t.value)||window._rqDmRaw||'';var w=wbs[0];if(cur.indexOf(w)<0){window._rqDmRaw=(cur?cur.replace(/\s+$/,'')+'\n':'')+'운송장 '+w;n=1;}rqRenderBody();try{rqParseDamage();}catch(e){}}
   else if(k==='dup'){var cur2=window._rqDupRaw||'';var have=rqParsePairs(cur2).map(function(p){return p.wb;});var add2=wbs.filter(function(w){return have.indexOf(w)<0&&cur2.indexOf(w)<0;});if(cur2&&!/운송장|주문/.test(cur2))cur2=rqParsePairs(cur2).map(function(p){return '운송장 '+p.wb+(p.od?'\n주문 '+p.od:'');}).join('\n');window._rqDupRaw=(cur2?cur2.replace(/\s+$/,'')+'\n':'')+add2.map(function(w){return '운송장 '+w;}).join('\n');n=add2.length;rqRenderBody();try{rqUpdateDupPreview();}catch(e){}}
+  else if(k==='cb'){var c4=window._cbRaw||'';var h4=_cbWbs(c4);var a4=wbs.filter(function(w){return h4.indexOf(w)<0;});window._cbRaw=(c4?c4.replace(/\s+$/,'')+'\n':'')+a4.join('\n');n=a4.length;rqRenderBody();try{cbInput();}catch(e){}}
   else if(k==='addr'){var cur3=window._rqAdRaw||'';var have3=_rqAdWbs(cur3);var add3=wbs.filter(function(w){return have3.indexOf(w)<0;});window._rqAdRaw=(cur3?cur3.replace(/\s+$/,'')+'\n':'')+add3.join('\n');n=add3.length;rqRenderBody();try{rqAdInput();}catch(e){}}
   else{var cur=window._rqRetRaw[k]||'';var have=rqParsePairs(cur).map(function(p){return p.wb;});
   var add=_BC.found.filter(function(f){return have.indexOf(f.wb)<0;}).map(function(f){return '운송장 '+f.wb;});
@@ -18918,6 +18922,127 @@ function rqAddrForm(){
    +'<div id="rq-ad-ok" style="display:none;margin-top:8px;text-align:center;color:#2e7d32;font-weight:800">✅ 요청했어요</div></div>';
 }
 async function rqAdSubmit(){var w=_rqAdWbs(window._rqAdRaw||'');if(!w.length){alert('송장번호를 넣어주세요.');return;}var ok=await rqSubmit({type:'addr',text:_rqAdText(w),photos:[],okId:'rq-ad-ok'});if(ok){window._rqAdRaw='';var el=document.getElementById('rq-body');if(el){el.innerHTML=rqAddrForm();var o=document.getElementById('rq-ad-ok');if(o){o.style.display='block';setTimeout(function(){o.style.display='none';},4000);}}}}
+/* [v975] 채번 / 반품 송장 출력 요청 → 서버가 캠프별 쿠팡 구글 서베이에 대신 제출
+   - 링크: app_settings.chaebun_cfg (관리자 ⚙️ 링크)  - 아이디: 기사 정보의 쿠팡 아이디 자동
+   - 기사: 제출한 건은 다음날까지만 보임 / 관리자: 하루 지난 건은 아래에 접힘 / 서버 기록 7일 후 자동 삭제 */
+var _CB_DEF={'일산3캠프':{url:'',mc:['본캠프','덕은MB','양평MB']},'일산6캠프':{url:'',mc:['본캠프']},'일산8캠프2wave':{url:'',mc:['본캠프']}};
+window._cbCfg=null;window._cbJob=window._cbJob||'chae';window._cbQty=window._cbQty||1;window._cbMc=window._cbMc||'';window._cbRaw=window._cbRaw||'';window._cbDrv=window._cbDrv||'';
+async function _cbLoadCfg(force){if(window._cbCfg&&!force)return window._cbCfg;var c={};
+  try{var r=await sbClient.from('app_settings').select('value').eq('key','chaebun_cfg').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);if(v&&typeof v==='object')c=v;}catch(e){}
+  Object.keys(_CB_DEF).forEach(function(k){c[k]=Object.assign({},_CB_DEF[k],c[k]||{});if(!Array.isArray(c[k].mc)||!c[k].mc.length)c[k].mc=_CB_DEF[k].mc.slice();});
+  window._cbCfg=c;return c;}
+function _cbCampCfg(){var c=window._cbCfg||_CB_DEF;return c[rqGetCamp()]||{url:'',mc:['본캠프']};}
+/* 송장번호만(주문번호 제외) — '주문번호 2910…' 같이 라벨 붙은 숫자는 빼고 10~14자리 숫자 인식 */
+function _cbWbs(raw){return _rqAdWbs(String(raw||'').replace(/주문\s*번?\s*호?\s*[:：]?\s*[\d\-]{10,20}/g,' '));}
+function _cbIsAdm(){return !!(CU&&CU.role==='admin');}
+function _cbName(){return _cbIsAdm()?(window._cbDrv||''):CU.name;}
+function _cbUid(){var n=_cbName();return n?_rqDrvIdOf(n):'';}
+function _cbCampLb(c){var m=(_RQ_CAMPS.filter(function(x){return x[0]===c;})[0]||[c,c]);return m[1];}
+function _cbCntHtml(w){return w.length?('✅ 송장번호 <b>'+w.length+'건</b> 인식<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:5px;justify-content:center">'+w.map(function(x){return '<span style="background:#fff;border:1px solid #b39ddb;border-radius:8px;padding:2px 8px;font-size:12px;color:#4527a0;font-weight:700">'+x+'</span>';}).join('')+'</div>'):(window._cbJob==='chae'?'송장번호를 넣어주세요':'반품 송장은 송장번호 없이도 요청돼요');}
+function _cbPv(){var job=window._cbJob,w=_cbWbs(window._cbRaw||''),uid=_cbUid(),nm=_cbName();
+  function r(k,v){return '<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed #e0e0e0"><span style="width:74px;flex-shrink:0;color:#777">'+k+'</span><b style="color:#311b92;word-break:break-all">'+v+'</b></div>';}
+  var h=r('요청 작업',job==='chae'?'채번 요청':'반품 송장 출력 요청')+r('송장번호',w.length?w.join(', '):'-')+r('기사 아이디',uid?rqEsc(uid):'<span style="color:#c62828">'+(nm?'아이디 미등록':'기사 선택 필요')+'</span>');
+  if(job==='chae')h+=r('채번 수량',String(Math.max(1,parseInt(window._cbQty)||1)));
+  h+=r('모바일 캠프',rqEsc(window._cbMc||'본캠프'));
+  if(w.length>1)h+='<div style="margin-top:6px;font-size:11.5px;color:#6a1b9a">※ 송장 '+w.length+'건 → 서베이 '+w.length+'번 각각 제출돼요</div>';
+  return h;}
+function rqCbForm(){
+  if(!document.getElementById('rq-css'))document.head.insertAdjacentHTML('beforeend',_rqCSS);
+  if(!window._cbCfg){_cbLoadCfg().then(function(){if(_rqTab==='chaebun')rqRenderBody();});}
+  var adm=_cbIsAdm(),cc=_cbCampCfg(),camp=rqGetCamp(),job=window._cbJob,w=_cbWbs(window._cbRaw||'');
+  var mcs=cc.mc||['본캠프'];if(mcs.indexOf(window._cbMc)<0)window._cbMc=mcs[0];
+  var uid=_cbUid();var noLink=!!window._cbCfg&&!cc.url;
+  var h='<div style="background:#ede7f6;border:1px solid #b39ddb;border-radius:10px;padding:6px 8px 6px 10px;margin-bottom:8px;display:flex;align-items:center;gap:6px;font-size:clamp(11px,3.2vw,12.5px);color:#4527a0;font-weight:700;white-space:nowrap"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0">🧾 입력만 하면 서버가 쿠팡 서베이에 대신 제출</span>'+(adm?'<button onclick="cbCfgOpen()" style="margin-left:auto;flex-shrink:0;border:1.5px solid #9575cd;background:#fff;color:#4527a0;border-radius:8px;padding:4px 9px;font-weight:800;font-size:12px;cursor:pointer">⚙️ 링크</button>':'')+'</div>';
+  if(noLink)h+='<div style="background:#fff3e0;border:1.5px solid #ffb74d;border-radius:10px;padding:9px 11px;margin-bottom:8px;font-size:12.5px;color:#e65100;font-weight:700">⚠️ '+_cbCampLb(camp)+' 서베이 링크가 아직 없어요'+(adm?' — 위 ⚙️ 링크에서 넣어주세요':' — 관리자에게 문의해 주세요')+'</div>';
+  function jc(v,t){var on=job===v;return '<div onclick="cbSetJob(\''+v+'\')" style="flex:1;text-align:center;padding:10px 4px;border-radius:10px;font-weight:800;font-size:13.5px;cursor:pointer;border:2px solid '+(on?'#5e35b1':'#d1c4e9')+';background:'+(on?'#5e35b1':'#fff')+';color:'+(on?'#fff':'#5e35b1')+'">'+t+'</div>';}
+  h+='<div class="rq-card"><div style="display:flex;gap:8px;margin-bottom:10px">'+jc('chae','🔢 채번 요청')+jc('ret','🧾 반품 송장 출력')+'</div>';
+  h+=_rqBcChips('cb')+'<label class="rq-label">📋 송장번호'+(job==='chae'?'<span class="rq-req">필수</span>':' <span style="color:#999;font-weight:600">(선택)</span>')+'</label>';
+  h+='<textarea id="rq-cb-in" class="rq-paste" oninput="cbInput()" style="min-height:60px" placeholder="송장번호를 붙여넣거나 바코드로 찍어주세요&#10;여러 건이면 줄바꿈으로 넣어도 돼요">'+escQ(window._cbRaw||'')+'</textarea>';
+  h+='<div id="rq-cb-cnt" style="background:#f3e5f5;border-radius:8px;padding:7px;text-align:center;font-size:12.5px;color:#4a148c;margin-bottom:10px">'+_cbCntHtml(w)+'</div>';
+  if(job==='chae'){var q=Math.max(1,parseInt(window._cbQty)||1);var sb='width:40px;height:38px;border-radius:10px;border:1.5px solid #9575cd;background:#fff;color:#4527a0;font-size:20px;font-weight:900;cursor:pointer';
+    h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><span class="rq-label" style="margin:0;flex:1">🔢 채번 수량</span><button onclick="cbQty(-1)" style="'+sb+'">−</button><b id="rq-cb-q" style="min-width:34px;text-align:center;font-size:18px;color:#311b92">'+q+'</b><button onclick="cbQty(1)" style="'+sb+'">＋</button></div>';}
+  h+='<label class="rq-label">🏬 요청 모바일 캠프</label><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+mcs.map(function(m){var on=m===window._cbMc;return '<div onclick="cbMc(\''+escQ(m)+'\')" style="flex:1;min-width:70px;text-align:center;padding:8px 4px;border-radius:9px;font-weight:800;font-size:12.5px;cursor:pointer;border:2px solid '+(on?'#5e35b1':'#d1c4e9')+';background:'+(on?'#ede7f6':'#fff')+';color:#4527a0">'+(on?'✓ ':'')+rqEsc(m)+'</div>';}).join('')+'</div>';
+  if(adm){h+='<label class="rq-label">👤 기사 선택 <span style="color:#999;font-weight:600">(관리자는 기사 대신 제출)</span></label><input type="text" list="rq-drv-dl" value="'+escQ(window._cbDrv||'')+'" oninput="cbDrv(this.value)" placeholder="기사명" style="width:100%;box-sizing:border-box;padding:9px 10px;border:1.5px solid #d1c4e9;border-radius:9px;font-size:14px;margin-bottom:10px">'+_rqDrvDatalist();}
+  else h+='<div style="background:#f5f5ff;border:1px solid #d1c4e9;border-radius:9px;padding:8px 10px;margin-bottom:10px;font-size:13px;color:#4527a0">🔒 아이디 <b>'+(uid?rqEsc(uid):'<span style="color:#c62828">미등록 — 관리자에게 문의</span>')+'</b> <span style="color:#999;font-size:11.5px">(자동 입력)</span></div>';
+  h+='<label class="rq-label">📝 서베이에 이렇게 들어가요</label><div id="rq-cb-pv" style="background:#faf8ff;border:1px solid #e1d8f5;border-radius:10px;padding:8px 11px;font-size:12.5px">'+_cbPv()+'</div>';
+  h+='<button id="rq-cb-btn" onclick="cbSubmit()" '+(noLink?'disabled ':'')+'style="width:100%;margin-top:12px;padding:13px;border:none;border-radius:10px;background:'+(noLink?'#b0bec5':'#5e35b1')+';color:#fff;font-size:14.5px;font-weight:800;cursor:pointer">📤 서베이 제출</button>';
+  h+='<div id="rq-cb-ok" style="display:none;margin-top:8px;text-align:center;color:#2e7d32;font-weight:800">✅ 접수됐어요 — 서버가 곧 제출해요</div></div>';
+  h+='<div class="rq-card"><div style="display:flex;align-items:center;margin-bottom:6px"><b style="color:#311b92;font-size:13.5px">📜 '+(adm?'제출 내역 (전체 기사)':'내 제출 내역')+'</b><span style="font-size:11px;color:#999;margin-left:6px">'+(adm?'':'다음날까지 보여요')+'</span><button onclick="cbHistLoad()" style="margin-left:auto;border:1px solid #d1c4e9;background:#fff;border-radius:8px;padding:3px 9px;color:#5e35b1;font-weight:800;cursor:pointer">↻</button></div><div id="rq-cb-hist" style="font-size:12.5px;color:#999">불러오는 중…</div></div>';
+  setTimeout(function(){cbHistLoad();},30);
+  return h;}
+function cbSetJob(v){window._cbJob=v;rqRenderBody();}
+function cbQty(d){window._cbQty=Math.min(50,Math.max(1,(parseInt(window._cbQty)||1)+d));var e=document.getElementById('rq-cb-q');if(e)e.textContent=window._cbQty;var p=document.getElementById('rq-cb-pv');if(p)p.innerHTML=_cbPv();}
+function cbMc(m){window._cbMc=m;rqRenderBody();}
+function cbDrv(v){window._cbDrv=String(v||'').trim();var p=document.getElementById('rq-cb-pv');if(p)p.innerHTML=_cbPv();}
+function cbInput(){var t=document.getElementById('rq-cb-in');window._cbRaw=t?t.value:'';var w=_cbWbs(window._cbRaw);var c=document.getElementById('rq-cb-cnt');if(c)c.innerHTML=_cbCntHtml(w);var p=document.getElementById('rq-cb-pv');if(p)p.innerHTML=_cbPv();}
+async function cbSubmit(){
+  if(!sbClient){alert('Supabase 연결이 필요합니다.');return;}
+  if(_rqSubmitting)return;
+  await _cbLoadCfg();var cc=_cbCampCfg();var camp=rqGetCamp();
+  if(!cc.url){alert(_cbCampLb(camp)+' 서베이 링크가 아직 없어요.');return;}
+  var job=window._cbJob,w=_cbWbs(window._cbRaw||'');
+  if(job==='chae'&&!w.length){alert('송장번호를 넣어주세요.');return;}
+  var nm=_cbName(),uid=_cbUid();
+  if(!nm){alert('어느 기사로 제출할지 기사를 골라주세요.');return;}
+  if(!uid){alert(nm+'님의 쿠팡 아이디가 등록돼 있지 않아요.\n기사 정보에서 아이디를 먼저 넣어주세요.');return;}
+  var qty=job==='chae'?Math.max(1,parseInt(window._cbQty)||1):null;var mc=window._cbMc||(cc.mc||['본캠프'])[0];
+  var text='■ '+(job==='chae'?'채번 요청':'반품 송장 출력 요청')+' ['+camp+']\n'+(w.length?w.map(function(x){return '송장번호  '+x;}).join('\n')+'\n':'')+'아이디  '+uid+(qty?'\n수량  '+qty:'')+'\n모바일캠프  '+mc+'\n요청자: '+nm;
+  _rqSubmitting=true;var b=document.getElementById('rq-cb-btn');if(b){b.disabled=true;b.textContent='접수 중…';}
+  try{
+    var since=new Date(Date.now()-5*60*1000).toISOString();
+    var d=await sbClient.from('requests').select('id,payload').eq('type','chaebun').eq('requester_name',nm).gte('created_at',since).limit(30);
+    if(d&&d.data&&d.data.some(function(r){return r.payload&&r.payload.text===text;})){alert('방금 같은 요청을 이미 보냈어요.\n아래 제출 내역을 확인해 주세요.');return;}
+    var ins=await sbClient.from('requests').insert({type:'chaebun',status:'approved',requester_id:nm,requester_name:nm,requester_role:adm2role(),
+      payload:{text:text,camp:camp,job:job,wbs:w,qty:qty,mcamp:mc,uid:uid,by:CU.name},teams_sent:false,created_at:new Date().toISOString()});
+    if(ins.error)throw new Error(ins.error.message);
+    window._cbRaw='';window._cbQty=1;rqRenderBody();
+    var o=document.getElementById('rq-cb-ok');if(o){o.style.display='block';setTimeout(function(){o.style.display='none';},5000);}
+    _cbWatch();
+  }catch(e){alert('접수 실패: '+((e&&e.message)||e));}
+  finally{_rqSubmitting=false;var b2=document.getElementById('rq-cb-btn');if(b2&&b2.textContent==='접수 중…'){b2.disabled=false;b2.textContent='📤 서베이 제출';}}
+}
+function adm2role(){return (CU&&CU.role)||'driver';}
+function _cbWatch(){var n=0;clearInterval(window._cbWT);window._cbWT=setInterval(async function(){n++;if(_rqTab!=='chaebun'||n>30){clearInterval(window._cbWT);return;}var pend=await cbHistLoad();if(!pend)clearInterval(window._cbWT);},4000);}
+function _cbYStart(){return new Date(_ymdAdd(todStr(),-1)+'T00:00:00+09:00').toISOString();}
+function _cbSt(r){var s=r.teams_response_status||'';var p=r.payload||{};
+  if(s==='form_ok')return '<span style="color:#2e7d32;font-weight:800">✅ 제출 완료</span>';
+  if(s==='form_fail')return '<span style="color:#c62828;font-weight:800">❌ 실패</span>'+(p.err?'<div style="color:#c62828;font-size:11px">'+rqEsc(p.err)+'</div>':'');
+  if(s==='form_retry')return '<span style="color:#ef6c00;font-weight:800">🔁 다시 시도 중</span>';
+  return '<span style="color:#5e35b1;font-weight:800">⏳ 제출 대기</span>';}
+function _cbRow(r,adm){var p=r.payload||{};var t='';try{t=new Date(r.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});}catch(e){}
+  var res=p.result||[];var okN=res.filter(function(x){return x.ok;}).length;
+  return '<div style="border:1px solid #ece7f7;border-radius:10px;padding:8px 10px;margin-bottom:6px;background:#fff">'
+   +'<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><b style="color:#311b92">'+(p.job==='chae'?'🔢 채번':'🧾 반품 송장')+'</b><span style="color:#888;font-size:11.5px">'+_cbCampLb(p.camp||'')+' · '+t+'</span>'+(adm?'<span style="color:#455a64;font-weight:700">'+rqEsc(r.requester_name||'')+'</span>':'')+'<span style="margin-left:auto">'+_cbSt(r)+'</span></div>'
+   +'<div style="color:#555;font-size:12px;margin-top:3px;word-break:break-all">'+((p.wbs&&p.wbs.length)?p.wbs.join(', '):'송장 없음')+(p.qty?' · 수량 '+p.qty:'')+' · '+rqEsc(p.mcamp||'')+(p.wbs&&p.wbs.length>1&&res.length?' · '+okN+'/'+p.wbs.length+'건 완료':'')+'</div>'
+   +(adm&&r.teams_response_status==='form_fail'?'<button onclick="cbRetry('+r.id+')" style="margin-top:6px;border:1.5px solid #ef6c00;background:#fff3e0;color:#e65100;border-radius:8px;padding:4px 10px;font-weight:800;font-size:12px;cursor:pointer">🔁 다시 제출</button>':'')
+   +'</div>';}
+async function cbHistLoad(){var el=document.getElementById('rq-cb-hist');if(!el||!sbClient)return false;var adm=_cbIsAdm();
+  try{var q=sbClient.from('requests').select('id,payload,requester_name,created_at,teams_sent,teams_response_status').eq('type','chaebun').order('created_at',{ascending:false}).limit(300);
+    if(!adm)q=q.eq('requester_name',CU.name).gte('created_at',_cbYStart());
+    var r=await q;if(r.error)throw r.error;var rows=r.data||[];
+    if(!rows.length){el.innerHTML='<div style="text-align:center;padding:10px;color:#aaa">제출한 내역이 없어요</div>';return false;}
+    var ys=_cbYStart();var recent=rows.filter(function(x){return x.created_at>=ys;}),old=rows.filter(function(x){return x.created_at<ys;});
+    var h=recent.map(function(x){return _cbRow(x,adm);}).join('')||'<div style="text-align:center;padding:8px;color:#aaa">오늘·어제 제출한 내역이 없어요</div>';
+    if(adm&&old.length)h+='<details style="margin-top:8px"><summary style="cursor:pointer;color:#777;font-weight:700;font-size:12.5px">📁 지난 내역 '+old.length+'건 (최대 7일 보관)</summary><div style="margin-top:6px;opacity:.85">'+old.map(function(x){return _cbRow(x,adm);}).join('')+'</div></details>';
+    el.innerHTML=h;
+    return rows.some(function(x){return x.teams_response_status!=='form_ok'&&x.teams_response_status!=='form_fail';});
+  }catch(e){el.innerHTML='<div style="color:#c62828">내역을 불러오지 못했어요: '+rqEsc((e&&e.message)||String(e))+'</div>';return false;}}
+async function cbRetry(id){try{var r=await sbClient.from('requests').select('payload').eq('id',id).single();var p=(r.data&&r.data.payload)||{};p.tries=0;p.err='';
+  await sbClient.from('requests').update({payload:p,teams_sent:false,teams_response_status:null,updated_at:new Date().toISOString()}).eq('id',id);cbHistLoad();_cbWatch();}catch(e){alert('다시 제출 실패: '+((e&&e.message)||e));}}
+async function cbCfgOpen(){var c=await _cbLoadCfg(true);var prev=document.getElementById('cb-cfg-ov');if(prev)prev.remove();
+  var ov=document.createElement('div');ov.id='cb-cfg-ov';ov.style.cssText='position:fixed;inset:0;background:rgba(20,20,40,.5);display:flex;align-items:center;justify-content:center;padding:16px 16px 84px;z-index:100050';
+  var rows=Object.keys(_CB_DEF).map(function(k){var v=c[k]||{};return '<div style="border:1px solid #e1d8f5;border-radius:10px;padding:9px 10px;margin-bottom:9px"><b style="color:#4527a0">'+_cbCampLb(k)+'</b>'
+    +'<input id="cb-u-'+k+'" value="'+escQ(v.url||'')+'" placeholder="구글 서베이 링크 (없으면 비워두기)" style="width:100%;box-sizing:border-box;margin-top:6px;padding:8px;border:1.5px solid #d1c4e9;border-radius:8px;font-size:12px">'
+    +'<input id="cb-m-'+k+'" value="'+escQ((v.mc||[]).join(', '))+'" placeholder="모바일 캠프 (쉼표로 구분)" style="width:100%;box-sizing:border-box;margin-top:5px;padding:7px 8px;border:1.5px solid #ede7f6;border-radius:8px;font-size:12px;color:#555"></div>';}).join('');
+  ov.innerHTML='<div style="background:#fff;border-radius:14px;width:100%;max-width:420px;max-height:100%;overflow:auto;padding:14px" onclick="event.stopPropagation()"><div style="font-weight:900;color:#311b92;font-size:15px;margin-bottom:4px">⚙️ 캠프별 서베이 링크</div><div style="font-size:11.5px;color:#888;margin-bottom:10px">링크를 바꾸면 다음 제출부터 바로 적용돼요. 질문 칸은 서버가 자동으로 찾아요.</div>'+rows
+    +'<div style="display:flex;gap:8px;margin-top:4px"><button onclick="document.getElementById(\'cb-cfg-ov\').remove()" style="flex:1;padding:11px;border:1.5px solid #ccc;background:#fff;border-radius:10px;font-weight:800;cursor:pointer">닫기</button><button onclick="cbCfgSave()" style="flex:1.4;padding:11px;border:none;background:#5e35b1;color:#fff;border-radius:10px;font-weight:900;cursor:pointer">저장</button></div></div>';
+  ov.onclick=function(){ov.remove();};document.body.appendChild(ov);}
+async function cbCfgSave(){var c=await _cbLoadCfg(true);var bad='';Object.keys(_CB_DEF).forEach(function(k){var u=(document.getElementById('cb-u-'+k).value||'').trim();var m=(document.getElementById('cb-m-'+k).value||'').split(/[,，]/).map(function(x){return x.trim();}).filter(Boolean);
+    if(u&&!/^https:\/\/docs\.google\.com\/forms\//.test(u))bad=_cbCampLb(k);c[k]={url:u,mc:m.length?m:_CB_DEF[k].mc.slice()};});
+  if(bad){alert(bad+' 링크가 구글 서베이 주소가 아니에요.\n(docs.google.com/forms/… 로 시작하는 주소를 넣어주세요)');return;}
+  try{var r=await sbClient.from('app_settings').upsert({key:'chaebun_cfg',value:JSON.stringify(c)},{onConflict:'key'});if(r.error)throw r.error;window._cbCfg=c;var ov=document.getElementById('cb-cfg-ov');if(ov)ov.remove();try{showToast('✅ 서베이 링크 저장됨',true);}catch(e){}rqRenderBody();}
+  catch(e){alert('저장 실패: '+((e&&e.message)||e));}}
+
 function rqScanForm(){
   return rqSimpleForm('scan','&#x1F5D1;&#xFE0F; 스캔 대기 삭제','rq-sc',
     function(items){var camp=rqGetCamp();var body=items.filter(function(it){return (it.wb||'').trim();}).map(function(it){return '운송장번호  '+it.wb+(it.od?'\n주문번호  '+it.od:'');}).join('\n\n')||'(운송장번호 없음)';return '■ 스캔 대기 삭제 요청 ['+camp+']\n\n'+body+'\n\n업무 마감하였으나, 스캔 대기건 없습니다.\n삭제 처리 부탁드립니다.\n\n요청자: '+CU.name+(CU.route?' ('+CU.route+')':'');});
@@ -19130,7 +19255,7 @@ async function mdLoadRequests(){
       _rfrom+=data.length;
       if(_rfrom>50000)break;
     }
-    _rqCases = _rall;
+    _rqCases = _rall.filter(function(r){return r.type!=='chaebun';});   // [v975] 채번 서베이는 별도 화면에서 관리
     mdRenderRequestBadge();
     // 오배송 탭 열려 있으면 카드 UI도 갱신
     if(document.getElementById('md-list')) mdRenderList();
