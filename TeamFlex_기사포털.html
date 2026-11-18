@@ -17849,7 +17849,7 @@ var _rqCSS = '<style id="rq-css">'+
 
 // ── 파손 폼 ────────────────────────────────────────────────────────
 /* [v976] 파손 사진 3장 안내 — 운송장 / 전체 / 파손 부위 강조 */
-function _rqDmNeedHtml(cnt){var bd='display:inline-block;background:#e53935;color:#fff;border-radius:7px;padding:2px 8px;margin:1px 1px;font-weight:900;font-size:12.5px;white-space:nowrap';return '<div style="background:#fff5f5;border:2px solid #ef9a9a;border-radius:10px;padding:9px 10px;margin-bottom:8px;text-align:center;line-height:1.75;color:#b71c1c;font-size:12.5px;font-weight:700">사진 3장 모두 첨부<br><span style="'+bd+'">📄 운송장</span> <span style="'+bd+'">📦 전체</span> <span style="'+bd+'">💥 파손 부위</span><br>꼭 넣어주셔야 합니다.<div style="margin-top:3px;font-size:11px;color:#c62828;font-weight:600">현재 '+(cnt||0)+'장 / 3장</div></div>';}
+function _rqDmNeedHtml(cnt){var bd='flex-shrink:0;background:#e53935;color:#fff;border-radius:6px;padding:2px clamp(3px,1.2vw,7px);font-weight:900;white-space:nowrap';return '<div style="display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;gap:clamp(2px,0.9vw,5px);background:#fff5f5;border:2px solid #ef9a9a;border-radius:10px;padding:7px clamp(4px,1.5vw,8px);margin-bottom:8px;color:#b71c1c;font-size:clamp(9.5px,2.95vw,12.5px);font-weight:800;white-space:nowrap;overflow:hidden"><span style="'+bd+'">📄 운송장</span><span style="'+bd+'">📦 전체</span><span style="'+bd+'">💥 파손 부위</span><span style="flex-shrink:0">꼭 첨부!</span><span style="flex-shrink:0;background:#fff;border:1.5px solid #ef9a9a;border-radius:10px;padding:0 6px;font-size:0.92em">'+(cnt||0)+'/3</span></div>';}
 function rqDamageForm(){
   if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
   var isAdm = CU && CU.role==='admin';
