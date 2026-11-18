@@ -17880,8 +17880,8 @@ function rqDamageForm(){
 
   return '<div class="rq-card">'+
     '<div id="rq-dm-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
-    adminBox+
-    '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
+    adminBox+_rqBcChips('dm')+
+    '<label class="rq-label">&#x1F4CB; '+(_rqBcMode()==='bc'?'인식된 운송장 <span style="font-size:10.5px;color:#888;font-weight:600">(직접 고쳐도 돼요)</span>':'운송장 정보 붙여넣기')+' <span class="rq-req">필수</span></label>'+
     '<textarea class="rq-paste" id="rq-dm-paste" placeholder="📋 운송장·주문번호를 붙여넣으면 자동으로 행 분리 됨&#10;✅ 여러 건을 동시에 붙여넣기 해도 자동 처리 됨" oninput="rqParseDamage()">'+rqEsc(window._rqDmRaw||'')+'</textarea>'+
     '<div class="rq-parsed" id="rq-dm-parsed">'+
       '<div><span style="color:#888;font-size:11px">운송장번호: </span><span id="rq-dm-wb-val" style="font-weight:700;color:'+(wb?'#222':'#bbb')+'">'+(wb||'자동 추출 대기')+'</span></div>'+
@@ -18395,8 +18395,8 @@ function rqDupForm(){
   var btnTxt=_rqAutoApprove?'&#x26A1; 팀즈 전송':'&#x1F4E4; 팀즈 전송 요청';
   return '<div class="rq-card">'+
     '<div id="rq-dup-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+
-    adminBox+
-    '<label class="rq-label">&#x1F4CB; 운송장 정보 붙여넣기 <span class="rq-req">필수</span></label>'+
+    adminBox+_rqBcChips('dup')+
+    '<label class="rq-label">&#x1F4CB; '+(_rqBcMode()==='bc'?'인식된 운송장 <span style="font-size:10.5px;color:#888;font-weight:600">(직접 고쳐도 돼요)</span>':'운송장 정보 붙여넣기')+' <span class="rq-req">필수</span></label>'+
     '<textarea class="rq-paste" id="rq-dup-paste" placeholder="📋 운송장·주문번호를 붙여넣으면 자동으로 행 분리 됨&#10;✅ 여러 건을 동시에 붙여넣기 해도 자동 처리 됨" oninput="window._rqDupRaw=this.value;rqUpdateDupPreview()">'+rqEsc(raw)+'</textarea>'+
     '<div class="rq-hint" id="rq-dup-hint"'+(pairs.length?'':' style="display:none"')+'>'+(pairs.length?('✅ '+pairs.length+'건 인식'):'')+'</div>'+
     '<div style="display:flex;gap:8px;margin:6px 0 4px">'+
@@ -18528,11 +18528,18 @@ async function rqBcFile(inp){var f=inp.files&&inp.files[0];inp.value='';if(!f)re
   catch(e){if(st)st.textContent='❌ '+(e.message||e);}}
 function _rqBcStop(){_BC.run=false;try{(_BC.stream&&_BC.stream.getTracks()||[]).forEach(function(t){t.stop();});}catch(e){}_BC.stream=null;}
 function rqBcClose(apply){_rqBcStop();var ov=document.getElementById('bc-ov');if(ov)ov.remove();
-  if(!apply||!_BC.found||!_BC.found.length)return;var k=_BC.kind;var cur=window._rqRetRaw[k]||'';var have=rqParsePairs(cur).map(function(p){return p.wb;});
+  if(!apply||!_BC.found||!_BC.found.length)return;var k=_BC.kind;var wbs=_BC.found.map(function(f){return f.wb;});var n=0;
+  if(k==='dm'){/* 파손: 운송장 1건 */var t=document.getElementById('rq-dm-paste');var cur=(t&&t.value)||window._rqDmRaw||'';var w=wbs[0];if(cur.indexOf(w)<0){window._rqDmRaw=(cur?cur.replace(/\s+$/,'')+'\n':'')+'운송장 '+w;n=1;}rqRenderBody();try{rqParseDamage();}catch(e){}}
+  else if(k==='dup'){var cur2=window._rqDupRaw||'';var have=rqParsePairs(cur2).map(function(p){return p.wb;});var add2=wbs.filter(function(w){return have.indexOf(w)<0&&cur2.indexOf(w)<0;});if(cur2&&!/운송장|주문/.test(cur2))cur2=rqParsePairs(cur2).map(function(p){return '운송장 '+p.wb+(p.od?'\n주문 '+p.od:'');}).join('\n');window._rqDupRaw=(cur2?cur2.replace(/\s+$/,'')+'\n':'')+add2.map(function(w){return '운송장 '+w;}).join('\n');n=add2.length;rqRenderBody();try{rqUpdateDupPreview();}catch(e){}}
+  else if(k==='addr'){var cur3=window._rqAdRaw||'';var have3=_rqAdWbs(cur3);var add3=wbs.filter(function(w){return have3.indexOf(w)<0;});window._rqAdRaw=(cur3?cur3.replace(/\s+$/,'')+'\n':'')+add3.join('\n');n=add3.length;rqRenderBody();try{rqAdInput();}catch(e){}}
+  else{var cur=window._rqRetRaw[k]||'';var have=rqParsePairs(cur).map(function(p){return p.wb;});
   var add=_BC.found.filter(function(f){return have.indexOf(f.wb)<0;}).map(function(f){return '운송장 '+f.wb;});
   if(cur&&!/운송장|주문/.test(cur)){cur=rqParsePairs(cur).map(function(p){return '운송장 '+p.wb+(p.od?'\n주문 '+p.od:'');}).join('\n');}
-  window._rqRetRaw[k]=(cur?cur.replace(/\s+$/,'')+'\n':'')+add.join('\n');rqRenderBody();
-  try{showToast('✅ 송장 '+add.length+'건 입력됐어요',true);}catch(e){}}
+  window._rqRetRaw[k]=(cur?cur.replace(/\s+$/,'')+'\n':'')+add.join('\n');rqRenderBody();n=add.length;}
+  try{showToast('✅ 송장 '+n+'건 입력됐어요',true);}catch(e){}}
+/* [v973] 파손·이중출고·위탁 주소에도 [바코드 인식 | 운송장 복사] */
+function _rqBcChips(kind){var m=_rqBcMode();function chip(v,t){var on=m===v;return '<div onclick="'+(v==='bc'?'rqBcChip(\''+kind+'\')':'rqBcSetMode(\''+v+'\')')+'" style="flex:1;text-align:center;padding:10px 4px;border-radius:10px;font-weight:800;font-size:13.5px;cursor:pointer;border:2px solid '+(on?'#ef6a2b':'#e0d6cc')+';background:'+(on?'#ef6a2b':'#fff')+';color:'+(on?'#fff':'#8a6a4a')+'">'+t+'</div>';}
+  return '<div style="display:flex;gap:8px;margin-bottom:10px">'+chip('bc','📷 바코드 인식')+chip('copy','📋 운송장 복사')+'</div>';}
 function rqRetForm(kind){
   var c=_rqRetCfg[kind];
   if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
@@ -18903,7 +18910,7 @@ function rqAddrForm(){
   if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
   var raw=window._rqAdRaw||'';var w=_rqAdWbs(raw);
   return '<div style="background:#e0f2f1;border:1px solid #80cbc4;border-radius:10px;padding:7px 10px;margin-bottom:8px;font-size:clamp(11px,3.2vw,12.5px);color:#00695c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">📍 주소 안 나오는 위탁 건 → 송장번호만 입력</div>'
-   +'<div class="rq-card"><label class="rq-label">📋 송장번호<span class="rq-req">필수</span></label>'
+   +'<div class="rq-card">'+_rqBcChips('addr')+'<label class="rq-label">📋 송장번호<span class="rq-req">필수</span></label>'
    +'<textarea id="rq-ad-in" class="rq-paste" oninput="rqAdInput()" placeholder="송장번호를 붙여넣어 주세요&#10;여러 건이면 줄바꿈으로 여러 개 넣어도 돼요">'+escQ(raw)+'</textarea>'
    +'<div id="rq-ad-cnt" style="background:#e8f5e9;border-radius:8px;padding:8px;text-align:center;font-size:12.5px;color:#2e7d32;margin-bottom:10px">'+(w.length?'':'송장번호를 붙여넣어 주세요')+'</div>'
    +'<label class="rq-label">💬 팀즈 전송 미리보기</label><div id="rq-ad-pv" style="white-space:pre-wrap;background:#f5f6fa;border:1px solid #dde;border-radius:10px;padding:12px;font-family:monospace;font-size:12.5px;line-height:1.7;color:#333">'+escQ(_rqAdText(w))+'</div>'
