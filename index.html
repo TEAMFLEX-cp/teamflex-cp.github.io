@@ -17837,7 +17837,7 @@ function rqLandingHtml(){
             {k:'scan',e:'🗑️',l:'스캔대기 삭제'},{k:'lost',e:'🔍',l:'분실건 처리요청'}];
   var G='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(5px,0.8vh,7px)';
   var grid='<div style="'+G+'">';
-  grid+='<button onclick="rqSwitchTab(\'chaebun\')" style="'+_b+';border:2px solid #b39ddb;background:#ede7f6;color:#4527a0">🧾 채번 서베이 <span style="font-size:0.8em;font-weight:700;opacity:.8">(테스트중)</span></button>';   // [v975] 업무신청 자리 → 채번 서베이
+  grid+='<button onclick="rqSwitchTab(\'chaebun\')" style="'+_b+';border:2px solid #b39ddb;background:#ede7f6;color:#4527a0">🧾 채번 서베이</button>';   // [v975] 업무신청 자리 → 채번 서베이
   grid+='<button onclick="rqSwitchTab(\'addr\')" style="'+_b+';border:2px solid #80cbc4;background:#e0f2f1;color:#00695c;white-space:normal;line-height:1.2;padding-top:clamp(5px,0.9vh,9px);padding-bottom:clamp(5px,0.9vh,9px)">📍 위탁 배송(반품)<br><span style="font-size:0.86em">주소 확인 요청</span></button>';
   main.forEach(function(t){ grid+='<button onclick="rqSwitchTab(\''+t.k+'\')" style="'+_b+';'+_blue+'">'+t.e+' '+t.l+'</button>'; });
   grid+='</div>';
