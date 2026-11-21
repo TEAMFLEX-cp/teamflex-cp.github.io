@@ -12618,8 +12618,12 @@ function pgMisdelivery(){
 
 // ── 오배송 검색 (관리자·팀장 전용) ──────────────────────────────────
 var _mdSearchTimer=null;
-function _mdReqSearch(q){try{var qlow=(q||'').toLowerCase();var _rq=(typeof _rqCases!=='undefined'&&_rqCases)?_rqCases:[];var reqM=_rq.filter(function(rr){var hay=(rr.requester_name||'')+' '+JSON.stringify(rr.payload||{})+' '+(rr.created_at||'')+' '+((typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'');return hay.toLowerCase().indexOf(qlow)>=0;});var _isMgr=(typeof CU!=='undefined'&&CU)&&(CU.role!=='driver');if(!_isMgr){var _myn=String((typeof CU!=='undefined'&&CU&&CU.name)||'').trim();reqM=reqM.filter(function(rr){return String(rr.requester_name||'').trim()===_myn||String(rr.requester_id||'')===String((typeof CU!=='undefined'&&CU&&CU.id)||'');});}if(!reqM.length)return '';var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var hi=function(s,q){if(!s||!q)return esc(s);var i=String(s).toLowerCase().indexOf(String(q).toLowerCase());if(i<0)return esc(s);return esc(String(s).slice(0,i))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(i,i+q.length))+'</mark>'+esc(String(s).slice(i+q.length));};var tm={damage:'파손',route:'라우트변경',return:'반품이관',dup:'이중출고',scan:'스캔삭제',olddel:'이전라우트삭제',retcamp:'타캠프반납확인',addr:'위탁주소확인',lost:'분실',pretake:'전취반납',lostret:'분실반납',work:'업무신청',loss:'차감분실'};var rh='<div style="font-size:12px;color:#888;margin:16px 0 8px;padding:0 2px">📝 각종요청 <b style="color:#3949ab">'+reqM.length+'건</b></div>';reqM.forEach(function(rr){var p=rr.payload||{};var wb=p.waybill||p.waybill_no||p.wb||p.invoice||'';var dt2=(typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'';rh+='<div onclick="rqShowPopup('+rr.id+')" style="border:1px solid #e0e3f0;border-left:4px solid #3949ab;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fbfcff"><div style="display:flex;justify-content:space-between;margin-bottom:5px">'+(wb?'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#283593">'+hi(String(wb),q)+'</span>':'<span></span>')+'<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:#e8eaf6;color:#3949ab">'+esc(tm[rr.type]||rr.type||'요청')+'</span></div><div style="display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap"><span>👤 '+hi(rr.requester_name,q)+'</span>'+(dt2?'<span>📅 '+esc(dt2)+'</span>':'')+'</div>'+(p.text?'<div style="font-size:12px;color:#666;margin-top:4px">'+esc(String(p.text).slice(0,50))+'</div>':'')+'</div>';});return rh;}catch(e){return '';}}
-function _rqItems(q){try{var qlow=(q||'').toLowerCase();var _rq=(typeof _rqCases!=='undefined'&&_rqCases)?_rqCases:[];var reqM=_rq.filter(function(rr){var hay=(rr.requester_name||'')+' '+JSON.stringify(rr.payload||{})+' '+(rr.created_at||'')+' '+((typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'');return hay.toLowerCase().indexOf(qlow)>=0;});var _isMgr=(typeof CU!=='undefined'&&CU)&&(CU.role!=='driver');if(!_isMgr){var _myn=String((typeof CU!=='undefined'&&CU&&CU.name)||'').trim();reqM=reqM.filter(function(rr){return String(rr.requester_name||'').trim()===_myn||String(rr.requester_id||'')===String((typeof CU!=='undefined'&&CU&&CU.id)||'');});}var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var hi=function(s,q){if(!s||!q)return esc(s);var i=String(s).toLowerCase().indexOf(String(q).toLowerCase());if(i<0)return esc(s);return esc(String(s).slice(0,i))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(i,i+q.length))+'</mark>'+esc(String(s).slice(i+q.length));};var tm={damage:'파손',route:'라우트변경',return:'반품이관',dup:'이중출고',scan:'스캔삭제',olddel:'이전라우트삭제',retcamp:'타캠프반납확인',addr:'위탁주소확인',lost:'분실',pretake:'전취반납',lostret:'분실반납',work:'업무신청',loss:'차감분실'};return reqM.map(function(rr){var p=rr.payload||{};var wb=p.waybill||p.waybill_no||p.wb||p.invoice||'';var dt2=(typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'';var h='<div onclick="rqShowPopup('+rr.id+')" style="border:1px solid #e0e3f0;border-left:4px solid #3949ab;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fbfcff"><div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+'<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:#e8eaf6;color:#3949ab">📝 '+esc(tm[rr.type]||rr.type||'요청')+'</span>'+(wb?'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#283593">'+hi(String(wb),q)+'</span>':'')+'</div><div style="display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap"><span>👤 '+hi(rr.requester_name,q)+'</span>'+(dt2?'<span>📅 '+esc(dt2)+'</span>':'')+'</div>'+(p.text?'<div style="font-size:12px;color:#666;margin-top:4px">'+esc(String(p.text).slice(0,50))+'</div>':'')+'</div>';return {d:String(rr.created_at||''),kind:'rq',h:h};});}catch(e){return [];}}
+/* [v980] '뒤 4자리' 검색: 숫자 4개만 넣으면 송장번호의 '끝 4자리'가 같은 것만 (중간에 있는 건 제외) */
+function _mdL4Wb(wb,q){return String(wb||'').split(/[\s,]+/).some(function(x){x=x.replace(/\D/g,'');return x.length>=8&&x.slice(-4)===q;});}
+function _mdL4Hi(wb,q){var e=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};return String(wb||'').split('\n').map(function(x){x=x.trim();return (x.length>=8&&x.slice(-4)===q)?e(x.slice(0,-4))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+e(q)+'</mark>':e(x);}).join('<br>');}
+function _mdL4Match(hay,qlow,rr){if(/^\d{4}$/.test(qlow)){var p=(rr&&rr.payload)||{};var txt=[p.text,p.waybill,p.waybill_no,p.wb,p.invoice,JSON.stringify(p.wbs||p.items||'')].join(' ');var ns=String(txt).match(/\d{8,}/g)||[];return ns.some(function(n){return n.slice(-4)===qlow;})||String((rr&&rr.requester_name)||'').indexOf(qlow)>=0;}return hay.toLowerCase().indexOf(qlow)>=0;}
+function _mdReqSearch(q){try{var qlow=(q||'').toLowerCase();var _rq=(typeof _rqCases!=='undefined'&&_rqCases)?_rqCases:[];var reqM=_rq.filter(function(rr){var hay=(rr.requester_name||'')+' '+JSON.stringify(rr.payload||{})+' '+(rr.created_at||'')+' '+((typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'');return _mdL4Match(hay,qlow,rr);});var _isMgr=(typeof CU!=='undefined'&&CU)&&(CU.role!=='driver');if(!_isMgr){var _myn=String((typeof CU!=='undefined'&&CU&&CU.name)||'').trim();reqM=reqM.filter(function(rr){return String(rr.requester_name||'').trim()===_myn||String(rr.requester_id||'')===String((typeof CU!=='undefined'&&CU&&CU.id)||'');});}if(!reqM.length)return '';var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var hi=function(s,q){if(!s||!q)return esc(s);var i=String(s).toLowerCase().indexOf(String(q).toLowerCase());if(i<0)return esc(s);return esc(String(s).slice(0,i))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(i,i+q.length))+'</mark>'+esc(String(s).slice(i+q.length));};var tm={damage:'파손',route:'라우트변경',return:'반품이관',dup:'이중출고',scan:'스캔삭제',olddel:'이전라우트삭제',retcamp:'타캠프반납확인',addr:'위탁주소확인',lost:'분실',pretake:'전취반납',lostret:'분실반납',work:'업무신청',loss:'차감분실'};var rh='<div style="font-size:12px;color:#888;margin:16px 0 8px;padding:0 2px">📝 각종요청 <b style="color:#3949ab">'+reqM.length+'건</b></div>';reqM.forEach(function(rr){var p=rr.payload||{};var wb=p.waybill||p.waybill_no||p.wb||p.invoice||'';var dt2=(typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'';rh+='<div onclick="rqShowPopup('+rr.id+')" style="border:1px solid #e0e3f0;border-left:4px solid #3949ab;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fbfcff"><div style="display:flex;justify-content:space-between;margin-bottom:5px">'+(wb?'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#283593">'+hi(String(wb),q)+'</span>':'<span></span>')+'<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:#e8eaf6;color:#3949ab">'+esc(tm[rr.type]||rr.type||'요청')+'</span></div><div style="display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap"><span>👤 '+hi(rr.requester_name,q)+'</span>'+(dt2?'<span>📅 '+esc(dt2)+'</span>':'')+'</div>'+(p.text?'<div style="font-size:12px;color:#666;margin-top:4px">'+esc(String(p.text).slice(0,50))+'</div>':'')+'</div>';});return rh;}catch(e){return '';}}
+function _rqItems(q){try{var qlow=(q||'').toLowerCase();var _rq=(typeof _rqCases!=='undefined'&&_rqCases)?_rqCases:[];var reqM=_rq.filter(function(rr){var hay=(rr.requester_name||'')+' '+JSON.stringify(rr.payload||{})+' '+(rr.created_at||'')+' '+((typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'');return _mdL4Match(hay,qlow,rr);});var _isMgr=(typeof CU!=='undefined'&&CU)&&(CU.role!=='driver');if(!_isMgr){var _myn=String((typeof CU!=='undefined'&&CU&&CU.name)||'').trim();reqM=reqM.filter(function(rr){return String(rr.requester_name||'').trim()===_myn||String(rr.requester_id||'')===String((typeof CU!=='undefined'&&CU&&CU.id)||'');});}var esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};var hi=function(s,q){if(!s||!q)return esc(s);var i=String(s).toLowerCase().indexOf(String(q).toLowerCase());if(i<0)return esc(s);return esc(String(s).slice(0,i))+'<mark style="background:#fff176;border-radius:2px;padding:0 1px">'+esc(String(s).slice(i,i+q.length))+'</mark>'+esc(String(s).slice(i+q.length));};var tm={damage:'파손',route:'라우트변경',return:'반품이관',dup:'이중출고',scan:'스캔삭제',olddel:'이전라우트삭제',retcamp:'타캠프반납확인',addr:'위탁주소확인',lost:'분실',pretake:'전취반납',lostret:'분실반납',work:'업무신청',loss:'차감분실'};return reqM.map(function(rr){var p=rr.payload||{};var wb=p.waybill||p.waybill_no||p.wb||p.invoice||'';var dt2=(typeof kstDateStr==='function'&&rr.created_at)?kstDateStr(rr.created_at):'';var h='<div onclick="rqShowPopup('+rr.id+')" style="border:1px solid #e0e3f0;border-left:4px solid #3949ab;border-radius:10px;padding:11px 13px;margin-bottom:8px;cursor:pointer;background:#fbfcff"><div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">'+'<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:#e8eaf6;color:#3949ab">📝 '+esc(tm[rr.type]||rr.type||'요청')+'</span>'+(wb?'<span style="font-family:monospace;font-size:13px;font-weight:700;color:#283593">'+hi(String(wb),q)+'</span>':'')+'</div><div style="display:flex;gap:12px;font-size:12px;color:#555;flex-wrap:wrap"><span>👤 '+hi(rr.requester_name,q)+'</span>'+(dt2?'<span>📅 '+esc(dt2)+'</span>':'')+'</div>'+(p.text?'<div style="font-size:12px;color:#666;margin-top:4px">'+esc(String(p.text).slice(0,50))+'</div>':'')+'</div>';return {d:String(rr.created_at||''),kind:'rq',h:h};});}catch(e){return [];}}
 function mdSearchCases(val){
   clearTimeout(_mdSearchTimer);
   var q=(val||'').trim();
@@ -12639,7 +12643,7 @@ function mdSearchCases(val){
       var isLast4=/^\d{4}$/.test(q);
       var orParts=[];
       if(isLast4){
-        orParts.push('waybill_no.like.*'+q);
+        orParts.push('waybill_no.like.*'+q+'*');   // [v980] 여러 송장(줄바꿈) 대비 넓게 찾고, 아래에서 '끝 4자리'만 남김
       } else if(/^\d+$/.test(q)){
         orParts.push('waybill_no.ilike.*'+q+'*');
       }
@@ -12655,9 +12659,10 @@ function mdSearchCases(val){
         .not('status','in','("archived","deleted")')
         .or(orParts.join(','))
         .order('created_at',{ascending:false})
-        .limit(50);
+        .limit(isLast4?300:50);
       if(e)throw e;
       var _isMgr=CU&&(CU.role!=='driver');if(!_isMgr){var _myn=String((CU&&CU.name)||'').trim();rows=(rows||[]).filter(function(rr){return String(rr.driver_name||'').trim()===_myn;});}
+      if(isLast4){rows=(rows||[]).filter(function(rr){return _mdL4Wb(rr.waybill_no,q)||String(rr.driver_name||'').indexOf(q)>=0;});}   // [v980]
       if(!rows||!rows.length){
         rows=[];
       }
@@ -12685,7 +12690,7 @@ function mdSearchCases(val){
                'onmouseout="this.style.boxShadow=\'none\'" '+
                'onclick="mdOpenCase(\''+esc(r.id)+'\')" >'+
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'+
-              '<span style="font-family:monospace;font-size:14px;font-weight:700;color:#1a237e;letter-spacing:.5px">'+hi(r.waybill_no,q)+'</span>'+
+              '<span style="font-family:monospace;font-size:14px;font-weight:700;color:#1a237e;letter-spacing:.5px">'+(isLast4?_mdL4Hi(r.waybill_no,q):hi(r.waybill_no,q))+'</span>'+
               '<span style="border-radius:5px;padding:2px 8px;font-size:11px;font-weight:700;background:'+stC+'22;color:'+stC+'">'+esc(stLabel)+'</span>'+
             '</div>'+
             '<div style="display:flex;gap:12px;font-size:12px;color:#555;margin-bottom:5px;flex-wrap:wrap">'+
@@ -12875,8 +12880,9 @@ async function mdLoadCases(){
     var q=sbClient.from('misdelivery_cases')
       .select('*')
       .not('status','in','("archived","deleted")')
+      .gte('created_at',new Date(Date.now()-90*86400000).toISOString())   // [v980] 최근 90일 전체 (기존 100건 제한 → 11월 이전 인입이 안 보였음)
       .order('created_at',{ascending:false})
-      .limit(100);
+      .range(0,2999);
 
     if(isDriver){
       // driver_id 컬럼은 "oujin@df" 형식으로 저장, CU.id는 "oujin" 또는 "oujin@df"
@@ -13171,7 +13177,8 @@ function mdRenderList(cases){
       ? _visReqs.filter(function(r){return !_resvId[r.id] && (kstDateStr(r.created_at)===todayStr2 || r.status==='pending');})
       : _visReqs.filter(function(r){return !_resvId[r.id];});
     var _reqPend=todayReqs.filter(function(r){return r.status==='pending';});
-    _reqDoneItems=todayReqs.filter(function(r){return r.status!=='pending';});   // 완료/반려 → 처리완료 섹션으로
+    var _rq30=Date.now()-30*86400000;   // [v980] 요청 처리완료는 최근 30일만
+    _reqDoneItems=todayReqs.filter(function(r){return r.status!=='pending' && !(new Date(r.created_at||0).getTime()<_rq30);});   // 완료/반려 → 처리완료 섹션으로
     if(_reqReserved.length>0){
       html += '<div style="margin-bottom:12px;background:#e3f6ea;border:1px solid #9fdfb8;border-radius:12px;overflow:hidden">'+
         '<div style="display:flex;align-items:center;gap:8px;padding:9px 14px">'+
@@ -13290,10 +13297,11 @@ function mdRenderList(cases){
         var _mk=(d&&d.length>=7)?d.slice(0,7):'기타';
         if(!_monthMap[_mk]){
           var _lbl=(_mk==='기타')?'날짜 미상':((_mk.slice(0,4)===_thisY?'':_mk.slice(0,4)+'년 ')+parseInt(_mk.slice(5,7),10)+'월');
-          _monthMap[_mk]={label:_lbl, gid:'md-done-m'+_mk.replace(/-/g,''), items:[]};
+          _monthMap[_mk]={label:_lbl, gid:'md-done-m'+_mk.replace(/-/g,''), items:[], days:[]};
           _monthOrder.push(_mk);
         }
         _monthMap[_mk].items=_monthMap[_mk].items.concat(byDate[d]);
+        if(_mk!=='기타')_monthMap[_mk].days.push({d:d,items:byDate[d]});
       }
     });
     var _groups=_recentG.concat(_monthOrder.map(function(_mk){return _monthMap[_mk];}));
@@ -13318,7 +13326,7 @@ function mdRenderList(cases){
             '<span id="'+groupId+'-arrow" style="font-size:12px;color:#8bc34a;transition:transform 0.2s">'+(isOpen?'▲':'▼')+'</span>'+
           '</div>'+
           '<div id="'+groupId+'" style="'+(isOpen?'':'display:none;')+'padding:0 10px 10px">'+
-            items.map(function(it){
+            (function(){var _ri=function(it){
               if(it.k==='req'){
                 var r=it.c;
                 var _tm={damage:'🟠 파손',route:'🔄 라우트변경',return:'↩ 반품이관',dup:'📦 이중출고',scan:'🗑 스캔삭제',olddel:'🧹 이전라우트삭제',retcamp:'🏬 타캠프 반품 반납 확인',addr:'📍 위탁 주소 확인',lost:'🔍 분실',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무신청',loss:'📉 차감[분실]'};
@@ -13355,7 +13363,22 @@ function mdRenderList(cases){
                 '</div>'+
                 (canDelete?'<button onclick="event.stopPropagation();mdDeleteCase('+c.id+')" style="flex-shrink:0;padding:4px 9px;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:6px;font-size:11px;cursor:pointer">🗑️</button>':'')+
               '</div>';
-            }).join('')+
+            };
+            if(!grp.days||!grp.days.length)return items.map(_ri).join('');
+            /* [v980] 월 안에서 날짜별로 한 번 더 접기 */
+            var _wd=['일','월','화','수','목','금','토'];
+            return grp.days.map(function(dg){
+              var its=dg.items.slice().sort(function(a,b){return new Date(b._t||0)-new Date(a._t||0);});
+              var sid='md-done-d'+dg.d.replace(/-/g,'');
+              var so=!!(window._mdDoneOpen&&window._mdDoneOpen[sid]);
+              var dd=new Date(dg.d+'T00:00:00+09:00');var lb=(dd.getMonth()+1)+'월 '+dd.getDate()+'일 ('+_wd[dd.getDay()]+')';
+              return '<div style="margin:6px 0 0;background:#fff;border-radius:9px;border:1px solid #e6ee9c;overflow:hidden">'+
+                '<div onclick="mdToggleDoneGroup(\''+sid+'\')" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;cursor:pointer;user-select:none">'+
+                  '<div style="display:flex;align-items:center;gap:7px"><span style="font-size:12.5px;font-weight:700;color:#689f38">'+lb+'</span>'+
+                  '<span style="font-size:10.5px;background:#f1f8e9;color:#33691e;padding:1px 7px;border-radius:8px;font-weight:600">'+its.length+'건</span></div>'+
+                  '<span id="'+sid+'-arrow" style="font-size:11px;color:#9ccc65">'+(so?'▲':'▼')+'</span></div>'+
+                '<div id="'+sid+'" style="'+(so?'':'display:none;')+'padding:0 8px 8px">'+its.map(_ri).join('')+'</div></div>';
+            }).join('');})()+
           '</div>'+
         '</div>';
     });
