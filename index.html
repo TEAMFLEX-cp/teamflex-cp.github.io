@@ -1315,8 +1315,42 @@ function _dxGate(input,init,base){
   }catch(e){}
   return null;
 }
+/* [v989] 비밀번호 암호값은 서버에서 '본인·관리자'만 받을 수 있음 → 기사표를 읽을 때 password 칸은 빼고 받고,
+   허락된 것만 tf_drv_pw 로 따로 받아 원래 모양 그대로 합쳐줌 (앱의 다른 코드는 바뀐 걸 모름) */
+var _TF_DRV_COLS='driver_id,name,rank,phone,kakao_id,login_id,status,role,synced_at,notif_ok,home_ok,birth_date,car_type,fuel_type';
+function _tfDrvPwFix(input,init,base){
+  try{
+    var url=String((input&&input.url)||input||'');
+    if(url.indexOf('/rest/v1/drivers?')<0)return null;
+    var method=String((init&&init.method)||(input&&input.method)||'GET').toUpperCase();
+    if(method!=='GET'&&method!=='HEAD')return null;
+    var u=new URL(url);var sel=u.searchParams.get('select')||'*';
+    var parts=sel.split(',').map(function(x){return x.trim();}).filter(Boolean);
+    var all=parts.indexOf('*')>=0;if(!all&&parts.indexOf('password')<0)return null;
+    var np=all?_TF_DRV_COLS.split(','):parts.filter(function(x){return x!=='password';});
+    var addId=np.indexOf('driver_id')<0;if(addId)np.push('driver_id');
+    u.searchParams.set('select',np.join(','));
+    return base(u.toString(),init).then(function(r){
+      if(!r||!r.ok||method==='HEAD')return r;
+      return r.text().then(async function(t){
+        var hh=new Headers();try{r.headers.forEach(function(v,k){if(!/content-(length|encoding)/i.test(k))hh.set(k,v);});}catch(e){}if(!hh.get('content-type'))hh.set('content-type','application/json');
+        var j=null;try{j=JSON.parse(t);}catch(e){return new Response(t,{status:r.status,headers:hh});}
+        var isArr=Array.isArray(j);var arr=isArr?j:(j&&typeof j==='object'?[j]:[]);
+        var ids=arr.map(function(x){return x&&x.driver_id;}).filter(Boolean);var pm={};
+        if(ids.length){
+          var rp=null;try{rp=await sbClient.rpc('tf_drv_pw',{ids:ids});}catch(e){rp={error:e};}
+          if(!rp||rp.error)return new Response(JSON.stringify({message:'pw lookup failed'}),{status:503,headers:{'content-type':'application/json'}});
+          (rp.data||[]).forEach(function(x){pm[x.driver_id]=x.password;});
+        }
+        arr.forEach(function(x){if(!x)return;if(Object.prototype.hasOwnProperty.call(pm,x.driver_id))x.password=pm[x.driver_id];if(addId)delete x.driver_id;});
+        return new Response(JSON.stringify(isArr?arr:(arr[0]||null)),{status:r.status,statusText:r.statusText,headers:hh});
+      });
+    });
+  }catch(e){return null;}
+}
 function _sbFetch(input,init){
   init=init||{};
+  if(_tfGateOpen){var _pf=_tfDrvPwFix(input,init,function(a,b){return _sbFetch0(a,b);});if(_pf)return _pf;}
   if(!_tfGateOpen){try{var _u0=(typeof input==='string')?input:((input&&input.url)||'');if(_u0.indexOf('/rest/v1/')>=0||_u0.indexOf('/storage/v1/')>=0){var _a=input,_b=init;return _tfReady.then(function(){return _sbFetch(_a,_b);});}}catch(_e){}}
   var _g=_dxGate(input,init,function(a,b){return _sbFetch0(a,b);});if(_g)return _g;
   return _sbFetch0(input,init);
@@ -3547,6 +3581,10 @@ window._pushDedupeCheck=_pushDedupeCheck;
 var _QUIET_EXEMPT={}; /* 금지시간 예외 인원: 관리자 지시가 있을 때만 이름 추가 */
 (function(){ if(window.__tfQuietFetchGuard)return; window.__tfQuietFetchGuard=1; var _of=window.fetch;
   window.fetch=function(u,o){ try{ var url=(typeof u==='string')?u:((u&&u.url)||''); if(url.indexOf('/functions/v1/send-push')>=0 && typeof isQuietHour==='function' && isQuietHour()){ var nm=''; try{var pb=JSON.parse((o&&o.body)||'{}');nm=pb.target_name||pb.driver_name||'';}catch(_e){} if(!(nm&&_QUIET_EXEMPT[nm])){ console.log('[금지시간] 푸시 차단',nm||'(역할/전체)'); return Promise.resolve(new Response('{"blocked":"quiet"}',{status:200,headers:{'Content-Type':'application/json'}})); } } }catch(_e){} return _of.apply(this,arguments); };
+})();
+/* [v989] 푸시 보내기 함수는 '출입증 있는 폰'만 허용 → 앱에서 부를 때 이 폰의 로그인 표(세션)를 같이 보냄. 대상·시간 규칙은 그대로 */
+(function(){ if(window.__tfPushAuth)return; window.__tfPushAuth=1; var _of2=window.fetch;
+  window.fetch=function(u,o){ try{ var url=(typeof u==='string')?u:((u&&u.url)||''); if(url.indexOf('/functions/v1/send-push')>=0&&typeof _tfJwt==='function'){ var self=this; return _tfJwt().then(function(t){ var o2=Object.assign({},o||{}); try{ var h=new Headers(o2.headers||{}); if(t&&!h.get('authorization'))h.set('Authorization','Bearer '+t); o2.headers=h; }catch(_e){} return _of2.call(self,u,o2); }); } }catch(_e){} return _of2.apply(this,arguments); };
 })();
 async function pushNotify(feat, opts){
   opts=opts||{};
