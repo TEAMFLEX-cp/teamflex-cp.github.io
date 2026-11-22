@@ -1949,6 +1949,7 @@ function saveSchedOvr(o){
 }
 // 기본 관리자 계정 (삭제 불가)
 var ROOT_ADMIN={id:'qudrnr81',h:'H2$34ed92900db9a0d7ff7954b8e14fe5cebe6fb28cff9ed5d34dbe8f9ef157e9fc'}; /* [v984] 기본 관리자 비번은 암호화 값만 보관 */
+function _admPwBlock(role,pw){return role==='admin'&&(!pw||String(pw)==='1234');} /* [v986] 관리자 권한은 1234로 절대 안 열림 */
 function _rootPwOk(pw){return !!pw&&_pwW(ROOT_ADMIN.id,pw)===ROOT_ADMIN.h;}
 function _admPwOk(pw){var c=getCfg();return c.adminPw?pw===c.adminPw:_rootPwOk(pw);}
 var _sbAdmins=[]; // Supabase에서 불러온 추가 관리자 목록
@@ -1965,7 +1966,7 @@ function checkAdminLogin(id,pw){
   if(id===ROOT_ADMIN.id&&_rootPwOk(pw))return true;
   var cfg=getCfg();
   if(cfg.adminId&&id===cfg.adminId&&cfg.adminPw&&pw===cfg.adminPw)return true;
-  return _sbAdmins.some(function(a){return a.id===id&&_pwEq(a.pw,a.nm,pw);});
+  return _sbAdmins.some(function(a){return a.id===id&&!_admPwBlock('admin',a.pw)&&!_admPwBlock('admin',pw)&&_pwEq(a.pw,a.nm,pw);});
 }
 
 // Supabase에서 추가 관리자 불러오기
@@ -5414,12 +5415,14 @@ function doLogin(){
         }
       }catch(e){console.warn('[doLogin SB check]',e);}
       document.getElementById('lerr').textContent='';document.getElementById('btnLogin').disabled=false;
+      if(pw==='1234'&&drv.role==='admin'){document.getElementById('lerr').textContent='🔒 관리자 계정은 기본 비밀번호(1234)로 들어올 수 없어요. 관리자 로그인(아이디·비번)이나 지문으로 들어와 주세요.';return;}
       if(pw==='1234'){document.getElementById('mname').textContent=drv.name;document.getElementById('mid').textContent=drv.id;document.getElementById('modal').style.display='';}
       else{document.getElementById('lerr').textContent='초기 비밀번호는 1234 입니다.';}
     })();
     return;
   }
   if(drv.status==='pending'){document.getElementById('ls').style.display='none';document.getElementById('ps').style.display='flex';return;}
+  if(drv.status==='approved'&&_admPwBlock(drv.role,pw)){document.getElementById('lerr').textContent='🔒 관리자 계정은 기본 비밀번호(1234)로 들어올 수 없어요. 관리자 로그인(아이디·비번)이나 지문으로 들어와 주세요.';return;}
   if(drv.status==='approved'&&_pwEq(drv.password,name,pw)){
     CU={id:drv.id,name:drv.name,role:drv.role||'driver'};
     localStorage.setItem('tf_push_name',CU.name);localStorage.setItem('tf_push_role',CU.role);
@@ -5517,7 +5520,7 @@ async function submitReq(){
         status:'approved',password:_pwWS(name,pw1),phone:ph,synced_at:new Date().toISOString()
       }).eq('name',name).catch(function(e){console.warn('approve sync err',e);});
     }
-    CU={id:db[name].id,name:db[name].name,role:db[name].role||'driver'};
+    CU={id:db[name].id,name:db[name].name,role:(db[name].role==='admin'?'driver':(db[name].role||'driver'))};
     localStorage.setItem('tf_push_name',CU.name);localStorage.setItem('tf_push_role',CU.role);
     saveAutoLogin(name,pw1); // 자동로그인 저장
     launchApp();
@@ -5687,7 +5690,7 @@ function startPendingCheck(name,pw){
           localStorage.removeItem('tf_pending'); // pending 상태 제거
           document.getElementById('ps').style.display='none';
           var loginPw=res.data.password||pw||'1234';
-          CU={id:db[name]?db[name].id:name, name:name, role:db[name]?db[name].role||'driver':'driver'};
+          CU={id:db[name]?db[name].id:name, name:name, role:(db[name]&&db[name].role&&db[name].role!=='admin')?db[name].role:'driver'};
           localStorage.setItem('tf_push_name',CU.name);localStorage.setItem('tf_push_role',CU.role);
           saveAutoLogin(name,loginPw);
           launchApp();
@@ -5850,7 +5853,7 @@ function tryAutoLogin(){
     var db=getDB();
     var drv=db[s.name];
     if(s.fp){ if(!drv||drv.status!=='approved')return false; }   /* [v910] 지문 자동로그인 */
-    else if(!drv||drv.status!=='approved'||!_pwEq(drv.password,s.name,s.pw))return false;
+    else if(!drv||drv.status!=='approved'||_admPwBlock(drv.role,s.pw)||!_pwEq(drv.password,s.name,s.pw))return false;
     try{setTimeout(function(){if(window.tfFp)tfFp.checkAfterAuto(s);},4000);}catch(_e){}
     CU={id:drv.id,name:drv.name,role:drv.role||'driver'};
     localStorage.setItem('tf_push_name',CU.name);localStorage.setItem('tf_push_role',CU.role);
@@ -6343,6 +6346,7 @@ async function sgTryInstall(){
 }
 
 function showSetupGuide(autoApprove,name,pw,phone){
+  try{var _sgD=getDB()[name];if(_sgD&&_sgD.role==='admin')autoApprove=false;}catch(_e){} /* [v986] 관리자 이름은 자동승인 안 함 */
   _sgAutoApprove=autoApprove;_sgName=name;_sgPw=pw;_sgPhone=phone;
   _sgNotifOk=false;_sgHomeOk=false;
   // UI 초기화
@@ -6476,7 +6480,7 @@ async function sgComplete(){
         notif_ok:true,home_ok:true,synced_at:new Date().toISOString()
       }).eq('name',_sgName).catch(function(e){console.warn('sgComplete update err',e);});
     }
-    CU={id:db[_sgName].id,name:db[_sgName].name,role:db[_sgName].role||'driver'};
+    CU={id:db[_sgName].id,name:db[_sgName].name,role:(db[_sgName].role==='admin'?'driver':(db[_sgName].role||'driver'))};
     localStorage.setItem('tf_push_name',CU.name);localStorage.setItem('tf_push_role',CU.role);
     localStorage.setItem('tfpwa_shown_'+CU.name,'1'); // 가이드 다시 안 뜨게
     launchApp();
