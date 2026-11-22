@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>블록 블라스트</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+    background:linear-gradient(180deg,#241f52,#120f30);color:#fff;overflow:hidden}
+  #app{max-width:460px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:10px 12px 14px}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .title{font-size:21px;font-weight:800}
+  .coins{background:rgba(255,255,255,.13);padding:5px 12px;border-radius:16px;font-weight:700;font-size:14px}
+  .stats{display:flex;gap:8px;justify-content:center;margin-bottom:8px}
+  .pill{background:rgba(255,255,255,.12);padding:5px 14px;border-radius:15px;font-size:13px;font-weight:700;color:#d7d1ff}
+  #wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+  #grid{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;background:#1a163f;padding:6px;border-radius:12px;
+    width:min(88vw,340px);aspect-ratio:1}
+  .cell{border-radius:5px;background:#241f52;aspect-ratio:1;transition:background .1s}
+  .cell.bad{background:#c6293a55}
+  #tray{display:flex;gap:12px;justify-content:center;align-items:center;height:96px}
+  .piece{background:rgba(255,255,255,.06);border-radius:12px;padding:8px;cursor:pointer;transition:transform .12s,box-shadow .12s;
+    display:grid;gap:2px}
+  .piece.sel{transform:scale(1.08);box-shadow:0 0 0 2px #ffd54a,0 6px 16px rgba(0,0,0,.35)}
+  .piece.used{opacity:0;pointer-events:none}
+  .pc{width:16px;height:16px;border-radius:3px}
+  .ctrl{display:flex;justify-content:center;margin-top:8px}
+  .btn{padding:11px 26px;border:none;border-radius:14px;font-size:14px;font-weight:800;color:#fff;cursor:pointer;
+    background:linear-gradient(180deg,#6b53d4,#4a37a6);box-shadow:0 4px 0 #3a2b86}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 #3a2b86}
+  .ov{position:fixed;inset:0;background:rgba(15,10,40,.75);display:none;align-items:center;justify-content:center;z-index:20;backdrop-filter:blur(3px)}
+  .ov.show{display:flex}
+  .card{background:linear-gradient(180deg,#3a2a83,#271c63);border:1.5px solid rgba(255,255,255,.2);border-radius:24px;
+    padding:26px 24px;text-align:center;width:80%;max-width:320px}
+  .card h2{margin:8px 0 4px;font-size:26px}.card p{margin:2px 0 16px;color:#cfc6ff}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top"><div class="title">🟦 블록 블라스트</div><div class="coins">🪙 <span id="coin">0</span></div></div>
+  <div class="stats"><div class="pill">점수 <span id="sc">0</span></div><div class="pill">최고 <span id="hi">0</span></div><div class="pill">콤보 <span id="cb">0</span></div></div>
+  <div id="wrap">
+    <div id="grid"></div>
+    <div id="tray"></div>
+  </div>
+  <div class="ctrl"><button class="btn" onclick="reset()">🔄 새 게임</button></div>
+</div>
+<div class="ov" id="ov"><div class="card"><div style="font-size:44px">💥</div><h2>게임 오버</h2><p id="ovp">점수 0</p><button class="btn" style="width:100%" onclick="reset();hideOv()">다시 하기 ▶</button></div></div>
+<script>
+var N=8,PAL=['#ff5a63','#4a86ff','#34d17a','#ffc62e','#a463ff','#ff8a3d','#2ee6d6','#ff5ea8'];
+function bg(c){return 'radial-gradient(circle at 33% 27%,rgba(255,255,255,.55),rgba(255,255,255,0) 45%),'+c;}
+var SHAPES=[[[0,0]],[[0,0],[0,1]],[[0,0],[1,0]],[[0,0],[0,1],[0,2]],[[0,0],[1,0],[2,0]],
+  [[0,0],[0,1],[1,0],[1,1]],[[0,0],[1,0],[1,1]],[[0,1],[1,0],[1,1]],[[0,0],[0,1],[1,1]],[[0,0],[0,1],[1,0]],
+  [[0,0],[1,0],[2,0],[2,1]],[[0,1],[1,1],[2,0],[2,1]],[[0,0],[0,1],[0,2],[1,1]],[[0,0],[1,0],[1,1],[2,1]],[[0,1],[1,1],[1,0],[2,0]]];
+var grid,tray,sel,score,hi,combo;
+try{hi=parseInt(localStorage.getItem('bb_hi')||'0')||0;}catch(e){hi=0;}
+var coin=0;try{coin=parseInt(localStorage.getItem('bb_coin')||'0')||0;}catch(e){}
+
+function newPiece(){var s=SHAPES[Math.floor(Math.random()*SHAPES.length)];return {cells:s,col:Math.floor(Math.random()*PAL.length)};}
+function reset(){grid=[];for(var r=0;r<N;r++){grid.push([]);for(var c=0;c<N;c++)grid[r].push(-1);}tray=[newPiece(),newPiece(),newPiece()];sel=-1;score=0;combo=0;render();}
+function renderGrid(){var g=document.getElementById('grid');g.innerHTML='';for(var r=0;r<N;r++)for(var c=0;c<N;c++){var d=document.createElement('div');d.className='cell';var v=grid[r][c];if(v>=0){d.style.background=bg(PAL[v]);}d.dataset.r=r;d.dataset.c=c;d.onclick=function(){cellClick(+this.dataset.r,+this.dataset.c);};g.appendChild(d);}}
+function renderTray(){var tr=document.getElementById('tray');tr.innerHTML='';tray.forEach(function(p,i){var d=document.createElement('div');d.className='piece'+(sel===i?' sel':'')+(p===null?' used':'');if(p){var mr=0,mc=0;p.cells.forEach(function(x){mr=Math.max(mr,x[0]);mc=Math.max(mc,x[1]);});d.style.gridTemplateColumns='repeat('+(mc+1)+',16px)';var occ={};p.cells.forEach(function(x){occ[x[0]+'_'+x[1]]=1;});for(var rr=0;rr<=mr;rr++)for(var cc=0;cc<=mc;cc++){var b=document.createElement('div');if(occ[rr+'_'+cc]){b.className='pc';b.style.background=bg(PAL[p.col]);}else{b.style.width='16px';b.style.height='16px';}d.appendChild(b);}d.onclick=(function(idx){return function(){sel=(sel===idx?-1:idx);render();};})(i);}tr.appendChild(d);});}
+function render(){document.getElementById('sc').textContent=score;document.getElementById('hi').textContent=hi;document.getElementById('cb').textContent=combo;document.getElementById('coin').textContent=coin;renderGrid();renderTray();}
+function canPlace(p,ar,ac){return p.cells.every(function(x){var r=ar+x[0],c=ac+x[1];return r>=0&&r<N&&c>=0&&c<N&&grid[r][c]<0;});}
+function cellClick(r,c){if(sel<0||!tray[sel])return;var p=tray[sel];if(!canPlace(p,r,c)){flashBad(p,r,c);return;}p.cells.forEach(function(x){grid[r+x[0]][c+x[1]]=p.col;});tray[sel]=null;sel=-1;var cleared=clearLines();score+=p.cells.length;if(cleared>0){combo++;score+=cleared*10*combo;coin+=cleared;}else combo=0;if(tray.every(function(t){return t===null;}))tray=[newPiece(),newPiece(),newPiece()];if(hi<score){hi=score;try{localStorage.setItem('bb_hi',hi);}catch(e){}}try{localStorage.setItem('bb_coin',coin);}catch(e){}render();if(isOver())setTimeout(over,250);}
+function clearLines(){var rows=[],cols=[];for(var r=0;r<N;r++){var full=true;for(var c=0;c<N;c++)if(grid[r][c]<0)full=false;if(full)rows.push(r);}for(var c2=0;c2<N;c2++){var f2=true;for(var r2=0;r2<N;r2++)if(grid[r2][c2]<0)f2=false;if(f2)cols.push(c2);}var cells={};rows.forEach(function(r){for(var c=0;c<N;c++)cells[r+'_'+c]=1;});cols.forEach(function(c){for(var r=0;r<N;r++)cells[r+'_'+c]=1;});var n=0;for(var k in cells){var p=k.split('_');grid[+p[0]][+p[1]]=-1;n++;}return n;}
+function flashBad(p,ar,ac){var g=document.getElementById('grid').children;p.cells.forEach(function(x){var r=ar+x[0],c=ac+x[1];if(r>=0&&r<N&&c>=0&&c<N){var el=g[r*N+c];el.classList.add('bad');setTimeout(function(){el.classList.remove('bad');},220);}});}
+function anyPlaceable(){return tray.some(function(p){if(!p)return false;for(var r=0;r<N;r++)for(var c=0;c<N;c++)if(canPlace(p,r,c))return true;return false;});}
+function isOver(){return !anyPlaceable();}
+function over(){try{if(window.parent!==window)parent.postMessage({type:'ghscore',game:'blockblast',score:score},'*');}catch(e){}document.getElementById('ovp').textContent='점수 '+score+' · 최고 '+hi;document.getElementById('ov').className='ov show';}
+function hideOv(){document.getElementById('ov').className='ov';}
+reset();
+</script>
+</body>
+</html>
