@@ -339,7 +339,7 @@ body{font-family:"Apple SD Gothic Neo","Noto Sans KR",sans-serif;background:#f0f
 .mt{font-size:18px;font-weight:800;color:#1a237e;margin-bottom:6px}
 .msub{font-size:13px;color:#666;margin-bottom:14px;line-height:1.5}
 .mnotice{background:#fff8e1;border-radius:8px;padding:12px;font-size:12px;color:#795548;line-height:1.7;margin-bottom:14px}
-#app{display:none;flex-direction:column;min-height:100vh;max-width:100%;margin:0 auto}
+#app{display:none;flex-direction:column;min-height:100vh;max-width:100%;margin:0 auto;overflow-x:clip}
 .ah{background:linear-gradient(135deg,#0d1b6b,#1565c0);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .au{display:flex;align-items:center;gap:10px}
 .av{width:34px;height:34px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
@@ -1415,7 +1415,9 @@ function _tfAskMaster(after){
 /* 자동로그인 된 폰 → 저장된 정보로 출입증 받기 (받기 전까지 서버 요청은 잠깐 대기) */
 var _tfBindRetry=0;
 /* [v991] 앱 버전 보고: 누가 아직 예전 버전을 쓰는지 서버에서 확인 → 모두 새 버전일 때만 잠금을 다시 켬 */
-var TF_APPV='v991';
+var TF_APPV='v992';
+/* [v992] 화면 위 이름 아래 줄에 버전 표시 (예: 관리자 · v992) */
+setInterval(function(){try{var h=document.getElementById('har');if(h&&!document.getElementById('tf-ver-tag')){var t=document.createElement('span');t.id='tf-ver-tag';t.textContent=TF_APPV;t.style.cssText='display:inline-block;margin-left:5px;font-size:10px;font-weight:800;opacity:.55;vertical-align:middle;white-space:nowrap';h.appendChild(t);}}catch(e){}},1500);
 function _tfReportVer(){try{if(!window.CU||!CU.name||!sbClient)return;var k='appver:'+CU.name;var v=JSON.stringify({v:TF_APPV,at:new Date().toISOString(),bound:!!(_tfBindSt&&_tfBindSt.ok),role:CU.role||''});
   sbClient.from('app_settings').upsert({key:k,value:v},{onConflict:'key'}).then(function(){}).catch(function(){});}catch(e){}}
 setInterval(function(){_tfReportVer();},30*60*1000);
@@ -13130,7 +13132,8 @@ async function mdLoadCases(){
     if(isAdmin||isLeader){
       var _mdL=_mdLatestOnly(_mdCases);  // ★ 같은 송장 재공유 → 최신 건만
       var _lP=_mdL.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&!_mdNoAction(c)&&!_mdSgMiss(c);});
-      var _lNo=_mdL.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&_mdNoAction(c);});
+      var _d60=new Date(Date.now()+9*3600000-60*86400000).toISOString().slice(0,10);   /* [v992] 미응답 분실처리는 최근 60일만 */
+      var _lNo=_mdL.filter(function(c){return (c.status==='pending'||c.status==='rejected')&&_mdNoAction(c)&&((kstDateStr(c.created_at||c.occurred_at)||'9999')>=_d60);});
       var _lW=_mdL.filter(function(c){return c.status==='replied';});
       window._mdCountLists={pending:_lP,noaction:_lNo,waiting:_lW};
       var nP=_lP.length;
@@ -22202,7 +22205,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   +M+'>*:not(.u3gone){animation:u3up .55s cubic-bezier(.2,.8,.2,1) both}'
   +M+'>*:nth-child(2){animation-delay:.06s}'+M+'>*:nth-child(3){animation-delay:.12s}'+M+'>*:nth-child(n+4){animation-delay:.18s}'
   +M+'.u3gone,'+M+'.ft-btn{display:none!important}'
-  +M+'.u3al>*:not(.u3gone){flex:0 0 calc(50% - 4px)!important;max-width:calc(50% - 4px)}'
+  +M+'.u3al>*:not(.u3gone){flex:0 0 calc(50% - 4px)!important;max-width:calc(50% - 4px)}'+M+'.u3al{flex-wrap:wrap}'   /* [v992] 알림칸 3개면 3번째는 다음 줄로 (화면 밖으로 밀려 폰 화면이 넓어지던 문제) */
   /* 떠 있는 3D 그림 + 바닥 그림자 */
   +'html.u3 .u3ico{position:relative;flex-shrink:0;display:flex;align-items:flex-start;justify-content:center}'
   +'html.u3 .u3ico img{position:relative;z-index:1;width:100%;height:auto;animation:u3fl 3.8s ease-in-out infinite;filter:drop-shadow(0 8px 6px rgba(0,0,0,.2))}'
@@ -22605,9 +22608,9 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     g._cm=1; window.mdSetMode=g; try{mdSetMode=g;}catch(e){} })();
   function barHtml(){
     return '<div style="display:flex;align-items:center;margin-bottom:7px"><span style="font-size:12px;font-weight:800;color:#37474f">🗂 유형별 답글 모드</span><span style="margin-left:auto;font-size:10.5px;color:#9e9e9e">눌러서 자동↔승인</span></div>'+
-      '<div style="display:flex;gap:5px;flex-wrap:wrap">'+CATS.map(function(k){var a=eff(k)==='auto',c=KC[k];
-        return '<div onclick="mdCatToggle(\''+k+'\')" style="flex:1 1 58px;min-width:0;border-radius:10px;padding:6px 2px;text-align:center;cursor:pointer;border:1.5px solid '+(a?'#86efac':'#fdba74')+';background:'+(a?'#f0fdf4':'#fff7ed')+'">'+
-          '<div style="font-size:11px;font-weight:800;color:'+c+';white-space:nowrap">'+k+'</div><div style="font-size:10.5px;font-weight:800;margin-top:2px;color:'+(a?'#15803d':'#c2410c')+'">'+(a?'🟢 자동':'🔴 승인')+'</div></div>';}).join('')+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:5px">'+CATS.map(function(k){var a=eff(k)==='auto',c=KC[k];
+        return '<div onclick="mdCatToggle(\''+k+'\')" style="min-width:0;border-radius:10px;padding:5px 3px;text-align:center;cursor:pointer;border:1.5px solid '+(a?'#86efac':'#fdba74')+';background:'+(a?'#f0fdf4':'#fff7ed')+';display:flex;flex-direction:column;justify-content:center">'+
+          '<div style="font-size:clamp(9.5px,2.6vw,11px);font-weight:800;color:'+c+';line-height:1.2;word-break:keep-all;overflow-wrap:anywhere;min-height:2.4em;display:flex;align-items:center;justify-content:center">'+k+'</div><div style="font-size:10.5px;font-weight:800;margin-top:2px;color:'+(a?'#15803d':'#c2410c')+'">'+(a?'🟢 자동':'🔴 승인')+'</div></div>';}).join('')+'</div>'+
       '<div style="font-size:10.5px;color:#888;margin-top:7px;line-height:1.5">🟢 자동: 기사 답변이 바로 팀즈에 올라가요 · 🔴 승인: 관리자/팀장 승인 후 올라가요</div>';
   }
   function segHtml(k){ var a=eff(k)==='auto';
@@ -23931,14 +23934,14 @@ window.mdConvertToNotice=mdConvertToNotice;
     Object.keys(MODES).forEach(function(k){if(MODES[k].length&&MODES[k].indexOf(c[k].mode)<0)c[k].mode=DEF[k].mode;});return c;}
   OB.cfg=async function(force){if(CFG&&!force)return CFG;try{var r=await sbClient.from('app_settings').select('value').eq('key','tf_onb_cfg').maybeSingle();var v=r&&r.data&&r.data.value;if(typeof v==='string')v=JSON.parse(v);CFG=fixCfg(v);}catch(e){CFG=fixCfg(null);}return CFG;};
   var WEAK=['1234','0000','1111','2222','3333','4444','5555','6666','7777','8888','9999','4321','1212','0123','12345','123456','00000','000000','11111','111111'];
-  function ov(inner,id){id=id||'tf-onb';var o=document.getElementById(id);if(o)o.remove();o=document.createElement('div');o.id=id;o.style.cssText='position:fixed;inset:0;z-index:2147482500;background:rgba(10,25,45,.6);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';o.innerHTML='<div style="background:#fff;border-radius:22px;width:100%;max-width:370px;padding:20px 18px 16px;box-shadow:0 18px 50px rgba(0,0,0,.35);max-height:94vh;overflow:auto">'+inner+'</div>';document.body.appendChild(o);return o;}
+  function ov(inner,id){id=id||'tf-onb';var o=document.getElementById(id);if(o)o.remove();o=document.createElement('div');o.id=id;o.style.cssText='position:fixed;inset:0;z-index:2147482500;background:rgba(10,25,45,.6);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';o.innerHTML='<div style="background:#fff;border-radius:22px;width:100%;max-width:370px;box-sizing:border-box;min-width:0;padding:20px 16px 16px;box-shadow:0 18px 50px rgba(0,0,0,.35);max-height:94vh;overflow-x:hidden;overflow-y:auto">'+inner+'</div>';document.body.appendChild(o);return o;}
   function close(id){var o=document.getElementById(id||'tf-onb');if(o)o.remove();}
   OB.close=close;
   var MSG='<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:12px;padding:9px 11px;font-size:13px;color:#9f1239;font-weight:800;text-align:center;margin:10px 0">🔒 개인정보 보안을 위해서 필수항목입니다.</div>';
   var INP='width:100%;box-sizing:border-box;border:1.5px solid #d5dbe4;border-radius:11px;padding:12px;font-size:15px;margin-top:8px';
   var B1='display:block;width:100%;border:0;border-radius:12px;padding:13px;font-weight:900;font-size:15px;cursor:pointer;margin-top:10px;color:#fff;background:linear-gradient(135deg,#1565c0,#1e88e5)';
   var B2='display:block;width:100%;border:0;border-radius:12px;padding:12px;font-weight:900;font-size:14px;cursor:pointer;margin-top:8px;background:#eef2f6;color:#455a64';
-  function card(ic,t,sub,c,bg,btn,fn){return '<div style="display:flex;align-items:center;gap:10px;border:2px solid '+c+'55;background:'+bg+';border-radius:14px;padding:11px 12px;margin-bottom:9px"><span style="font-size:26px">'+ic+'</span><div style="flex:1"><div style="font-size:15px;font-weight:900;color:#14213d">'+t+'</div><div style="font-size:12px;color:'+c+';font-weight:800;margin-top:2px">'+sub+'</div></div>'+(btn?'<button onclick="'+fn+'" style="border:0;background:'+c+';color:#fff;font-weight:900;font-size:13px;border-radius:10px;padding:9px 10px;white-space:nowrap;cursor:pointer">'+btn+'</button>':'')+'</div>';}
+  function card(ic,t,sub,c,bg,btn,fn){return '<div style="display:flex;align-items:center;gap:8px;border:2px solid '+c+'55;background:'+bg+';border-radius:14px;padding:10px;margin-bottom:9px;box-sizing:border-box;min-width:0"><span style="font-size:24px;flex-shrink:0">'+ic+'</span><div style="flex:1;min-width:0"><div style="font-size:clamp(13px,3.9vw,15px);font-weight:900;color:#14213d;word-break:keep-all">'+t+'</div><div style="font-size:clamp(11px,3.2vw,12px);color:'+c+';font-weight:800;margin-top:2px;word-break:keep-all">'+sub+'</div></div>'+(btn?'<button onclick="'+fn+'" style="border:0;background:'+c+';color:#fff;font-weight:900;font-size:clamp(11.5px,3.4vw,13px);border-radius:10px;padding:8px 9px;flex-shrink:0;max-width:42%;white-space:normal;word-break:keep-all;line-height:1.25;cursor:pointer">'+btn+'</button>':'')+'</div>';}
   function laterBtn(mode,txt){return mode==='block'?'':'<button style="'+B2+'" onclick="tfOnb.next()">'+(txt||(mode==='info'?'확인 ›':'나중에 하기 ›'))+'</button>';}
   function today(){return new Date(Date.now()+9*3600000).toISOString().slice(0,10);}
   function infoSeen(k){try{return localStorage.getItem('tf_onb_'+k+'_'+CU.name)===today();}catch(e){return false;}}
