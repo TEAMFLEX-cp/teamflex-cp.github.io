@@ -1415,7 +1415,7 @@ function _tfAskMaster(after){
 /* 자동로그인 된 폰 → 저장된 정보로 출입증 받기 (받기 전까지 서버 요청은 잠깐 대기) */
 var _tfBindRetry=0;
 /* [v991] 앱 버전 보고: 누가 아직 예전 버전을 쓰는지 서버에서 확인 → 모두 새 버전일 때만 잠금을 다시 켬 */
-var TF_APPV='v992';
+var TF_APPV='v993';
 /* [v992] 화면 위 이름 아래 줄에 버전 표시 (예: 관리자 · v992) */
 setInterval(function(){try{var h=document.getElementById('har');if(h&&!document.getElementById('tf-ver-tag')){var t=document.createElement('span');t.id='tf-ver-tag';t.textContent=TF_APPV;t.style.cssText='display:inline-block;margin-left:5px;font-size:10px;font-weight:800;opacity:.55;vertical-align:middle;white-space:nowrap';h.appendChild(t);}}catch(e){}},1500);
 function _tfReportVer(){try{if(!window.CU||!CU.name||!sbClient)return;var k='appver:'+CU.name;var v=JSON.stringify({v:TF_APPV,at:new Date().toISOString(),bound:!!(_tfBindSt&&_tfBindSt.ok),role:CU.role||''});
@@ -12706,43 +12706,39 @@ function pgMisdelivery(){
   var modeSec=(isAdmin?'<div id="insp-reset-box"></div>':'');
   if(isAdmin){
     var isAutoMode=(_mdCurrentMode!=='approval');
-    modeSec='<div class="md-mode-bar" id="md-mode-bar">'+
+    modeSec=_tfFoldHead('set','⚙️ 답글·자동분실 설정','md-fold-set-sum')+'<div id="md-fold-set-body" style="display:'+(_tfFoldOpen('set')?'block':'none')+';margin-top:8px">'+
+      '<div class="md-mode-bar" id="md-mode-bar">'+
       '<span class="md-mode-label">⚙️ Teams 답글 모드</span>'+
       '<div class="md-mode-toggle">'+
         '<button class="md-mode-btn'+(isAutoMode?' on-green':'')+'" id="md-btn-auto" onclick="mdSetMode(\'auto\')">🟢 자동</button>'+
         '<button class="md-mode-btn'+(!isAutoMode?' on-orange':'')+'" id="md-btn-appr" onclick="mdSetMode(\'approval\')">🔴 승인</button>'+
       '</div>'+
-    '</div>';
+    '</div></div>';
   }
 
   var isLeaderOnly=CU.role==='leader'; // sub/driver 제외
   var sumSec='';
   if(isAdmin||isLeaderOnly){
-    sumSec='<div style="display:flex;gap:4px;margin-bottom:14px;align-items:stretch;min-height:128px">'+
-      '<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px">'+
-        '<div style="flex:1;background:#fff;border-radius:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px">'+
-          '<div style="font-size:19px;font-weight:800;color:#e53935;line-height:1" id="md-n-pending">-</div>'+
-          '<div style="font-size:10px;color:#aaa;margin-top:3px">미답변</div>'+
-        '</div>'+
-        '<div style="flex:1;background:#fff;border-radius:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 3px">'+
-          '<div style="font-size:19px;font-weight:800;color:#e65100;line-height:1" id="md-n-noaction">-</div>'+
-          '<div style="font-size:9px;color:#bf6000;margin-top:3px;font-weight:700;white-space:nowrap">미응답 분실처리</div>'+
-        '</div>'+
-        '<div style="flex:1;background:#fff;border-radius:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 3px">'+
-          '<div style="font-size:19px;font-weight:800;color:#1565c0;line-height:1" id="md-n-waiting">-</div>'+
-          '<div style="font-size:10px;color:#aaa;margin-top:3px">승인대기</div>'+
-        '</div>'+
+    var _c=function(id,lab,col,lc){return '<div style="flex:1;min-width:0;background:#fff;border-radius:12px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 2px;cursor:pointer">'+
+      '<div style="font-size:19px;font-weight:800;color:'+col+';line-height:1" id="'+id+'">-</div>'+
+      '<div style="font-size:clamp(9px,2.5vw,10.5px);color:'+(lc||'#9aa5b1')+';margin-top:4px;font-weight:700;white-space:nowrap">'+lab+'</div></div>';};
+    /* [v993] 숫자는 한 줄로 작게, 팀장 승인 현황은 접어두기 (눌러서 펼침) */
+    sumSec='<div style="display:flex;gap:5px;margin-bottom:8px;align-items:stretch">'+
+      _c('md-n-pending','미답변','#e53935')+
+      _c('md-n-noaction','미응답 분실','#e65100','#bf6000')+
+      _c('md-n-waiting','승인대기','#1565c0')+
+      '<div style="flex:1.25;min-width:0;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;justify-content:center;padding:6px 6px;gap:3px">'+
+        '<div style="font-size:9.5px;color:#90a4ae;font-weight:800;text-align:center">처리완료</div>'+
+        '<div style="display:flex;justify-content:space-around;align-items:baseline"><span style="text-align:center"><b style="font-size:16px;color:#2e7d32" id="md-n-done">-</b><span style="display:block;font-size:9.5px;color:#558b2f;font-weight:700">인입</span></span>'+
+        '<span style="text-align:center"><b style="font-size:16px;color:#4527a0" id="md-n-req">-</b><span style="display:block;font-size:9.5px;color:#5c6bc0;font-weight:700">요청</span></span></div>'+
       '</div>'+
-      '<div style="flex:2.4;min-width:0;background:#f0f4ff;border-radius:12px;padding:7px 5px;box-shadow:0 1px 4px rgba(0,0,0,.07);display:flex;flex-direction:column;justify-content:space-around" id="md-leader-stats-container">'+
+    '</div>'+
+    _tfFoldHead('ldr','👥 팀장 승인 현황','md-fold-ldr-sum')+
+    '<div id="md-fold-ldr-body" style="display:'+(_tfFoldOpen('ldr')?'block':'none')+';margin:6px 0 4px">'+
+      '<div style="background:#f0f4ff;border-radius:12px;padding:7px 5px;box-shadow:0 1px 4px rgba(0,0,0,.07);display:flex;flex-direction:column;justify-content:space-around" id="md-leader-stats-container">'+
         '<div style="font-size:11px;color:#aaa;text-align:center">로딩 중...</div>'+
       '</div>'+
-      '<div style="flex:1.05;min-width:0;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 3px">'+
-        '<div style="font-size:10px;color:#90a4ae;margin-bottom:5px;font-weight:700">처리완료</div>'+
-        '<div style="text-align:center;margin-bottom:6px"><div style="font-size:20px;font-weight:800;color:#2e7d32;line-height:1" id="md-n-done">-</div><div style="font-size:10px;color:#558b2f;margin-top:2px;font-weight:700">인입</div></div>'+
-        '<div style="width:32px;height:1px;background:#e0e0e0;margin-bottom:6px"></div>'+
-        '<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:#4527a0;line-height:1" id="md-n-req">-</div><div style="font-size:10px;color:#5c6bc0;margin-top:2px;font-weight:700">요청</div></div>'+
-      '</div>'+
-    '</div>';
+    '</div><div style="height:8px"></div>';
   }
 
   var kwBtn=isAdmin?'<button onclick="openMdKwPopup()" style="float:right;padding:6px 14px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;cursor:pointer;margin-top:-4px">🔍 키워드 설정</button>':'';
@@ -13256,6 +13252,19 @@ async function mdLossRequest(caseId){
 
 /* [요약 카드 눌러서 보기 + 같은 송장 재공유는 최신 건만 카운트] */
 function _mdLatestOnly(list){var last={};(list||[]).forEach(function(c){var w=String(c.waybill_no||'').trim();if(!w)return;var t=new Date(c.created_at||c.occurred_at||0).getTime()||0;if(!last[w]||t>last[w].t||(t===last[w].t&&c.id>last[w].id))last[w]={t:t,id:c.id};});return (list||[]).filter(function(c){var w=String(c.waybill_no||'').trim();return !w||!last[w]||last[w].id===c.id;});}
+/* [v993] 접기/펼치기 (기본 접힘, 이 폰에 기억) */
+function _tfFoldOpen(k){try{return localStorage.getItem('tf_fold_'+k)==='1';}catch(e){return false;}}
+function _tfFoldHead(k,title,sumId){var o=_tfFoldOpen(k);
+  return '<div id="tf-fold-h-'+k+'" onclick="tfFoldToggle(\''+k+'\')" style="cursor:pointer;display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:10px 13px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:8px;user-select:none">'+
+    '<b style="font-size:13.5px;color:#37474f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">'+title+'</b>'+
+    '<span id="'+sumId+'" style="margin-left:auto;font-size:11px;color:#78909c;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0"></span>'+
+    '<span id="tf-fold-a-'+k+'" style="font-size:12px;font-weight:900;color:#5e35b1;background:#f3eefc;border-radius:9px;padding:3px 9px;white-space:nowrap;flex-shrink:0">'+(o?'접기 ▴':'펼치기 ▾')+'</span></div>';}
+function tfFoldToggle(k){var b=document.getElementById('md-fold-'+k+'-body');if(!b)return;var o=b.style.display==='none';b.style.display=o?'block':'none';try{localStorage.setItem('tf_fold_'+k,o?'1':'0');}catch(e){}var a=document.getElementById('tf-fold-a-'+k);if(a)a.textContent=o?'접기 ▴':'펼치기 ▾';}
+window.tfFoldToggle=tfFoldToggle;
+setInterval(function(){try{
+  var s1=document.getElementById('md-fold-set-sum');if(s1){var m=(typeof _mdCurrentMode!=='undefined'&&_mdCurrentMode==='approval')?'🔴 승인':'🟢 자동';var al=document.querySelector('#md-al-card span');var alt=al&&/켜짐/.test(al.textContent)?' · 재요청 🟢':'';var t='전체 '+m+alt;if(s1.textContent!==t)s1.textContent=t;}
+  var s2=document.getElementById('md-fold-ldr-sum');if(s2){var rows=document.querySelectorAll('#md-leader-stats-container > div');var n=0;rows.forEach(function(r){if(r.textContent&&r.textContent.indexOf('승인')>=0)n++;});var t2=n?('팀장 '+n+'명'):'';if(s2.textContent!==t2)s2.textContent=t2;}
+}catch(e){}},1500);
 function _mdBindCountCards(){[['md-n-pending','pending'],['md-n-noaction','noaction'],['md-n-waiting','waiting']].forEach(function(p){var n=document.getElementById(p[0]);if(!n||!n.parentElement)return;var card=n.parentElement;card.style.cursor='pointer';card.onclick=function(){mdOpenCountList(p[1]);};if(!card.getAttribute('data-cl')){card.setAttribute('data-cl','1');var lb=n.nextElementSibling;if(lb)lb.innerHTML=lb.innerHTML+' <span style="color:#b0b8c4">›</span>';}});}
 function mdCloseCountList(){var o=document.getElementById('md-cl-ov');if(o)o.remove();}
 function mdOpenCountList(kind){
