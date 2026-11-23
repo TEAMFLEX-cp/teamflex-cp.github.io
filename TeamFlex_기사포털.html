@@ -1414,6 +1414,12 @@ function _tfAskMaster(after){
 }
 /* 자동로그인 된 폰 → 저장된 정보로 출입증 받기 (받기 전까지 서버 요청은 잠깐 대기) */
 var _tfBindRetry=0;
+/* [v991] 앱 버전 보고: 누가 아직 예전 버전을 쓰는지 서버에서 확인 → 모두 새 버전일 때만 잠금을 다시 켬 */
+var TF_APPV='v991';
+function _tfReportVer(){try{if(!window.CU||!CU.name||!sbClient)return;var k='appver:'+CU.name;var v=JSON.stringify({v:TF_APPV,at:new Date().toISOString(),bound:!!(_tfBindSt&&_tfBindSt.ok),role:CU.role||''});
+  sbClient.from('app_settings').upsert({key:k,value:v},{onConflict:'key'}).then(function(){}).catch(function(){});}catch(e){}}
+setInterval(function(){_tfReportVer();},30*60*1000);
+setTimeout(function(){_tfReportVer();},15000);
 async function _tfBindSaved(){
   if(_tfBindSt.ok)return;
   var s=null;try{s=JSON.parse(localStorage.getItem('tf_autologin')||'null');}catch(e){}
@@ -1426,7 +1432,7 @@ async function _tfBindSaved(){
   var last=null;
   for(var i=0;i<tries.length;i++){
     last=await _tfAuth('bind',tries[i]);
-    if(last&&last.ok){_tfBindSt.ok=true;if(last.drv&&last.drv.name)_tfMergeDrv(last.drv);_tfReadyOpen();return;}
+    if(last&&last.ok){_tfBindSt.ok=true;if(last.drv&&last.drv.name)_tfMergeDrv(last.drv);_tfReadyOpen();setTimeout(_tfReportVer,2000);return;}
     if(_tfNetErr(last)){_tfReadyOpen();_tfBindRetry=(_tfBindRetry||0)+1;if(_tfBindRetry<=5)setTimeout(function(){_tfBindSaved().then(function(){if(_tfBindSt.ok)_tfRefresh();});},_tfBindRetry*10000);return;}   // 인터넷/서버 문제 → 잠시 뒤 다시 (최대 5번)
   }
   _tfReadyOpen();
@@ -3584,7 +3590,7 @@ var _QUIET_EXEMPT={}; /* 금지시간 예외 인원: 관리자 지시가 있을 
 })();
 /* [v989] 푸시 보내기 함수는 '출입증 있는 폰'만 허용 → 앱에서 부를 때 이 폰의 로그인 표(세션)를 같이 보냄. 대상·시간 규칙은 그대로 */
 (function(){ if(window.__tfPushAuth)return; window.__tfPushAuth=1; var _of2=window.fetch;
-  window.fetch=function(u,o){ try{ var url=(typeof u==='string')?u:((u&&u.url)||''); if(url.indexOf('/functions/v1/send-push')>=0&&typeof _tfJwt==='function'){ var self=this; return _tfJwt().then(function(t){ var o2=Object.assign({},o||{}); try{ var h=new Headers(o2.headers||{}); if(t&&!h.get('authorization'))h.set('Authorization','Bearer '+t); o2.headers=h; }catch(_e){} return _of2.call(self,u,o2); }); } }catch(_e){} return _of2.apply(this,arguments); };
+  window.fetch=function(u,o){ try{ var url=(typeof u==='string')?u:((u&&u.url)||''); if(url.indexOf('/functions/v1/send-push')>=0&&typeof _tfJwt==='function'){ var self=this; return _tfJwt().then(function(t){ var o2=Object.assign({},o||{}); try{ var h=new Headers(o2.headers||{}); if(t)h.set('Authorization','Bearer '+t);   /* [v991] 예전 공용 열쇠가 박혀 있어도 이 폰의 로그인 표로 바꿔서 보냄 */ o2.headers=h; }catch(_e){} return _of2.call(self,u,o2); }); } }catch(_e){} return _of2.apply(this,arguments); };
 })();
 async function pushNotify(feat, opts){
   opts=opts||{};
@@ -5496,9 +5502,9 @@ async function _tfLoginSrv(name,pw){
     localStorage.setItem('tf_push_name','관리자');localStorage.setItem('tf_push_role','admin');
     localStorage.setItem('tf_autologin',JSON.stringify({name:'__admin__',adminId:name,pw:pw}));
     window._tfSrvKey=name+'\n'+pw;
-    launchApp();setTimeout(showNotifSetupBanner,800);return;
+    launchApp();setTimeout(showNotifSetupBanner,800);setTimeout(_tfReportVer,3000);return;
   }
-  if(r.ok&&r.drv){_tfBindSt.ok=true;_tfReadyOpen();_tfMergeDrv(r.drv);window._tfFpOk=name;go();return;}
+  if(r.ok&&r.drv){_tfBindSt.ok=true;_tfReadyOpen();_tfMergeDrv(r.drv);window._tfFpOk=name;go();setTimeout(_tfReportVer,3000);return;}
   var e=r.err;
   if(r.drv)_tfMergeDrv(r.drv);
   if(e==='none'){setE('등록되지 않은 이름입니다.');return;}
