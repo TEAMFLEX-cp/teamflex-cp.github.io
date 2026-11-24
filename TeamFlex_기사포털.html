@@ -1415,7 +1415,7 @@ function _tfAskMaster(after){
 /* 자동로그인 된 폰 → 저장된 정보로 출입증 받기 (받기 전까지 서버 요청은 잠깐 대기) */
 var _tfBindRetry=0;
 /* [v991] 앱 버전 보고: 누가 아직 예전 버전을 쓰는지 서버에서 확인 → 모두 새 버전일 때만 잠금을 다시 켬 */
-var TF_APPV='v993';
+var TF_APPV='v994';
 /* [v992] 화면 위 이름 아래 줄에 버전 표시 (예: 관리자 · v992) */
 setInterval(function(){try{var h=document.getElementById('har');if(h&&!document.getElementById('tf-ver-tag')){var t=document.createElement('span');t.id='tf-ver-tag';t.textContent=TF_APPV;t.style.cssText='display:inline-block;margin-left:5px;font-size:10px;font-weight:800;opacity:.55;vertical-align:middle;white-space:nowrap';h.appendChild(t);}}catch(e){}},1500);
 function _tfReportVer(){try{if(!window.CU||!CU.name||!sbClient)return;var k='appver:'+CU.name;var v=JSON.stringify({v:TF_APPV,at:new Date().toISOString(),bound:!!(_tfBindSt&&_tfBindSt.ok),role:CU.role||''});
@@ -17976,6 +17976,7 @@ function pgRequest(){
 
   // 관리자 제어 바
   var adminBar = isAdm ? _featureBar('requests') : '';
+  if(isAdm&&adminBar) adminBar=adminBar.replace(/<\/button><\/div><\/div>$/, '</button><button onclick="rqBtnCfgOpen()" title="요청 버튼 켜기·끄기" style="padding:3px 9px;border-radius:14px;border:1.5px solid #9fa8da;background:#e8eaf6;font-size:13px;cursor:pointer;line-height:1">⚙️</button></div></div>');   // [v994]
 
   var campSelect = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:#e8eaf6;border-radius:10px;padding:9px 12px">'+
     '<span style="font-size:12px;font-weight:800;color:#3949ab">&#x1F3E2; 캠프</span>'+
@@ -18025,6 +18026,7 @@ async function rqLoadSettings(){
       _rqWebhookUrl8camp  = res.data.request_webhook_url_8camp  || null;
       _rqAutoApprove      = res.data.request_auto_approve       || false;
     }
+    try{ await rqLoadBtnCfg(); }catch(_bc){}   // [v994] 요청 버튼 켜기·끄기
     try{ var _rg=await sbClient.from('app_settings').select('value').eq('key','route_req_gate').maybeSingle(); if(_rg&&_rg.data&&_rg.data.value){ var _gv=(typeof _rg.data.value==='string')?JSON.parse(_rg.data.value):_rg.data.value; if(_gv&&_gv.mode)_rqRouteGate={mode:_gv.mode,start:_gv.start||'00:00',end:_gv.end||'07:55'}; } }catch(_ge){}
   }catch(e){ console.warn('rqLoadSettings',e); }
 }
@@ -18032,6 +18034,7 @@ async function rqLoadSettings(){
 // 요청 종류 선택 게이트: 파손·라우트변경은 '안내 팝업 1회' 후 진입, 나머지는 바로 진입.
 function rqSwitchTab(k){
   if(k === _rqTab) return;
+  if(!rqBtnOn(k)){ try{showToast('지금은 사용하지 않는 요청이에요',false);}catch(e){} return; }   // [v994]
   if(k === 'route' || k === 'lostret'){ rqShowNotice(k); return; }   // [v976] 파손 안내 팝업 삭제   // [v974] 전취건은 안내 팝업 없이 바로
   _rqSelectTab(k);
 }
@@ -18061,22 +18064,26 @@ function rqLandingHtml(){
             {k:'scan',e:'🗑️',l:'스캔대기 삭제'},{k:'lost',e:'🔍',l:'분실건 처리요청'}];
   var G='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(5px,0.8vh,7px)';
   var grid='<div style="'+G+'">';
-  grid+='<button onclick="rqSwitchTab(\'chaebun\')" style="'+_b+';border:2px solid #b39ddb;background:#ede7f6;color:#4527a0">🧾 채번 서베이</button>';   // [v975] 업무신청 자리 → 채번 서베이
-  grid+='<button onclick="rqSwitchTab(\'addr\')" style="'+_b+';border:2px solid #80cbc4;background:#e0f2f1;color:#00695c;white-space:normal;line-height:1.2;padding-top:clamp(5px,0.9vh,9px);padding-bottom:clamp(5px,0.9vh,9px)">📍 위탁 배송(반품)<br><span style="font-size:0.86em">주소 확인 요청</span></button>';
-  main.forEach(function(t){ grid+='<button onclick="rqSwitchTab(\''+t.k+'\')" style="'+_b+';'+_blue+'">'+t.e+' '+t.l+'</button>'; });
+  if(rqBtnOn('chaebun'))grid+='<button onclick="rqSwitchTab(\'chaebun\')" style="'+_b+';border:2px solid #b39ddb;background:#ede7f6;color:#4527a0">🧾 채번 서베이</button>';   // [v975] 업무신청 자리 → 채번 서베이
+  if(rqBtnOn('realloc'))grid+='<button onclick="rqSwitchTab(\'realloc\')" style="'+_b+';border:2px solid #ffb74d;background:#fff3e0;color:#e65100">🔁 재할당 요청</button>';   // [v994] 위탁 배송 자리 → 재할당 요청
+  main.forEach(function(t){ if(rqBtnOn(t.k))grid+='<button onclick="rqSwitchTab(\''+t.k+'\')" style="'+_b+';'+_blue+'">'+t.e+' '+t.l+'</button>'; });
   grid+='</div>';
-  grid+='<button onclick="rqSwitchTab(\'work\')" style="'+_b+';'+_green+';width:100%;margin-top:clamp(5px,0.8vh,7px);display:block">🧑‍💼 업무신청</button>';   // [v975] 업무신청은 한 줄로
-  grid+='<div style="display:flex;align-items:center;gap:8px;margin:clamp(6px,1.1vh,12px) 2px clamp(5px,0.9vh,9px)"><div style="flex:1;height:1px;background:#f1c4c0"></div><span style="font-size:11px;font-weight:800;color:#c0392b;background:#fff0f0;border:1px solid #f1a9a9;padding:2px 11px;border-radius:11px;white-space:nowrap">📥 반납 처리 요청</span><div style="flex:1;height:1px;background:#f1c4c0"></div></div>';
+  if(rqBtnOn('work'))grid+='<button onclick="rqSwitchTab(\'work\')" style="'+_b+';'+_green+';width:100%;margin-top:clamp(5px,0.8vh,7px);display:block">🧑‍💼 업무신청</button>';   // [v975] 업무신청은 한 줄로
+  var _anyRet=['pretake','lostret','pretakewait','retcamp'].some(rqBtnOn);
+  if(_anyRet)grid+='<div style="display:flex;align-items:center;gap:8px;margin:clamp(6px,1.1vh,12px) 2px clamp(5px,0.9vh,9px)"><div style="flex:1;height:1px;background:#f1c4c0"></div><span style="font-size:11px;font-weight:800;color:#c0392b;background:#fff0f0;border:1px solid #f1a9a9;padding:2px 11px;border-radius:11px;white-space:nowrap">📥 반납 처리 요청</span><div style="flex:1;height:1px;background:#f1c4c0"></div></div>';
   /* [v969] 전취건(반납 확인·사진 대기)은 넓게 2/3, 옆 박스는 1/3 */
   var G2='display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:clamp(5px,0.8vh,7px)';
   var _sm='white-space:normal;line-height:1.2;font-size:clamp(11px,3.1vw,12.5px);padding-left:3px;padding-right:3px';
-  grid+='<div style="'+G2+'">'+
-    '<button onclick="rqSwitchTab(\'pretake\')" style="'+_b+';'+_red+'">📥 전취건 반납 확인</button>'+
-    '<button onclick="rqSwitchTab(\'lostret\')" style="'+_b+';'+_red+';'+_sm+'">🔎 분실건<br>반납 확인</button>'+
-    '<button onclick="rqSwitchTab(\'pretakewait\')" id="rq-wait-landing-btn" style="'+_b+';border:2px solid #ffcc80;background:#fff6ee;color:#c2531b;display:flex;align-items:center;justify-content:center;gap:5px">📸 전취건 사진 대기 <span id="rq-wait-badge" style="background:#ef6a2b;color:#fff;border-radius:11px;font-size:11px;font-weight:800;padding:1px 7px;display:none">0</span></button>'+
-    '<button onclick="rqSwitchTab(\'retcamp\')" style="'+_b+';border:2px solid #c4b5fd;background:#f3efff;color:#6d28d9;'+_sm+'">🏬 타캠프<br>반품 반납 확인</button>'+
+  if(_anyRet)grid+='<div style="'+G2+'">'+
+    (rqBtnOn('pretake')?'<button onclick="rqSwitchTab(\'pretake\')" style="'+_b+';'+_red+'">📥 전취건 반납 확인</button>':'')+
+    (rqBtnOn('lostret')?'<button onclick="rqSwitchTab(\'lostret\')" style="'+_b+';'+_red+';'+_sm+'">🔎 분실건<br>반납 확인</button>':'')+
+    (rqBtnOn('pretakewait')?'<button onclick="rqSwitchTab(\'pretakewait\')" id="rq-wait-landing-btn" style="'+_b+';border:2px solid #ffcc80;background:#fff6ee;color:#c2531b;display:flex;align-items:center;justify-content:center;gap:5px">📸 전취건 사진 대기 <span id="rq-wait-badge" style="background:#ef6a2b;color:#fff;border-radius:11px;font-size:11px;font-weight:800;padding:1px 7px;display:none">0</span></button>':'')+
+    (rqBtnOn('retcamp')?'<button onclick="rqSwitchTab(\'retcamp\')" style="'+_b+';border:2px solid #c4b5fd;background:#f3efff;color:#6d28d9;'+_sm+'">🏬 타캠프<br>반품 반납 확인</button>':'')+
   '</div>';
-  grid+='<button onclick="rqSwitchTab(\'olddel\')" style="border-radius:10px;font-size:clamp(11px,3.1vw,12px);font-weight:700;padding:clamp(6px,1vh,9px) 4px;text-align:center;cursor:pointer;border:1.5px dashed #f5b48a;background:#fffaf6;color:#c2410c;margin-top:clamp(8px,1.3vh,13px);width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🧹 잘못된 반품·인입 삭제 요청 (이전 라우트 할당)</button>';
+  /* [v994] 맨 아래: 꺼두면 관리자·기사 모두 안 보임 (⚙️에서 켜기) */
+  var _dsh='border-radius:10px;font-size:clamp(11px,3.1vw,12px);font-weight:700;padding:clamp(6px,1vh,9px) 4px;text-align:center;cursor:pointer;border:1.5px dashed #f5b48a;background:#fffaf6;color:#c2410c;margin-top:clamp(8px,1.3vh,13px);width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block';
+  if(rqBtnOn('olddel'))grid+='<button onclick="rqSwitchTab(\'olddel\')" style="'+_dsh+'">🧹 잘못된 반품·인입 삭제 요청 (이전 라우트 할당)</button>';
+  if(rqBtnOn('addr'))grid+='<button onclick="rqSwitchTab(\'addr\')" style="'+_dsh+';border-color:#80cbc4;background:#f3fbfa;color:#00695c">📍 위탁 배송(반품) 주소 확인 요청</button>';
   setTimeout(function(){try{rqWaitCountRefresh();}catch(e){}},60);
   return '<div style="background:#f8f9ff;border:1px solid #d7dbf0;border-radius:10px;padding:clamp(5px,0.9vh,8px) 10px;margin-bottom:clamp(7px,1.2vh,11px);display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;font-size:clamp(11px,3.2vw,12.5px)">'+
     '<span style="flex-shrink:0">📝</span><b style="color:#283593;overflow:hidden;text-overflow:ellipsis;min-width:0">요청 업무에 맞춰 작성해 주세요</b>'+
@@ -18152,6 +18159,7 @@ function rqRenderBody(){
   else if(_rqTab==='work')   el.innerHTML = rqWorkForm();
   else if(_rqTab==='addr')   el.innerHTML = rqAddrForm();
   else if(_rqTab==='chaebun')el.innerHTML = rqCbForm();   // [v975]
+  else if(_rqTab==='realloc')el.innerHTML = rqReallocForm();   // [v994]
   rqUpdateDmBtn();
 }
 
@@ -18897,6 +18905,7 @@ function rqBcClose(apply){_rqBcStop();var ov=document.getElementById('bc-ov');if
   else if(k==='dup'){var cur2=window._rqDupRaw||'';var have=rqParsePairs(cur2).map(function(p){return p.wb;});var add2=wbs.filter(function(w){return have.indexOf(w)<0&&cur2.indexOf(w)<0;});if(cur2&&!/운송장|주문/.test(cur2))cur2=rqParsePairs(cur2).map(function(p){return '운송장 '+p.wb+(p.od?'\n주문 '+p.od:'');}).join('\n');window._rqDupRaw=(cur2?cur2.replace(/\s+$/,'')+'\n':'')+add2.map(function(w){return '운송장 '+w;}).join('\n');n=add2.length;rqRenderBody();try{rqUpdateDupPreview();}catch(e){}}
   else if(k==='cb'){var c4=window._cbRaw||'';var h4=_cbWbs(c4);var a4=wbs.filter(function(w){return h4.indexOf(w)<0;});window._cbRaw=(c4?c4.replace(/\s+$/,'')+'\n':'')+a4.join('\n');n=a4.length;rqRenderBody();try{cbInput();}catch(e){}}
   else if(k==='addr'){var cur3=window._rqAdRaw||'';var have3=_rqAdWbs(cur3);var add3=wbs.filter(function(w){return have3.indexOf(w)<0;});window._rqAdRaw=(cur3?cur3.replace(/\s+$/,'')+'\n':'')+add3.join('\n');n=add3.length;rqRenderBody();try{rqAdInput();}catch(e){}}
+  else if(k==='realloc'){window._raWbs=window._raWbs||[];var a5=wbs.filter(function(w){return window._raWbs.indexOf(w)<0;});window._raWbs=window._raWbs.concat(a5);n=a5.length;rqRenderBody();}   // [v994]
   else{var cur=window._rqRetRaw[k]||'';var have=rqParsePairs(cur).map(function(p){return p.wb;});
   var add=_BC.found.filter(function(f){return have.indexOf(f.wb)<0;}).map(function(f){return '운송장 '+f.wb;});
   if(cur&&!/운송장|주문/.test(cur)){cur=rqParsePairs(cur).map(function(p){return '운송장 '+p.wb+(p.od?'\n주문 '+p.od:'');}).join('\n');}
@@ -19672,7 +19681,7 @@ function _rqResponsesHtml(txt){
 }
 function rqShowResponsePopup(r){
   if(document.getElementById('rq-resp-popup')) return; // 중복 방지
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',olddel:'🧹 이전 라우트 할당 삭제',retcamp:'🏬 타캠프 반품 반납 확인',addr:'📍 위탁 주소 확인',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',olddel:'🧹 이전 라우트 할당 삭제',realloc:'🔁 재할당 요청',retcamp:'🏬 타캠프 반품 반납 확인',addr:'📍 위탁 주소 확인',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
   var typeLbl=typeMap[r.type]||r.type;
   var camp=(r.payload&&r.payload.camp)?r.payload.camp:'';
   var txt=r.teams_response_text||'';
@@ -19736,20 +19745,89 @@ function mdRenderRequestBadge(){
 // ── 캠프 선택 저장/불러오기 ─────────────────────────────────────────
 
 // ── 캠프 선택 저장/불러오기 ─────────────────────────────────────────
+/* ═══ [v994] 요청 버튼 켜기·끄기 (app_settings 'rq_btn_on') ═══ */
+var _RQ_BTN_LIST=[['chaebun','🧾 채번 서베이'],['realloc','🔁 재할당 요청'],['damage','📦 파손'],['route','🔄 라우트 변경'],['return','↩️ 반품 이관'],['dup','🔁 이중 출고'],['scan','🗑️ 스캔대기 삭제'],['lost','🔍 분실건 처리요청'],['work','🧑‍💼 업무신청'],['pretake','📥 전취건 반납 확인'],['lostret','🔎 분실건 반납 확인'],['pretakewait','📸 전취건 사진 대기'],['retcamp','🏬 타캠프 반품 반납 확인'],['olddel','🧹 잘못된 반품·인입 삭제 (맨 아래)'],['addr','📍 위탁 배송(반품) (맨 아래)']];
+var _RQ_BTN_DEF={olddel:false,addr:false};
+function rqBtnOn(k){var c=window._rqBtnOn;if(c&&Object.prototype.hasOwnProperty.call(c,k))return !!c[k];if(Object.prototype.hasOwnProperty.call(_RQ_BTN_DEF,k))return _RQ_BTN_DEF[k];return true;}
+async function rqLoadBtnCfg(){if(!window.sbClient)return;try{var r=await sbClient.from('app_settings').select('value').eq('key','rq_btn_on').maybeSingle();if(r&&r.data&&r.data.value){var v=(typeof r.data.value==='string')?JSON.parse(r.data.value):r.data.value;if(v&&typeof v==='object')window._rqBtnOn=v;}}catch(e){console.warn('rqLoadBtnCfg',e);}}
+function rqBtnCfgOpen(){if(!(CU&&CU.role==='admin'))return;window._rqBtnDraft={};_RQ_BTN_LIST.forEach(function(x){window._rqBtnDraft[x[0]]=rqBtnOn(x[0]);});
+  var ov=document.getElementById('rq-btncfg-ov');if(ov)ov.remove();ov=document.createElement('div');ov.id='rq-btncfg-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(20,20,40,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:99990;box-sizing:border-box';
+  ov.onclick=function(e){if(e.target===ov)ov.remove();};document.body.appendChild(ov);_rqBtnCfgPaint();}
+function _rqBtnCfgPaint(){var ov=document.getElementById('rq-btncfg-ov');if(!ov)return;var d=window._rqBtnDraft||{};
+  var rows=_RQ_BTN_LIST.map(function(x){var on=!!d[x[0]];return '<div onclick="window._rqBtnDraft[\''+x[0]+'\']=!window._rqBtnDraft[\''+x[0]+'\'];_rqBtnCfgPaint()" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #eef0f5;font-size:13px;font-weight:700;cursor:pointer;color:'+(on?'#263238':'#9e9e9e')+'"><span style="min-width:0;flex:1">'+x[1]+'</span><span style="flex-shrink:0;width:46px;height:26px;border-radius:13px;background:'+(on?'#43a047':'#cfd8dc')+';position:relative"><span style="position:absolute;top:3px;left:'+(on?'23px':'3px')+';width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3)"></span></span></div>';}).join('');
+  ov.innerHTML='<div style="background:#fff;border-radius:14px;width:100%;max-width:400px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.3)">'+
+   '<div style="padding:13px 16px;background:#3949ab;color:#fff;font-size:15px;font-weight:800;display:flex;align-items:center">⚙️ 요청 버튼 켜기·끄기<button onclick="document.getElementById(\'rq-btncfg-ov\').remove()" style="margin-left:auto;background:none;border:none;color:#fff;font-size:18px;cursor:pointer">✕</button></div>'+
+   '<div style="font-size:11.5px;color:#666;padding:9px 14px;background:#f5f6fb">끄면 <b>관리자·기사 모두</b> 버튼이 안 보여요. 저장하면 모든 폰에 적용돼요.</div>'+
+   '<div style="overflow:auto;flex:1">'+rows+'</div>'+
+   '<div style="padding:12px 14px;display:flex;gap:8px"><button onclick="document.getElementById(\'rq-btncfg-ov\').remove()" style="flex:1;padding:12px;border:1.5px solid #c5cae9;background:#fff;color:#3949ab;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer">닫기</button><button id="rq-btncfg-save" onclick="rqBtnCfgSave()" style="flex:2;padding:12px;border:none;background:#3949ab;color:#fff;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer">저장</button></div></div>';}
+async function rqBtnCfgSave(){var b=document.getElementById('rq-btncfg-save');if(b){b.disabled=true;b.textContent='저장 중…';}
+  var v={};_RQ_BTN_LIST.forEach(function(x){v[x[0]]=!!(window._rqBtnDraft||{})[x[0]];});
+  try{var r=await sbClient.from('app_settings').upsert({key:'rq_btn_on',value:JSON.stringify(v)},{onConflict:'key'});if(r&&r.error)throw new Error(r.error.message);
+    window._rqBtnOn=v;var ov=document.getElementById('rq-btncfg-ov');if(ov)ov.remove();if(!rqBtnOn(_rqTab))_rqTab='';var mc=document.getElementById('mc');if(mc&&typeof pgRequest==='function'&&document.getElementById('rq-body')){mc.innerHTML=pgRequest();rqRenderBody();}
+    try{showToast('✅ 저장했어요 (모든 폰 적용)',true);}catch(e){}}
+  catch(e){alert('저장 실패: '+(e.message||e));if(b){b.disabled=false;b.textContent='저장';}}}
+
+/* ═══ [v994] 재할당 요청: 바코드 인식 / 운송장 수기입력 + 스캔 불가 원인 ═══ */
+window._raWbs=window._raWbs||[];window._raWhy=window._raWhy||'';
+var _RA_WHY=[['net','📶','네트워크 불안정 재할당 요청','네트워크 불안정으로 인한 스캔 불가'],['app','📱','어플 스캔 불가 재할당','어플 오류로 인한 스캔 불가']];
+function _raMode(){try{return localStorage.getItem('rq_ra_mode')||'bc';}catch(e){return 'bc';}}
+function rqRaSetMode(m){try{localStorage.setItem('rq_ra_mode',m);}catch(e){}window._raMode1=m;rqRenderBody();if(m==='hand')setTimeout(function(){var e=document.getElementById('rq-ra-in');if(e)e.focus();},50);}
+function rqRaText(){var sep='─'.repeat(12);var w=window._raWbs||[];var why=_RA_WHY.filter(function(x){return x[0]===window._raWhy;})[0];
+  return '■ 재할당 요청 ['+rqGetCamp()+'] ■\n'+sep+'\n'+(w.length?w.map(function(x){return '운송장번호: '+x;}).join('\n'):'운송장번호: ')+'\n\n사유: '+(why?why[3]:'(원인 선택)')+'\n\n재할당 부탁드립니다.\n'+sep+'\n요청자: '+((CU&&CU.name)||'');}
+function rqRaPv(){var p=document.getElementById('rq-ra-pv');if(p)p.textContent=rqRaText();}
+function _raCampWarn(){try{var inf=window._rqBcInfo||{};var cs={};(window._raWbs||[]).forEach(function(w){var m=String(inf[w]||'').match(/ISN(\d)/i);if(m)cs[m[1]]=1;});var ks=Object.keys(cs);if(ks.length!==1)return '';var k=ks[0];var cur=(String(rqGetCamp()).match(/(\d)/)||[])[1];if(k===cur)return '';
+  var v=k==='8'?'일산8캠프2wave':(k==='6'?'일산6캠프':'일산3캠프');
+  return '<div style="background:#fff8e1;border:1.5px solid #ffb300;border-radius:9px;padding:8px 10px;margin:0 0 8px;font-size:12.5px;font-weight:800;color:#e65100;display:flex;align-items:center;gap:8px">⚠ 바코드는 '+k+'캠프 송장이에요<button onclick="rqBcFixCamp(\''+v+'\',\'realloc\')" style="margin-left:auto;border:none;background:#ef6a2b;color:#fff;border-radius:8px;padding:6px 10px;font-weight:900;font-size:12px;cursor:pointer">'+k+'캠프로 바꾸기</button></div>';}catch(e){return '';}}
+function rqReallocForm(){
+  if(!document.getElementById('rq-css')) document.head.insertAdjacentHTML('beforeend',_rqCSS);
+  var isAdm=CU&&CU.role==='admin';
+  var adminBox=isAdm?('<div class="rq-admin-box"><div class="rq-admin-lbl">🔐 관리자 전용 — 승인 방식</div><div class="rq-ap-row"><div class="rq-ap-chip'+(_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(true)">⚡ 자동 승인</div><div class="rq-ap-chip'+(!_rqAutoApprove?' on':'')+'" onclick="rqSetAutoApprove(false)">📋 승인 요청</div></div></div>'):'';
+  var m=_raMode(),w=window._raWbs||[],ok=w.length>0&&!!window._raWhy;
+  function chip(v,t){var on=m===v;return '<div onclick="rqRaSetMode(\''+v+'\')" style="flex:1;text-align:center;padding:10px 4px;border-radius:10px;font-weight:800;font-size:13.5px;cursor:pointer;border:2px solid '+(on?'#ef6a2b':'#e0d6cc')+';background:'+(on?'#ef6a2b':'#fff')+';color:'+(on?'#fff':'#8a6a4a')+'">'+t+'</div>';}
+  var h='<div class="rq-card"><div id="rq-ra-ok" class="rq-success" style="display:none">✅ 전송 완료!</div>'+adminBox+
+    '<div style="font-size:15px;font-weight:900;color:#e65100;margin-bottom:10px">🔁 재할당 요청</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:10px">'+chip('bc','📷 바코드 인식')+chip('hand','⌨️ 운송장 수기입력')+'</div>';
+  if(m==='bc')h+='<button type="button" onclick="rqBcOpen(\'realloc\')" style="width:100%;padding:14px 6px;border:none;border-radius:12px;background:linear-gradient(135deg,#ef6a2b,#f59e0b);color:#fff;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 3px 10px rgba(239,106,43,.3);margin-bottom:10px">📷 송장 바코드 찍기</button>';
+  else h+='<div style="display:flex;gap:6px;margin-bottom:8px"><input id="rq-ra-in" class="rq-inp" inputmode="numeric" autocomplete="off" placeholder="운송장번호 숫자만 입력" style="flex:1;min-width:0;margin:0;font-size:16px;border:2px dashed #3949ab;background:#f3f4ff;letter-spacing:.5px" onkeydown="if(event.key===\'Enter\'){event.preventDefault();rqRaAdd();}"><button type="button" onclick="rqRaAdd()" style="flex-shrink:0;border:none;background:#3949ab;color:#fff;border-radius:8px;padding:0 16px;font-weight:800;font-size:14px;cursor:pointer">추가</button></div>';
+  h+='<label class="rq-label">📋 운송장번호 <span class="rq-req">필수</span> <span style="font-size:10.5px;color:#888;font-weight:600">(여러 건 가능)</span></label>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'+w.map(function(x,i){return '<span style="background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32;border-radius:8px;padding:4px 6px 4px 9px;font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:6px">'+rqEsc(x)+'<button type="button" onclick="rqRaDel('+i+')" style="border:none;background:#c8e6c9;color:#1b5e20;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;padding:0">✕</button></span>';}).join('')+'</div>'+
+    (w.length?'<div class="rq-hint" style="background:#e8f5e9;color:#2e7d32">✅ '+w.length+'건 인식</div>':'<div class="rq-hint">운송장번호를 1건 이상 넣어주세요</div>')+
+    _raCampWarn()+
+    '<label class="rq-label">❓ 스캔 불가 원인 <span class="rq-req">필수</span></label><div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px">'+
+    _RA_WHY.map(function(x){var on=window._raWhy===x[0];return '<div onclick="rqRaWhy(\''+x[0]+'\')" style="display:flex;align-items:center;gap:9px;border:2px solid '+(on?'#3949ab':'#dfe3f0')+';border-radius:10px;padding:11px 12px;cursor:pointer;font-weight:800;font-size:13.5px;color:'+(on?'#283593':'#455a64')+';background:'+(on?'#eef0fd':'#fff')+'"><span style="width:18px;height:18px;border-radius:50%;box-sizing:border-box;flex-shrink:0;border:'+(on?'6px solid #3949ab':'2px solid #b0bec5')+'"></span>'+x[1]+' '+x[2]+'</div>';}).join('')+'</div>'+
+    '<div class="rq-label" style="margin-bottom:4px">💬 팀즈 전송 미리보기</div><div class="rq-preview-box" id="rq-ra-pv">'+rqEsc(rqRaText())+'</div>'+
+    '<button class="rq-btn '+(ok?(_rqAutoApprove?'rq-btn-active-auto':'rq-btn-active-req'):'')+'" id="rq-ra-btn" onclick="rqSendRealloc()" '+(ok?'':'disabled')+'>'+(_rqAutoApprove?'⚡ 팀즈 전송':'📤 팀즈 전송 요청')+'</button></div>';
+  return h;}
+function rqRaAdd(){var el=document.getElementById('rq-ra-in');if(!el)return;var raw=String(el.value||'');var parts=raw.split(/[\s,\/]+/).map(function(x){return x.replace(/\D/g,'');}).filter(Boolean);
+  if(!parts.length){try{showToast('운송장번호를 입력해 주세요',false);}catch(e){}return;}
+  var bad=parts.filter(function(x){return x.length<10||x.length>14;});if(bad.length){alert('운송장번호는 숫자 10~14자리예요.\n다시 확인해 주세요: '+bad.join(', '));return;}
+  window._raWbs=window._raWbs||[];var n=0;parts.forEach(function(x){if(window._raWbs.indexOf(x)<0){window._raWbs.push(x);n++;}});
+  if(!n){try{showToast('이미 넣은 번호예요',false);}catch(e){}}
+  rqRenderBody();setTimeout(function(){var e=document.getElementById('rq-ra-in');if(e)e.focus();},30);}
+function rqRaDel(i){(window._raWbs||[]).splice(i,1);rqRenderBody();}
+function rqRaWhy(k){window._raWhy=k;rqRenderBody();}
+async function rqSendRealloc(){var w=window._raWbs||[];
+  if(!w.length){alert('운송장번호를 1건 이상 넣어주세요.');return;}
+  if(!window._raWhy){alert('스캔 불가 원인을 골라주세요.');return;}
+  var _ok=await rqSubmit({type:'realloc',text:rqRaText(),photos:[],okId:'rq-ra-ok'});
+  if(!_ok)return;window._raWbs=[];window._raWhy='';rqRenderBody();try{var o=document.getElementById('rq-ra-ok');if(o){o.style.display='block';setTimeout(function(){o.style.display='none';},4000);}}catch(e){}}
+
 function rqGetCamp(){
   try{ var v=localStorage.getItem('rqCamp'); return v||'일산3캠프'; }catch(e){ return window._rqCamp||'일산3캠프'; }
 }
 /* [v850] 기사 스케줄(오늘 이후 가장 가까운 근무) 라우트의 캠프로 자동 선택 — 기사가 직접 바꾸면 그 선택 유지 */
 async function rqAutoCamp(){try{
-  if(window._rqCampManual||window._rqCampAutoDone||!window.sbClient||!window.CU||CU.role==='admin')return;window._rqCampAutoDone=true;
+  var _td=kstToday();   // [v994] 하루 단위: 날짜가 바뀌면 오늘 스케줄로 다시 맞춤
+  if(window._rqCampManual===_td||window._rqCampAutoDone===_td||!window.sbClient||!window.CU||CU.role==='admin')return;window._rqCampAutoDone=_td;
   if(typeof _rrLoadNow==='function')await _rrLoadNow();
   var t=kstToday(),nm=splitDriverSuffix(CU.name||'').base;if(!nm)return;
   var r=await sbClient.from('weekly_schedules').select('route,work_date,driver_name').gte('work_date',t).like('driver_name',nm+'%').order('work_date',{ascending:true}).limit(20);
   var rows=((r&&r.data)||[]).filter(function(x){return splitDriverSuffix(String(x.driver_name||'').replace(/★/g,'').trim()).base===nm;});
   for(var i=0;i<rows.length;i++){var pl=_rrPlaceAt(rows[i].route,rows[i].work_date);var m=String(pl).match(/(\d)\s*캠프/);if(!m)continue;
-    var v=m[1]==='8'?'일산8캠프2wave':(m[1]==='6'?'일산6캠프':'일산3캠프');if(window._rqCampManual)return;
+    var v=m[1]==='8'?'일산8캠프2wave':(m[1]==='6'?'일산6캠프':'일산3캠프');if(window._rqCampManual===_td)return;
     window._rqCamp=v;try{localStorage.setItem('rqCamp',v);}catch(e){}
-    document.querySelectorAll('#rq-camp-select').forEach(function(s){s.value=v;});try{rqCampPaint();}catch(_p){}return;}
+    document.querySelectorAll('#rq-camp-select').forEach(function(s){s.value=v;});try{rqCampPaint();}catch(_p){}try{if(_rqTab==='realloc')rqRaPv();}catch(_q){}return;}
 }catch(e){console.warn('rqAutoCamp',e);}}
 /* [v969] 캠프 선택: 드롭다운 대신 3캠프·6캠프·8캠프 버튼(누르면 선택 표시) */
 var _RQ_CAMPS=[['일산3캠프','3캠프'],['일산6캠프','6캠프'],['일산8캠프2wave','8캠프']];
@@ -19759,12 +19837,12 @@ function rqCampPaint(){var cur=rqGetCamp();document.querySelectorAll('.rq-cseg b
 /* [v970] 잘못 눌림 방지: 다른 캠프는 3초 안에 두 번 눌러야 바뀜 */
 function rqCampPick(v){if(v===rqGetCamp()){window._rqCampArm=null;rqCampPaint();return;}
   var now=Date.now();if(window._rqCampArm===v&&now-(window._rqCampArmAt||0)<3000){window._rqCampArm=null;clearTimeout(window._rqCampArmT);
-    try{window.rqSetCamp(v);}catch(e){}rqCampPaint();try{if(_rqTab==='addr'&&typeof rqAdInput==='function')rqAdInput();}catch(e){}
+    try{window.rqSetCamp(v);}catch(e){}rqCampPaint();try{if(_rqTab==='addr'&&typeof rqAdInput==='function')rqAdInput();}catch(e){}try{if(_rqTab==='realloc')rqRaPv();}catch(e){}
     try{showToast('✅ '+((_RQ_CAMPS.filter(function(c){return c[0]===v;})[0]||['',v])[1])+'으로 변경했어요',true);}catch(e){}return;}
   window._rqCampArm=v;window._rqCampArmAt=now;clearTimeout(window._rqCampArmT);rqCampPaint();
   window._rqCampArmT=setTimeout(function(){window._rqCampArm=null;rqCampPaint();},3000);}
 function rqSetCamp(v){
-  window._rqCampManual=true;
+  try{ window._rqCampManual=kstToday(); }catch(_e){ window._rqCampManual=true; }   // [v994] 직접 고른 날만 유지
   window._rqCamp=v;
   try{ localStorage.setItem('rqCamp',v); }catch(e){}
 }
@@ -19772,7 +19850,7 @@ function rqSetCamp(v){
 // ── 요청 카드 HTML (간소화 리스트 행) ─────────────────────────────
 function rqBuildCard(r){
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',olddel:'🧹 이전 라우트 할당 삭제',retcamp:'🏬 타캠프 반품 반납 확인',addr:'📍 위탁 주소 확인',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',olddel:'🧹 이전 라우트 할당 삭제',realloc:'🔁 재할당 요청',retcamp:'🏬 타캠프 반품 반납 확인',addr:'📍 위탁 주소 확인',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
@@ -19815,7 +19893,7 @@ function rqShowPopup(id){
   var r = (_rqCases||[]).find(function(c){return c.id===id;});
   if(!r) return;
   var isLdr = CU&&(CU.role==='admin'||CU.role==='leader');
-  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',olddel:'🧹 이전 라우트 할당 삭제',retcamp:'🏬 타캠프 반품 반납 확인',addr:'📍 위탁 주소 확인',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
+  var typeMap={damage:'🟠 파손 요청',route:'🔄 라우트 변경',return:'↩ 반품 이관',dup:'📦 이중 출고건',scan:'🗑 스캔대기 삭제',olddel:'🧹 이전 라우트 할당 삭제',realloc:'🔁 재할당 요청',retcamp:'🏬 타캠프 반품 반납 확인',addr:'📍 위탁 주소 확인',lost:'🔍 분실 처리',pretake:'📥 전취건 반납 확인 요청',lostret:'🔎 분실건 반납 확인 요청',work:'🧑‍💼 업무 신청',loss:'📉 차감[분실]'};
   var typeLbl = typeMap[r.type]||r.type;
   var payload = r.payload||{};
   var camp = payload.camp ? ' ['+mdEsc(payload.camp)+']' : '';
