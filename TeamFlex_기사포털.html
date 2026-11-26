@@ -1415,7 +1415,7 @@ function _tfAskMaster(after){
 /* 자동로그인 된 폰 → 저장된 정보로 출입증 받기 (받기 전까지 서버 요청은 잠깐 대기) */
 var _tfBindRetry=0;
 /* [v991] 앱 버전 보고: 누가 아직 예전 버전을 쓰는지 서버에서 확인 → 모두 새 버전일 때만 잠금을 다시 켬 */
-var TF_APPV='v995';
+var TF_APPV='v996';
 /* [v992] 화면 위 이름 아래 줄에 버전 표시 (예: 관리자 · v992) */
 setInterval(function(){try{var h=document.getElementById('har');if(h&&!document.getElementById('tf-ver-tag')){var t=document.createElement('span');t.id='tf-ver-tag';t.textContent=TF_APPV;t.style.cssText='display:inline-block;margin-left:5px;font-size:10px;font-weight:800;opacity:.55;vertical-align:middle;white-space:nowrap';h.appendChild(t);}}catch(e){}},1500);
 function _tfReportVer(){try{if(!window.CU||!CU.name||!sbClient)return;var k='appver:'+CU.name;var v=JSON.stringify({v:TF_APPV,at:new Date().toISOString(),bound:!!(_tfBindSt&&_tfBindSt.ok),role:CU.role||''});
@@ -21802,7 +21802,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   function campHtml(camp,c,dis){
     var id='m1:'+camp+':'+c.mid;
     if(dis.indexOf(id)>=0)return '';
-    var rnd=Number(c.rnd)||(/_2$/.test(String(camp))?2:1);camp=c.camp||String(camp).split('_')[0];var RL=rnd+'회전 미스캔';
+    var rnd=Number(c.rnd)||(/_2$/.test(String(camp))?2:1);camp=c.camp||String(camp).split('_')[0];var RL='미스캔 공유';   /* [v996] 1·2회전이 섞여 와서 회전 표시 없이 '미스캔 공유'로 */
     var at=esc(c.at||'');
     if(isAll()){
       var drv=c.drivers||{};var names=Object.keys(drv).sort(function(a,b){return sum(drv[b])-sum(drv[a]);});
@@ -22371,11 +22371,11 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
   +M+'.u3tile{scroll-snap-align:start;position:relative;overflow:hidden;border-radius:22px;padding:10px 8px 10px;text-align:center;cursor:pointer;background:linear-gradient(170deg,#fff 40%,var(--u3a));box-shadow:'+SH+',inset 0 1px 0 #fff;transition:transform .18s;animation:u3up .5s cubic-bezier(.2,.8,.2,1) both;-webkit-tap-highlight-color:transparent}'
   +M+'.u3tile:active{transform:scale(.95) rotateX(6deg)}'
   +M+'.u3tile::after{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.65),rgba(255,255,255,0));animation:u3sheen 5s ease-in-out infinite;pointer-events:none}'
-  +M+'.u3tile .u3ico{width:52px;height:52px;margin:2px auto 6px}'
+  +M+'.u3tile .u3ico{width:52px;height:52px;margin:2px auto 6px}.u3tile:has(.cp) .u3ico{margin-top:24px}'
   +M+'.u3tile .lb{font-size:12px;font-weight:800;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
   +M+'.u3tile .nm{font-size:25px;font-weight:900;color:var(--u3c);letter-spacing:-1px;line-height:1.1;margin-top:1px;animation:u3pop .6s .3s cubic-bezier(.2,.9,.3,1.3) both}'
   +M+'.u3tile .nm small{font-size:12px;font-weight:800;margin-left:1px;letter-spacing:0}'
-  +M+'.u3tile .cp{position:absolute;top:8px;left:8px;font-size:9.5px;font-weight:900;color:var(--u3c);background:rgba(255,255,255,.85);border-radius:999px;padding:1px 6px;box-shadow:0 1px 2px rgba(0,0,0,.06)}'
+  +M+'.u3tile .cp{position:absolute;top:7px;left:7px;font-size:13px;font-weight:900;color:var(--u3c);background:rgba(255,255,255,.92);border-radius:999px;padding:3px 9px;line-height:1.2;box-shadow:0 1px 2px rgba(0,0,0,.06)}'
   +M+'.u3tile .dt{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--u3c);box-shadow:0 0 0 3px color-mix(in srgb,var(--u3c) 22%,transparent)}'
   +'html.u3 .u3-o{--u3c:#ea580c;--u3a:#ffedd5}html.u3 .u3-p{--u3c:#7c3aed;--u3a:#ede9fe}html.u3 .u3-r{--u3c:#e11d48;--u3a:#ffe4e6}html.u3 .u3-b{--u3c:#2563eb;--u3a:#dbeafe}html.u3 .u3-g{--u3c:#059669;--u3a:#d1fae5}html.u3 .u3-y{--u3c:#b45309;--u3a:#fef3c7}'
   /* 차량점검·알림 */
@@ -22481,7 +22481,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     mc.insertBefore(card,mc.firstChild);
   }
   /* ── 처리할 일 → 가로 타일 + 아래 시트 ── */
-  var TK=[[/장기미회수/,'u3-y','package','장기미회수'],[/반품 재할당/,'u3-o','package','반품 재할당'],[/수기회수/,'u3-p','open_mailbox_with_raised_flag','수기회수'],[/미스캔 공유/,'u3-r','warning','미스캔 공유'],[/미스캔/,'u3-r','warning',''],[/주간\s*수량/,'u3-g','bar_chart','주간 수량'],[/소분/,'u3-b','stopwatch','소분 종료'],[/표 사진|사진 확인/,'u3-b','camera_with_flash','표 사진 확인'],[/담당자 확인/,'u3-b','hourglass_not_done','담당자 확인'],[/오배송/,'u3-r','police_car_light','오배송']];
+  var TK=[[/장기미회수/,'u3-y','package','장기미회수'],[/반품 재할당/,'u3-o','package','반품 재할당'],[/수기회수/,'u3-p','open_mailbox_with_raised_flag','수기회수'],[/미스캔 공유/,'u3-r','warning','미스캔 공유'],[/미스캔/,'u3-r','warning','미스캔 공유'],[/주간\s*수량/,'u3-g','bar_chart','주간 수량'],[/소분/,'u3-b','stopwatch','소분 종료'],[/표 사진|사진 확인/,'u3-b','camera_with_flash','표 사진 확인'],[/담당자 확인/,'u3-b','hourglass_not_done','담당자 확인'],[/오배송/,'u3-r','police_car_light','오배송']];
   var seq=0,MAP={};
   function sgKey(){return 'u3_sg_'+((window.CU&&CU.name)||'x')+'_'+kToday();}
   function sgSig(c){return txt(c).replace(/\s/g,'').slice(0,300);}
@@ -22495,7 +22495,7 @@ function hcExportAll(){try{if(typeof XLSX==='undefined'){showToast('엑셀 모�
     var body=(function(e){var o=[];(function w(n){for(var i=0;i<n.childNodes.length;i++){var x=n.childNodes[i];if(x.nodeType===3)o.push(x.nodeValue);else if(x.nodeType===1){if(x.tagName==='BR')o.push('\n');else{o.push(' ');w(x);o.push(' ');}}}})(e||document.createElement('i'));return o.join('');})(c.children[1]);
     if(/주간\s*수량/.test(title)){var sm=0,mm,re=/\b\d{3}[A-D]\s*[:：]?\s*(\d{1,4})\b/g;while((mm=re.exec(body)))sm+=+mm[1];num=sm?String(sm):'';unit='개';}
     else if(/소분/.test(title)){var tm=body.match(/피딩[^0-9]*(\d{1,2}:\d{2})/)||body.match(/(\d{1,2}:\d{2})/);num=tm?tm[1]:'';unit='';}
-    else if(/미스캔 공유/.test(title)){var ws=body.match(/(?<!\d)\d{10,14}(?!\d)/g);num=ws?String(ws.length):'';}
+    else if(/미스캔 공유/.test(title)&&!c.classList.contains('m1c')){var ws=body.match(/(?<!\d)\d{10,14}(?!\d)/g);num=ws?String(ws.length):'';}
     var lb=hit[3]||title.replace(/\s*\(전체\)/,'').replace(/^\d+캠프\s*/,'');
     var cm=(meta+' '+title).match(/(\d)캠프/);
     return {title:title,meta:meta,num:num,lb:lb,unit:unit,camp:cm?cm[1]+'캠프':''};
