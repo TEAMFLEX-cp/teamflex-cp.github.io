@@ -1415,7 +1415,7 @@ function _tfAskMaster(after){
 /* 자동로그인 된 폰 → 저장된 정보로 출입증 받기 (받기 전까지 서버 요청은 잠깐 대기) */
 var _tfBindRetry=0;
 /* [v991] 앱 버전 보고: 누가 아직 예전 버전을 쓰는지 서버에서 확인 → 모두 새 버전일 때만 잠금을 다시 켬 */
-var TF_APPV='v994';
+var TF_APPV='v995';
 /* [v992] 화면 위 이름 아래 줄에 버전 표시 (예: 관리자 · v992) */
 setInterval(function(){try{var h=document.getElementById('har');if(h&&!document.getElementById('tf-ver-tag')){var t=document.createElement('span');t.id='tf-ver-tag';t.textContent=TF_APPV;t.style.cssText='display:inline-block;margin-left:5px;font-size:10px;font-weight:800;opacity:.55;vertical-align:middle;white-space:nowrap';h.appendChild(t);}}catch(e){}},1500);
 function _tfReportVer(){try{if(!window.CU||!CU.name||!sbClient)return;var k='appver:'+CU.name;var v=JSON.stringify({v:TF_APPV,at:new Date().toISOString(),bound:!!(_tfBindSt&&_tfBindSt.ok),role:CU.role||''});
@@ -15093,7 +15093,7 @@ var _rqWebhookUrl8camp = null;
 
 // ── 각종 요청 탭 메인 페이지 ──────────────────────────────────────
 /* ════════ 프백 소명 (pback) — Supabase: pback_somyeong / app_settings(pback_config) ════════ */
-var PB_ITEMS=[], PB_CFG={mode:'approval',form_url:'',period:''}, PB_DONE_OPEN=false, PB_CANT_OPEN=false, PB_DSUB_OPEN=false, PB_DCANT_OPEN=false, PB_UNSUB_OPEN=false;
+var PB_ITEMS=[], PB_CFG={mode:'approval',form_url:'',period:''}, PB_DONE_OPEN=false, PB_CANT_OPEN=false, PB_DSUB_OPEN=false, PB_DCANT_OPEN=false, PB_UNSUB_OPEN=false, PB_UNSUB_DRV={};
 var PB_ST={pending:{t:'미작성',bg:'#ffe5e5',c:'#c0392b'},answered:{t:'작성완료',bg:'#fff4e0',c:'#b9770e'},approved:{t:'승인됨·제출대기',bg:'#e3f2fd',c:'#1565c0'},submitted:{t:'✅ 본사폼 제출',bg:'#e3f4e8',c:'#2d6040'},rejected:{t:'반려',bg:'#ffe1d6',c:'#d84315'},failed:{t:'제출실패',bg:'#ffd6d6',c:'#b71c1c'},cant:{t:'소명불가',bg:'#eceff1',c:'#546e7a'}};
 var PB_DEFRJ='사진상 내용을 확인할 수 없습니다.\n자세한 내용 작성 부탁드립니다.';
 function pbPeriod(){var d=new Date(Date.now()+new Date().getTimezoneOffset()*60000+9*3600000);var y=d.getFullYear(),m=d.getMonth()+1;return y+'-'+(m<10?'0'+m:m);}
@@ -17630,7 +17630,17 @@ function pbMyOwnBlock(){
     '<div style="font-size:13px;font-weight:800;color:#1b5e20;margin-bottom:6px">🧾 내 소명 ('+pbEsc((CU&&CU.name)||'')+') · '+act.length+'건 <span style="font-size:11px;font-weight:600;color:#66896e">— 눌러서 작성</span></div>'+
     act.map(pbRowHtml).join('')+'</div>';
 }
-function pbRender(){var root=document.getElementById('pb-root');if(!root)return;root.innerHTML=(CU&&CU.role==='admin')?(pbMyOwnBlock()+pbAdminHtml()):pbDriverHtml();}
+function pbRender(){var root=document.getElementById('pb-root');if(!root)return;
+  /* ★v995: 다시 그려도 보던 위치 유지 */
+  var keep=[],e=root.parentElement;while(e){if(e.scrollTop>0)keep.push([e,e.scrollTop]);e=e.parentElement;}
+  var se=document.scrollingElement;if(se&&se.scrollTop>0)keep.push([se,se.scrollTop]);
+  root.innerHTML=(CU&&CU.role==='admin')?(pbMyOwnBlock()+pbAdminHtml()):pbDriverHtml();
+  keep.forEach(function(k){try{k[0].scrollTop=k[1];}catch(_){}});}
+/* ★v995: 저장·소명불가 후 같은 기사의 다음 미작성 건 자동 열기 */
+function pbNextId(id){var it=PB_ITEMS.find(function(x){return x.id==id;});if(!it)return null;var n=norm_name_js(it.driver_name||'');
+  var L=PB_ITEMS.filter(function(x){return norm_name_js(x.driver_name||'')===n;});var i=L.findIndex(function(x){return x.id==id;});
+  var W=function(x){return x.id!=id&&(x.status==='pending'||x.status==='rejected');};
+  var nx=L.slice(i+1).find(W)||L.slice(0,Math.max(i,0)).find(W);return nx?nx.id:null;}
 function pbUnsubListHtml(){
   var UNSUB=['pending','answered','approved','rejected','failed'];
   var STLBL={pending:'미작성',answered:'작성완료·승인대기',approved:'승인됨·제출대기',rejected:'반려',failed:'제출실패'};
@@ -17661,7 +17671,7 @@ function pbUnsubListHtml(){
       '<div style="flex:1.6;color:#666">'+pbEsc(routeStr||'-')+'</div>'+
       '<div style="width:42px;text-align:center;font-weight:800;color:#c62828">'+d.items.length+'</div>'+
       '<div style="width:66px;text-align:right;font-size:11px;color:'+(STCOL[domSt]||'#c0392b')+'">'+(STLBL[domSt]||'')+' ›</div></div>'+
-      '<div id="pb-unsub-d'+di+'" style="display:none;background:#fdf6f6;border-top:1px solid #f6e3e3;padding:8px 14px;font-size:12px;color:#555;line-height:1.8">'+detail+'</div>';
+      '<div id="pb-unsub-d'+di+'" data-drv="'+pbEsc(d.name)+'" style="display:'+(PB_UNSUB_DRV[d.name]?'block':'none')+';background:#fdf6f6;border-top:1px solid #f6e3e3;padding:8px 14px;font-size:12px;color:#555;line-height:1.8">'+detail+'</div>';
   });
   if(!arr.length) rows='<div style="padding:12px;text-align:center;color:#90a4ae;font-size:12px">미제출 건이 없습니다 👍</div>';
   return '<div class="pb-card" style="border:1px solid #f0c0c0;padding:0!important;overflow:hidden;margin-top:8px">'+
@@ -17669,7 +17679,7 @@ function pbUnsubListHtml(){
     (arr.length?'<div style="display:flex;font-size:10.5px;color:#90a4ae;padding:6px 12px;border-top:1px solid #f3dada;font-weight:700"><div style="flex:1.2">기사명</div><div style="flex:1.6">라우트</div><div style="width:42px;text-align:center">건수</div><div style="width:66px;text-align:right">상태</div></div>':'')+
     rows+'</div>';
 }
-function pbUnsubToggle(di){var el=document.getElementById('pb-unsub-d'+di);if(el)el.style.display=(el.style.display==='none'?'block':'none');}
+function pbUnsubToggle(di){var el=document.getElementById('pb-unsub-d'+di);if(!el)return;var open=el.style.display==='none';el.style.display=open?'block':'none';var n=el.getAttribute('data-drv');if(n){if(open)PB_UNSUB_DRV[n]=1;else delete PB_UNSUB_DRV[n];}}
 // 관리자: 미작성(pending) 기사 전원에게 프백 소명 알림 1회 발송
 async function pbNotifyPending(){
   if(!sbClient){alert('서버 연결이 필요합니다.');return;}
@@ -17912,9 +17922,12 @@ function pbView(id){var it=PB_ITEMS.find(function(x){return x.id==id;});if(!it)r
   document.getElementById('pb-sheet').innerHTML='<div class="pb-sh"><div><div style="font-size:17px;font-weight:800">'+pbEsc(it.driver_name)+' · '+pbEsc(it.route)+'</div><div style="font-size:12px;color:#cfe3d6">'+pbEsc(it.pdd_date||'')+' · '+pbEsc(it.camp||'')+'</div></div><span class="x" onclick="pbCloseOv()">×</span></div><div class="pb-sb"><div class="pb-ban" style="background:#e9f6ee;border:1.5px solid #9ed3b3;color:#1b5e20"><b style="display:block;color:#2d6040;font-size:12px;margin-bottom:3px">✅ 제출 완료</b>본사 폼에 정상 제출되었습니다.</div><div class="pb-lbl">📷 사진</div>'+pbPicsHtml(it)+''+_pbLbl('소명 내용',it.reason)+'<div class="pb-rd">'+pbEsc(_pbBody(it.reason)||'(내용 없음)')+'</div></div>';
   document.getElementById('pb-ov').classList.add('show');
 }
-async function pbUpd(id,patch){try{await sbClient.from('pback_somyeong').update(patch).eq('id',id);var it=PB_ITEMS.find(function(x){return x.id==id;});if(it)Object.assign(it,patch);}catch(e){if(typeof showToast==='function')showToast('저장 실패: '+(e.message||e),false);}pbCloseOv();pbRender();}
-function pbSave(id){if(!(CU&&CU.role==='admin')&&!pbIsOpen()){alert(pbPeriodLabel()+' 소명 기간이 마감되었습니다.\n다음달 1일부터 작성할 수 있습니다.');return;}var el=document.getElementById('pb-rsn');var r=el?el.value.trim():'';if(!r){alert('소명 내용을 입력해주세요');return;}pbUpd(id,{reason:_pbMerge(window._pbCurNote,r),status:'answered',reject_reason:''});}
-function pbCant(id){if(!(CU&&CU.role==='admin')&&!pbIsOpen()){alert(pbPeriodLabel()+' 소명 기간이 마감되었습니다.\n다음달 1일부터 작성할 수 있습니다.');return;}if(!confirm('소명 불가로 처리할까요?\n(폼 제출에서 제외되고 소명불가로 분류됩니다)'))return;var el=document.getElementById('pb-rsn');var r=el?el.value.trim():'';pbUpd(id,{status:'cant',reason:_pbMerge(window._pbCurNote,r)||undefined,reject_reason:''});}
+async function pbUpd(id,patch,goNext){var ok=true;try{var r=await sbClient.from('pback_somyeong').update(patch).eq('id',id);if(r&&r.error)throw r.error;var it=PB_ITEMS.find(function(x){return x.id==id;});if(it)Object.assign(it,patch);}catch(e){ok=false;if(typeof showToast==='function')showToast('저장 실패: '+(e.message||e),false);}pbCloseOv();pbRender();
+  if(ok&&goNext){var nx=pbNextId(id);if(nx){var it2=PB_ITEMS.find(function(x){return x.id==id;});var n2=norm_name_js((it2&&it2.driver_name)||'');var left=PB_ITEMS.filter(function(x){return norm_name_js(x.driver_name||'')===n2&&(x.status==='pending'||x.status==='rejected');}).length;
+    if(typeof showToast==='function')showToast('✔ 저장됨 → 다음 건 (남은 '+left+'건)',true);setTimeout(function(){pbOpen(nx);},250);}
+    else if(typeof showToast==='function')showToast('✔ 저장됨 · 이 기사 소명은 모두 끝났어요 👍',true);}}
+function pbSave(id){if(!(CU&&CU.role==='admin')&&!pbIsOpen()){alert(pbPeriodLabel()+' 소명 기간이 마감되었습니다.\n다음달 1일부터 작성할 수 있습니다.');return;}var el=document.getElementById('pb-rsn');var r=el?el.value.trim():'';if(!r){alert('소명 내용을 입력해주세요');return;}pbUpd(id,{reason:_pbMerge(window._pbCurNote,r),status:'answered',reject_reason:''},true);}
+function pbCant(id){if(!(CU&&CU.role==='admin')&&!pbIsOpen()){alert(pbPeriodLabel()+' 소명 기간이 마감되었습니다.\n다음달 1일부터 작성할 수 있습니다.');return;}if(!confirm('소명 불가로 처리할까요?\n(폼 제출에서 제외되고 소명불가로 분류됩니다)'))return;var el=document.getElementById('pb-rsn');var r=el?el.value.trim():'';pbUpd(id,{status:'cant',reason:_pbMerge(window._pbCurNote,r)||undefined,reject_reason:''},true);}
 function pbApprove(id){pbUpd(id,{status:'approved',approved_by:(CU&&CU.name)||'',reject_reason:''});}
 function pbReject(id){var el=document.getElementById('pb-rjr');var rj=el?el.value.trim():'';pbUpd(id,{status:'rejected',reject_reason:rj||PB_DEFRJ});}
 async function pbDelete(id){
