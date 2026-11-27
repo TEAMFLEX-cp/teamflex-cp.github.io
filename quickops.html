@@ -132,7 +132,7 @@ async function boot(){
   var s=await sb.auth.getSession();
   if(!s||!s.data||!s.data.session){var an=await sb.auth.signInAnonymously();if(an.error)throw an.error;}
   ME=await rpc('qo_me');
-  if(!ME)return showAuth('login');
+  if(!ME){var st=null;try{st=await rpc('qo_setup_status');}catch(e){}if(st&&st.needs_setup&&st.app_admin)return showSetup();return showAuth('login');}
   await enter();
  }catch(e){gate('연결에 실패했어요. 잠시 후 다시 열어주세요.<br><small class="mono">'+esc(e.message)+'</small>');}
 }
@@ -140,20 +140,30 @@ async function enter(){
   MODE=ME.kind;VIEW=MODE==='company'?'my':'dash';
   var h=(location.hash||'').slice(1);if(curNav().some(function(n){return n[0]===h;}))VIEW=h;
   document.getElementById('gate').classList.add('hide');document.getElementById('app').classList.remove('hide');
-  document.getElementById('meName').textContent=MODE==='company'?(ME.name+' · '+(ROLE[ME.role]||'')):'운영자 (대표님)';
-  document.getElementById('meOut').innerHTML=MODE==='company'?'<button class="btn sm" style="margin-top:8px;background:#1e293b;color:#e2e8f0;border-color:#334155" onclick="logout()">로그아웃</button>':'';
+  document.getElementById('meName').textContent=MODE==='company'?(ME.name+' · '+(ROLE[ME.role]||'')):((ME.name||'운영자')+' · 운영자');
+  document.getElementById('meOut').innerHTML='<button class="btn sm" style="margin-top:8px;background:#1e293b;color:#e2e8f0;border-color:#334155" onclick="logout()">로그아웃</button>';
   document.querySelector('.brand small').textContent=MODE==='company'?(ME.company_name||''):'퀵플 자동화 관리 시스템';
   if(!(await load(true))){document.getElementById('gate').classList.remove('hide');document.getElementById('app').classList.add('hide');return gate('데이터를 불러오지 못했어요. 잠시 후 다시 열어주세요.');}
   clearInterval(TIMER);TIMER=setInterval(function(){if(!document.hidden)load(false);},20000);
-  if(MODE==='company'){var idle=Date.now();['click','keydown','touchstart'].forEach(function(ev){document.addEventListener(ev,function(){idle=Date.now();},{passive:true});});setInterval(function(){if(Date.now()-idle>30*60*1000)logout('30분 동안 사용하지 않아 자동으로 로그아웃했어요');},60000);}
+  if(!window.__idleOn){window.__idleOn=1;var idle=Date.now();['click','keydown','touchstart'].forEach(function(ev){document.addEventListener(ev,function(){idle=Date.now();},{passive:true});});setInterval(function(){if(MODE&&Date.now()-idle>30*60*1000){idle=Date.now();logout('30분 동안 사용하지 않아 자동으로 로그아웃했어요');}},60000);}
 }
 async function logout(msg){try{await rpc('qo_logout');}catch(e){}clearInterval(TIMER);MODE=null;ME=null;D=null;document.getElementById('app').classList.add('hide');document.getElementById('gate').classList.remove('hide');showAuth('login',msg);}
 function gate(msg){document.getElementById('gbox').innerHTML='<div class="logo" style="margin:0 auto;width:48px;height:48px;font-size:22px">Q</div><h2>QUICKOPS</h2><p>'+msg+'</p>';}
 
+/* ── 처음 한 번: 운영자 계정 만들기 (팀플 앱 관리자 로그인 상태에서만) ── */
+function showSetup(){var box=document.getElementById('gbox');box.className='auth';
+ box.innerHTML='<div class="row"><div class="logo" style="width:36px;height:36px;font-size:17px">Q</div><div><h2>운영자 계정 만들기</h2><div class="muted" style="font-size:12px">처음 한 번만 · 대표님 전용</div></div></div>'+
+ '<div class="help" style="margin:14px 0">앞으로 QUICKOPS 운영자 화면은 <b>이 아이디·비밀번호로 로그인해야만</b> 열려요. 팀플 앱에 로그인돼 있어도 자동으로 들어가지지 않아요. 비밀번호는 대표님이 직접 정해주세요.</div>'+
+ '<div class="grid" style="gap:10px">'+fld('이름','<input id="o_name" value="문병국">')+fld('운영자 아이디','<input id="o_id" autocomplete="username" placeholder="영문 소문자·숫자 4자 이상">')+fld('비밀번호 (8자 이상)','<input id="o_pw" type="password" autocomplete="new-password">')+fld('비밀번호 확인','<input id="o_pw2" type="password" autocomplete="new-password">')+
+ '<button class="btn pri" style="padding:11px" onclick="doSetup()">운영자 계정 만들기</button><div class="err" id="o_err"></div></div>';}
+async function doSetup(){var e=document.getElementById('o_err');e.textContent='';var id=val('o_id').toLowerCase(),pw=document.getElementById('o_pw').value;
+ if(!/^[a-z0-9][a-z0-9_.-]{3,29}$/.test(id))return e.textContent='아이디는 영문 소문자·숫자로 4~30자예요';if(pw.length<8)return e.textContent='비밀번호는 8자 이상이에요';if(pw!==document.getElementById('o_pw2').value)return e.textContent='비밀번호 확인이 달라요';
+ try{ME=await rpc('qo_setup_operator',{p_id:id,p_pw:pw,p_name:val('o_name')});document.getElementById('gbox').className='box';await enter();toast('운영자 계정을 만들었어요');}catch(x){e.textContent=x.message;}}
+
 /* ── 로그인 · 가입 신청 화면 ── */
 function showAuth(tab,msg){
  var box=document.getElementById('gbox');box.className='auth';
- var h='<div class="row"><div class="logo" style="width:36px;height:36px;font-size:17px">Q</div><div><h2>QUICKOPS</h2><div class="muted" style="font-size:12px">퀵플 자동화 관리 시스템 · 가입 업체 전용</div></div></div>'+
+ var h='<div class="row"><div class="logo" style="width:36px;height:36px;font-size:17px">Q</div><div><h2>QUICKOPS</h2><div class="muted" style="font-size:12px">퀵플 자동화 관리 시스템 · 운영자·가입 업체 로그인</div></div></div>'+
   '<div class="tabs"><button class="'+(tab==='login'?'on':'')+'" onclick="showAuth(\'login\')">로그인</button><button class="'+(tab==='signup'?'on':'')+'" onclick="showAuth(\'signup\')">가입 신청</button><button class="'+(tab==='invite'?'on':'')+'" onclick="showAuth(\'invite\')">초대 코드</button></div>';
  var AGH='<div class="full agree"><b>개인정보 수집·이용 및 위탁 보관 동의 (필수)</b><br>1. 수집 항목: 업체명, 대표자·신청자 이름, 연락처, 이메일, 사업자등록번호, 업체가 입력하는 팀즈·메타어드민 로그인 정보<br>2. 이용 목적: QUICKOPS 가입 심사, 서비스 제공, 팀즈·메타어드민 자동 감지<br>3. 로그인 정보는 암호화 금고에 보관하며 감지 목적 외에 쓰지 않고, 운영팀 화면에도 비밀번호는 표시되지 않아요.<br>4. 보관 기간: 서비스 해지 시 즉시 삭제 (법령상 보관 의무가 있는 정보는 그 기간까지)<br><span class="muted">※ 정식 약관은 계약서와 함께 안내돼요.</span></div>'+
    '';
@@ -169,7 +179,7 @@ function showAuth(tab,msg){
  }else if(tab==='login'){
   h+='<div class="grid" style="gap:10px">'+fld('아이디','<input id="l_id" autocomplete="username" onkeydown="if(event.key===\'Enter\')doLogin()">')+fld('비밀번호','<input id="l_pw" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()">')+
    '<button class="btn pri" style="padding:11px" onclick="doLogin()">로그인</button><div class="err" id="l_err">'+esc(msg||'')+'</div>'+
-   '<div class="help" style="margin:0">• 가입 신청 후 <b>운영팀 승인</b>이 나야 로그인할 수 있어요.<br>• 5번 틀리면 10분 동안 잠겨요. 30분 동안 사용하지 않으면 자동으로 로그아웃돼요.<br>• 비밀번호를 잊었으면 업체 대표에게(대표는 운영팀에) 재설정을 요청해주세요.</div></div>';
+   '<div class="help" style="margin:0">• 운영자와 가입 업체 모두 여기서 로그인해요.<br>• 가입 신청 후 <b>운영팀 승인</b>이 나야 로그인할 수 있어요.<br>• 5번 틀리면 10분 동안 잠겨요. 30분 동안 사용하지 않으면 자동으로 로그아웃돼요.<br>• 비밀번호를 잊었으면 업체 대표에게(대표는 운영팀에) 재설정을 요청해주세요.</div></div>';
  }else{
   h+='<div class="fl">'+
    fld('업체명 *','<input id="s_co" placeholder="예: 소원물류">')+fld('대표자명','<input id="s_ceo">')+
