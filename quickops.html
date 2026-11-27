@@ -30,7 +30,7 @@ button,input,select{font-family:inherit;font-size:13px}
 .live{margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--ink2);font-size:12px;white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:p 2s infinite}.dot.off{background:var(--bad);animation:none}
 @keyframes p{70%{box-shadow:0 0 0 7px rgba(18,183,106,0)}0%{box-shadow:0 0 0 0 rgba(18,183,106,.5)}}
-.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;font-weight:700;color:var(--ink);cursor:pointer}
+.btn{white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;font-weight:700;color:var(--ink);cursor:pointer}
 .btn:hover{background:#f8fafc}.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}.btn.pri:hover{background:#2f4be0}
 .btn.dan{color:var(--bad);border-color:#fecdca}.btn.sm{padding:4px 9px;font-size:12px}.btn:disabled{opacity:.5;cursor:default}
 .page{padding:22px 24px 60px;max-width:1500px;width:100%}
@@ -111,7 +111,7 @@ var PAY={m:'월 결제',y:'카드 연 구독',c:'현금 1년'};
 var CNAV=[['my','🏠','우리 업체'],['mconn','🔐','로그인 계정'],['mem','👥','직원·직급'],['mpw','🔑','내 비밀번호'],['mlog','📜','변경 기록']];
 var ROLE={owner:'대표·책임자',manager:'관리자',staff:'담당자'};
 function curNav(){return MODE==='company'?CNAV:NAV;}
-var STAT={applied:['가입 신청','warn'],active:['운영 중','ok'],onboarding:['도입 준비','acc'],paused:['일시 중지','warn'],ended:['해지','unk']};
+var STAT={applied:['가입 신청','warn'],active:['운영 중','ok'],onboarding:['승인 · 운영 전','acc'],paused:['일시 중지','warn'],ended:['해지','unk']};
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function won(n){return n==null?'—':Number(n).toLocaleString('ko-KR')+'원';}
 function ago(sec){if(sec==null)return '기록 없음';sec=Math.max(0,Math.round(sec));if(sec<60)return sec+'초 전';if(sec<3600)return Math.floor(sec/60)+'분 전';if(sec<86400)return Math.floor(sec/3600)+'시간 전';return Math.floor(sec/86400)+'일 전';}
@@ -292,7 +292,7 @@ function vCo(){
  var h='<h1>업체 관리</h1><p class="subt">가입 업체를 추가하고 요금제·결제 방식을 정해요. 요금제를 바꾸면 그 업체 앱의 탭이 <b>10분 안에 자동으로</b> 바뀌어요.</p>';
  h+='<div class="card" style="margin-bottom:14px"><h3>등록 업체<span class="r"><button class="btn sm pri" onclick="coEdit(\'\')">+ 업체 추가</button></span></h3><div class="tw"><table><thead><tr><th>업체</th><th>업체 코드</th><th>기사 수</th><th>요금제</th><th>결제</th><th>청구 금액</th><th>대표 계정</th><th>상태</th><th></th></tr></thead><tbody>';
  (D.companies||[]).filter(function(c){return c.status!=='applied';}).forEach(function(c){var f=fee(c),st=STAT[c.status]||[c.status,'unk'],o=owner(c.id),nm=(SU.accounts||[]).filter(function(a){return a.company_id===c.id;}).length;
-  h+='<tr><td><b>'+esc(c.name)+'</b>'+(c.is_owner?' <span class="pill acc">본사</span>':'')+'<br><small class="muted">'+esc(c.region||'')+'</small></td><td class="mono">'+esc(c.id)+'</td><td>'+(c.drivers||'—')+'명</td><td>'+esc(plan(c.plan).name||c.plan)+'</td><td>'+PAY[c.pay]+'</td><td>'+(f?'<b>'+won(f.total)+'</b> / '+f.per+'<br><small class="muted">월 환산 '+won(f.month)+'</small>':'—')+'</td><td>'+(c.is_owner?'<span class="muted">팀플 앱 관리자</span>':o?'<div class="st"><span class="mono">'+esc(o.login_id)+'</span><small>'+(o.status==='active'?pill('ok','사용'):pill('unk','중지'))+(o.locked?' '+pill('bad','잠김'):'')+' · 계정 '+nm+'개 <a href="javascript:void(0)" onclick="acctStatus(\''+o.id+'\',\''+(o.status==='active'?'disabled':'active')+'\')">'+(o.status==='active'?'중지':'다시 사용')+'</a></small></div>':(INV[c.id]?'<div class="st"><b class="mono" style="font-size:15px;letter-spacing:2px">'+esc(INV[c.id])+'</b><small>초대 코드 · 7일 유효 · 업체 대표에게 전달</small></div>':'<button class="btn sm" onclick="mkInvite(\''+c.id+'\')">초대 코드 만들기</button>'+((SU.invites||[]).some(function(v){return v.company_id===c.id&&!v.used_at&&new Date(v.exp)>new Date();})?'<br><small class="muted">발급된 코드 있음 (다시 만들면 이전 코드는 무효)</small>':'')))+'</td><td>'+pill(st[1],st[0])+'</td><td><button class="btn sm" onclick="coEdit(\''+c.id+'\')">수정</button></td></tr>';});
+  h+='<tr><td><b>'+esc(c.name)+'</b>'+(c.is_owner?' <span class="pill acc">본사</span>':'')+'<br><small class="muted">'+esc(c.region||'')+'</small></td><td class="mono">'+esc(c.id)+'</td><td>'+(c.drivers||'—')+'명</td><td>'+esc(plan(c.plan).name||c.plan)+'</td><td>'+PAY[c.pay]+'</td><td>'+(f?(c.status==='active'?'<b>'+won(f.total)+'</b> / '+f.per+'<br><small class="muted">월 환산 '+won(f.month)+'</small>':'<span class="muted">청구 없음</span><br><small class="muted">운영 시작하면 '+won(f.total)+' / '+f.per+'</small>'):'—')+'</td><td>'+(c.is_owner?'<span class="muted">운영자 계정 (대표님)</span>':o?'<div class="st"><span class="mono">'+esc(o.login_id)+'</span><small>'+(o.status==='active'?(c.status==='active'?pill('ok','사용'):pill('acc','로그인만 가능')):pill('unk','중지'))+(o.locked?' '+pill('bad','잠김'):'')+' · 계정 '+nm+'개 <a href="javascript:void(0)" onclick="acctStatus(\''+o.id+'\',\''+(o.status==='active'?'disabled':'active')+'\')">'+(o.status==='active'?'중지':'다시 사용')+'</a></small></div>':(INV[c.id]?'<div class="st"><b class="mono" style="font-size:15px;letter-spacing:2px">'+esc(INV[c.id])+'</b><small>초대 코드 · 7일 유효 · 업체 대표에게 전달</small></div>':'<button class="btn sm" onclick="mkInvite(\''+c.id+'\')">초대 코드 만들기</button>'+((SU.invites||[]).some(function(v){return v.company_id===c.id&&!v.used_at&&new Date(v.exp)>new Date();})?'<br><small class="muted">발급된 코드 있음 (다시 만들면 이전 코드는 무효)</small>':'')))+'</td><td><div class="st">'+pill(st[1],st[0])+(c.is_owner?'':c.status==='active'?'<small><a href="javascript:void(0)" onclick="setSt(\''+c.id+'\',\'paused\')">일시 중지</a></small>':'<button class="btn sm pri" onclick="setSt(\''+c.id+'\',\'active\')">운영 시작</button>')+'</div></td><td><button class="btn sm" onclick="coEdit(\''+c.id+'\')">수정</button></td></tr>';});
  h+='</tbody></table></div></div>';
  if(EDIT!==null)h+=coForm();
  return h;
@@ -338,6 +338,7 @@ function vFeat(){
  var ov={};by(D.overrides,c.id).forEach(function(o){ov[o.feature_id]=o.enabled?'on':'off';});
  var eff=(c.cfg&&c.cfg.features)||{};
  var h='<h1>기능 설정</h1><p class="subt">업체마다 앱 탭·기능을 켜고 꺼요. 기본은 <b>요금제 따라</b>이고, 필요한 것만 <b>켜기/끄기</b>로 따로 정하면 돼요.</p>'+coTabs();
+ if(c.cfg&&c.cfg.live===false)h+='<div class="help warn"><b>'+esc(c.name)+'은(는) 아직 운영 전이에요.</b> 지금은 기사 앱에서 <b>홈·설정 말고는 전부 꺼져 있어요.</b> 아래 설정은 업체 관리에서 <b>운영 시작</b>을 누르는 순간 적용돼요.</div>';
  if(c.is_owner)h+='<div class="help warn"><b>팀플렉스는 실제 운영 앱이에요.</b> 여기서 끄면 기사 앱에서 그 탭이 <b>10분 안에</b> 사라져요. (홈·설정은 항상 켜져 있어서 앱이 막히는 일은 없어요)</div>';
  h+='<div class="card"><h3>'+esc(c.name)+' · '+esc(plan(c.plan).name)+'<span class="r">켜진 기능 '+Object.keys(eff).filter(function(k){return eff[k];}).length+' / '+(D.features||[]).length+'</span></h3><div class="tw"><table><thead><tr><th>기능</th><th>요금제 기준</th><th>설정</th><th>앱에 실제 적용</th><th>비고</th></tr></thead><tbody>';
  var last='';
@@ -348,7 +349,7 @@ function vFeat(){
   var parentOff=f.parent_id&&eff[f.parent_id]===false;
   h+='<tr class="'+(f.grp==='sub'?'sub':'')+'"><td>'+(f.grp==='sub'?'└ ':'')+'<b>'+esc(f.name)+'</b></td><td>'+(f.is_opt?pill('acc','직접 켜기'):f.is_ops?pill('unk','본인 전용'):po?pill('ok','포함'):pill('unk',f.min_plan?plan(f.min_plan).name+'부터':'미포함'))+'</td>'+
    '<td>'+(fixed?'<span class="muted">변경 불가</span>':'<div class="seg">'+(f.is_opt?[['on','켜기'],['auto','끄기']].map(function(m){var cur=(mode==='on')?'on':'auto';return '<button class="'+(cur===m[0]?'on':'')+'" onclick="setFeat(\''+f.id+'\',\''+m[0]+'\')">'+m[1]+'</button>';}):['auto','on','off'].map(function(m){return '<button class="'+(mode===m?'on':'')+'" onclick="setFeat(\''+f.id+'\',\''+m+'\')">'+{auto:'요금제 따라',on:'켜기',off:'끄기'}[m]+'</button>';})).join('')+'</div>')+'</td>'+
-   '<td>'+(eff[f.id]?pill('ok','켜짐'):pill('unk','꺼짐'))+(parentOff?' <small class="muted">(상위 탭 꺼짐)</small>':'')+'</td><td class="muted">'+note+'</td></tr>';
+   '<td>'+(eff[f.id]?pill('ok','켜짐'):(c.cfg&&c.cfg.live===false&&c.cfg.planned&&c.cfg.planned[f.id]?pill('acc','운영 시작 시 켜짐'):pill('unk','꺼짐')))+(parentOff?' <small class="muted">(상위 탭 꺼짐)</small>':'')+'</td><td class="muted">'+note+'</td></tr>';
  });
  return h+'</tbody></table></div></div>';
 }
@@ -404,16 +405,19 @@ function vApply(){
 async function approve(cid,ok){var c=co(cid);if(!confirm(ok?c.name+' 가입을 승인할까요? 신청한 아이디가 대표 계정이 돼요.':c.name+' 가입 신청을 거절할까요? 신청 내용은 삭제돼요.'))return;
  try{await rpc('qo_admin_approve',{p_company:cid,p_plan:val('ap_'+cid),p_ok:ok});toast(ok?'승인했어요. 이제 로그인할 수 있어요':'거절했어요');await load(true);}catch(e){toast('실패: '+e.message,true);}}
 var INV={};
+async function setSt(cid,st){var c=co(cid);var msg=st==='active'?c.name+'을(를) 운영 시작할까요?\n\n• 기사 앱 기능이 요금제대로 켜져요\n• 팀즈·메타 감지 대상이 돼요\n• 이 시점부터 구독료 청구 대상이 돼요':c.name+'을(를) 일시 중지할까요?\n기사 앱 기능이 홈·설정만 남고 꺼지고, 청구도 멈춰요.';if(!confirm(msg))return;
+ try{await rpc('qo_admin_set_status',{p_company:cid,p_status:st});toast(st==='active'?'운영을 시작했어요':'일시 중지했어요');await load(true);}catch(e){toast('실패: '+e.message,true);}}
 async function mkInvite(cid){var c=co(cid);if(!confirm(c.name+' 대표 계정용 초대 코드를 만들까요?\n업체 대표가 이 코드로 아이디·비밀번호를 직접 만들어요. (7일 유효)'))return;try{INV[cid]=await rpc('qo_admin_invite',{p_company:cid});render();toast('초대 코드를 만들었어요. 업체 대표에게 전달해주세요');}catch(e){toast('실패: '+e.message,true);}}
 async function acctStatus(id,st){if(st==='disabled'&&!confirm('이 계정을 사용 중지할까요? 바로 로그아웃돼요.'))return;try{await rpc('qo_admin_account_status',{p_id:id,p_status:st});toast('변경했어요');await load(true);}catch(e){toast('실패: '+e.message,true);}}
 
 /* ── 업체 전용 화면 ── */
 function vMy(){
  var c=D.company||{},cfg=D.cfg||{},ef=cfg.features||{},st=STAT[c.status]||[c.status,'unk'],pl=plan(c.plan);
- var on=(D.features||[]).filter(function(f){return ef[f.id];}),cn=D.connections||[];
+ var live=cfg.live!==false,pf=live?ef:(cfg.planned||{}),on=(D.features||[]).filter(function(f){return pf[f.id];}),cn=D.connections||[];
  var h='<h1>'+esc(c.name)+'</h1><p class="subt">'+esc(ME.name)+'님 ('+esc(ROLE[ME.role]||'')+') · 요금제·기능 변경은 운영팀에 요청해주세요.</p>';
- h+='<div class="grid g4" style="margin-bottom:14px">'+kpi('상태',pill(st[1],st[0]),c.status==='onboarding'?'운영팀이 앱을 준비하고 있어요':'')+kpi('요금제',esc(pl.name||c.plan),'월 '+won(pl.price_month)+' · VAT 별도')+kpi('사용 중인 기능',on.length+'개','아래 목록 참고')+kpi('감지 계정',cn.filter(function(x){return x.has_secret;}).length+' / 2','팀즈·메타어드민')+'</div>';
- h+='<div class="grid g2"><div class="card"><h3>사용 중인 기능</h3>'+(on.length?on.map(function(f){return '<span class="pill ok" style="margin:0 6px 6px 0">'+esc(f.name)+'</span>';}).join(''):'<p class="muted">없음</p>')+'</div>';
+ h+='<div class="grid g4" style="margin-bottom:14px">'+kpi('상태',pill(st[1],st[0]),c.status==='onboarding'?'운영팀이 앱을 준비하고 있어요':'')+kpi('요금제',esc(pl.name||c.plan),'월 '+won(pl.price_month)+' · VAT 별도')+kpi(live?'사용 중인 기능':'운영 시작 후 기능',on.length+'개',live?'아래 목록 참고':'아직 꺼져 있어요')+kpi('감지 계정',cn.filter(function(x){return x.has_secret;}).length+' / 2','팀즈·메타어드민')+'</div>';
+ if(!live)h+='<div class="help warn"><b>가입이 승인됐어요. 지금은 준비 단계예요.</b><br>로그인 계정(팀즈·메타어드민)과 직원 계정을 미리 넣어 두세요. <b>운영팀이 운영을 시작하면</b> 그때부터 기사 앱 기능·자동 감지가 켜지고 구독료가 청구돼요.</div>';
+ h+='<div class="grid g2"><div class="card"><h3>'+(live?'사용 중인 기능':'운영 시작하면 켜질 기능')+'</h3>'+(on.length?on.map(function(f){return '<span class="pill ok" style="margin:0 6px 6px 0">'+esc(f.name)+'</span>';}).join(''):'<p class="muted">없음</p>')+'</div>';
  h+='<div class="card"><h3>감지 연결</h3>'+cn.map(function(x){return row(x.kind==='teams'?'Microsoft Teams':'쿠팡 메타어드민',connPill(x));}).join('')+(ME.role!=='staff'?'<div style="margin-top:10px"><a class="btn sm" href="#mconn">로그인 계정 넣기</a></div>':'')+'</div></div>';
  return h;
 }
