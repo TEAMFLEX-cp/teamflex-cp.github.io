@@ -389,7 +389,7 @@ function vConn(){
  var h='<h1>로그인 계정</h1><p class="subt">팀즈·메타어드민 로그인 정보는 <b>각 업체의 대표·관리자가 QUICKOPS에 직접 로그인해서</b> 넣어요. 비밀번호는 암호화 금고에만 저장되고 운영자 화면에도 보이지 않아요. 여기서는 <b>입력됐는지·연결됐는지 상태만</b> 확인해요.</p>'+coTabs();
  if(c.is_owner){h+='<div class="help">팀플렉스는 대표님 업체라서 여기서 직접 넣어요. 지금 서버는 이미 로그인된 상태로 운영 중이고, 이 값은 <b>새 감지 방식 전환 때</b> 자동 재로그인에 쓰여요. 비워둬도 지금 운영에는 영향이 없어요.</div>';return h+credCards(cn,true,'saveCred');}
  h+='<div class="help warn">'+esc(c.name)+'의 로그인 정보는 업체가 직접 입력해요. 아직 비어 있으면 업체 대표에게 <b>QUICKOPS 로그인 → 로그인 계정</b>에서 넣어달라고 안내해주세요.</div>';
- return h+credCards(cn,false);
+ return h+credCards(cn,false)+teamsGuide();
 }
 async function saveCred(kind){var c=co(SELCO);var id=val('cid_'+kind),pw=document.getElementById('cpw_'+kind).value;
  if(!id&&!pw)return toast('아이디나 비밀번호를 넣어주세요',true);
@@ -432,10 +432,17 @@ function vMy(){
  h+='<div class="card"><h3>감지 연결</h3>'+cn.map(function(x){return row(x.kind==='teams'?'Microsoft Teams':'쿠팡 메타어드민',connPill(x));}).join('')+(ME.role!=='staff'?'<div style="margin-top:10px"><a class="btn sm" href="#mconn">로그인 계정 넣기</a></div>':'')+'</div></div>';
  return h;
 }
+function teamsGuide(){return '<div class="card" style="margin-top:14px"><h3>📘 팀즈 계정 준비 안내 (처음 한 번)</h3><ol style="margin:0;padding-left:20px;line-height:1.9">'+
+ '<li><b>Microsoft Teams Essentials</b>를 <b>1개만</b> 구매해요 (월 약 5,670원 + 부가세 ≈ <b>6,237원</b>). Business Standard 같은 다른 상품은 <b>필요 없어요.</b></li>'+
+ '<li>구매 수량은 꼭 <b>1</b>이에요. 2개 이상 사면 쓰지 않는 몫까지 매달 청구돼요.</li>'+
+ '<li><b>자동 결제(정기 청구)를 켜고</b>, 카드는 <b>해외 결제가 되는 카드</b>로 등록해요. 결제가 거부되면 구독이 만료돼서 <b>자동 감지가 멈춰요.</b></li>'+
+ '<li>만들어진 계정(예: <span class="mono">name@회사.onmicrosoft.com</span>)으로 <b>캠프 팀즈 방에 초대</b>를 받아요 (쿠팡 캠프 담당자에게 요청).</li>'+
+ '<li>그 <b>아이디·비밀번호를 위 칸에 넣고 “금고에 저장”</b>을 누르면 끝이에요. 연결 상태가 “연결 정상”이 되면 감지가 시작돼요.</li></ol>'+
+ '<p class="muted" style="margin:10px 0 0">메타어드민은 쿠팡에서 받은 아이디·비밀번호를 넣으면 돼요 (추가 구매 없음). 로그인할 때 2차 인증 번호가 필요해요.</p></div>';}
 function vMconn(){
  var edit=ME.role!=='staff';
  return '<h1>로그인 계정</h1><p class="subt">자동 감지에 쓸 <b>팀즈·메타어드민</b> 아이디와 비밀번호를 넣어주세요. 비밀번호는 <b>암호화 금고</b>에만 저장되고, 저장한 뒤에는 이 화면과 운영팀을 포함해 <b>누구에게도 다시 보이지 않아요</b>.</p>'+
-  (edit?'':'<div class="help warn">담당자는 상태만 볼 수 있어요. 입력은 대표·관리자가 해요.</div>')+credCards(D.connections||[],edit,'saveMyCred');
+  (edit?'':'<div class="help warn">담당자는 상태만 볼 수 있어요. 입력은 대표·관리자가 해요.</div>')+credCards(D.connections||[],edit,'saveMyCred')+teamsGuide();
 }
 async function saveMyCred(kind){var id=val('cid_'+kind),pw=document.getElementById('cpw_'+kind).value;
  if(!id&&!pw)return toast('아이디나 비밀번호를 넣어주세요',true);
