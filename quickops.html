@@ -154,8 +154,19 @@ function gate(msg){document.getElementById('gbox').innerHTML='<div class="logo" 
 function showAuth(tab,msg){
  var box=document.getElementById('gbox');box.className='auth';
  var h='<div class="row"><div class="logo" style="width:36px;height:36px;font-size:17px">Q</div><div><h2>QUICKOPS</h2><div class="muted" style="font-size:12px">퀵플 자동화 관리 시스템 · 가입 업체 전용</div></div></div>'+
-  '<div class="tabs"><button class="'+(tab==='login'?'on':'')+'" onclick="showAuth(\'login\')">로그인</button><button class="'+(tab==='signup'?'on':'')+'" onclick="showAuth(\'signup\')">가입 신청</button></div>';
- if(tab==='login'){
+  '<div class="tabs"><button class="'+(tab==='login'?'on':'')+'" onclick="showAuth(\'login\')">로그인</button><button class="'+(tab==='signup'?'on':'')+'" onclick="showAuth(\'signup\')">가입 신청</button><button class="'+(tab==='invite'?'on':'')+'" onclick="showAuth(\'invite\')">초대 코드</button></div>';
+ var AGH='<div class="full agree"><b>개인정보 수집·이용 및 위탁 보관 동의 (필수)</b><br>1. 수집 항목: 업체명, 대표자·신청자 이름, 연락처, 이메일, 사업자등록번호, 업체가 입력하는 팀즈·메타어드민 로그인 정보<br>2. 이용 목적: QUICKOPS 가입 심사, 서비스 제공, 팀즈·메타어드민 자동 감지<br>3. 로그인 정보는 암호화 금고에 보관하며 감지 목적 외에 쓰지 않고, 운영팀 화면에도 비밀번호는 표시되지 않아요.<br>4. 보관 기간: 서비스 해지 시 즉시 삭제 (법령상 보관 의무가 있는 정보는 그 기간까지)<br><span class="muted">※ 정식 약관은 계약서와 함께 안내돼요.</span></div>'+
+   '';
+ if(tab==='invite'){
+  h+='<div class="help" style="margin:0 0 12px">운영팀에게 받은 <b>초대 코드</b>로 우리 업체의 <b>대표 계정</b>을 만들어요. 아이디·비밀번호는 직접 정하고, 운영팀은 비밀번호를 알 수 없어요.</div><div class="fl">'+
+   '<div class="full">'+fld('초대 코드 *','<input id="i_code" style="text-transform:uppercase;letter-spacing:2px;font-weight:800" maxlength="8">')+'</div>'+
+   fld('이름 *','<input id="i_name">')+fld('직책','<select id="i_title"><option>대표</option><option>책임자</option></select>')+
+   fld('연락처 *','<input id="i_phone" inputmode="tel">')+fld('이메일','<input id="i_email" type="email">')+
+   fld('사용할 아이디 *','<input id="i_id" autocomplete="username" placeholder="영문 소문자·숫자 4자 이상">')+'<div></div>'+
+   fld('비밀번호 *','<input id="i_pw" type="password" autocomplete="new-password" placeholder="8자 이상">')+fld('비밀번호 확인 *','<input id="i_pw2" type="password" autocomplete="new-password">')+
+   AGH+'<label class="full row"><input type="checkbox" id="i_agree"> 위 내용에 동의해요</label>'+
+   '<button class="btn pri full" style="padding:11px" onclick="doInvite()">대표 계정 만들기</button><div class="err full" id="i_err"></div></div>';
+ }else if(tab==='login'){
   h+='<div class="grid" style="gap:10px">'+fld('아이디','<input id="l_id" autocomplete="username" onkeydown="if(event.key===\'Enter\')doLogin()">')+fld('비밀번호','<input id="l_pw" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()">')+
    '<button class="btn pri" style="padding:11px" onclick="doLogin()">로그인</button><div class="err" id="l_err">'+esc(msg||'')+'</div>'+
    '<div class="help" style="margin:0">• 가입 신청 후 <b>운영팀 승인</b>이 나야 로그인할 수 있어요.<br>• 5번 틀리면 10분 동안 잠겨요. 30분 동안 사용하지 않으면 자동으로 로그아웃돼요.<br>• 비밀번호를 잊었으면 업체 대표에게(대표는 운영팀에) 재설정을 요청해주세요.</div></div>';
@@ -178,6 +189,14 @@ function showAuth(tab,msg){
 }
 async function doLogin(){var e=document.getElementById('l_err');e.textContent='';var id=val('l_id'),pw=document.getElementById('l_pw').value;if(!id||!pw){e.textContent='아이디와 비밀번호를 넣어주세요';return;}
  try{var r=await rpc('qo_login',{p_id:id,p_pw:pw});if(r&&r.err){e.textContent=r.err;return;}ME=r;document.getElementById('gbox').className='box';await enter();}catch(x){e.textContent='로그인 실패: '+x.message;}}
+async function doInvite(){var e=document.getElementById('i_err');e.textContent='';
+ var p={invite:val('i_code').toUpperCase(),contact_name:val('i_name'),contact_title:val('i_title'),phone:val('i_phone'),email:val('i_email'),login_id:val('i_id').toLowerCase(),password:document.getElementById('i_pw').value,agree:document.getElementById('i_agree').checked};
+ if(!p.invite||!p.contact_name||!p.phone)return e.textContent='* 표시 항목을 모두 넣어주세요';
+ if(!/^[a-z0-9][a-z0-9_.-]{3,29}$/.test(p.login_id))return e.textContent='아이디는 영문 소문자·숫자로 4~30자예요';
+ if(p.password.length<8)return e.textContent='비밀번호는 8자 이상이에요';
+ if(p.password!==document.getElementById('i_pw2').value)return e.textContent='비밀번호 확인이 달라요';
+ if(!p.agree)return e.textContent='동의에 체크해주세요';
+ try{await rpc('qo_join_invite',{p:p});showAuth('login','대표 계정이 만들어졌어요. 바로 로그인하세요');document.getElementById('l_err').style.color='var(--ok)';document.getElementById('l_id').value=p.login_id;}catch(x){e.textContent=x.message;}}
 async function doSignup(){var e=document.getElementById('s_err');e.textContent='';
  var p={company_name:val('s_co'),ceo_name:val('s_ceo'),contact_name:val('s_name'),contact_title:val('s_title'),phone:val('s_phone'),email:val('s_email'),biz_no:val('s_biz'),region:val('s_region'),drivers:val('s_drv'),plan:val('s_plan'),memo:val('s_memo'),login_id:val('s_id').toLowerCase(),password:document.getElementById('s_pw').value,agree:document.getElementById('s_agree').checked,hp:val('s_hp')};
  if(!p.company_name||!p.contact_name||!p.phone)return e.textContent='* 표시 항목을 모두 넣어주세요';
@@ -263,7 +282,7 @@ function vCo(){
  var h='<h1>업체 관리</h1><p class="subt">가입 업체를 추가하고 요금제·결제 방식을 정해요. 요금제를 바꾸면 그 업체 앱의 탭이 <b>10분 안에 자동으로</b> 바뀌어요.</p>';
  h+='<div class="card" style="margin-bottom:14px"><h3>등록 업체<span class="r"><button class="btn sm pri" onclick="coEdit(\'\')">+ 업체 추가</button></span></h3><div class="tw"><table><thead><tr><th>업체</th><th>업체 코드</th><th>기사 수</th><th>요금제</th><th>결제</th><th>청구 금액</th><th>대표 계정</th><th>상태</th><th></th></tr></thead><tbody>';
  (D.companies||[]).filter(function(c){return c.status!=='applied';}).forEach(function(c){var f=fee(c),st=STAT[c.status]||[c.status,'unk'],o=owner(c.id),nm=(SU.accounts||[]).filter(function(a){return a.company_id===c.id;}).length;
-  h+='<tr><td><b>'+esc(c.name)+'</b>'+(c.is_owner?' <span class="pill acc">본사</span>':'')+'<br><small class="muted">'+esc(c.region||'')+'</small></td><td class="mono">'+esc(c.id)+'</td><td>'+(c.drivers||'—')+'명</td><td>'+esc(plan(c.plan).name||c.plan)+'</td><td>'+PAY[c.pay]+'</td><td>'+(f?'<b>'+won(f.total)+'</b> / '+f.per+'<br><small class="muted">월 환산 '+won(f.month)+'</small>':'—')+'</td><td>'+(c.is_owner?'<span class="muted">팀플 앱 관리자</span>':o?'<div class="st"><span class="mono">'+esc(o.login_id)+'</span><small>'+(o.status==='active'?pill('ok','사용'):pill('unk','중지'))+(o.locked?' '+pill('bad','잠김'):'')+' · 계정 '+nm+'개 <a href="javascript:void(0)" onclick="acctStatus(\''+o.id+'\',\''+(o.status==='active'?'disabled':'active')+'\')">'+(o.status==='active'?'중지':'다시 사용')+'</a></small></div>':'<span class="muted">없음 (직접 등록 업체)</span>')+'</td><td>'+pill(st[1],st[0])+'</td><td><button class="btn sm" onclick="coEdit(\''+c.id+'\')">수정</button></td></tr>';});
+  h+='<tr><td><b>'+esc(c.name)+'</b>'+(c.is_owner?' <span class="pill acc">본사</span>':'')+'<br><small class="muted">'+esc(c.region||'')+'</small></td><td class="mono">'+esc(c.id)+'</td><td>'+(c.drivers||'—')+'명</td><td>'+esc(plan(c.plan).name||c.plan)+'</td><td>'+PAY[c.pay]+'</td><td>'+(f?'<b>'+won(f.total)+'</b> / '+f.per+'<br><small class="muted">월 환산 '+won(f.month)+'</small>':'—')+'</td><td>'+(c.is_owner?'<span class="muted">팀플 앱 관리자</span>':o?'<div class="st"><span class="mono">'+esc(o.login_id)+'</span><small>'+(o.status==='active'?pill('ok','사용'):pill('unk','중지'))+(o.locked?' '+pill('bad','잠김'):'')+' · 계정 '+nm+'개 <a href="javascript:void(0)" onclick="acctStatus(\''+o.id+'\',\''+(o.status==='active'?'disabled':'active')+'\')">'+(o.status==='active'?'중지':'다시 사용')+'</a></small></div>':(INV[c.id]?'<div class="st"><b class="mono" style="font-size:15px;letter-spacing:2px">'+esc(INV[c.id])+'</b><small>초대 코드 · 7일 유효 · 업체 대표에게 전달</small></div>':'<button class="btn sm" onclick="mkInvite(\''+c.id+'\')">초대 코드 만들기</button>'+((SU.invites||[]).some(function(v){return v.company_id===c.id&&!v.used_at&&new Date(v.exp)>new Date();})?'<br><small class="muted">발급된 코드 있음 (다시 만들면 이전 코드는 무효)</small>':'')))+'</td><td>'+pill(st[1],st[0])+'</td><td><button class="btn sm" onclick="coEdit(\''+c.id+'\')">수정</button></td></tr>';});
  h+='</tbody></table></div></div>';
  if(EDIT!==null)h+=coForm();
  return h;
@@ -374,6 +393,8 @@ function vApply(){
 }
 async function approve(cid,ok){var c=co(cid);if(!confirm(ok?c.name+' 가입을 승인할까요? 신청한 아이디가 대표 계정이 돼요.':c.name+' 가입 신청을 거절할까요? 신청 내용은 삭제돼요.'))return;
  try{await rpc('qo_admin_approve',{p_company:cid,p_plan:val('ap_'+cid),p_ok:ok});toast(ok?'승인했어요. 이제 로그인할 수 있어요':'거절했어요');await load(true);}catch(e){toast('실패: '+e.message,true);}}
+var INV={};
+async function mkInvite(cid){var c=co(cid);if(!confirm(c.name+' 대표 계정용 초대 코드를 만들까요?\n업체 대표가 이 코드로 아이디·비밀번호를 직접 만들어요. (7일 유효)'))return;try{INV[cid]=await rpc('qo_admin_invite',{p_company:cid});render();toast('초대 코드를 만들었어요. 업체 대표에게 전달해주세요');}catch(e){toast('실패: '+e.message,true);}}
 async function acctStatus(id,st){if(st==='disabled'&&!confirm('이 계정을 사용 중지할까요? 바로 로그아웃돼요.'))return;try{await rpc('qo_admin_account_status',{p_id:id,p_status:st});toast('변경했어요');await load(true);}catch(e){toast('실패: '+e.message,true);}}
 
 /* ── 업체 전용 화면 ── */
