@@ -105,10 +105,10 @@ td{padding:10px;border-bottom:1px solid var(--line2);vertical-align:middle}tr:la
 'use strict';
 var SB_URL='https://czpinyfirgvkhdfnvkls.supabase.co', SB_KEY='sb_publishable_pRqR_NjX5quStpY26IjHfw_YQAhtwoN';
 var sb=null, D=null, VIEW='dash', SELCO=null, LAST=0, TIMER=null, MODE=null, ME=null, SU={profiles:[],accounts:[]};
-var NAV=[['dash','📊','관제'],['co','🏢','업체 관리'],['apply','📝','가입 신청'],['feat','🧩','기능 설정'],['conn','🔐','로그인 계정'],['brand','🎨','로고·아이콘'],['plan','💳','요금제'],['setl','🧾','정산 연동'],['s3','🛰️','새 감지 전환'],['log','📜','변경 기록']];
+var NAV=[['dash','📊','관제'],['co','🏢','업체 관리'],['apply','📝','가입 신청'],['feat','🧩','기능 설정'],['conn','🔐','로그인 계정'],['brand','🎨','로고·아이콘'],['plan','💳','요금제'],['setl','🧾','정산 연동'],['s3','🛰️','새 감지 전환'],['acct','👤','계정 관리'],['log','📜','변경 기록'],['mpw','🔑','내 계정']];
 var GRP={nav:'앱 하단 탭',sub:'탭 안의 세부 기능',home:'홈 화면 기능',adm:'관리자 메뉴'};
 var PAY={m:'월 결제',y:'카드 연 구독',c:'현금 1년'};
-var CNAV=[['my','🏠','우리 업체'],['mconn','🔐','로그인 계정'],['mem','👥','직원·직급'],['mpw','🔑','내 비밀번호'],['mlog','📜','변경 기록']];
+var CNAV=[['my','🏠','우리 업체'],['mconn','🔐','로그인 계정'],['mem','👥','직원·직급'],['mpw','🔑','내 계정'],['mlog','📜','변경 기록']];
 var ROLE={owner:'대표·책임자',manager:'관리자',staff:'담당자'};
 function curNav(){return MODE==='company'?CNAV:NAV;}
 var STAT={applied:['가입 신청','warn'],active:['운영 중','ok'],onboarding:['승인 · 운영 전','acc'],paused:['일시 중지','warn'],ended:['해지','unk']};
@@ -122,6 +122,14 @@ function plan(code){return (D.plans||[]).find(function(p){return p.code===code;}
 function co(id){return (D.companies||[]).find(function(c){return c.id===id;});}
 function by(arr,id){return (arr||[]).filter(function(x){return x.company_id===id;});}
 function fee(c){var p=plan(c.plan);if(!p.price_month)return null;if(c.pay==='y')return {total:p.price_month*p.annual_months_paid,per:'연',month:Math.round(p.price_month*p.annual_months_paid/12)};if(c.pay==='c')return {total:p.price_month*p.cash_months_paid,per:'1년',month:Math.round(p.price_month*p.cash_months_paid/12)};return {total:p.price_month,per:'월',month:p.price_month};}
+/* ── 결제일 계산: 운영 중인 업체만. 월 결제는 매달 청구일, 연·현금은 운영 시작일 기준 1년마다 ── */
+function kstToday(){var n=new Date(Date.now()+9*3600e3);return new Date(Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate()));}
+function nextBill(c){if(!c||c.is_owner||c.status!=='active')return null;var t=kstToday(),st=c.started_at?new Date(new Date(c.started_at).getTime()+9*3600e3):t;
+ var dim=function(y,m){return new Date(Date.UTC(y,m+1,0)).getUTCDate();},d;
+ if(c.pay==='m'){var day=c.bill_day||st.getUTCDate();d=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),Math.min(day,dim(t.getUTCFullYear(),t.getUTCMonth()))));if(d<t){var y=t.getUTCFullYear(),m=t.getUTCMonth()+1;if(m>11){m=0;y++;}d=new Date(Date.UTC(y,m,Math.min(day,dim(y,m))));}}
+ else{var y2=t.getUTCFullYear();d=new Date(Date.UTC(y2,st.getUTCMonth(),Math.min(st.getUTCDate(),dim(y2,st.getUTCMonth()))));if(d<=st)d=new Date(Date.UTC(y2+1,st.getUTCMonth(),Math.min(st.getUTCDate(),dim(y2+1,st.getUTCMonth()))));if(d<t)d=new Date(Date.UTC(y2+1,st.getUTCMonth(),Math.min(st.getUTCDate(),dim(y2+1,st.getUTCMonth()))));}
+ var left=Math.round((d-t)/864e5),f=fee(c);return {date:d,left:left,label:(d.getUTCMonth()+1)+'월 '+d.getUTCDate()+'일',amount:f?f.total:null,per:f?f.per:''};}
+function dday(n){return n===0?'오늘':'D-'+n;}
 async function rpc(fn,args){var r=await sb.rpc(fn,args||{});if(r.error)throw new Error(r.error.message);return r.data;}
 
 /* ── 시작: 운영자(대표님)는 팀플 앱 관리자 로그인 그대로, 가입 업체는 QUICKOPS 아이디로 로그인 ── */
@@ -137,7 +145,7 @@ async function boot(){
  }catch(e){gate('연결에 실패했어요. 잠시 후 다시 열어주세요.<br><small class="mono">'+esc(e.message)+'</small>');}
 }
 async function enter(){
-  MODE=ME.kind;VIEW=MODE==='company'?'my':'dash';
+  MODE=ME.kind;VIEW=MODE==='company'?'my':'dash';if(ME.must_change)location.hash='mpw';
   var h=(location.hash||'').slice(1);if(curNav().some(function(n){return n[0]===h;}))VIEW=h;
   document.getElementById('gate').classList.add('hide');document.getElementById('app').classList.remove('hide');
   document.getElementById('meName').textContent=MODE==='company'?(ME.name+' · '+(ROLE[ME.role]||'')):((ME.name||'운영자')+' · 운영자');
@@ -165,7 +173,7 @@ function showAuth(tab,msg){
  var box=document.getElementById('gbox');box.className='auth';
  var h='<div class="row"><div class="logo" style="width:36px;height:36px;font-size:17px">Q</div><div><h2>QUICKOPS</h2><div class="muted" style="font-size:12px">퀵플 자동화 관리 시스템 · 운영자·가입 업체 로그인</div></div></div>'+
   '<div class="tabs"><button class="'+(tab==='login'?'on':'')+'" onclick="showAuth(\'login\')">로그인</button><button class="'+(tab==='signup'?'on':'')+'" onclick="showAuth(\'signup\')">가입 신청</button><button class="'+(tab==='invite'?'on':'')+'" onclick="showAuth(\'invite\')">초대 코드</button></div>';
- var AGH='<div class="full agree"><b>개인정보 수집·이용 및 위탁 보관 동의 (필수)</b><br>1. 수집 항목: 업체명, 대표자·신청자 이름, 연락처, 이메일, 사업자등록번호, 업체가 입력하는 팀즈·메타어드민 로그인 정보<br>2. 이용 목적: QUICKOPS 가입 심사, 서비스 제공, 팀즈·메타어드민 자동 감지<br>3. 로그인 정보는 암호화 금고에 보관하며 감지 목적 외에 쓰지 않고, 운영팀 화면에도 비밀번호는 표시되지 않아요.<br>4. 보관 기간: 서비스 해지 시 즉시 삭제 (법령상 보관 의무가 있는 정보는 그 기간까지)<br><span class="muted">※ 정식 약관은 계약서와 함께 안내돼요.</span></div>'+
+ var AGH='<div class="full agree"><b>개인정보 수집·이용 및 위탁 보관 동의 (필수)</b><br>1. 수집 항목: 업체명, 대표자·신청자 이름, 연락처, 이메일, 사업자등록번호, 업체가 입력하는 팀즈·메타어드민 로그인 정보<br>2. 이용 목적: QUICKOPS 가입 심사, 서비스 제공, 팀즈·메타어드민 자동 감지<br>3. 팀즈·메타어드민 로그인 정보는 암호화 금고에 보관하며 감지 목적 외에 쓰지 않고, 운영팀 화면에도 표시되지 않아요.<br>3-1. QUICKOPS 계정 비밀번호는 분실 대응을 위해 운영팀이 확인·초기화할 수 있어요 (확인할 때마다 기록이 남아요).<br>4. 보관 기간: 서비스 해지 시 즉시 삭제 (법령상 보관 의무가 있는 정보는 그 기간까지)<br><span class="muted">※ 정식 약관은 계약서와 함께 안내돼요.</span></div>'+
    '';
  if(tab==='invite'){
   h+='<div class="help" style="margin:0 0 12px">운영팀에게 받은 <b>초대 코드</b>로 우리 업체의 <b>대표 계정</b>을 만들어요. 아이디·비밀번호는 직접 정하고, 운영팀은 비밀번호를 알 수 없어요.</div><div class="fl">'+
@@ -178,7 +186,7 @@ function showAuth(tab,msg){
    '<button class="btn pri full" style="padding:11px" onclick="doInvite()">대표 계정 만들기</button><div class="err full" id="i_err"></div></div>';
  }else if(tab==='login'){
   h+='<div class="grid" style="gap:10px">'+fld('아이디','<input id="l_id" autocomplete="username" onkeydown="if(event.key===\'Enter\')doLogin()">')+fld('비밀번호','<input id="l_pw" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doLogin()">')+
-   '<button class="btn pri" style="padding:11px" onclick="doLogin()">로그인</button><div class="err" id="l_err">'+esc(msg||'')+'</div>'+
+   '<button class="btn pri" style="padding:11px" onclick="doLogin()">로그인</button>'+(bioSaved()?'<button class="btn" style="padding:11px" onclick="doBio()">👆 지문·얼굴로 로그인 <span class="muted">('+esc(bioSaved().login_id)+')</span></button>':'')+'<div class="err" id="l_err">'+esc(msg||'')+'</div>'+
    '<div class="help" style="margin:0">• 운영자와 가입 업체 모두 여기서 로그인해요.<br>• 가입 신청 후 <b>운영팀 승인</b>이 나야 로그인할 수 있어요.<br>• 5번 틀리면 10분 동안 잠겨요. 30분 동안 사용하지 않으면 자동으로 로그아웃돼요.<br>• 비밀번호를 잊었으면 업체 대표에게(대표는 운영팀에) 재설정을 요청해주세요.</div></div>';
  }else{
   h+='<div class="fl">'+
@@ -190,7 +198,7 @@ function showAuth(tab,msg){
    '<div class="full">'+fld('문의·요청 사항','<input id="s_memo" maxlength="300">')+'</div>'+
    fld('사용할 아이디 *','<input id="s_id" autocomplete="username" placeholder="영문 소문자·숫자 4자 이상">')+'<div></div>'+
    fld('비밀번호 *','<input id="s_pw" type="password" autocomplete="new-password" placeholder="8자 이상">')+fld('비밀번호 확인 *','<input id="s_pw2" type="password" autocomplete="new-password">')+
-   '<div class="full agree"><b>개인정보 수집·이용 및 위탁 보관 동의 (필수)</b><br>1. 수집 항목: 업체명, 대표자·신청자 이름, 연락처, 이메일, 사업자등록번호, 업체가 입력하는 팀즈·메타어드민 로그인 정보<br>2. 이용 목적: QUICKOPS 가입 심사, 서비스 제공, 팀즈·메타어드민 자동 감지<br>3. 로그인 정보는 암호화 금고에 보관하며 감지 목적 외에 쓰지 않고, 운영팀 화면에도 비밀번호는 표시되지 않아요.<br>4. 보관 기간: 서비스 해지 시 즉시 삭제 (법령상 보관 의무가 있는 정보는 그 기간까지)<br><span class="muted">※ 정식 약관은 계약서와 함께 안내돼요.</span></div>'+
+   '<div class="full agree"><b>개인정보 수집·이용 및 위탁 보관 동의 (필수)</b><br>1. 수집 항목: 업체명, 대표자·신청자 이름, 연락처, 이메일, 사업자등록번호, 업체가 입력하는 팀즈·메타어드민 로그인 정보<br>2. 이용 목적: QUICKOPS 가입 심사, 서비스 제공, 팀즈·메타어드민 자동 감지<br>3. 팀즈·메타어드민 로그인 정보는 암호화 금고에 보관하며 감지 목적 외에 쓰지 않고, 운영팀 화면에도 표시되지 않아요.<br>3-1. QUICKOPS 계정 비밀번호는 분실 대응을 위해 운영팀이 확인·초기화할 수 있어요 (확인할 때마다 기록이 남아요).<br>4. 보관 기간: 서비스 해지 시 즉시 삭제 (법령상 보관 의무가 있는 정보는 그 기간까지)<br><span class="muted">※ 정식 약관은 계약서와 함께 안내돼요.</span></div>'+
    '<label class="full row"><input type="checkbox" id="s_agree"> 위 내용에 동의해요</label>'+
    '<div class="hp"><input id="s_hp" tabindex="-1" autocomplete="off"></div>'+
    '<button class="btn pri full" style="padding:11px" onclick="doSignup()">가입 신청하기</button><div class="err full" id="s_err"></div></div>';
@@ -216,7 +224,7 @@ async function doSignup(){var e=document.getElementById('s_err');e.textContent='
  if(!p.agree)return e.textContent='동의에 체크해주세요';
  try{await rpc('qo_signup',{p:p});document.getElementById('gbox').innerHTML='<div style="text-align:center;padding:10px"><div style="font-size:40px">✅</div><h2>가입 신청이 접수됐어요</h2><p class="muted" style="line-height:1.7">운영팀이 확인 후 승인하면 <b>'+esc(p.login_id)+'</b> 아이디로 로그인할 수 있어요.<br>승인되면 연락드려요.</p><button class="btn pri" onclick="showAuth(\'login\')">로그인 화면으로</button></div>';}
  catch(x){e.textContent=x.message;}}
-window.addEventListener('hashchange',function(){if(!MODE)return;var h=location.hash.slice(1);if(h&&h!==VIEW&&curNav().some(function(n){return n[0]===h;})){VIEW=h;render();}});
+window.addEventListener('hashchange',function(){if(!MODE)return;var h=location.hash.slice(1);if(ME&&ME.must_change&&h!=='mpw'){toast('먼저 비밀번호를 새로 바꿔주세요',true);location.hash='mpw';return;}if(h&&h!==VIEW&&curNav().some(function(n){return n[0]===h;})){VIEW=h;render();}});
 
 async function load(force){
  try{
@@ -233,7 +241,7 @@ function render(){
  renderNav();
  document.getElementById('crumb').textContent=(curNav().find(function(n){return n[0]===VIEW;})||[])[2]||'';
  var me=(D.audit||[])[0];document.getElementById('meAt').textContent='데이터 '+new Date(D.now).toLocaleString('ko-KR');
- var f=MODE==='company'?({my:vMy,mconn:vMconn,mem:vMem,mpw:vMpw,mlog:vMlog}[VIEW]||vMy):({dash:vDash,co:vCo,apply:vApply,feat:vFeat,conn:vConn,brand:vBrand,plan:vPlan,setl:vSetl,s3:vS3,log:vLog}[VIEW]||vDash);
+ var f=MODE==='company'?({my:vMy,mconn:vMconn,mem:vMem,mpw:vMpw,mlog:vMlog}[VIEW]||vMy):({mpw:vMpw,acct:vAcct,dash:vDash,co:vCo,apply:vApply,feat:vFeat,conn:vConn,brand:vBrand,plan:vPlan,setl:vSetl,s3:vS3,log:vLog}[VIEW]||vDash);
  var y=document.querySelector('.main').scrollTop;
  document.getElementById('page').innerHTML=f();
  document.querySelector('.main').scrollTop=y;
@@ -259,12 +267,14 @@ function vDash(){
   kpi('관리 기사',D.drivers+'명','팀플렉스 승인 기사 기준')+
   kpi('오늘 팀즈 처리',(td.processed!=null?td.processed:'—')+'건','기사 알림 '+(td.pushed!=null?td.pushed:'—')+'건 발송')+
   kpi('월 예상 구독료',won(mrr),'운영 중 업체 · VAT 별도 · 본사 포함')+'</div>';
+ var due=cs.map(function(c){return {c:c,b:nextBill(c)};}).filter(function(x){return x.b&&x.b.left<=7;}).sort(function(a,b){return a.b.left-b.b.left;});
+ if(due.length)h+='<div class="card" style="margin-bottom:14px;border-color:#fedf89;background:var(--warnbg)"><h3>💳 결제 예정 (7일 이내)<span class="r">업체 화면에도 매일 안내돼요</span></h3>'+due.map(function(x){return row('<b>'+esc(x.c.name)+'</b> · '+PAY[x.c.pay],'<span>'+x.b.label+' <span class="pill '+(x.b.left<=1?'bad':'warn')+'">'+dday(x.b.left)+'</span> · '+won(x.b.amount)+'</span>');}).join('')+'</div>';
  h+='<div class="card" style="margin-bottom:14px"><h3>업체별 상태<span class="r">업체 '+cs.length+'곳</span></h3><div class="tw"><table><thead><tr><th>업체</th><th>요금제</th><th>팀즈 감지</th><th>신선(메타)</th><th>팀즈 로그인</th><th>메타 로그인</th><th>새 감지(병행)</th><th>오늘 인입·요청·공지</th><th>정산</th></tr></thead><tbody>';
  cs.forEach(function(c){
   var own=c.is_owner,cn=by(D.connections,c.id),t=cn.find(function(x){return x.kind==='teams';}),m=cn.find(function(x){return x.kind==='meta';}),sl=by(D.settlement,c.id)[0];
   var st=STAT[c.status]||[c.status,'unk'];
   var hbc=ndHb(c.id);
-  h+='<tr><td><div class="st"><b>'+esc(c.name)+(own?' <span class="pill acc">본사</span>':'')+'</b><small>'+esc(c.region||'')+' · '+pill(st[1],st[0])+'</small></div></td>'+
+  h+='<tr><td><div class="st"><b>'+esc(c.name)+(own?' <span class="pill acc">본사</span>':'')+'</b><small>'+(c.region?esc(c.region)+' · ':'')+pill(st[1],st[0])+'</small></div></td>'+
    '<td>'+esc(plan(c.plan).name||c.plan)+'</td>'+
    '<td>'+(own?'<div class="st">'+pill(pr.poller?'ok':ps.cls==='unk'?'unk':'bad',pr.poller?'작동 중':'확인 필요')+'<small>'+ago(ps.a)+'</small></div>':'<span class="muted">도입 후 표시</span>')+'</td>'+
    '<td>'+(own?'<div class="st">'+pill(pr.fresh?'ok':'bad',pr.fresh?'작동 중':'확인 필요')+'</div>':'<span class="muted">—</span>')+'</td>'+
@@ -292,7 +302,7 @@ function vCo(){
  var h='<h1>업체 관리</h1><p class="subt">가입 업체를 추가하고 요금제·결제 방식을 정해요. 요금제를 바꾸면 그 업체 앱의 탭이 <b>10분 안에 자동으로</b> 바뀌어요.</p>';
  h+='<div class="card" style="margin-bottom:14px"><h3>등록 업체<span class="r"><button class="btn sm pri" onclick="coEdit(\'\')">+ 업체 추가</button></span></h3><div class="tw"><table><thead><tr><th>업체</th><th>업체 코드</th><th>기사 수</th><th>요금제</th><th>결제</th><th>청구 금액</th><th>대표 계정</th><th>상태</th><th></th></tr></thead><tbody>';
  (D.companies||[]).filter(function(c){return c.status!=='applied';}).forEach(function(c){var f=fee(c),st=STAT[c.status]||[c.status,'unk'],o=owner(c.id),nm=(SU.accounts||[]).filter(function(a){return a.company_id===c.id;}).length;
-  h+='<tr><td><b>'+esc(c.name)+'</b>'+(c.is_owner?' <span class="pill acc">본사</span>':'')+'<br><small class="muted">'+esc(c.region||'')+'</small></td><td class="mono">'+esc(c.id)+'</td><td>'+(c.drivers||'—')+'명</td><td>'+esc(plan(c.plan).name||c.plan)+'</td><td>'+PAY[c.pay]+'</td><td>'+(f?(c.status==='active'?'<b>'+won(f.total)+'</b> / '+f.per+'<br><small class="muted">월 환산 '+won(f.month)+'</small>':'<span class="muted">청구 없음</span><br><small class="muted">운영 시작하면 '+won(f.total)+' / '+f.per+'</small>'):'—')+'</td><td>'+(c.is_owner?'<span class="muted">운영자 계정 (대표님)</span>':o?'<div class="st"><span class="mono">'+esc(o.login_id)+'</span><small>'+(o.status==='active'?(c.status==='active'?pill('ok','사용'):pill('acc','로그인만 가능')):pill('unk','중지'))+(o.locked?' '+pill('bad','잠김'):'')+' · 계정 '+nm+'개 <a href="javascript:void(0)" onclick="acctStatus(\''+o.id+'\',\''+(o.status==='active'?'disabled':'active')+'\')">'+(o.status==='active'?'중지':'다시 사용')+'</a></small></div>':(INV[c.id]?'<div class="st"><b class="mono" style="font-size:15px;letter-spacing:2px">'+esc(INV[c.id])+'</b><small>초대 코드 · 7일 유효 · 업체 대표에게 전달</small></div>':'<button class="btn sm" onclick="mkInvite(\''+c.id+'\')">초대 코드 만들기</button>'+((SU.invites||[]).some(function(v){return v.company_id===c.id&&!v.used_at&&new Date(v.exp)>new Date();})?'<br><small class="muted">발급된 코드 있음 (다시 만들면 이전 코드는 무효)</small>':'')))+'</td><td><div class="st">'+pill(st[1],st[0])+(c.is_owner?'':c.status==='active'?'<small><a href="javascript:void(0)" onclick="setSt(\''+c.id+'\',\'paused\')">일시 중지</a></small>':'<button class="btn sm pri" onclick="setSt(\''+c.id+'\',\'active\')">운영 시작</button>')+'</div></td><td><button class="btn sm" onclick="coEdit(\''+c.id+'\')">수정</button></td></tr>';});
+  h+='<tr><td><b>'+esc(c.name)+'</b>'+(c.is_owner?' <span class="pill acc">본사</span>':'')+'<br><small class="muted">'+esc(c.region||'')+'</small></td><td class="mono">'+esc(c.id)+'</td><td>'+(c.drivers||'—')+'명</td><td>'+esc(plan(c.plan).name||c.plan)+'</td><td>'+PAY[c.pay]+'</td><td>'+(f?(c.status==='active'?'<b>'+won(f.total)+'</b> / '+f.per+'<br><small class="muted">'+(nextBill(c)?'다음 결제 '+nextBill(c).label+' ('+dday(nextBill(c).left)+')':'월 환산 '+won(f.month))+'</small>':'<span class="muted">청구 없음</span><br><small class="muted">운영 시작하면 '+won(f.total)+' / '+f.per+'</small>'):'—')+'</td><td>'+(c.is_owner?'<span class="muted">운영자 계정 (대표님)</span>':o?'<div class="st"><span class="mono">'+esc(o.login_id)+'</span><small>'+(o.status==='active'?(c.status==='active'?pill('ok','사용'):pill('acc','로그인만 가능')):pill('unk','중지'))+(o.locked?' '+pill('bad','잠김'):'')+' · 계정 '+nm+'개 · '+acctBtns(o)+' · <a href="javascript:void(0)" onclick="acctStatus(\''+o.id+'\',\''+(o.status==='active'?'disabled':'active')+'\')">'+(o.status==='active'?'중지':'다시 사용')+'</a></small></div>':(INV[c.id]?'<div class="st"><b class="mono" style="font-size:15px;letter-spacing:2px">'+esc(INV[c.id])+'</b><small>초대 코드 · 7일 유효 · 업체 대표에게 전달</small></div>':'<button class="btn sm" onclick="mkInvite(\''+c.id+'\')">초대 코드 만들기</button>'+((SU.invites||[]).some(function(v){return v.company_id===c.id&&!v.used_at&&new Date(v.exp)>new Date();})?'<br><small class="muted">발급된 코드 있음 (다시 만들면 이전 코드는 무효)</small>':'')))+'</td><td><div class="st">'+pill(st[1],st[0])+(c.is_owner?'':c.status==='active'?'<small><a href="javascript:void(0)" onclick="setSt(\''+c.id+'\',\'paused\')">일시 중지</a></small>':'<button class="btn sm pri" onclick="setSt(\''+c.id+'\',\'active\')">운영 시작</button>')+'</div></td><td><button class="btn sm" onclick="coEdit(\''+c.id+'\')">수정</button></td></tr>';});
  h+='</tbody></table></div></div>';
  if(EDIT!==null)h+=coForm();
  return h;
@@ -416,6 +426,7 @@ function vMy(){
  var live=cfg.live!==false,pf=live?ef:(cfg.planned||{}),on=(D.features||[]).filter(function(f){return pf[f.id];}),cn=D.connections||[];
  var h='<h1>'+esc(c.name)+'</h1><p class="subt">'+esc(ME.name)+'님 ('+esc(ROLE[ME.role]||'')+') · 요금제·기능 변경은 운영팀에 요청해주세요.</p>';
  h+='<div class="grid g4" style="margin-bottom:14px">'+kpi('상태',pill(st[1],st[0]),c.status==='onboarding'?'운영팀이 앱을 준비하고 있어요':'')+kpi('요금제',esc(pl.name||c.plan),'월 '+won(pl.price_month)+' · VAT 별도')+kpi(live?'사용 중인 기능':'운영 시작 후 기능',on.length+'개',live?'아래 목록 참고':'아직 꺼져 있어요')+kpi('감지 계정',cn.filter(function(x){return x.has_secret;}).length+' / 2','팀즈·메타어드민')+'</div>';
+ var nb=nextBill(c);if(live&&nb&&nb.left<=7)h+='<div class="help warn" style="font-size:14px">💳 <b>다음 결제일은 '+nb.label+' ('+dday(nb.left)+')이에요.</b> 결제 금액 '+won(nb.amount)+' ('+PAY[c.pay]+', VAT 별도). 결제일까지 매일 알려드려요.</div>';
  if(!live)h+='<div class="help warn"><b>가입이 승인됐어요. 지금은 준비 단계예요.</b><br>로그인 계정(팀즈·메타어드민)과 직원 계정을 미리 넣어 두세요. <b>운영팀이 운영을 시작하면</b> 그때부터 기사 앱 기능·자동 감지가 켜지고 구독료가 청구돼요.</div>';
  h+='<div class="grid g2"><div class="card"><h3>'+(live?'사용 중인 기능':'운영 시작하면 켜질 기능')+'</h3>'+(on.length?on.map(function(f){return '<span class="pill ok" style="margin:0 6px 6px 0">'+esc(f.name)+'</span>';}).join(''):'<p class="muted">없음</p>')+'</div>';
  h+='<div class="card"><h3>감지 연결</h3>'+cn.map(function(x){return row(x.kind==='teams'?'Microsoft Teams':'쿠팡 메타어드민',connPill(x));}).join('')+(ME.role!=='staff'?'<div style="margin-top:10px"><a class="btn sm" href="#mconn">로그인 계정 넣기</a></div>':'')+'</div></div>';
@@ -450,9 +461,66 @@ async function saveMem(){var p={id:MEDIT||'',login_id:val('m_id').toLowerCase(),
  if(!MEDIT&&p.password.length<8)return toast('처음 비밀번호는 8자 이상이에요',true);
  if(p.password&&p.password.length<8)return toast('비밀번호는 8자 이상이에요',true);
  try{await rpc('qo_my_member_save',{p:p});toast('저장했어요');MEDIT=null;await load(true);}catch(e){toast('저장 실패: '+e.message,true);}}
-function vMpw(){return '<h1>내 비밀번호</h1><p class="subt">'+esc(ME.login_id)+' 계정의 비밀번호를 바꿔요.</p><div class="card" style="max-width:420px"><div class="grid" style="gap:10px">'+fld('지금 비밀번호','<input id="pw0" type="password" autocomplete="current-password">')+fld('새 비밀번호 (8자 이상)','<input id="pw1" type="password" autocomplete="new-password">')+fld('새 비밀번호 확인','<input id="pw2" type="password" autocomplete="new-password">')+'<button class="btn pri" onclick="chPw()">바꾸기</button></div></div>';}
+function vMpw(){
+ var h='<h1>내 계정</h1><p class="subt">'+esc(ME.name)+' · <span class="mono">'+esc(ME.login_id)+'</span></p>';
+ if(ME.must_change)h+='<div class="help warn"><b>운영팀이 비밀번호를 초기화했어요.</b> 받은 임시 비밀번호를 “지금 비밀번호”에 넣고 새 비밀번호로 바꿔주세요. 바꾸기 전에는 다른 화면을 쓸 수 없어요.</div>';
+ h+='<div class="grid g2" style="max-width:980px"><div class="card"><h3>비밀번호 바꾸기</h3><div class="grid" style="gap:10px">'+fld('지금 비밀번호','<input id="pw0" type="password" autocomplete="current-password">')+fld('새 비밀번호 (8자 이상)','<input id="pw1" type="password" autocomplete="new-password">')+fld('새 비밀번호 확인','<input id="pw2" type="password" autocomplete="new-password">')+'<button class="btn pri" onclick="chPw()">바꾸기</button></div></div>';
+ h+='<div class="card"><h3>👆 지문·얼굴 로그인</h3>';
+ if(!window.PublicKeyCredential)h+='<p class="muted">이 브라우저는 지문·얼굴 로그인을 지원하지 않아요. 휴대폰(크롬·사파리)이나 지문 센서가 있는 PC에서 써주세요.</p>';
+ else h+='<p class="muted" style="margin-top:-4px;line-height:1.6">이 기기를 등록하면 다음부터 비밀번호 없이 <b>지문·얼굴 확인만으로</b> 로그인해요. 기기마다 한 번씩 등록해요 (최대 5대).</p><button class="btn pri" onclick="bioReg()">이 기기 등록하기</button>';
+ h+='<div id="biolist" style="margin-top:12px"></div></div></div>';
+ setTimeout(bioList,0);
+ return h;
+}
 async function chPw(){var a=document.getElementById('pw0').value,b=document.getElementById('pw1').value,c=document.getElementById('pw2').value;if(b.length<8)return toast('새 비밀번호는 8자 이상이에요',true);if(b!==c)return toast('새 비밀번호 확인이 달라요',true);
- try{await rpc('qo_my_change_pw',{p_old:a,p_new:b});toast('비밀번호를 바꿨어요');['pw0','pw1','pw2'].forEach(function(i){document.getElementById(i).value='';});}catch(e){toast(e.message,true);}}
+ try{await rpc('qo_my_change_pw',{p_old:a,p_new:b});toast('비밀번호를 바꿨어요');['pw0','pw1','pw2'].forEach(function(i){document.getElementById(i).value='';});if(ME.must_change){ME.must_change=false;location.hash=MODE==='company'?'my':'dash';}}catch(e){toast(e.message,true);}}
+
+/* ── 지문·얼굴 로그인 (WebAuthn: 지문은 기기 안에서만 확인되고 서버로 가지 않아요) ── */
+function b64u(buf){var b=new Uint8Array(buf),s='';for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+function ub64(t){t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';var s=atob(t),b=new Uint8Array(s.length);for(var i=0;i<s.length;i++)b[i]=s.charCodeAt(i);return b;}
+function bioSaved(){try{var v=JSON.parse(localStorage.getItem('qo_bio')||'null');return v&&v.cred&&v.tok?v:null;}catch(e){return null;}}
+function devLabel(){var u=navigator.userAgent;return /iPhone/.test(u)?'아이폰':/iPad/.test(u)?'아이패드':/Android/.test(u)?'안드로이드':/Mac/.test(u)?'맥':/Windows/.test(u)?'윈도우 PC':'기기';}
+async function bioReg(){
+ try{if(!window.PublicKeyCredential)throw new Error('지원하지 않는 브라우저예요');
+  var ok=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();if(!ok)return toast('이 기기에는 지문·얼굴 인식이 없거나 꺼져 있어요',true);
+  var cr=await navigator.credentials.create({publicKey:{rp:{name:'QUICKOPS',id:location.hostname},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:ME.login_id,displayName:ME.name||ME.login_id},challenge:crypto.getRandomValues(new Uint8Array(32)),
+   pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},timeout:60000}});
+  var cid=b64u(cr.rawId);var tok=await rpc('qo_bio_register',{p_cred_id:cid,p_label:devLabel()});
+  try{localStorage.setItem('qo_bio',JSON.stringify({cred:cid,tok:tok,login_id:ME.login_id}));}catch(e){}
+  toast('이 기기를 등록했어요. 다음부터 지문으로 로그인돼요');bioList();
+ }catch(e){toast(e.name==='NotAllowedError'?'등록을 취소했어요':'등록 실패: '+e.message,true);}}
+async function bioList(){var el=document.getElementById('biolist');if(!el)return;try{var l=await rpc('qo_bio_list');var mine=bioSaved();
+ el.innerHTML=l.length?l.map(function(d){return row(esc(d.label||'기기')+' <small class="muted">· 등록 '+new Date(d.created_at).toLocaleDateString('ko-KR')+(d.last_used?' · 최근 '+new Date(d.last_used).toLocaleDateString('ko-KR'):'')+'</small>','<a href="javascript:void(0)" onclick="bioDel(\''+d.id+'\')">삭제</a>');}).join(''):'<p class="muted" style="margin:0">등록된 기기가 없어요.</p>';}catch(e){el.textContent='';}}
+async function bioDel(id){if(!confirm('이 기기의 지문 로그인을 지울까요?'))return;try{await rpc('qo_bio_remove',{p_id:id});toast('지웠어요');bioList();}catch(e){toast(e.message,true);}}
+async function doBio(){var e=document.getElementById('l_err');e.textContent='';var v=bioSaved();if(!v)return;
+ try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rpId:location.hostname,allowCredentials:[{type:'public-key',id:ub64(v.cred)}],userVerification:'required',timeout:60000}});
+  var r=await rpc('qo_bio_login',{p_cred_id:v.cred,p_token:v.tok});if(r&&r.err){e.textContent=r.err;if(/없어요/.test(r.err)){try{localStorage.removeItem('qo_bio');}catch(x){}}return;}
+  ME=r;document.getElementById('gbox').className='box';await enter();
+ }catch(x){e.textContent=x.name==='NotAllowedError'?'지문 확인을 취소했어요':'지문 로그인 실패: '+x.message;}}
+
+/* ── 계정 관리 (운영자): 비밀번호 보기·초기화 ── */
+function modal(html){var m=document.getElementById('qomodal');if(!m){m=document.createElement('div');m.id='qomodal';m.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);display:grid;place-items:center;z-index:60;padding:16px';document.body.appendChild(m);}
+ m.innerHTML='<div class="card" style="width:min(420px,100%)">'+html+'</div>';m.style.display='grid';m.onclick=function(ev){if(ev.target===m)closeModal();};}
+function closeModal(){var m=document.getElementById('qomodal');if(m){m.innerHTML='';m.style.display='none';}}
+function acc(id){return (SU.accounts||[]).find(function(a){return a.id===id;})||{};}
+function askReveal(id){var a=acc(id);modal('<h3>🔒 비밀번호 보기 · '+esc(a.login_id)+'</h3><p class="muted" style="margin-top:-6px">확인을 위해 <b>운영자 비밀번호</b>를 한 번 더 넣어주세요. 볼 때마다 기록이 남아요.</p>'+fld('운영자 비밀번호','<input id="rv_pw" type="password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')doReveal(\''+id+'\')">')+'<div class="err" id="rv_err" style="color:var(--bad);font-weight:700;min-height:18px;margin-top:6px"></div><div class="row"><button class="btn pri" onclick="doReveal(\''+id+'\')">보기</button><button class="btn" onclick="closeModal()">닫기</button></div>');setTimeout(function(){var i=document.getElementById('rv_pw');if(i)i.focus();},50);}
+async function doReveal(id){var e=document.getElementById('rv_err');try{var r=await rpc('qo_admin_reveal_pw',{p_account:id,p_my_pw:document.getElementById('rv_pw').value});if(r.err){e.textContent=r.err;return;}
+ modal('<h3>🔑 '+esc(r.login_id)+'</h3>'+row('아이디','<span class="mono">'+esc(r.login_id)+'</span>')+row('비밀번호','<span class="mono" style="font-size:16px">'+esc(r.password)+'</span>')+'<p class="muted">30초 뒤 자동으로 닫혀요.</p><button class="btn" onclick="closeModal()">닫기</button>');setTimeout(closeModal,30000);}catch(x){e.textContent=x.message;}}
+async function doReset(id){var a=acc(id);if(!confirm(a.login_id+' 비밀번호를 초기화할까요?\n임시 비밀번호가 만들어지고, 그 계정은 다음 로그인 때 새 비밀번호로 바꿔야 해요. 등록된 지문 로그인도 지워져요.'))return;
+ try{var r=await rpc('qo_admin_reset_pw',{p_account:id});modal('<h3>✅ 초기화 완료</h3>'+row('아이디','<span class="mono">'+esc(r.login_id)+'</span>')+row('임시 비밀번호','<span class="mono" style="font-size:16px">'+esc(r.password)+'</span>')+'<p class="muted" style="line-height:1.6">이 임시 비밀번호를 업체 대표에게 전달해주세요. 로그인하면 바로 새 비밀번호로 바꾸게 돼요.</p><button class="btn" onclick="closeModal()">닫기</button>');await load(false);}catch(x){toast('실패: '+x.message,true);}}
+function acctBtns(a){return '<a href="javascript:void(0)" onclick="askReveal(\''+a.id+'\')">비번 보기</a> · <a href="javascript:void(0)" onclick="doReset(\''+a.id+'\')">초기화</a>';}
+function vAcct(){
+ var h='<h1>계정 관리</h1><p class="subt">모든 업체의 QUICKOPS 계정이에요. <b>비번 보기</b>는 운영자 비밀번호를 한 번 더 확인한 뒤 보여주고, 볼 때마다 변경 기록에 남아요. <b>초기화</b>하면 임시 비밀번호가 나오고, 그 계정은 다음 로그인 때 새 비밀번호로 바꿔야 해요.</p>';
+ h+='<div class="card"><div class="tw"><table><thead><tr><th>업체</th><th>이름</th><th>아이디</th><th>직급</th><th>상태</th><th>지문</th><th>마지막 로그인</th><th>비밀번호</th></tr></thead><tbody>';
+ var list=(SU.accounts||[]).slice().sort(function(x,y){return (x.company_id>y.company_id?1:-1)||(x.role==='owner'?-1:1);});
+ if(!list.length)h+='<tr><td colspan="8" class="muted">계정이 없어요</td></tr>';
+ list.forEach(function(a){var c=co(a.company_id)||{};var meRow=ME&&a.id===ME.id;
+  h+='<tr><td><b>'+esc(c.name||a.company_id)+'</b>'+(c.is_owner?' <span class="pill acc">본사</span>':'')+'</td><td>'+esc(a.name)+'</td><td class="mono">'+esc(a.login_id)+'</td><td>'+(c.is_owner&&a.role==='owner'?pill('acc','운영자'):pill(a.role==='owner'?'acc':a.role==='manager'?'ok':'unk',ROLE[a.role]))+'</td>'+
+   '<td>'+(a.status==='active'?pill('ok','사용'):a.status==='pending'?pill('warn','승인 대기'):pill('unk','중지'))+(a.locked?' '+pill('bad','잠김'):'')+(a.must_change?' '+pill('warn','비번 변경 대기'):'')+'</td><td>'+(a.devices?'👆 '+a.devices+'대':'—')+'</td><td class="muted">'+(a.last_login?new Date(a.last_login).toLocaleString('ko-KR'):'—')+'</td>'+
+   '<td>'+(meRow?'<a href="#mpw">내 계정에서 변경</a>':acctBtns(a))+'</td></tr>';});
+ return h+'</tbody></table></div></div>';
+}
+
 function vMlog(){var h='<h1>변경 기록</h1><p class="subt">우리 업체에서 일어난 로그인·변경 기록이에요. (비밀번호는 기록되지 않아요)</p><div class="card"><div class="tw"><table><thead><tr><th>시각</th><th>누가</th><th>무엇을</th><th>내용</th></tr></thead><tbody>';
  (D.audit||[]).forEach(function(a){h+='<tr><td class="mono" style="white-space:nowrap">'+new Date(a.at).toLocaleString('ko-KR')+'</td><td>'+esc(a.actor)+'</td><td><b>'+esc(a.action)+'</b></td><td class="muted" style="word-break:break-all">'+esc(a.detail)+'</td></tr>';});
  return h+'</tbody></table></div></div>';}
