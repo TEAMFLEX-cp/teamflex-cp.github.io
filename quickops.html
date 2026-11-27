@@ -260,17 +260,17 @@ function vFeat(){
  (D.features||[]).forEach(function(f){
   if(f.grp!==last&&f.grp!=='sub'){last=f.grp;h+='<tr><td colspan="5" class="fgrp">'+(GRP[f.grp]||f.grp)+'</td></tr>';}
   var po=planOn(f,c),mode=ov[f.id]||'auto',fixed=f.is_lock||f.is_ops||f.is_own;
-  var note=f.is_lock?'항상 켜짐':f.is_ops?'운영자(본인) 전용':f.is_own?'본사 전용':f.is_opt?'원하는 업체만':f.needs==='teams'?'팀즈 계정 필요':f.needs==='meta'?'메타 계정 필요':'';
+  var note=f.is_lock?'항상 켜짐':f.is_ops?'대표님(운영자)만 사용 · 업체에는 항상 꺼짐':f.is_own?'본사 전용':f.is_opt?'대표님이 켜줘야 사용 (요금제 무관)':f.needs==='teams'?'팀즈 계정 필요':f.needs==='meta'?'메타 계정 필요':'';
   var parentOff=f.parent_id&&eff[f.parent_id]===false;
-  h+='<tr class="'+(f.grp==='sub'?'sub':'')+'"><td>'+(f.grp==='sub'?'└ ':'')+'<b>'+esc(f.name)+'</b></td><td>'+(po?pill('ok','포함'):pill('unk',f.min_plan?plan(f.min_plan).name+'부터':'미포함'))+'</td>'+
-   '<td>'+(fixed?'<span class="muted">변경 불가</span>':'<div class="seg">'+['auto','on','off'].map(function(m){return '<button class="'+(mode===m?'on':'')+'" onclick="setFeat(\''+f.id+'\',\''+m+'\')">'+{auto:'요금제 따라',on:'켜기',off:'끄기'}[m]+'</button>';}).join('')+'</div>')+'</td>'+
+  h+='<tr class="'+(f.grp==='sub'?'sub':'')+'"><td>'+(f.grp==='sub'?'└ ':'')+'<b>'+esc(f.name)+'</b></td><td>'+(f.is_opt?pill('acc','직접 켜기'):f.is_ops?pill('unk','본인 전용'):po?pill('ok','포함'):pill('unk',f.min_plan?plan(f.min_plan).name+'부터':'미포함'))+'</td>'+
+   '<td>'+(fixed?'<span class="muted">변경 불가</span>':'<div class="seg">'+(f.is_opt?[['on','켜기'],['auto','끄기']].map(function(m){var cur=(mode==='on')?'on':'auto';return '<button class="'+(cur===m[0]?'on':'')+'" onclick="setFeat(\''+f.id+'\',\''+m[0]+'\')">'+m[1]+'</button>';}):['auto','on','off'].map(function(m){return '<button class="'+(mode===m?'on':'')+'" onclick="setFeat(\''+f.id+'\',\''+m+'\')">'+{auto:'요금제 따라',on:'켜기',off:'끄기'}[m]+'</button>';})).join('')+'</div>')+'</td>'+
    '<td>'+(eff[f.id]?pill('ok','켜짐'):pill('unk','꺼짐'))+(parentOff?' <small class="muted">(상위 탭 꺼짐)</small>':'')+'</td><td class="muted">'+note+'</td></tr>';
  });
  return h+'</tbody></table></div></div>';
 }
 async function setFeat(fid,mode){var c=co(SELCO);var f=(D.features||[]).find(function(x){return x.id===fid;});
- if(c.is_owner&&mode==='off'&&!confirm('팀플렉스 기사 앱에서 "'+f.name+'" 기능이 10분 안에 사라져요. 끌까요?'))return;
- try{await rpc('qo_admin_set_feature',{p_company:c.id,p_feature:fid,p_mode:mode});toast(f.name+' → '+{auto:'요금제 따라',on:'켜기',off:'끄기'}[mode]);await load(true);}catch(e){toast('변경 실패: '+e.message,true);}}
+ if(c.is_owner&&(mode==='off'||(mode==='auto'&&f.is_opt))&&!confirm('팀플렉스 기사 앱에서 "'+f.name+'" 기능이 10분 안에 사라져요. 끌까요?'))return;
+ try{await rpc('qo_admin_set_feature',{p_company:c.id,p_feature:fid,p_mode:mode});toast(f.name+' → '+(f.is_opt?(mode==='on'?'켜기':'끄기'):{auto:'요금제 따라',on:'켜기',off:'끄기'}[mode]));await load(true);}catch(e){toast('변경 실패: '+e.message,true);}}
 
 /* ── 4. 로그인 계정 (위탁 보관) ── */
 function vConn(){
